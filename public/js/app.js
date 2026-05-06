@@ -358,14 +358,14 @@ async function showGreeting() {
   renderChatHistory({ streamLast: true });
   const lastEl = els.chatHistory?.lastElementChild;
   if (lastEl) {
-    speakText(text);
+    // speakText(text);
     await streamWords(text, lastEl);
   }
 }
 
 /* ═══════════ Particle system ═══════════ */
 let particleMode = "idle"; // 'idle' | 'active' | 'scatter'
-const PARTICLE_COUNT = 220;
+const PARTICLE_COUNT = 420;
 const particles = [];
 
 class Particle {
@@ -380,7 +380,7 @@ class Particle {
     const angle = Math.random() * Math.PI * 2;
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
-    this.size = Math.random() * 1.8 + 0.3;
+    this.size = Math.random() * 0.7 + 0.2;
     this.baseAlpha = Math.random() * 0.45 + 0.08;
     this.alpha = this.baseAlpha;
     this.twinkle = Math.random() * Math.PI * 2;
@@ -400,19 +400,11 @@ class Particle {
     this.twinkle += 0.018;
 
     if (particleMode === "active") {
-      const dx = orbCenter.x - this.x;
-      const dy = orbCenter.y - this.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      if (dist > 40) {
-        this.vx += (dx / dist) * 0.022;
-        this.vy += (dy / dist) * 0.022;
-      }
-      const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-      if (spd > 3.2) {
-        this.vx = (this.vx / spd) * 3.2;
-        this.vy = (this.vy / spd) * 3.2;
-      }
-      this.alpha = Math.min(1, this.baseAlpha * 2.8 + 0.08);
+      this.vx *= 0.999;
+      this.vy *= 0.999;
+      this.vx += (Math.random() - 0.5) * 0.008;
+      this.vy += (Math.random() - 0.5) * 0.008;
+      this.alpha = Math.min(1, this.baseAlpha * 2.5 + 0.1);
     } else if (particleMode === "scatter") {
       const dx = this.x - orbCenter.x;
       const dy = this.y - orbCenter.y;
@@ -559,7 +551,7 @@ function initVoice() {
 
 function speakText(text) {
   if (!voiceEnabled || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  // window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   if (selectedVoice) utter.voice = selectedVoice;
   utter.lang = "en-GB";
@@ -574,7 +566,7 @@ function speakText(text) {
     const mount = document.querySelector(".orb-mount");
     if (mount && orbMode !== "active") mount.classList.remove("orb--active");
   };
-  window.speechSynthesis.speak(utter);
+  // window.speechSynthesis.speak(utter);
 }
 
 function initMuteButton() {
@@ -733,10 +725,9 @@ async function sendChatMessage(text) {
     chatUiMessages.push({ role: "assistant", content: reply });
     persistChatMessages();
 
-    // Stream text + speak simultaneously
     renderChatHistory({ streamLast: true });
     const lastEl = els.chatHistory?.lastElementChild;
-    speakText(reply);
+    // speakText(reply);
     if (lastEl) await streamWords(reply, lastEl);
   } catch (e) {
     hideTypingIndicator();
@@ -841,27 +832,6 @@ function startOrb() {
     ctx.beginPath();
     ctx.arc(cx, cy, r * 0.52, 0, Math.PI * 2);
     ctx.fill();
-
-    // Active energy rings only — no idle ring
-    if (orbMode === "active") {
-      ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + 0.15 * Math.sin(t * 4.1)})`;
-      ctx.lineWidth = 1.65;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * (1.18 + 0.06 * Math.sin(t * 2.6)), 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.strokeStyle = `rgba(0, 191, 255, ${0.18 + 0.12 * Math.sin(t * 3.1)})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * (1.32 + 0.05 * Math.sin(t * 2.1)), 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.strokeStyle = `rgba(192, 192, 192, ${0.08 + 0.05 * Math.sin(t * 1.8)})`;
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * (1.55 + 0.04 * Math.sin(t * 1.5)), 0, Math.PI * 2);
-      ctx.stroke();
-    }
 
     requestAnimationFrame(frame);
   }
