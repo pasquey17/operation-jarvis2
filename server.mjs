@@ -12,7 +12,6 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import serverless from "serverless-http";
 import { buildMessagesUserContent } from "./prompts.mjs";
 import { syncNotionToSupabase } from './notion-sync.mjs';
 import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
@@ -1085,7 +1084,7 @@ function extractAssistantText(data) {
     .join("");
 }
 
-const server = http.createServer(async (req, res) => {
+async function requestListener(req, res) {
   if (req.method === "OPTIONS") {
     send(res, 204, "", {
       "Access-Control-Allow-Origin": "*",
@@ -1161,7 +1160,9 @@ const server = http.createServer(async (req, res) => {
     }
     send(res, 200, data, { "Content-Type": type });
   });
-});
+}
+
+const server = http.createServer(requestListener);
 
 if (!process.env.VERCEL) {
   server.listen(PORT, () => {
@@ -1194,4 +1195,4 @@ if (!process.env.VERCEL) {
   });
 }
 
-export default serverless(server);
+export default requestListener;
