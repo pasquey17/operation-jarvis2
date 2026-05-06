@@ -331,9 +331,12 @@ function loadEnvFromDotenv() {
 
 function safeJoin(root, reqPath) {
   const decoded = decodeURIComponent(reqPath.split("?")[0]);
-  const cleaned = path.normalize(decoded).replace(/^(\.\.(\/|\\|$))+/, "");
-  const full = path.join(root, cleaned);
-  if (!full.startsWith(root)) return null;
+  const cleaned = path
+    .normalize(decoded)
+    .replace(/^(\.\.(\/|\\|$))+/, "")
+    .replace(/^[/\\]+/, "");
+  const full = path.resolve(root, cleaned);
+  if (full !== root && !full.startsWith(root + path.sep)) return null;
   return full;
 }
 
