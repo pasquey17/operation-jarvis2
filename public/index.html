@@ -18,18 +18,7 @@
     <!-- Full-screen particle field — z-index 0, behind everything -->
     <canvas id="particle-canvas" aria-hidden="true"></canvas>
 
-    <!-- Voice mute toggle — top right, icon only -->
-    <button id="mute-btn" class="mute-btn" aria-label="Mute voice" title="Toggle voice">
-      <svg class="mute-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-        <path class="sound-waves" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-        <path class="sound-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-        <line class="mute-slash" x1="3" y1="3" x2="21" y2="21"/>
-      </svg>
-    </button>
-
-    <div class="jarvis-viewport jarvis-os">
+<div class="jarvis-viewport jarvis-os">
       <div class="hud-frame" data-hud-frame>
         <span class="hud-corner hud-corner--tl" aria-hidden="true"></span>
         <span class="hud-corner hud-corner--tr" aria-hidden="true"></span>
@@ -129,16 +118,7 @@
                     autocomplete="off"
                     enterkeyhint="send"
                   />
-                  <button type="button" id="mic-btn" class="mic-btn" aria-label="Push to talk">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                      <line x1="12" y1="19" x2="12" y2="23"/>
-                      <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                  </button>
-                  <button type="submit" id="chat-send" class="chat-send">Send</button>
+<button type="submit" id="chat-send" class="chat-send">Send</button>
                 </form>
               </div>
             </div>

@@ -651,7 +651,7 @@ body {
   max-width: min(94%, 620px);
   padding: 0.62rem 0.84rem;
   border-radius: 10px;
-  font-size: 0.76rem;
+  font-size: 15px;
   line-height: 1.48;
   letter-spacing: 0.015em;
   white-space: pre-wrap;
@@ -728,7 +728,7 @@ body {
   -webkit-backdrop-filter: blur(20px);
   color: #E0E8F0;
   font-family: var(--font-mono);
-  font-size: max(16px, 1rem);
+  font-size: 15px;
   letter-spacing: 0.02em;
   transition:
     border-color 0.3s var(--ease-out),
