@@ -17,6 +17,8 @@ import { syncNotionToSupabase } from './notion-sync.mjs';
 import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+/** Vercel bundles `includeFiles` relative to function working dir (typically `process.cwd()`), not `__dirname`; see KB "How can I use files in Serverless Functions?". */
+const STATIC_ROOT = process.env.VERCEL ? process.cwd() : __dirname;
 const PORT = Number(process.env.PORT) || 8787;
 const ANTHROPIC_VERSION = "2023-06-01";
 /**
@@ -1139,7 +1141,7 @@ async function requestListener(req, res) {
     return;
   }
 
-  let filePath = safeJoin(__dirname, req.url === "/" ? "/index.html" : req.url);
+  let filePath = safeJoin(STATIC_ROOT, req.url === "/" ? "/index.html" : req.url);
   if (!filePath) {
     send(res, 403, "Forbidden");
     return;
