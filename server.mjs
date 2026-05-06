@@ -342,6 +342,46 @@ function safeJoin(root, reqPath) {
   return full;
 }
 
+/** TEMPORARY: remove after verifying Vercel filesystem layout for `/`. */
+function logRootRequestFilesystemDiagnostics(req) {
+  try {
+    const cwd = process.cwd();
+    const dir = __dirname;
+    const staticRoot = STATIC_ROOT;
+    const reqUrl = req.url;
+    const filePathResolved = safeJoin(STATIC_ROOT, req.url === "/" ? "/index.html" : req.url);
+    const indexAtCwd = path.join(process.cwd(), "index.html");
+    const indexAtDirname = path.join(__dirname, "index.html");
+    console.log("[diag-root] cwd", cwd);
+    console.log("[diag-root] __dirname", dir);
+    console.log("[diag-root] STATIC_ROOT", staticRoot);
+    console.log("[diag-root] req.url", reqUrl);
+    console.log("[diag-root] resolved filePath (matches static handler)", filePathResolved);
+    console.log(
+      "[diag-root] fs.existsSync(resolved filePath)",
+      Boolean(filePathResolved && fs.existsSync(filePathResolved))
+    );
+    console.log("[diag-root] fs.existsSync(join(cwd,index.html))", fs.existsSync(indexAtCwd));
+    console.log("[diag-root] fs.existsSync(join(__dirname,index.html))", fs.existsSync(indexAtDirname));
+    let cwdEntries;
+    try {
+      cwdEntries = fs.readdirSync(cwd);
+    } catch (e) {
+      cwdEntries = `readdir failed: ${String(e instanceof Error ? e.message : e)}`;
+    }
+    console.log("[diag-root] process.cwd() entries", cwdEntries);
+    let staticEntries;
+    try {
+      staticEntries = fs.existsSync(staticRoot) ? fs.readdirSync(staticRoot) : `[missing: ${staticRoot}]`;
+    } catch (e) {
+      staticEntries = `readdir failed: ${String(e instanceof Error ? e.message : e)}`;
+    }
+    console.log("[diag-root] STATIC_ROOT entries", staticEntries);
+  } catch (e) {
+    console.error("[diag-root] diagnostics error", String(e instanceof Error ? e.stack : e));
+  }
+}
+
 function send(res, status, body, headers = {}) {
   res.writeHead(status, headers);
   res.end(body);
@@ -1139,6 +1179,10 @@ async function requestListener(req, res) {
   if (req.method !== "GET") {
     send(res, 405, "Method not allowed");
     return;
+  }
+
+  if ((req.url ?? "/").split("?")[0] === "/") {
+    logRootRequestFilesystemDiagnostics(req);
   }
 
   let filePath = safeJoin(STATIC_ROOT, req.url === "/" ? "/index.html" : req.url);
