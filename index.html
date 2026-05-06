@@ -3,8 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Root-relative URLs: deployment auth/redirect quirks can mis-resolve plain "css/" and "js/" paths. -->
+    <base href="/" />
     <title>JARVIS</title>
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
     <div class="jarvis-shell">
@@ -54,6 +56,6 @@
       </form>
     </div>
 
-    <script type="module" src="js/app.js"></script>
+    <script type="module" src="/js/app.js"></script>
   </body>
 </html>
