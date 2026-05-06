@@ -6,9 +6,6 @@ const MAX_CHAT_MESSAGES_API = 5;
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_CHAT_MESSAGES_STORED = 120;
 
-const GOLD = "#F0B429";
-const BLUE = "#4E9FFF";
-
 let currentUserId = null;
 let snapshotRequestSeq = 0;
 
@@ -25,35 +22,40 @@ function ensureUserId() {
       .login-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(10, 10, 15, 0.92);
+        background: rgba(0, 0, 0, 0.92);
         display: grid;
         place-items: center;
         z-index: 9999;
       }
       .login-card {
         width: min(420px, calc(100vw - 48px));
-        background: rgba(20, 20, 28, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(0, 10, 20, 0.92);
+        border: 1px solid rgba(0, 191, 255, 0.2);
         border-radius: 16px;
         padding: 18px;
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 60px rgba(0, 191, 255, 0.05);
         color: rgba(255, 255, 255, 0.92);
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        backdrop-filter: blur(20px);
       }
       .login-title {
         margin: 0 0 10px 0;
         font-size: 16px;
         letter-spacing: 0.06em;
+        color: #00BFFF;
       }
       .login-input {
         width: 100%;
         box-sizing: border-box;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(10, 10, 15, 0.7);
+        border: 1px solid rgba(0, 191, 255, 0.25);
+        background: rgba(0, 0, 0, 0.5);
         color: rgba(255, 255, 255, 0.92);
         padding: 12px 12px;
         outline: none;
+      }
+      .login-input:focus {
+        border-color: rgba(0, 191, 255, 0.6);
       }
       .login-row {
         display: flex;
@@ -63,14 +65,15 @@ function ensureUserId() {
       .login-btn {
         flex: 1;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background: rgba(78, 159, 255, 0.18);
-        color: rgba(255, 255, 255, 0.92);
+        border: 1px solid #00BFFF;
+        background: rgba(0, 191, 255, 0.12);
+        color: #00BFFF;
         padding: 12px 12px;
         cursor: pointer;
+        letter-spacing: 0.05em;
       }
       .login-btn:hover {
-        background: rgba(78, 159, 255, 0.26);
+        background: rgba(0, 191, 255, 0.22);
       }
     `;
 
@@ -135,7 +138,6 @@ let chatUiMessages = [];
 let tradeData = null;
 let tradesLoaded = false;
 
-/** Orb visual state: idle pulse vs active surge */
 let orbMode = "idle";
 
 function readApiErrorMessage(data) {
@@ -239,9 +241,12 @@ function scrollChatToBottom() {
   els.chatScroll.scrollTop = els.chatScroll.scrollHeight;
 }
 
-function renderChatHistory() {
+/** @param {{ animateLast?: boolean }} [options] */
+function renderChatHistory(options) {
+  const animateLast = Boolean(options?.animateLast);
   if (!els.chatHistory) return;
   els.chatHistory.innerHTML = "";
+  const frag = document.createDocumentFragment();
   for (const m of chatUiMessages) {
     const row = document.createElement("div");
     row.className =
@@ -251,8 +256,22 @@ function renderChatHistory() {
           ? "msg msg--error"
           : "msg msg--jarvis";
     row.textContent = m.content;
-    els.chatHistory.appendChild(row);
+    frag.appendChild(row);
   }
+  els.chatHistory.appendChild(frag);
+
+  const last = els.chatHistory.lastElementChild;
+  if (animateLast && last) {
+    requestAnimationFrame(() => {
+      last.classList.add("msg--enter");
+      last.addEventListener(
+        "animationend",
+        () => last.classList.remove("msg--enter"),
+        { once: true },
+      );
+    });
+  }
+
   scrollChatToBottom();
 }
 
@@ -281,10 +300,207 @@ function getRecentTradesForChat(records) {
   return records.slice(-CHAT_RECENT_TRADES);
 }
 
-function setOrbMode(mode) {
-  orbMode = mode === "active" ? "active" : "idle";
+/* ═══════════ Particle system ═══════════ */
+let particleMode = "idle"; // 'idle' | 'active' | 'scatter'
+const PARTICLE_COUNT = 220;
+const particles = [];
+
+class Particle {
+  constructor() {
+    this.x = Math.random() * window.innerWidth;
+    this.y = Math.random() * window.innerHeight;
+    this._resetKinematics();
+  }
+
+  _resetKinematics() {
+    const speed = Math.random() * 0.3 + 0.04;
+    const angle = Math.random() * Math.PI * 2;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.size = Math.random() * 1.8 + 0.3;
+    this.baseAlpha = Math.random() * 0.45 + 0.08;
+    this.alpha = this.baseAlpha;
+    this.twinkle = Math.random() * Math.PI * 2;
+    const r = Math.random();
+    if (r < 0.65) {
+      this.cr = 0; this.cg = 191; this.cb = 255; // electric blue
+    } else if (r < 0.93) {
+      this.cr = 192; this.cg = 192; this.cb = 192; // silver
+    } else {
+      this.cr = 255; this.cg = 255; this.cb = 255; // white flash
+      this.size = Math.random() * 1.0 + 0.2;
+      this.baseAlpha = Math.random() * 0.6 + 0.2;
+    }
+  }
+
+  update(orbCenter) {
+    this.twinkle += 0.018;
+
+    if (particleMode === "active") {
+      const dx = orbCenter.x - this.x;
+      const dy = orbCenter.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      if (dist > 40) {
+        const f = 0.022;
+        this.vx += (dx / dist) * f;
+        this.vy += (dy / dist) * f;
+      }
+      const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+      if (spd > 3.2) {
+        this.vx = (this.vx / spd) * 3.2;
+        this.vy = (this.vy / spd) * 3.2;
+      }
+      this.alpha = Math.min(1, this.baseAlpha * 2.8 + 0.08);
+    } else if (particleMode === "scatter") {
+      const dx = this.x - orbCenter.x;
+      const dy = this.y - orbCenter.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      this.vx += (dx / dist) * 0.055;
+      this.vy += (dy / dist) * 0.055;
+      this.vx *= 0.972;
+      this.vy *= 0.972;
+      this.alpha = this.baseAlpha * (0.8 + 0.2 * Math.abs(Math.sin(this.twinkle * 3)));
+    } else {
+      this.vx *= 0.998;
+      this.vy *= 0.998;
+      this.vx += (Math.random() - 0.5) * 0.004;
+      this.vy += (Math.random() - 0.5) * 0.004;
+      this.alpha = this.baseAlpha * (0.72 + 0.28 * Math.sin(this.twinkle));
+    }
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    if (this.x < -20) this.x = W + 20;
+    if (this.x > W + 20) this.x = -20;
+    if (this.y < -20) this.y = H + 20;
+    if (this.y > H + 20) this.y = -20;
+  }
+
+  draw(ctx) {
+    const a = Math.max(0, Math.min(1, this.alpha));
+    // Outer glow for active / larger particles
+    if (particleMode === "active" || this.size > 1.3) {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.cr},${this.cg},${this.cb},${a * 0.1})`;
+      ctx.fill();
+    }
+    // Core dot
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${this.cr},${this.cg},${this.cb},${a})`;
+    ctx.fill();
+  }
 }
 
+function getOrbCenter() {
+  const c = document.getElementById("orb-canvas");
+  if (!c) return { x: window.innerWidth * 0.22, y: window.innerHeight * 0.5 };
+  const rect = c.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+}
+
+function initParticles() {
+  const pCanvas = document.getElementById("particle-canvas");
+  if (!pCanvas) return;
+  const pCtx = pCanvas.getContext("2d");
+
+  function resize() {
+    pCanvas.width = window.innerWidth;
+    pCanvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    particles.push(new Particle());
+  }
+
+  function loop() {
+    pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+    const orb = getOrbCenter();
+    for (const p of particles) {
+      p.update(orb);
+      p.draw(pCtx);
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ═══════════ Orb mode ═══════════ */
+function setOrbMode(mode) {
+  const prev = orbMode;
+  orbMode = mode === "active" ? "active" : "idle";
+
+  const mount = document.querySelector(".orb-mount");
+  if (mount) mount.classList.toggle("orb--active", orbMode === "active");
+
+  if (orbMode === "active") {
+    particleMode = "active";
+  } else if (prev === "active") {
+    particleMode = "scatter";
+    setTimeout(() => {
+      if (orbMode === "idle") particleMode = "idle";
+    }, 1500);
+  } else {
+    particleMode = "idle";
+  }
+}
+
+/* ═══════════ Text-to-speech ═══════════ */
+let voiceEnabled = true;
+let selectedVoice = null;
+
+function initVoice() {
+  function pickVoice() {
+    const voices = window.speechSynthesis?.getVoices?.() || [];
+    selectedVoice =
+      voices.find((v) => v.name.includes("Google")) ||
+      voices.find((v) => v.name.includes("Microsoft")) ||
+      voices[0] ||
+      null;
+  }
+  pickVoice();
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = pickVoice;
+  }
+}
+
+function speakText(text) {
+  if (!voiceEnabled || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  if (selectedVoice) utter.voice = selectedVoice;
+  utter.rate = 0.9;
+  utter.pitch = 0.85;
+  utter.volume = 1;
+  utter.onstart = () => {
+    const mount = document.querySelector(".orb-mount");
+    if (mount) mount.classList.add("orb--active");
+  };
+  utter.onend = utter.onerror = () => {
+    const mount = document.querySelector(".orb-mount");
+    if (mount && orbMode !== "active") mount.classList.remove("orb--active");
+  };
+  window.speechSynthesis.speak(utter);
+}
+
+function initMuteButton() {
+  const btn = document.getElementById("mute-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    voiceEnabled = !voiceEnabled;
+    btn.classList.toggle("muted", !voiceEnabled);
+    btn.setAttribute("aria-label", voiceEnabled ? "Mute voice" : "Unmute voice");
+    if (!voiceEnabled) window.speechSynthesis?.cancel?.();
+  });
+}
+
+/* ═══════════ Trade data ═══════════ */
 async function loadTrades() {
   try {
     const userId = currentUserId || localStorage.getItem("user_id") || "aidenpasque11@gmail.com";
@@ -323,7 +539,7 @@ async function sendChatMessage(text) {
     const msg = "No trade data yet. Check the server and Supabase, then refresh the page.";
     chatMessages.push({ role: "error", content: msg });
     chatUiMessages.push({ role: "error", content: msg });
-    renderChatHistory();
+    renderChatHistory({ animateLast: true });
     return;
   }
 
@@ -335,7 +551,7 @@ async function sendChatMessage(text) {
   chatMessages.push(userMsg);
   chatUiMessages.push(userMsg);
   persistChatMessages();
-  renderChatHistory();
+  renderChatHistory({ animateLast: true });
 
   const apiMessages = trimChatMessagesForApi(filterChatForApi(chatMessages));
 
@@ -368,13 +584,14 @@ async function sendChatMessage(text) {
     chatMessages.push({ role: "assistant", content: reply });
     chatUiMessages.push({ role: "assistant", content: reply });
     persistChatMessages();
-    renderChatHistory();
+    renderChatHistory({ animateLast: true });
+    speakText(reply);
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : "Something went wrong.";
     chatMessages.push({ role: "error", content: errMsg });
     chatUiMessages.push({ role: "error", content: errMsg });
     persistChatMessages();
-    renderChatHistory();
+    renderChatHistory({ animateLast: true });
     if (els.chatInput) els.chatInput.value = text;
   } finally {
     chatSending = false;
@@ -396,7 +613,7 @@ els.chatInput?.addEventListener("input", () => {
   if ((els.chatInput?.value || "").trim()) enterChatMode();
 });
 
-/* --- Energy orb (canvas) --- */
+/* ═══════════ Energy orb canvas — electric blue scheme ═══════════ */
 function startOrb() {
   const canvas = els.orbCanvas;
   if (!canvas) return;
@@ -415,56 +632,89 @@ function startOrb() {
   let t = 0;
   const cx = logicalW / 2;
   const cy = logicalH / 2;
-  const baseR = Math.min(logicalW, logicalH) * 0.28;
+  const baseR = Math.min(logicalW, logicalH) * 0.325;
 
   function frame() {
-    t += orbMode === "active" ? 0.18 : 0.028;
+    t += orbMode === "active" ? 0.2 : 0.036;
 
-    const pulse = 0.5 + 0.5 * Math.sin(t);
-    const surge = orbMode === "active" ? 1.35 + 0.12 * Math.sin(t * 3.2) : 1;
-    const r = baseR * (0.92 + 0.1 * pulse) * surge;
-    const glow = orbMode === "active" ? 0.55 + 0.25 * pulse : 0.22 + 0.12 * pulse;
-    const coreBright = orbMode === "active" ? 0.95 : 0.45 + 0.2 * pulse;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.15);
+    const slowBreath = 0.5 + 0.5 * Math.sin(t * 0.38);
+    const surge = orbMode === "active" ? 1.38 + 0.14 * Math.sin(t * 3.35) : 1 + 0.02 * slowBreath;
+    const r = baseR * (0.9 + 0.11 * pulse) * surge;
+    const glow = orbMode === "active" ? 0.65 + 0.3 * pulse : 0.3 + 0.15 * pulse + 0.06 * slowBreath;
+    const coreBright = orbMode === "active" ? 0.98 : 0.5 + 0.25 * pulse;
 
     ctx.clearRect(0, 0, logicalW, logicalH);
 
-    const outer = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2.4);
-    outer.addColorStop(0, `rgba(240, 180, 41, ${0.15 * glow})`);
-    outer.addColorStop(0.35, `rgba(78, 159, 255, ${0.12 * glow})`);
-    outer.addColorStop(0.65, `rgba(78, 159, 255, ${0.04 * glow})`);
-    outer.addColorStop(1, "rgba(10, 10, 15, 0)");
+    // Outer halo — electric blue nebula
+    const haloR = r * (2.35 + (orbMode === "active" ? 0.12 * pulse : 0.05 * slowBreath));
+    const outer = ctx.createRadialGradient(cx, cy, 0, cx, cy, haloR);
+    outer.addColorStop(0, `rgba(0, 191, 255, ${0.2 * glow})`);
+    outer.addColorStop(0.28, `rgba(0, 191, 255, ${0.1 * glow})`);
+    outer.addColorStop(0.55, `rgba(192, 192, 192, ${0.045 * glow})`);
+    outer.addColorStop(0.82, `rgba(0, 20, 40, ${0.02 * glow})`);
+    outer.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     ctx.fillStyle = outer;
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 2.2, 0, Math.PI * 2);
+    ctx.arc(cx, cy, haloR * 0.95, 0, Math.PI * 2);
     ctx.fill();
 
-    const mid = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.15, 0, cx, cy, r * 1.4);
-    mid.addColorStop(0, `rgba(240, 180, 41, ${0.55 * coreBright})`);
-    mid.addColorStop(0.45, `rgba(78, 159, 255, ${0.5 * coreBright})`);
-    mid.addColorStop(0.85, `rgba(78, 159, 255, ${0.15 * coreBright})`);
-    mid.addColorStop(1, "rgba(10, 10, 15, 0)");
+    // Mid glow — white-blue core bleeding outward
+    const mid = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.15, 0, cx, cy, r * 1.45);
+    mid.addColorStop(0, `rgba(255, 255, 255, ${0.38 * coreBright})`);
+    mid.addColorStop(0.12, `rgba(0, 191, 255, ${0.68 * coreBright})`);
+    mid.addColorStop(0.48, `rgba(0, 110, 200, ${0.38 * coreBright})`);
+    mid.addColorStop(0.82, `rgba(0, 40, 80, ${0.08 * coreBright})`);
+    mid.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     ctx.fillStyle = mid;
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 1.1, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2);
     ctx.fill();
 
-    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.55);
-    core.addColorStop(0, `rgba(255, 240, 200, ${0.9 * coreBright})`);
-    core.addColorStop(0.5, GOLD);
-    core.addColorStop(1, BLUE);
+    // Core — white centre fading to electric blue
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.58);
+    core.addColorStop(0, `rgba(255, 255, 255, ${0.98 * coreBright})`);
+    core.addColorStop(0.22, `rgba(200, 238, 255, ${0.92 * coreBright})`);
+    core.addColorStop(0.55, `rgba(0, 191, 255, ${0.88 * coreBright})`);
+    core.addColorStop(1, `rgba(0, 80, 160, ${0.7 * coreBright})`);
 
     ctx.fillStyle = core;
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r * 0.52, 0, Math.PI * 2);
     ctx.fill();
 
-    if (orbMode === "active") {
-      ctx.strokeStyle = `rgba(255, 255, 255, ${0.12 + 0.1 * Math.sin(t * 4)})`;
-      ctx.lineWidth = 1.5;
+    // Silver idle ring
+    const idleRingAlpha = orbMode === "active" ? 0 : 0.07 + 0.05 * pulse;
+    if (idleRingAlpha > 0) {
+      ctx.strokeStyle = `rgba(192, 192, 192, ${idleRingAlpha})`;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(cx, cy, r * (1.15 + 0.05 * Math.sin(t * 2.5)), 0, Math.PI * 2);
+      ctx.arc(cx, cy, r * (1.14 + 0.04 * slowBreath), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (orbMode === "active") {
+      // Inner white ring
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + 0.15 * Math.sin(t * 4.1)})`;
+      ctx.lineWidth = 1.65;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * (1.18 + 0.06 * Math.sin(t * 2.6)), 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Blue mid ring
+      ctx.strokeStyle = `rgba(0, 191, 255, ${0.18 + 0.12 * Math.sin(t * 3.1)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * (1.32 + 0.05 * Math.sin(t * 2.1)), 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Silver outer ring
+      ctx.strokeStyle = `rgba(192, 192, 192, ${0.08 + 0.05 * Math.sin(t * 1.8)})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * (1.55 + 0.04 * Math.sin(t * 1.5)), 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -473,10 +723,6 @@ function startOrb() {
 
   requestAnimationFrame(frame);
 }
-
-window.addEventListener("resize", () => {
-  /* DPR / size could be re-read; keep simple — canvas fixed layout scales via CSS */
-});
 
 async function boot() {
   await ensureUserId();
@@ -488,6 +734,9 @@ async function boot() {
   renderSnapshot();
   updateSendEnabled();
   startOrb();
+  initParticles();
+  initVoice();
+  initMuteButton();
   setOrbMode("active");
   void loadTrades()
     .then(() => updateSendEnabled())

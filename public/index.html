@@ -6,54 +6,141 @@
     <!-- Root-relative URLs: deployment auth/redirect quirks can mis-resolve plain "css/" and "js/" paths. -->
     <base href="/" />
     <title>JARVIS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/css/style.css" />
   </head>
   <body>
-    <div class="jarvis-shell">
-      <header class="jarvis-hero">
-        <canvas id="orb-canvas" width="340" height="340" aria-hidden="true"></canvas>
-        <h1 class="jarvis-title">JARVIS</h1>
-      </header>
+    <!-- Full-screen particle field — z-index 0, behind everything -->
+    <canvas id="particle-canvas" aria-hidden="true"></canvas>
 
-      <section class="snapshot" id="system-snapshot" aria-label="System snapshot">
-        <div class="snapshot-grid">
-          <div class="snapshot-item">
-            <div class="snapshot-label">Win rate</div>
-            <div class="snapshot-value" id="snap-winrate">—</div>
+    <!-- Voice mute toggle — top right, icon only -->
+    <button id="mute-btn" class="mute-btn" aria-label="Mute voice" title="Toggle voice">
+      <svg class="mute-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path class="sound-waves" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        <path class="sound-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        <line class="mute-slash" x1="3" y1="3" x2="21" y2="21"/>
+      </svg>
+    </button>
+
+    <div class="jarvis-viewport jarvis-os">
+      <div class="hud-frame" data-hud-frame>
+        <span class="hud-corner hud-corner--tl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--tr" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--bl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--br" aria-hidden="true"></span>
+
+        <header class="hud-chrome">
+          <div class="hud-chrome__left">
+            <span class="hud-chrome__glyph" aria-hidden="true"></span>
+            <div class="hud-chrome__brand">
+              <span class="hud-chrome__mark">OPERATION JARVIS</span>
+              <span class="hud-chrome__divider" aria-hidden="true"></span>
+              <span class="hud-chrome__sub">Quant intelligence OS</span>
+            </div>
           </div>
-          <div class="snapshot-item">
-            <div class="snapshot-label">Avg RR</div>
-            <div class="snapshot-value" id="snap-avgrr">—</div>
+          <div class="hud-chrome__right">
+            <span class="hud-chrome__channel">UPLINK</span>
+            <span class="hud-chrome__pulse" aria-hidden="true"></span>
+            <span class="hud-chrome__status">Neural core stable</span>
           </div>
-          <div class="snapshot-item">
-            <div class="snapshot-label">Expectancy</div>
-            <div class="snapshot-value" id="snap-expectancy">—</div>
-          </div>
-          <div class="snapshot-item">
-            <div class="snapshot-label">Total trades</div>
-            <div class="snapshot-value" id="snap-total">—</div>
+        </header>
+
+        <div class="hud-grid">
+          <section class="hud-core" aria-label="Intelligence core">
+            <div class="orb-stage">
+              <div class="orb-mount">
+                <canvas id="orb-canvas" width="560" height="560" aria-hidden="true"></canvas>
+              </div>
+              <div class="orb-identity">
+                <p class="orb-identity__eyebrow">Primary interface</p>
+                <h1 class="jarvis-title">JARVIS</h1>
+                <p class="jarvis-caption">Living intelligence · Electric energy core</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="hud-deck">
+            <section class="snapshot" id="system-snapshot" aria-label="System snapshot">
+              <div class="snapshot-top">
+                <div class="snapshot-top__text">
+                  <span class="snapshot-eyebrow">Live telemetry</span>
+                  <h2 class="snapshot-title">Execution matrix</h2>
+                </div>
+                <span class="snapshot-live">
+                  <span class="snapshot-live__dot" aria-hidden="true"></span>
+                  Streaming
+                </span>
+              </div>
+
+              <div class="metric-strip">
+                <article class="metric-cell">
+                  <span class="metric-cell__ix">01</span>
+                  <div class="metric-cell__body">
+                    <div class="snapshot-label">Win rate</div>
+                    <div class="snapshot-value" id="snap-winrate">—</div>
+                  </div>
+                </article>
+                <article class="metric-cell">
+                  <span class="metric-cell__ix">02</span>
+                  <div class="metric-cell__body">
+                    <div class="snapshot-label">Avg RR</div>
+                    <div class="snapshot-value" id="snap-avgrr">—</div>
+                  </div>
+                </article>
+                <article class="metric-cell">
+                  <span class="metric-cell__ix">03</span>
+                  <div class="metric-cell__body">
+                    <div class="snapshot-label">Expectancy</div>
+                    <div class="snapshot-value" id="snap-expectancy">—</div>
+                  </div>
+                </article>
+                <article class="metric-cell">
+                  <span class="metric-cell__ix">04</span>
+                  <div class="metric-cell__body">
+                    <div class="snapshot-label">Total trades</div>
+                    <div class="snapshot-value" id="snap-total">—</div>
+                  </div>
+                </article>
+              </div>
+
+              <div class="snapshot-foot">
+                <div class="snapshot-foot__bar" aria-hidden="true"></div>
+                <div class="snapshot-insight" id="snap-insight">Loading your system…</div>
+              </div>
+            </section>
+
+            <div class="comm-dock">
+              <div class="comm-dock__header">
+                <span class="comm-dock__label">Comms channel</span>
+                <span class="comm-dock__hint">Direct neural link</span>
+              </div>
+              <div class="comm-dock__body conductor">
+                <div class="chat-scroll" id="chat-scroll">
+                  <div id="chat-history" class="chat-history" aria-live="polite"></div>
+                </div>
+                <form class="chat-form" id="chat-form" autocomplete="off">
+                  <input
+                    type="text"
+                    id="chat-input"
+                    name="message"
+                    placeholder="Talk to Jarvis..."
+                    autocomplete="off"
+                    enterkeyhint="send"
+                  />
+                  <button type="submit" id="chat-send" class="chat-send">Send</button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="snapshot-foot">
-          <div class="snapshot-insight" id="snap-insight">Loading your system…</div>
-        </div>
-      </section>
-
-      <div class="chat-scroll" id="chat-scroll">
-        <div id="chat-history" class="chat-history" aria-live="polite"></div>
       </div>
-
-      <form class="chat-form" id="chat-form" autocomplete="off">
-        <input
-          type="text"
-          id="chat-input"
-          name="message"
-          placeholder="Talk to Jarvis..."
-          autocomplete="off"
-          enterkeyhint="send"
-        />
-        <button type="submit" id="chat-send" class="chat-send">Send</button>
-      </form>
     </div>
 
     <script type="module" src="/js/app.js"></script>
