@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JARVIS</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="jarvis-shell">
+      <header class="jarvis-hero">
+        <canvas id="orb-canvas" width="340" height="340" aria-hidden="true"></canvas>
+        <h1 class="jarvis-title">JARVIS</h1>
+      </header>
+
+      <section class="snapshot" id="system-snapshot" aria-label="System snapshot">
+        <div class="snapshot-grid">
+          <div class="snapshot-item">
+            <div class="snapshot-label">Win rate</div>
+            <div class="snapshot-value" id="snap-winrate">—</div>
+          </div>
+          <div class="snapshot-item">
+            <div class="snapshot-label">Avg RR</div>
+            <div class="snapshot-value" id="snap-avgrr">—</div>
+          </div>
+          <div class="snapshot-item">
+            <div class="snapshot-label">Expectancy</div>
+            <div class="snapshot-value" id="snap-expectancy">—</div>
+          </div>
+          <div class="snapshot-item">
+            <div class="snapshot-label">Total trades</div>
+            <div class="snapshot-value" id="snap-total">—</div>
+          </div>
+        </div>
+        <div class="snapshot-foot">
+          <div class="snapshot-insight" id="snap-insight">Loading your system…</div>
+        </div>
+      </section>
+
+      <div class="chat-scroll" id="chat-scroll">
+        <div id="chat-history" class="chat-history" aria-live="polite"></div>
+      </div>
+
+      <form class="chat-form" id="chat-form" autocomplete="off">
+        <input
+          type="text"
+          id="chat-input"
+          name="message"
+          placeholder="Talk to Jarvis..."
+          autocomplete="off"
+          enterkeyhint="send"
+        />
+        <button type="submit" id="chat-send" class="chat-send">Send</button>
+      </form>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

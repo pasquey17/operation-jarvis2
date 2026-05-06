@@ -1,0 +1,6 @@
+date,symbol,side,qty,pnl,notes
+2026-05-01,ES LONG,long,2,-120.00,Chased breakout; stopped at planned level
+2026-05-01,NQ SHORT,short,1,340.00,Partial at target; runner stopped at BE
+2026-04-30,ES LONG,long,1,85.00,Clean pullback entry
+2026-04-30,GC LONG,long,1,-210.00,News spike — exited early
+2026-04-29,NQ LONG,long,2,520.00,Trend day; trailed with 15m structure
