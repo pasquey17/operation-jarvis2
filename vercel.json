@@ -10,7 +10,12 @@
   "functions": {
     "api/index.mjs": {
       "memory": 1024,
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": [
+        "index.html",
+        "css/**",
+        "js/**"
+      ]
     }
   }
 }
