@@ -17,8 +17,8 @@ import { syncNotionToSupabase } from './notion-sync.mjs';
 import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-/** Vercel bundles `includeFiles` relative to function working dir (typically `process.cwd()`), not `__dirname`; see KB "How can I use files in Serverless Functions?". */
-const STATIC_ROOT = process.env.VERCEL ? process.cwd() : __dirname;
+/** Static assets live under `public/` (Vercel convention + predictable Lambda layout). On Vercel, bundled files sit under `cwd`; locally `__dirname` is the repo root next to `server.mjs`. */
+const STATIC_ROOT = path.join(process.env.VERCEL ? process.cwd() : __dirname, "public");
 const PORT = Number(process.env.PORT) || 8787;
 const ANTHROPIC_VERSION = "2023-06-01";
 /**
