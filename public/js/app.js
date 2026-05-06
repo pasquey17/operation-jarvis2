@@ -201,10 +201,7 @@ function trimChatMessagesForApi(msgs) {
   for (let i = trimmed.length - 2; i >= 0 && out.length < MAX_CHAT_MESSAGES_API; i -= 1) {
     const need = out[0].role === "user" ? "assistant" : "user";
     if (trimmed[i].role !== need) break;
-    out.unshift({
-      role: trimmed[i].role,
-      content: trimmed[i].content,
-    });
+    out.unshift({ role: trimmed[i].role, content: trimmed[i].content });
   }
   return out;
 }
@@ -238,16 +235,21 @@ function persistChatMessages() {
 
 function scrollChatToBottom() {
   if (!els.chatScroll) return;
-  els.chatScroll.scrollTop = els.chatScroll.scrollHeight;
+  els.chatScroll.scrollTo({ top: els.chatScroll.scrollHeight, behavior: "smooth" });
 }
 
-/** @param {{ animateLast?: boolean }} [options] */
+/**
+ * @param {{ animateLast?: boolean, streamLast?: boolean }} [options]
+ */
 function renderChatHistory(options) {
   const animateLast = Boolean(options?.animateLast);
+  const streamLast = Boolean(options?.streamLast);
   if (!els.chatHistory) return;
   els.chatHistory.innerHTML = "";
   const frag = document.createDocumentFragment();
-  for (const m of chatUiMessages) {
+  for (let i = 0; i < chatUiMessages.length; i++) {
+    const m = chatUiMessages[i];
+    const isLast = i === chatUiMessages.length - 1;
     const row = document.createElement("div");
     row.className =
       m.role === "user"
@@ -255,24 +257,57 @@ function renderChatHistory(options) {
         : m.role === "error"
           ? "msg msg--error"
           : "msg msg--jarvis";
-    row.textContent = m.content;
+    row.textContent = streamLast && isLast ? "" : m.content;
     frag.appendChild(row);
   }
   els.chatHistory.appendChild(frag);
 
   const last = els.chatHistory.lastElementChild;
-  if (animateLast && last) {
+  if (animateLast && last && !streamLast) {
     requestAnimationFrame(() => {
       last.classList.add("msg--enter");
-      last.addEventListener(
-        "animationend",
-        () => last.classList.remove("msg--enter"),
-        { once: true },
-      );
+      last.addEventListener("animationend", () => last.classList.remove("msg--enter"), {
+        once: true,
+      });
     });
   }
 
   scrollChatToBottom();
+}
+
+/** Stream text into an element word-by-word at ~40ms per word. */
+function streamWords(text, element) {
+  return new Promise((resolve) => {
+    const words = text.split(" ");
+    let i = 0;
+    function next() {
+      if (i >= words.length) {
+        resolve();
+        return;
+      }
+      element.textContent += (i === 0 ? "" : " ") + words[i];
+      i++;
+      scrollChatToBottom();
+      setTimeout(next, 40);
+    }
+    next();
+  });
+}
+
+function showTypingIndicator() {
+  hideTypingIndicator();
+  if (!els.chatHistory) return;
+  const el = document.createElement("div");
+  el.id = "typing-indicator";
+  el.className = "typing-indicator";
+  el.innerHTML =
+    '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+  els.chatHistory.appendChild(el);
+  scrollChatToBottom();
+}
+
+function hideTypingIndicator() {
+  document.getElementById("typing-indicator")?.remove();
 }
 
 async function renderSnapshot() {
@@ -287,17 +322,45 @@ async function renderSnapshot() {
   }
 
   if (els.snapTotal) els.snapTotal.textContent = String(s.total ?? "—");
-  if (els.snapWinrate) els.snapWinrate.textContent = s.winRate == null ? "—" : `${Number(s.winRate).toFixed(1)}%`;
-  if (els.snapAvgRR) els.snapAvgRR.textContent = s.avgRR == null ? "—" : Number(s.avgRR).toFixed(2);
-  if (els.snapExpectancy) els.snapExpectancy.textContent = s.expectancy == null ? "—" : `${Number(s.expectancy).toFixed(2)}R`;
+  if (els.snapWinrate)
+    els.snapWinrate.textContent =
+      s.winRate == null ? "—" : `${Number(s.winRate).toFixed(1)}%`;
+  if (els.snapAvgRR)
+    els.snapAvgRR.textContent =
+      s.avgRR == null ? "—" : Number(s.avgRR).toFixed(2);
+  if (els.snapExpectancy)
+    els.snapExpectancy.textContent =
+      s.expectancy == null ? "—" : `${Number(s.expectancy).toFixed(2)}R`;
   if (els.snapInsight) {
-    els.snapInsight.textContent = s.bestSession ? `Most active session: ${s.bestSession}` : "—";
+    els.snapInsight.textContent = s.bestSession
+      ? `Most active session: ${s.bestSession}`
+      : "—";
   }
 }
 
 function getRecentTradesForChat(records) {
   if (!Array.isArray(records) || records.length === 0) return [];
   return records.slice(-CHAT_RECENT_TRADES);
+}
+
+/* ═══════════ Greeting ═══════════ */
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Systems online. Good morning. Ready when you are.";
+  if (h < 17) return "Systems online. Good afternoon. Standing by.";
+  return "Systems online. Good evening. Let's review your session.";
+}
+
+async function showGreeting() {
+  const text = getGreeting();
+  chatUiMessages.push({ role: "assistant", content: text });
+  setUIMode("chat");
+  renderChatHistory({ streamLast: true });
+  const lastEl = els.chatHistory?.lastElementChild;
+  if (lastEl) {
+    speakText(text);
+    await streamWords(text, lastEl);
+  }
 }
 
 /* ═══════════ Particle system ═══════════ */
@@ -341,9 +404,8 @@ class Particle {
       const dy = orbCenter.y - this.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
       if (dist > 40) {
-        const f = 0.022;
-        this.vx += (dx / dist) * f;
-        this.vy += (dy / dist) * f;
+        this.vx += (dx / dist) * 0.022;
+        this.vy += (dy / dist) * 0.022;
       }
       const spd = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
       if (spd > 3.2) {
@@ -381,14 +443,12 @@ class Particle {
 
   draw(ctx) {
     const a = Math.max(0, Math.min(1, this.alpha));
-    // Outer glow for active / larger particles
     if (particleMode === "active" || this.size > 1.3) {
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size * 3.5, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${this.cr},${this.cg},${this.cb},${a * 0.1})`;
       ctx.fill();
     }
-    // Core dot
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(${this.cr},${this.cg},${this.cb},${a})`;
@@ -451,17 +511,44 @@ function setOrbMode(mode) {
   }
 }
 
-/* ═══════════ Text-to-speech ═══════════ */
+/* ═══════════ Text-to-speech — English male voice priority ═══════════ */
 let voiceEnabled = true;
 let selectedVoice = null;
 
 function initVoice() {
   function pickVoice() {
     const voices = window.speechSynthesis?.getVoices?.() || [];
+    const enVoices = voices.filter(
+      (v) => v.lang && v.lang.toLowerCase().startsWith("en")
+    );
+    const notFemale = (v) =>
+      !v.name.toLowerCase().includes("female") &&
+      !v.name.toLowerCase().includes("zira") &&
+      !v.name.toLowerCase().includes("hazel") &&
+      !v.name.toLowerCase().includes("susan") &&
+      !v.name.toLowerCase().includes("helen") &&
+      !v.name.toLowerCase().includes("linda") &&
+      !v.name.toLowerCase().includes("karen") &&
+      !v.name.toLowerCase().includes("samantha") &&
+      !v.name.toLowerCase().includes("victoria");
+
     selectedVoice =
-      voices.find((v) => v.name.includes("Google")) ||
-      voices.find((v) => v.name.includes("Microsoft")) ||
-      voices[0] ||
+      voices.find((v) => v.name === "Google UK English Male") ||
+      voices.find((v) => v.name === "Microsoft David Desktop - English (United States)") ||
+      voices.find((v) => v.name.includes("Microsoft David")) ||
+      voices.find(
+        (v) =>
+          v.name.toLowerCase().includes("male") &&
+          v.lang.toLowerCase().startsWith("en")
+      ) ||
+      enVoices.find(
+        (v) => v.lang.toLowerCase().startsWith("en-gb") && notFemale(v)
+      ) ||
+      enVoices.find(
+        (v) => v.lang.toLowerCase().startsWith("en-us") && notFemale(v)
+      ) ||
+      enVoices.find(notFemale) ||
+      enVoices[0] ||
       null;
   }
   pickVoice();
@@ -475,8 +562,9 @@ function speakText(text) {
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text);
   if (selectedVoice) utter.voice = selectedVoice;
-  utter.rate = 0.9;
-  utter.pitch = 0.85;
+  utter.lang = "en-GB";
+  utter.rate = 0.85;
+  utter.pitch = 0.9;
   utter.volume = 1;
   utter.onstart = () => {
     const mount = document.querySelector(".orb-mount");
@@ -500,10 +588,68 @@ function initMuteButton() {
   });
 }
 
+/* ═══════════ Microphone — push to talk ═══════════ */
+function initMic() {
+  const btn = document.getElementById("mic-btn");
+  if (!btn) return;
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    btn.style.display = "none";
+    return;
+  }
+
+  const recognition = new SR();
+  recognition.lang = "en-GB";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  let listening = false;
+
+  recognition.onresult = (e) => {
+    const transcript = Array.from(e.results)
+      .map((r) => r[0].transcript)
+      .join(" ")
+      .trim();
+    if (els.chatInput && transcript) {
+      els.chatInput.value = transcript;
+      enterChatMode();
+      els.chatInput.focus();
+    }
+  };
+
+  recognition.onend = () => {
+    listening = false;
+    btn.classList.remove("mic--active");
+  };
+
+  recognition.onerror = () => {
+    listening = false;
+    btn.classList.remove("mic--active");
+  };
+
+  btn.addEventListener("click", () => {
+    if (listening) {
+      recognition.stop();
+    } else {
+      try {
+        recognition.start();
+        listening = true;
+        btn.classList.add("mic--active");
+      } catch (e) {
+        console.warn("Speech recognition failed to start", e);
+      }
+    }
+  });
+}
+
 /* ═══════════ Trade data ═══════════ */
 async function loadTrades() {
   try {
-    const userId = currentUserId || localStorage.getItem("user_id") || "aidenpasque11@gmail.com";
+    const userId =
+      currentUserId ||
+      localStorage.getItem("user_id") ||
+      "aidenpasque11@gmail.com";
     const res = await fetch(`${API_TRADES}?user_id=eq.${encodeURIComponent(userId)}`);
     const data = await res.json().catch(() => ({}));
     console.log("FRONTEND RAW DATA:", data);
@@ -553,18 +699,21 @@ async function sendChatMessage(text) {
   persistChatMessages();
   renderChatHistory({ animateLast: true });
 
+  showTypingIndicator();
+
   const apiMessages = trimChatMessagesForApi(filterChatForApi(chatMessages));
 
   try {
-    const tradesToSend = tradeData.records;
-
     const res = await fetch(API_CHAT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: currentUserId || localStorage.getItem("user_id") || "aidenpasque11@gmail.com",
+        email:
+          currentUserId ||
+          localStorage.getItem("user_id") ||
+          "aidenpasque11@gmail.com",
         headers: tradeData.headers,
-        trades: tradesToSend,
+        trades: tradeData.records,
         messages: apiMessages,
         briefingMemory: "",
       }),
@@ -577,16 +726,20 @@ async function sendChatMessage(text) {
     }
 
     const reply = typeof data.reply === "string" ? data.reply : "";
-    if (!reply.trim()) {
-      throw new Error("Empty reply");
-    }
+    if (!reply.trim()) throw new Error("Empty reply");
 
+    hideTypingIndicator();
     chatMessages.push({ role: "assistant", content: reply });
     chatUiMessages.push({ role: "assistant", content: reply });
     persistChatMessages();
-    renderChatHistory({ animateLast: true });
+
+    // Stream text + speak simultaneously
+    renderChatHistory({ streamLast: true });
+    const lastEl = els.chatHistory?.lastElementChild;
     speakText(reply);
+    if (lastEl) await streamWords(reply, lastEl);
   } catch (e) {
+    hideTypingIndicator();
     const errMsg = e instanceof Error ? e.message : "Something went wrong.";
     chatMessages.push({ role: "error", content: errMsg });
     chatUiMessages.push({ role: "error", content: errMsg });
@@ -613,7 +766,7 @@ els.chatInput?.addEventListener("input", () => {
   if ((els.chatInput?.value || "").trim()) enterChatMode();
 });
 
-/* ═══════════ Energy orb canvas — electric blue scheme ═══════════ */
+/* ═══════════ Energy orb canvas — electric blue, no idle ring ═══════════ */
 function startOrb() {
   const canvas = els.orbCanvas;
   if (!canvas) return;
@@ -639,9 +792,13 @@ function startOrb() {
 
     const pulse = 0.5 + 0.5 * Math.sin(t * 1.15);
     const slowBreath = 0.5 + 0.5 * Math.sin(t * 0.38);
-    const surge = orbMode === "active" ? 1.38 + 0.14 * Math.sin(t * 3.35) : 1 + 0.02 * slowBreath;
+    const surge =
+      orbMode === "active" ? 1.38 + 0.14 * Math.sin(t * 3.35) : 1 + 0.02 * slowBreath;
     const r = baseR * (0.9 + 0.11 * pulse) * surge;
-    const glow = orbMode === "active" ? 0.65 + 0.3 * pulse : 0.3 + 0.15 * pulse + 0.06 * slowBreath;
+    const glow =
+      orbMode === "active"
+        ? 0.65 + 0.3 * pulse
+        : 0.3 + 0.15 * pulse + 0.06 * slowBreath;
     const coreBright = orbMode === "active" ? 0.98 : 0.5 + 0.25 * pulse;
 
     ctx.clearRect(0, 0, logicalW, logicalH);
@@ -673,7 +830,7 @@ function startOrb() {
     ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2);
     ctx.fill();
 
-    // Core — white centre fading to electric blue
+    // Core — white centre fading to electric blue (no ring boundary)
     const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.58);
     core.addColorStop(0, `rgba(255, 255, 255, ${0.98 * coreBright})`);
     core.addColorStop(0.22, `rgba(200, 238, 255, ${0.92 * coreBright})`);
@@ -685,32 +842,20 @@ function startOrb() {
     ctx.arc(cx, cy, r * 0.52, 0, Math.PI * 2);
     ctx.fill();
 
-    // Silver idle ring
-    const idleRingAlpha = orbMode === "active" ? 0 : 0.07 + 0.05 * pulse;
-    if (idleRingAlpha > 0) {
-      ctx.strokeStyle = `rgba(192, 192, 192, ${idleRingAlpha})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * (1.14 + 0.04 * slowBreath), 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
+    // Active energy rings only — no idle ring
     if (orbMode === "active") {
-      // Inner white ring
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + 0.15 * Math.sin(t * 4.1)})`;
       ctx.lineWidth = 1.65;
       ctx.beginPath();
       ctx.arc(cx, cy, r * (1.18 + 0.06 * Math.sin(t * 2.6)), 0, Math.PI * 2);
       ctx.stroke();
 
-      // Blue mid ring
       ctx.strokeStyle = `rgba(0, 191, 255, ${0.18 + 0.12 * Math.sin(t * 3.1)})`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(cx, cy, r * (1.32 + 0.05 * Math.sin(t * 2.1)), 0, Math.PI * 2);
       ctx.stroke();
 
-      // Silver outer ring
       ctx.strokeStyle = `rgba(192, 192, 192, ${0.08 + 0.05 * Math.sin(t * 1.8)})`;
       ctx.lineWidth = 0.5;
       ctx.beginPath();
@@ -737,9 +882,13 @@ async function boot() {
   initParticles();
   initVoice();
   initMuteButton();
+  initMic();
   setOrbMode("active");
   void loadTrades()
-    .then(() => updateSendEnabled())
+    .then(() => {
+      updateSendEnabled();
+      showGreeting();
+    })
     .finally(() => setOrbMode("idle"));
   els.chatInput?.focus();
 }
