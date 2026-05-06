@@ -12,6 +12,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import serverless from "serverless-http";
 import { buildMessagesUserContent } from "./prompts.mjs";
 import { syncNotionToSupabase } from './notion-sync.mjs';
 import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
@@ -1162,31 +1163,35 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Trading journal: http://localhost:${PORT}`);
-  console.log(`Trades API: GET http://localhost:${PORT}/api/trades (Supabase)`);
-  console.log(`Notion sync: GET http://localhost:${PORT}/api/sync-notion`);
-  console.log(`Briefing API: POST http://localhost:${PORT}/api/briefing`);
-  console.log(`Chat API: POST http://localhost:${PORT}/api/chat`);
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
-    console.warn("[warn] ANTHROPIC_API_KEY is not set. Add it to .env next to server.mjs.");
-  }
-  const { url, key } = getSupabaseConfig();
-  if (!url || !key) {
-    console.warn(
-      "[warn] SUPABASE_URL / SUPABASE_ANON_KEY not fully set — /api/trades will fail until configured."
-    );
-  }
+if (!process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`Trading journal: http://localhost:${PORT}`);
+    console.log(`Trades API: GET http://localhost:${PORT}/api/trades (Supabase)`);
+    console.log(`Notion sync: GET http://localhost:${PORT}/api/sync-notion`);
+    console.log(`Briefing API: POST http://localhost:${PORT}/api/briefing`);
+    console.log(`Chat API: POST http://localhost:${PORT}/api/chat`);
+    if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+      console.warn("[warn] ANTHROPIC_API_KEY is not set. Add it to .env next to server.mjs.");
+    }
+    const { url, key } = getSupabaseConfig();
+    if (!url || !key) {
+      console.warn(
+        "[warn] SUPABASE_URL / SUPABASE_ANON_KEY not fully set — /api/trades will fail until configured."
+      );
+    }
 
-  void syncNotionToSupabase()
-    .then((r) => {
-      if (r.ok) {
-        console.log(
-          `[notion-sync] Startup sync complete — fetched ${r.fetched}, upserted ${r.upserted}.`
-        );
-      }
-    })
-    .catch((e) => {
-      console.error("[notion-sync] Startup sync failed:", e instanceof Error ? e.message : e);
-    });
-});
+    void syncNotionToSupabase()
+      .then((r) => {
+        if (r.ok) {
+          console.log(
+            `[notion-sync] Startup sync complete — fetched ${r.fetched}, upserted ${r.upserted}.`
+          );
+        }
+      })
+      .catch((e) => {
+        console.error("[notion-sync] Startup sync failed:", e instanceof Error ? e.message : e);
+      });
+  });
+}
+
+export default serverless(server);
