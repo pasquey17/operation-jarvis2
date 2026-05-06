@@ -726,9 +726,9 @@ body {
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  color: #FFFFFF;
+  color: #E0E8F0;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: max(16px, 1rem);
   letter-spacing: 0.02em;
   transition:
     border-color 0.3s var(--ease-out),
