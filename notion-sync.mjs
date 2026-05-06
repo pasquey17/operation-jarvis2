@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { pathToFileURL } from "node:url";
 
 /**
  * Notion → Supabase sync for `public.trades`.
@@ -170,4 +171,7 @@ export async function runNotionSync() {
   return await syncNotionToSupabase();
 }
 
-runNotionSync();
+const isDirectRun = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isDirectRun && !process.env.VERCEL) {
+  void runNotionSync();
+}
