@@ -783,6 +783,7 @@ body {
 
 /* ═══════════ Mic button ═══════════ */
 .mic-btn {
+  display: none;
   flex-shrink: 0;
   width: 37px;
   height: 37px;
