@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="/css/style.css" />
     <style>
-      /* ── Unlock scroll (overrides style.css body lock) ── */
+      /* ── Unlock scroll ── */
       html, body {
         overflow: auto !important;
         height: auto !important;
@@ -89,7 +89,7 @@
         padding: 72px 24px 100px; max-width: 960px; margin: 0 auto;
       }
 
-      /* Header */
+      /* ── Header ── */
       .jn-header {
         display: flex; align-items: flex-start; justify-content: space-between;
         gap: 16px; margin-bottom: 32px; padding-top: 16px;
@@ -102,24 +102,28 @@
         text-shadow: 0 0 30px rgba(0,212,255,0.5), 0 0 70px rgba(0,212,255,0.18);
       }
       .jn-subtitle {
-        margin: 0 0 18px; font-family: "Share Tech Mono","Courier New",monospace;
+        margin: 0 0 20px; font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.14em;
         text-transform: uppercase;
       }
-      .jn-week-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+
+      /* ── Stat pills — bigger ── */
+      .jn-week-pills { display: flex; flex-wrap: wrap; gap: 10px; }
       .jn-stat-pill {
-        padding: 10px 14px; border-radius: 6px;
+        padding: 14px 20px; border-radius: 8px;
         border: 1px solid rgba(0,212,255,0.15); background: rgba(0,212,255,0.04);
+        min-width: 110px;
       }
       .jn-stat-value {
         display: block; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 18px; color: #fff; font-variant-numeric: tabular-nums;
-        letter-spacing: 0.04em;
+        font-size: 22px; color: #fff; font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em; line-height: 1.15;
       }
       .jn-stat-label {
         display: block; font-size: 9px; letter-spacing: 0.14em;
-        text-transform: uppercase; color: rgba(255,255,255,0.28); margin-top: 2px;
+        text-transform: uppercase; color: rgba(255,255,255,0.28); margin-top: 4px;
       }
+
       .jn-log-btn {
         flex-shrink: 0; padding: 10px 18px; border-radius: 6px;
         border: 1px solid #00d4ff; background: rgba(0,212,255,0.08);
@@ -134,13 +138,13 @@
       }
       .jn-log-btn:active { transform: translateY(0); }
 
-      /* Filters */
-      .jn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+      /* ── Filters ── */
+      .jn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
       .jn-filter-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
       .jn-filter-label {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
         letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.28);
-        width: 60px; flex-shrink: 0;
+        width: 64px; flex-shrink: 0;
       }
       .jn-filter-pill {
         padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
@@ -152,31 +156,59 @@
       .jn-filter-pill:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
       .jn-filter-pill.active { border-color: #00d4ff; color: #00d4ff; background: rgba(0,212,255,0.08); }
 
-      /* Trade list */
-      .jn-list { display: flex; flex-direction: column; gap: 8px; }
+      /* ── Trade list ── */
+      .jn-list { display: flex; flex-direction: column; gap: 6px; }
+
+      /* ── Card ── */
       .jn-card {
-        border-radius: 8px; border: 1px solid rgba(0,212,255,0.15);
-        background: rgba(255,255,255,0.03); overflow: hidden; cursor: pointer;
+        border-radius: 8px;
+        border: 1px solid rgba(0,212,255,0.15);
+        border-left: 3px solid rgba(255,255,255,0.12); /* default/BE */
+        background: rgba(255,255,255,0.03);
+        overflow: hidden; cursor: pointer;
         transition: border-color 0.2s, background 0.2s;
       }
-      .jn-card:hover { border-color: rgba(0,212,255,0.3); background: rgba(255,255,255,0.05); }
+      .jn-card:hover { background: rgba(255,255,255,0.055); }
+      .jn-card[data-outcome="win"]  { border-left-color: #00ff88; }
+      .jn-card[data-outcome="loss"] { border-left-color: #ff4444; }
+      .jn-card[data-outcome="be"]   { border-left-color: rgba(255,255,255,0.18); }
 
+      /* ── Card top row ── */
       .jn-card__top {
-        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
-        padding: 14px 16px;
+        display: flex; align-items: center;
+        padding: 18px 20px 18px 18px;
+        min-height: 56px; gap: 0;
       }
+      /* Left group: date + badges + pair + model — takes available space, clips */
+      .jn-card__left {
+        display: flex; align-items: center; gap: 10px;
+        flex: 1; min-width: 0; overflow: hidden;
+      }
+      /* Right group: account + rr + chevron — never shrinks, always far right */
+      .jn-card__right {
+        display: flex; align-items: center; gap: 10px;
+        flex-shrink: 0; margin-left: 14px;
+      }
+
       .jn-card__date {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px;
-        color: rgba(255,255,255,0.4); letter-spacing: 0.06em; flex-shrink: 0;
+        color: rgba(255,255,255,0.38); letter-spacing: 0.05em; flex-shrink: 0;
+        white-space: nowrap;
       }
       .jn-card__pair {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px;
-        color: rgba(255,255,255,0.7); letter-spacing: 0.06em; flex-shrink: 0;
+        color: #fff; letter-spacing: 0.06em; flex-shrink: 0; white-space: nowrap;
       }
-      .jn-card__badges { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+      .jn-card__model {
+        font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px;
+        color: rgba(255,255,255,0.35); letter-spacing: 0.04em;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        min-width: 0; flex-shrink: 1;
+      }
       .jn-card__rr {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 13px;
-        color: #fff; font-variant-numeric: tabular-nums; margin-left: auto; flex-shrink: 0;
+        font-family: "Share Tech Mono","Courier New",monospace; font-size: 14px;
+        color: #00d4ff; font-weight: 700; font-variant-numeric: tabular-nums;
+        flex-shrink: 0; white-space: nowrap;
       }
       .jn-card__chevron {
         font-size: 10px; color: rgba(255,255,255,0.22); flex-shrink: 0;
@@ -184,27 +216,29 @@
       }
       .jn-card[data-expanded="true"] .jn-card__chevron { transform: rotate(180deg); }
 
-      /* Badges */
+      /* ── Badges ── */
       .jn-badge {
-        display: inline-block; padding: 3px 8px; border-radius: 4px;
+        display: inline-flex; align-items: center;
+        padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
-        font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid transparent;
+        font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+        border: 1px solid transparent; white-space: nowrap;
       }
       .jn-badge--win   { background: #00ff88; color: #001a00; }
       .jn-badge--loss  { background: #ff4444; color: #fff; }
-      .jn-badge--be    { background: rgba(255,255,255,0.18); color: #fff; }
+      .jn-badge--be    { background: rgba(255,255,255,0.16); color: #fff; }
       .jn-badge--long  { background: rgba(0,212,255,0.12); color: #00d4ff; border-color: rgba(0,212,255,0.35); }
       .jn-badge--short { background: rgba(255,140,0,0.12); color: #ff8c00; border-color: rgba(255,140,0,0.35); }
-      .jn-badge--acct  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.1); font-weight: 400; }
+      .jn-badge--acct  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.38); border-color: rgba(255,255,255,0.1); font-weight: 400; font-size: 9px; }
 
-      /* Expanded content */
+      /* ── Expanded content ── */
       .jn-card__expand {
         max-height: 0; overflow: hidden;
         transition: max-height 0.38s cubic-bezier(0.22,1,0.36,1);
         border-top: 0 solid rgba(0,212,255,0.1);
       }
       .jn-card[data-expanded="true"] .jn-card__expand { max-height: 700px; border-top-width: 1px; }
-      .jn-expand-inner { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      .jn-expand-inner { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
       .jn-detail { display: flex; flex-direction: column; gap: 3px; }
       .jn-detail__label {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
@@ -228,7 +262,7 @@
       }
       .jn-ask-btn:hover { background: rgba(0,212,255,0.14); border-color: #00d4ff; }
 
-      /* Load more */
+      /* ── Load more ── */
       .jn-load-more-wrap { display: flex; justify-content: center; margin-top: 24px; }
       .jn-load-more {
         padding: 10px 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
@@ -241,20 +275,23 @@
       .jn-load-more:disabled { opacity: 0.3; cursor: not-allowed; }
       .jn-load-more.hidden { display: none; }
 
-      /* State messages */
+      /* ── State messages ── */
       .jn-state {
         padding: 48px 0; text-align: center;
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px;
         letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.22);
       }
 
-      /* Responsive */
+      /* ── Responsive ── */
       @media (max-width: 640px) {
         .jn-page { padding: 68px 14px 90px; }
         .jn-header { flex-direction: column; gap: 12px; align-items: stretch; }
         .jn-log-btn { width: 100%; text-align: center; }
-        .jn-card__rr { margin-left: 0; }
         .jn-title { font-size: 1.5rem; }
+        .jn-card__top { padding: 16px 14px; }
+        .jn-card__date { font-size: 10px; }
+        .jn-stat-pill { min-width: auto; }
+        .jn-stat-value { font-size: 18px; }
       }
     </style>
   </head>
@@ -306,7 +343,6 @@
     </script>
     <!-- ═══════════════════ END NAV BAR ═══════════════════ -->
 
-    <!-- Particle field -->
     <canvas id="particle-canvas" aria-hidden="true"></canvas>
 
     <!-- ═══════════════════ JOURNAL PAGE ═══════════════════ -->
@@ -328,6 +364,10 @@
               <span class="jn-stat-value" id="pill-netr">—</span>
               <span class="jn-stat-label">Total R this week</span>
             </div>
+            <div class="jn-stat-pill">
+              <span class="jn-stat-value" id="pill-bestrr" style="color:#00d4ff">—</span>
+              <span class="jn-stat-label">Best RR this week</span>
+            </div>
           </div>
         </div>
         <button class="jn-log-btn" id="jn-log-btn" type="button">LOG TRADE +</button>
@@ -341,18 +381,35 @@
           <button class="jn-filter-pill" data-group="outcome" data-value="loss">Loss</button>
           <button class="jn-filter-pill" data-group="outcome" data-value="be">BE</button>
         </div>
+        <div class="jn-filter-row" id="filter-direction">
+          <span class="jn-filter-label">Position</span>
+          <button class="jn-filter-pill active" data-group="direction" data-value="all">All</button>
+          <button class="jn-filter-pill" data-group="direction" data-value="long">Long</button>
+          <button class="jn-filter-pill" data-group="direction" data-value="short">Short</button>
+        </div>
         <div class="jn-filter-row" id="filter-pair">
           <span class="jn-filter-label">Pair</span>
           <button class="jn-filter-pill active" data-group="pair" data-value="all">All</button>
+        </div>
+        <div class="jn-filter-row" id="filter-model">
+          <span class="jn-filter-label">Model</span>
+          <button class="jn-filter-pill active" data-group="model" data-value="all">All</button>
         </div>
         <div class="jn-filter-row" id="filter-account">
           <span class="jn-filter-label">Account</span>
           <button class="jn-filter-pill active" data-group="account" data-value="all">All</button>
         </div>
+        <div class="jn-filter-row" id="filter-sort">
+          <span class="jn-filter-label">Sort</span>
+          <button class="jn-filter-pill active" data-group="sort" data-value="newest">Newest</button>
+          <button class="jn-filter-pill" data-group="sort" data-value="oldest">Oldest</button>
+          <button class="jn-filter-pill" data-group="sort" data-value="highestrr">Highest RR</button>
+          <button class="jn-filter-pill" data-group="sort" data-value="lowestrr">Lowest RR</button>
+        </div>
       </div>
 
       <div class="jn-list" id="jn-list">
-        <div class="jn-state" id="jn-loading">Loading trades…</div>
+        <div class="jn-state">Loading trades…</div>
       </div>
 
       <div class="jn-load-more-wrap">
@@ -365,15 +422,15 @@
       'use strict';
 
       /* ── Constants ── */
-      const PAGE_SIZE = 20;
+      const PAGE_SIZE   = 20;
       const CORE_FIELDS = new Set(['date','session','outcome','rr','pair','account']);
 
       /* ── State ── */
-      let currentUserId = null;
-      let allTrades     = [];
+      let currentUserId  = null;
+      let allTrades      = [];
       let filteredTrades = [];
       let displayedCount = 0;
-      let activeFilters  = { outcome: 'all', pair: 'all', account: 'all' };
+      let activeFilters  = { outcome: 'all', direction: 'all', pair: 'all', model: 'all', account: 'all', sort: 'newest' };
 
       /* ── Helpers ── */
       function getField(obj) {
@@ -397,6 +454,17 @@
         if (v === 'long'  || v === 'buy'  || v === 'bull') return 'long';
         if (v === 'short' || v === 'sell' || v === 'bear') return 'short';
         return null;
+      }
+
+      /* Extract direction from trade — checks explicit field then model name */
+      function getTradeDirection(t) {
+        var raw = getField(t, 'direction', 'Direction', 'long_short', 'side', 'trade_direction');
+        if (!raw) {
+          var m = String(getField(t, 'model', 'Model', 'MODEL') || '').toLowerCase();
+          if (m.includes('long'))  raw = 'long';
+          else if (m.includes('short')) raw = 'short';
+        }
+        return normalizeDirection(raw);
       }
 
       function tradeDate(t) {
@@ -430,6 +498,11 @@
           .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
 
+      function truncate(s, n) {
+        var str = String(s || '');
+        return str.length > n ? str.slice(0, n) + '…' : str;
+      }
+
       function readApiError(data) {
         if (!data || typeof data !== 'object') return '';
         var e = data.error;
@@ -438,22 +511,19 @@
         return '';
       }
 
-      /* ── Particle system (adapted from app.js — no orb dependency) ── */
+      /* ── Particle system ── */
       var PARTICLE_COUNT = 380;
       var particles = [];
-      var particleMode = 'idle';
 
       function Particle() {
         this.x = Math.random() * window.innerWidth;
         this.y = Math.random() * window.innerHeight;
         this._reset();
       }
-
       Particle.prototype._reset = function () {
         var speed = Math.random() * 0.3 + 0.04;
         var angle = Math.random() * Math.PI * 2;
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
+        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
         this.size = Math.random() * 0.7 + 0.2;
         this.baseAlpha = Math.random() * 0.45 + 0.08;
         this.alpha = this.baseAlpha;
@@ -461,42 +531,30 @@
         var r = Math.random();
         if (r < 0.65)      { this.cr = 0;   this.cg = 191; this.cb = 255; }
         else if (r < 0.93) { this.cr = 192; this.cg = 192; this.cb = 192; }
-        else {
-          this.cr = 255; this.cg = 255; this.cb = 255;
-          this.size = Math.random() * 1.0 + 0.2;
-          this.baseAlpha = Math.random() * 0.6 + 0.2;
-        }
+        else { this.cr = 255; this.cg = 255; this.cb = 255; this.size = Math.random() * 1.0 + 0.2; this.baseAlpha = Math.random() * 0.6 + 0.2; }
       };
-
       Particle.prototype.update = function () {
         this.twinkle += 0.018;
         this.vx *= 0.998; this.vy *= 0.998;
-        this.vx += (Math.random() - 0.5) * 0.004;
-        this.vy += (Math.random() - 0.5) * 0.004;
+        this.vx += (Math.random() - 0.5) * 0.004; this.vy += (Math.random() - 0.5) * 0.004;
         this.alpha = this.baseAlpha * (0.72 + 0.28 * Math.sin(this.twinkle));
         this.x += this.vx; this.y += this.vy;
         var W = window.innerWidth, H = window.innerHeight;
-        if (this.x < -20) this.x = W + 20;
-        if (this.x > W + 20) this.x = -20;
-        if (this.y < -20) this.y = H + 20;
-        if (this.y > H + 20) this.y = -20;
+        if (this.x < -20) this.x = W + 20; if (this.x > W + 20) this.x = -20;
+        if (this.y < -20) this.y = H + 20; if (this.y > H + 20) this.y = -20;
       };
-
       Particle.prototype.draw = function (ctx) {
         var a = Math.max(0, Math.min(1, this.alpha));
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(' + this.cr + ',' + this.cg + ',' + this.cb + ',' + a + ')';
         ctx.fill();
       };
-
       function initParticles() {
         var canvas = document.getElementById('particle-canvas');
         if (!canvas) return;
         var ctx = canvas.getContext('2d');
         function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        resize();
-        window.addEventListener('resize', resize);
+        resize(); window.addEventListener('resize', resize);
         for (var i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
         (function loop() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -505,7 +563,7 @@
         })();
       }
 
-      /* ── Login gate (same pattern as app.js) ── */
+      /* ── Login gate ── */
       function ensureUserId() {
         return new Promise(function (resolve) {
           var existing = localStorage.getItem('user_id');
@@ -513,14 +571,12 @@
             currentUserId = existing.trim();
             var navUser = document.getElementById('jv-nav-user');
             if (navUser) navUser.textContent = currentUserId;
-            resolve(currentUserId);
-            return;
+            resolve(currentUserId); return;
           }
-
           var style = document.createElement('style');
           style.textContent = [
             '.jn-login-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:grid;place-items:center;z-index:9999}',
-            '.jn-login-card{width:min(420px,calc(100vw - 48px));background:rgba(0,10,20,0.92);border:1px solid rgba(0,191,255,0.2);border-radius:16px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,0.7);color:rgba(255,255,255,0.92);font-family:system-ui,sans-serif;backdrop-filter:blur(20px)}',
+            '.jn-login-card{width:min(420px,calc(100vw - 48px));background:rgba(0,10,20,0.92);border:1px solid rgba(0,191,255,0.2);border-radius:16px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,0.7);backdrop-filter:blur(20px)}',
             '.jn-login-title{margin:0 0 14px;font-size:15px;letter-spacing:0.1em;color:#00BFFF;font-family:"Share Tech Mono","Courier New",monospace;text-transform:uppercase}',
             '.jn-login-input{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid rgba(0,191,255,0.25);background:rgba(0,0,0,0.5);color:rgba(255,255,255,0.92);padding:12px 14px;outline:none;font-family:"Share Tech Mono","Courier New",monospace}',
             '.jn-login-input:focus{border-color:rgba(0,191,255,0.6)}',
@@ -528,27 +584,17 @@
             '.jn-login-btn:hover{background:rgba(0,191,255,0.22)}'
           ].join('');
           document.head.appendChild(style);
-
           var overlay = document.createElement('div');
           overlay.className = 'jn-login-overlay';
-          overlay.innerHTML = [
-            '<div class="jn-login-card">',
-            '<h2 class="jn-login-title">Login</h2>',
-            '<input class="jn-login-input" id="jn-login-input" placeholder="Enter your email" autocomplete="email" inputmode="email">',
-            '<button class="jn-login-btn" id="jn-login-btn" type="button">Continue</button>',
-            '</div>'
-          ].join('');
+          overlay.innerHTML = '<div class="jn-login-card"><h2 class="jn-login-title">Login</h2><input class="jn-login-input" id="jn-login-input" placeholder="Enter your email" autocomplete="email" inputmode="email"><button class="jn-login-btn" id="jn-login-btn" type="button">Continue</button></div>';
           document.body.appendChild(overlay);
-
           function submit() {
             var email = (document.getElementById('jn-login-input').value || '').trim() || 'aidenpasque11@gmail.com';
             currentUserId = email;
-            localStorage.setItem('user_id', email);
-            localStorage.setItem('jarvis_user', email);
+            localStorage.setItem('user_id', email); localStorage.setItem('jarvis_user', email);
             var navUser = document.getElementById('jv-nav-user');
             if (navUser) navUser.textContent = email;
-            overlay.remove(); style.remove();
-            resolve(email);
+            overlay.remove(); style.remove(); resolve(email);
           }
           document.getElementById('jn-login-btn').addEventListener('click', submit);
           document.getElementById('jn-login-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
@@ -559,28 +605,20 @@
       /* ── Data fetching ── */
       async function fetchAllTrades() {
         var userId = currentUserId || 'aidenpasque11@gmail.com';
-
         var [tradesRes, journalRes] = await Promise.allSettled([
           fetch('/api/trades?user_id=eq.' + encodeURIComponent(userId)).then(function (r) { return r.json(); }),
           fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(userId)).then(function (r) { return r.json(); })
         ]);
-
         var merged = [];
-
         if (tradesRes.status === 'fulfilled') {
           var data = tradesRes.value;
           var recs = Array.isArray(data.records) ? data.records : (Array.isArray(data) ? data : []);
           merged = merged.concat(recs);
         }
-
         if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value)) {
           merged = merged.concat(journalRes.value);
         }
-
-        merged.sort(function (a, b) {
-          return tradeDate(b) - tradeDate(a);
-        });
-
+        merged.sort(function (a, b) { return tradeDate(b) - tradeDate(a); });
         return merged;
       }
 
@@ -596,26 +634,31 @@
       }
 
       function computeWeeklyStats(trades) {
-        var weekStart = getWeekStart();
+        var weekStart  = getWeekStart();
         var weekTrades = trades.filter(function (t) {
-          var d = tradeDate(t);
-          return !isNaN(d) && d >= weekStart;
+          var d = tradeDate(t); return !isNaN(d) && d >= weekStart;
         });
-
-        var total = weekTrades.length;
-        var wins = 0, losses = 0, netR = 0;
-
+        var total = weekTrades.length, wins = 0, losses = 0, netR = 0, bestRR = null;
         weekTrades.forEach(function (t) {
           var outcome = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
-          var rr = parseFloat(getField(t, 'rr', 'RR')) || 0;
-          if (outcome === 'win')  { wins++;   netR += rr;  }
-          if (outcome === 'loss') { losses++;  netR -= (rr || 1); }
+          var rr      = parseFloat(getField(t, 'rr', 'RR'));
+          if (outcome === 'win') {
+            wins++;
+            if (!isNaN(rr)) {
+              netR += rr;
+              if (bestRR === null || rr > bestRR) bestRR = rr;
+            }
+          }
+          if (outcome === 'loss') {
+            losses++;
+            netR -= (!isNaN(rr) ? rr : 1);
+          }
         });
-
         return {
           total:   total,
           winRate: total > 0 ? Math.round(wins / total * 100) : null,
-          netR:    total > 0 ? netR : null
+          netR:    total > 0 ? netR : null,
+          bestRR:  bestRR
         };
       }
 
@@ -623,78 +666,114 @@
         var elTotal   = document.getElementById('pill-total');
         var elWinrate = document.getElementById('pill-winrate');
         var elNetR    = document.getElementById('pill-netr');
-        if (elTotal)   elTotal.textContent   = stats.total;
-        if (elWinrate) elWinrate.textContent  = stats.winRate == null ? '—' : stats.winRate + '%';
+        var elBestRR  = document.getElementById('pill-bestrr');
+
+        if (elTotal)   elTotal.textContent  = stats.total;
+        if (elWinrate) elWinrate.textContent = stats.winRate == null ? '—' : stats.winRate + '%';
+
         if (elNetR) {
-          if (stats.netR == null) {
-            elNetR.textContent = '—';
-          } else {
+          if (stats.netR == null) { elNetR.textContent = '—'; elNetR.style.color = ''; }
+          else {
             var sign = stats.netR >= 0 ? '+' : '';
             elNetR.textContent = sign + stats.netR.toFixed(2) + 'R';
             elNetR.style.color = stats.netR >= 0 ? '#00ff88' : '#ff6b6b';
           }
         }
+        if (elBestRR) {
+          elBestRR.textContent = stats.bestRR == null ? '—' : stats.bestRR.toFixed(2) + 'R';
+        }
       }
 
-      /* ── Filter pills ── */
+      /* ── Filter options — dynamic population ── */
       function buildFilterOptions(trades) {
         var pairs    = new Set();
         var accounts = new Set();
+        var models   = new Set();
+
         trades.forEach(function (t) {
           var p = getField(t, 'pair', 'Pair', 'instrument', 'symbol');
           var a = getField(t, 'account', 'Account');
+          var m = getField(t, 'model', 'Model', 'MODEL');
           if (p) pairs.add(p);
           if (a) accounts.add(a);
+          if (m) models.add(m);
         });
 
         function addPills(rowId, group, values) {
           var row = document.getElementById(rowId);
           if (!row) return;
+          /* remove previously added dynamic pills (keep All) */
+          Array.from(row.querySelectorAll('.jn-filter-pill[data-dynamic]')).forEach(function(el){ el.remove(); });
           values.forEach(function (val) {
             var btn = document.createElement('button');
             btn.className = 'jn-filter-pill';
-            btn.dataset.group = group;
-            btn.dataset.value = val.toLowerCase();
+            btn.dataset.group   = group;
+            btn.dataset.value   = val.toLowerCase();
+            btn.dataset.dynamic = '1';
             btn.textContent = val;
             row.appendChild(btn);
           });
         }
 
         addPills('filter-pair',    'pair',    Array.from(pairs).sort());
+        addPills('filter-model',   'model',   Array.from(models).sort());
         addPills('filter-account', 'account', Array.from(accounts).sort());
       }
 
+      /* ── Apply all filters + sort ── */
       function applyFilters() {
         filteredTrades = allTrades.filter(function (t) {
           var outcome  = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+          var dir      = getTradeDirection(t);
           var pairRaw  = (getField(t, 'pair', 'Pair', 'instrument', 'symbol') || '').toLowerCase();
+          var modelRaw = (getField(t, 'model', 'Model', 'MODEL') || '').toLowerCase();
           var acctRaw  = (getField(t, 'account', 'Account') || '').toLowerCase();
 
           if (activeFilters.outcome !== 'all' && outcome !== activeFilters.outcome) return false;
-          if (activeFilters.pair    !== 'all' && pairRaw !== activeFilters.pair)    return false;
-          if (activeFilters.account !== 'all' && acctRaw !== activeFilters.account) return false;
+          if (activeFilters.direction !== 'all' && dir !== activeFilters.direction) return false;
+          if (activeFilters.pair    !== 'all' && pairRaw  !== activeFilters.pair)   return false;
+          if (activeFilters.model   !== 'all' && modelRaw !== activeFilters.model)  return false;
+          if (activeFilters.account !== 'all' && acctRaw  !== activeFilters.account) return false;
           return true;
         });
+
+        /* Sort */
+        switch (activeFilters.sort) {
+          case 'oldest':
+            filteredTrades.sort(function (a, b) { return tradeDate(a) - tradeDate(b); });
+            break;
+          case 'highestrr':
+            filteredTrades.sort(function (a, b) {
+              var ra = parseFloat(getField(a, 'rr', 'RR')); ra = isNaN(ra) ? -Infinity : ra;
+              var rb = parseFloat(getField(b, 'rr', 'RR')); rb = isNaN(rb) ? -Infinity : rb;
+              return rb - ra;
+            });
+            break;
+          case 'lowestrr':
+            filteredTrades.sort(function (a, b) {
+              var ra = parseFloat(getField(a, 'rr', 'RR')); ra = isNaN(ra) ? Infinity : ra;
+              var rb = parseFloat(getField(b, 'rr', 'RR')); rb = isNaN(rb) ? Infinity : rb;
+              return ra - rb;
+            });
+            break;
+          default: /* newest */
+            filteredTrades.sort(function (a, b) { return tradeDate(b) - tradeDate(a); });
+        }
+
         displayedCount = 0;
         document.getElementById('jn-list').innerHTML = '';
         renderNextPage();
       }
 
       /* ── Card rendering ── */
-      function badgeHtml(outcome) {
-        var cls = { win: 'jn-badge--win', loss: 'jn-badge--loss', be: 'jn-badge--be' }[outcome] || '';
-        var label = outcome.toUpperCase() || '—';
+      function outcomeBadgeHtml(outcome) {
+        var cls   = { win: 'jn-badge--win', loss: 'jn-badge--loss', be: 'jn-badge--be' }[outcome] || '';
+        var label = { win: 'WIN', loss: 'LOSS', be: 'BE' }[outcome] || outcome.toUpperCase() || '—';
         return '<span class="jn-badge ' + cls + '">' + esc(label) + '</span>';
       }
 
       function directionBadgeHtml(t) {
-        var raw = getField(t, 'direction', 'Direction', 'long_short', 'side', 'trade_direction');
-        if (!raw) {
-          var model = String(getField(t, 'model', 'Model', 'MODEL') || '').toLowerCase();
-          if (model.includes('long'))  raw = 'long';
-          if (model.includes('short')) raw = 'short';
-        }
-        var dir = normalizeDirection(raw);
+        var dir = getTradeDirection(t);
         if (!dir) return '';
         var cls = dir === 'long' ? 'jn-badge--long' : 'jn-badge--short';
         return '<span class="jn-badge ' + cls + '">' + dir.toUpperCase() + '</span>';
@@ -706,42 +785,35 @@
         var account   = getField(trade, 'account', 'Account') || '';
         var rrRaw     = parseFloat(getField(trade, 'rr', 'RR'));
         var rrDisplay = isNaN(rrRaw) ? '—' : rrRaw.toFixed(2) + 'R';
-        var model     = getField(trade, 'model', 'Model', 'MODEL') || '—';
+        var model     = getField(trade, 'model', 'Model', 'MODEL') || '';
         var notes     = getField(trade, 'notes', 'Notes', 'NOTE') || '';
         var dateShort = formatDateShort(trade);
         var dateFull  = formatDateFull(trade);
 
-        var acctBadge = account ? '<span class="jn-badge jn-badge--acct">' + esc(account) + '</span>' : '';
+        var modelDisplay  = model ? truncate(model, 30) : '';
+        var acctBadge     = account ? '<span class="jn-badge jn-badge--acct">' + esc(account) + '</span>' : '';
 
         return [
-          '<article class="jn-card" data-expanded="false" data-idx="' + idx + '">',
+          '<article class="jn-card" data-expanded="false" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
           '  <div class="jn-card__top">',
-          '    <span class="jn-card__date">' + esc(dateShort) + '</span>',
-          '    <span class="jn-card__pair">' + esc(pair) + '</span>',
-          '    <div class="jn-card__badges">',
-          '      ' + badgeHtml(outcome),
+          '    <div class="jn-card__left">',
+          '      <span class="jn-card__date">' + esc(dateShort) + '</span>',
+          '      ' + outcomeBadgeHtml(outcome),
           '      ' + directionBadgeHtml(trade),
-          '      ' + acctBadge,
+          '      <span class="jn-card__pair">' + esc(pair) + '</span>',
+          modelDisplay ? '      <span class="jn-card__model">' + esc(modelDisplay) + '</span>' : '',
           '    </div>',
-          '    <span class="jn-card__rr">' + esc(rrDisplay) + '</span>',
-          '    <span class="jn-card__chevron">&#9660;</span>',
+          '    <div class="jn-card__right">',
+          '      ' + acctBadge,
+          '      <span class="jn-card__rr">' + esc(rrDisplay) + '</span>',
+          '      <span class="jn-card__chevron">&#9660;</span>',
+          '    </div>',
           '  </div>',
           '  <div class="jn-card__expand">',
           '    <div class="jn-expand-inner">',
-          '      <div class="jn-detail">',
-          '        <span class="jn-detail__label">Entry Model</span>',
-          '        <span class="jn-detail__value">' + esc(model) + '</span>',
-          '      </div>',
-          '      <div class="jn-detail">',
-          '        <span class="jn-detail__label">Date &amp; Time</span>',
-          '        <span class="jn-detail__value">' + esc(dateFull) + '</span>',
-          '      </div>',
-          notes ? [
-            '      <div class="jn-detail">',
-            '        <span class="jn-detail__label">Notes</span>',
-            '        <p class="jn-detail__notes">' + esc(notes) + '</p>',
-            '      </div>'
-          ].join('') : '',
+          model ? '      <div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' + esc(model) + '</span></div>' : '',
+          '      <div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' + esc(dateFull) + '</span></div>',
+          notes ? '      <div class="jn-detail"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' + esc(notes) + '</p></div>' : '',
           '      <button class="jn-ask-btn" data-idx="' + idx + '" type="button">Ask Jarvis about this trade</button>',
           '    </div>',
           '  </div>',
@@ -750,8 +822,8 @@
       }
 
       function renderNextPage() {
-        var list  = document.getElementById('jn-list');
-        var btn   = document.getElementById('jn-load-more');
+        var list = document.getElementById('jn-list');
+        var btn  = document.getElementById('jn-load-more');
 
         if (filteredTrades.length === 0) {
           list.innerHTML = '<div class="jn-state">No trades match the current filters.</div>';
@@ -759,13 +831,10 @@
           return;
         }
 
-        var from  = displayedCount;
-        var to    = Math.min(from + PAGE_SIZE, filteredTrades.length);
-        var frag  = '';
-
-        for (var i = from; i < to; i++) {
-          frag += renderCard(filteredTrades[i], i);
-        }
+        var from = displayedCount;
+        var to   = Math.min(from + PAGE_SIZE, filteredTrades.length);
+        var frag = '';
+        for (var i = from; i < to; i++) frag += renderCard(filteredTrades[i], i);
 
         list.insertAdjacentHTML('beforeend', frag);
         displayedCount = to;
@@ -778,34 +847,29 @@
         }
       }
 
-      /* ── Card interaction via event delegation ── */
+      /* ── Card interaction ── */
       document.getElementById('jn-list').addEventListener('click', function (e) {
         var askBtn = e.target.closest('.jn-ask-btn');
         if (askBtn) {
           e.stopPropagation();
-          var idx   = parseInt(askBtn.dataset.idx, 10);
-          var trade = filteredTrades[idx];
+          var trade = filteredTrades[parseInt(askBtn.dataset.idx, 10)];
           if (trade) askJarvisAboutTrade(trade);
           return;
         }
-
         var card = e.target.closest('.jn-card');
-        if (card) {
-          card.dataset.expanded = card.dataset.expanded === 'true' ? 'false' : 'true';
-        }
+        if (card) card.dataset.expanded = card.dataset.expanded === 'true' ? 'false' : 'true';
       });
 
       function askJarvisAboutTrade(trade) {
-        var outcome  = getField(trade, 'outcome', 'Outcome') || '';
-        var pair     = getField(trade, 'pair', 'Pair') || '';
-        var session  = getField(trade, 'session', 'Session') || '';
-        var rrRaw    = parseFloat(getField(trade, 'rr', 'RR'));
-        var rrStr    = isNaN(rrRaw) ? '' : rrRaw.toFixed(2) + 'R';
-        var dateStr  = formatDateFull(trade);
-        var msg = ['Tell me about this trade:',
-          pair, outcome, session, rrStr, 'on', dateStr
-        ].filter(Boolean).join(' ');
-        sessionStorage.setItem('jarvis_pending_message', msg);
+        var parts = [
+          'Tell me about this trade:',
+          getField(trade, 'pair', 'Pair') || '',
+          getField(trade, 'outcome', 'Outcome') || '',
+          getField(trade, 'session', 'Session') || '',
+          (function(){ var r = parseFloat(getField(trade,'rr','RR')); return isNaN(r) ? '' : r.toFixed(2)+'R'; })(),
+          'on', formatDateFull(trade)
+        ].filter(Boolean);
+        sessionStorage.setItem('jarvis_pending_message', parts.join(' '));
         window.location.href = '/index.html';
       }
 
@@ -815,11 +879,9 @@
         if (!pill) return;
         var group = pill.dataset.group;
         var value = pill.dataset.value;
-
-        var row = pill.closest('.jn-filter-row');
-        row.querySelectorAll('.jn-filter-pill').forEach(function (p) { p.classList.remove('active'); });
+        pill.closest('.jn-filter-row').querySelectorAll('.jn-filter-pill')
+            .forEach(function (p) { p.classList.remove('active'); });
         pill.classList.add('active');
-
         activeFilters[group] = value;
         applyFilters();
       });
@@ -834,8 +896,7 @@
       var tradeFormOpen = false;
 
       function escHtml(s) {
-        return String(s)
-          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
 
       function renderCustomField(f) {
@@ -843,10 +904,8 @@
         var label = escHtml(f.field_name);
         var req   = f.is_required ? 'required' : '';
         var name  = escHtml(f.field_name);
-
         if (f.field_type === 'dropdown' || f.field_type === 'multiselect') {
-          var opts = [];
-          try { opts = JSON.parse(f.field_options || '[]'); } catch(e){}
+          var opts = []; try { opts = JSON.parse(f.field_options || '[]'); } catch(e){}
           var multiple = f.field_type === 'multiselect' ? 'multiple' : '';
           var optsHtml = opts.map(function(o){ return '<option value="'+escHtml(o)+'">'+escHtml(o)+'</option>'; }).join('');
           return '<div class="trade-field trade-field--full"><label class="trade-label" for="'+id+'">'+label+'</label><select id="'+id+'" name="'+name+'" class="trade-input" data-custom="1" '+multiple+' '+req+'><option value="">— select —</option>'+optsHtml+'</select></div>';
@@ -860,95 +919,54 @@
       async function openTradeForm() {
         if (tradeFormOpen) return;
         tradeFormOpen = true;
-
         var userId = currentUserId || localStorage.getItem('user_id') || 'aidenpasque11@gmail.com';
         var customFields = [];
         try {
-          var r    = await fetch('/api/journal-fields?user_id=' + encodeURIComponent(userId));
+          var r = await fetch('/api/journal-fields?user_id=' + encodeURIComponent(userId));
           var data = await r.json().catch(function(){ return {}; });
-          var all  = Array.isArray(data.fields) ? data.fields : [];
+          var all = Array.isArray(data.fields) ? data.fields : [];
           customFields = all.filter(function(f){ return !CORE_FIELDS.has(f.field_name.toLowerCase()); });
         } catch(e){}
-
-        var today     = new Date().toISOString().slice(0,10);
+        var today      = new Date().toISOString().slice(0,10);
         var customHtml = customFields.map(renderCustomField).join('');
-
         var overlay = document.createElement('div');
         overlay.className = 'trade-form-overlay';
-        overlay.setAttribute('role','dialog');
-        overlay.setAttribute('aria-modal','true');
+        overlay.setAttribute('role','dialog'); overlay.setAttribute('aria-modal','true');
         overlay.innerHTML = [
           '<div class="trade-form-panel" id="trade-form-panel">',
-          '  <div class="trade-form-header">',
-          '    <span class="trade-form-title">LOG TRADE</span>',
-          '    <button type="button" class="trade-form-close" aria-label="Close">&#x2715;</button>',
-          '  </div>',
-          '  <div class="trade-form-body">',
-          '    <form id="trade-log-form" autocomplete="off" novalidate>',
-          '      <div class="trade-form-grid">',
-          '        <div class="trade-field"><label class="trade-label" for="tf-date">Date</label><input id="tf-date" type="date" name="date" class="trade-input" value="'+escHtml(today)+'" required></div>',
-          '        <div class="trade-field"><label class="trade-label" for="tf-pair">Pair</label><input id="tf-pair" type="text" name="pair" class="trade-input" placeholder="e.g. XAUUSD"></div>',
-          '        <div class="trade-field"><label class="trade-label" for="tf-session">Session</label>',
-          '          <select id="tf-session" name="session" class="trade-input" required>',
-          '            <option value="">— select —</option>',
-          '            <option value="Asia">Asia</option>',
-          '            <option value="London">London</option>',
-          '            <option value="New York">New York</option>',
-          '            <option value="London/New York">London/New York</option>',
-          '          </select>',
-          '        </div>',
-          '        <div class="trade-field"><label class="trade-label" for="tf-outcome">Outcome</label>',
-          '          <select id="tf-outcome" name="outcome" class="trade-input" required>',
-          '            <option value="">— select —</option>',
-          '            <option value="Win">Win</option>',
-          '            <option value="Loss">Loss</option>',
-          '            <option value="BE">BE</option>',
-          '          </select>',
-          '        </div>',
-          '        <div class="trade-field" id="tf-rr-field"><label class="trade-label" for="tf-rr">RR</label><input id="tf-rr" type="number" name="rr" class="trade-input" step="0.01" min="0" placeholder="e.g. 2.5"></div>',
-          '        <div class="trade-field"><label class="trade-label" for="tf-account">Account</label><input id="tf-account" type="text" name="account" class="trade-input" placeholder="e.g. Main"></div>',
-          '        ' + customHtml,
-          '      </div>',
-          '      <div class="trade-form-actions">',
-          '        <button type="submit" class="trade-submit-btn">SAVE TRADE</button>',
-          '      </div>',
-          '    </form>',
-          '  </div>',
+          '<div class="trade-form-header"><span class="trade-form-title">LOG TRADE</span><button type="button" class="trade-form-close" aria-label="Close">&#x2715;</button></div>',
+          '<div class="trade-form-body"><form id="trade-log-form" autocomplete="off" novalidate><div class="trade-form-grid">',
+          '<div class="trade-field"><label class="trade-label" for="tf-date">Date</label><input id="tf-date" type="date" name="date" class="trade-input" value="'+escHtml(today)+'" required></div>',
+          '<div class="trade-field"><label class="trade-label" for="tf-pair">Pair</label><input id="tf-pair" type="text" name="pair" class="trade-input" placeholder="e.g. XAUUSD"></div>',
+          '<div class="trade-field"><label class="trade-label" for="tf-session">Session</label><select id="tf-session" name="session" class="trade-input" required><option value="">— select —</option><option value="Asia">Asia</option><option value="London">London</option><option value="New York">New York</option><option value="London/New York">London/New York</option></select></div>',
+          '<div class="trade-field"><label class="trade-label" for="tf-outcome">Outcome</label><select id="tf-outcome" name="outcome" class="trade-input" required><option value="">— select —</option><option value="Win">Win</option><option value="Loss">Loss</option><option value="BE">BE</option></select></div>',
+          '<div class="trade-field" id="tf-rr-field"><label class="trade-label" for="tf-rr">RR</label><input id="tf-rr" type="number" name="rr" class="trade-input" step="0.01" min="0" placeholder="e.g. 2.5"></div>',
+          '<div class="trade-field"><label class="trade-label" for="tf-account">Account</label><input id="tf-account" type="text" name="account" class="trade-input" placeholder="e.g. Main"></div>',
+          customHtml,
+          '</div><div class="trade-form-actions"><button type="submit" class="trade-submit-btn">SAVE TRADE</button></div></form></div>',
           '</div>'
         ].join('');
-
         document.body.appendChild(overlay);
         requestAnimationFrame(function () {
           overlay.classList.add('trade-form-overlay--visible');
           var panel = document.getElementById('trade-form-panel');
           if (panel) panel.classList.add('trade-form-panel--visible');
         });
-
         function closeForm() {
           overlay.classList.remove('trade-form-overlay--visible');
           var panel = document.getElementById('trade-form-panel');
           if (panel) panel.classList.remove('trade-form-panel--visible');
-          overlay.addEventListener('transitionend', function () {
-            overlay.remove();
-            tradeFormOpen = false;
-          }, { once: true });
+          overlay.addEventListener('transitionend', function () { overlay.remove(); tradeFormOpen = false; }, { once: true });
         }
-
         overlay.addEventListener('click', function (e) { if (e.target === overlay) closeForm(); });
         overlay.querySelector('.trade-form-close').addEventListener('click', closeForm);
-
         var outcomeSelect = document.getElementById('tf-outcome');
         var rrField       = document.getElementById('tf-rr-field');
         outcomeSelect && outcomeSelect.addEventListener('change', function () {
           if (rrField) rrField.style.display = outcomeSelect.value === 'BE' ? 'none' : '';
         });
-
         var form = document.getElementById('trade-log-form');
-        form.addEventListener('submit', async function (e) {
-          e.preventDefault();
-          await submitTradeForm(form, customFields, closeForm);
-        });
-
+        form.addEventListener('submit', async function (e) { e.preventDefault(); await submitTradeForm(form, customFields, closeForm); });
         var dateInput = document.getElementById('tf-date');
         if (dateInput) dateInput.focus();
       }
@@ -963,45 +981,26 @@
         var rrRaw   = fd.get('rr');
         var rr      = (rrRaw !== '' && rrRaw !== null) ? Number(rrRaw) : null;
         var account = (fd.get('account') || '').trim();
-
-        if (!dateVal || !session || !outcome) {
-          showToast('Date, Session and Outcome are required.', true);
-          return;
-        }
-
+        if (!dateVal || !session || !outcome) { showToast('Date, Session and Outcome are required.', true); return; }
         var custom_data = {};
         customFields.forEach(function(f) {
           var val = fd.get(f.field_name);
           if (val !== null && String(val).trim() !== '') custom_data[f.field_name] = val;
         });
-
         var submitBtn = form.querySelector('.trade-submit-btn');
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
-
         try {
           var res = await fetch('/api/log-trade', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user_id: userId,
-              traded_at: dateVal + 'T00:00:00.000Z',
-              pair: pair || null,
-              outcome: outcome,
-              rr: (rr !== null && !isNaN(rr)) ? rr : null,
-              session: session,
-              account: account || null,
-              custom_data: custom_data
-            })
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, traded_at: dateVal + 'T00:00:00.000Z',
+              pair: pair || null, outcome: outcome, rr: (rr !== null && !isNaN(rr)) ? rr : null,
+              session: session, account: account || null, custom_data: custom_data })
           });
-
           if (!res.ok) {
             var d = await res.json().catch(function(){ return {}; });
             throw new Error(readApiError(d) || 'Save failed (' + res.status + ')');
           }
-
-          closeForm();
-          showToast('Trade logged.');
-          refreshJournalData();
+          closeForm(); showToast('Trade logged.'); refreshJournalData();
         } catch(e) {
           var msg = e instanceof Error ? e.message : 'Save failed.';
           showToast(msg, true);
@@ -1024,15 +1023,13 @@
         }, 3000);
       }
 
-      /* ── Refresh after logging a new trade ── */
       async function refreshJournalData() {
         try {
           allTrades = await fetchAllTrades();
-          var stats = computeWeeklyStats(allTrades);
-          renderWeeklyStats(stats);
+          renderWeeklyStats(computeWeeklyStats(allTrades));
           buildFilterOptions(allTrades);
           applyFilters();
-        } catch(e) { /* silent — existing list remains */ }
+        } catch(e) { /* silent */ }
       }
 
       /* ── Boot ── */
@@ -1041,24 +1038,14 @@
       async function boot() {
         initParticles();
         await ensureUserId();
-
         var list = document.getElementById('jn-list');
-        list.innerHTML = '<div class="jn-state" id="jn-loading">Loading trades…</div>';
-
-        try {
-          allTrades = await fetchAllTrades();
-        } catch(e) {
-          list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>';
-          return;
-        }
-
+        list.innerHTML = '<div class="jn-state">Loading trades…</div>';
+        try { allTrades = await fetchAllTrades(); }
+        catch(e) { list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>'; return; }
         if (allTrades.length === 0) {
-          list.innerHTML = '<div class="jn-state">No trades found. Log your first trade above.</div>';
-          return;
+          list.innerHTML = '<div class="jn-state">No trades found. Log your first trade above.</div>'; return;
         }
-
-        var stats = computeWeeklyStats(allTrades);
-        renderWeeklyStats(stats);
+        renderWeeklyStats(computeWeeklyStats(allTrades));
         buildFilterOptions(allTrades);
         filteredTrades = allTrades.slice();
         list.innerHTML = '';
