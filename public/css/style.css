@@ -867,6 +867,21 @@ body {
 }
 
 /* ═══════════ Responsive ═══════════ */
+@media (max-width: 768px) {
+  .chat-form input {
+    min-height: 44px;
+  }
+
+  .chat-send {
+    min-height: 44px;
+  }
+
+  .log-trade-btn {
+    min-height: 44px;
+    padding: 12px 20px;
+  }
+}
+
 @media (max-width: 1180px) {
   html,
   body {

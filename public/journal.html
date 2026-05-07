@@ -78,9 +78,10 @@
       .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85); }
       .jv-nav__dropdown a.jv-nav--active,
       .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff; border-left-color: #00d4ff; }
-      @media (max-width: 640px) {
+      @media (max-width: 768px) {
         .jv-nav__links, .jv-nav__user { display: none; }
         .jv-nav__hamburger { display: flex; }
+        .jv-nav__brand { font-size: 13px; }
       }
 
       /* ═══════════ Journal page layout ═══════════ */
@@ -343,21 +344,20 @@
       }
 
       /* ── Responsive ── */
-      @media (max-width: 640px) {
+      @media (max-width: 768px) {
         .jn-page { padding: 68px 14px 90px; }
         .jn-header { flex-direction: column; gap: 12px; align-items: stretch; }
-        .jn-header__actions { flex-direction: row; align-items: center; width: 100%; }
-        .jn-filter-toggle { flex: 1; text-align: center; }
-        .jn-log-btn { flex: 1; text-align: center; }
+        .jn-header__actions { flex-direction: column; align-items: stretch; width: 100%; }
+        .jn-filter-toggle { text-align: center; min-height: 44px; }
+        .jn-log-btn { text-align: center; min-height: 44px; }
         .jn-title { font-size: 1.5rem; }
         .jn-card__top { padding: 16px 14px; }
         .jn-card__date { font-size: 10px; }
         .jn-stat-pill { min-width: auto; }
         .jn-stat-value { font-size: 18px; }
-        .jn-filter-grid { grid-template-columns: repeat(2, 1fr); }
-      }
-      @media (max-width: 380px) {
+        .jn-week-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .jn-filter-grid { grid-template-columns: 1fr; }
+        #filter-model { grid-column: 1; }
       }
     </style>
   </head>
