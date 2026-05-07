@@ -458,9 +458,9 @@
 
       /* Extract direction from trade — checks explicit field then model name */
       function getTradeDirection(t) {
-        var raw = getField(t, 'direction', 'Direction', 'long_short', 'side', 'trade_direction');
+        var raw = getField(t, 'direction', 'Direction', 'long_short', 'side', 'trade_direction', 'POSITION TYPE', 'Position Type', 'position_type');
         if (!raw) {
-          var m = String(getField(t, 'model', 'Model', 'MODEL') || '').toLowerCase();
+          var m = String(getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '').toLowerCase();
           if (m.includes('long'))  raw = 'long';
           else if (m.includes('short')) raw = 'short';
         }
@@ -619,6 +619,17 @@
           merged = merged.concat(journalRes.value);
         }
         merged.sort(function (a, b) { return tradeDate(b) - tradeDate(a); });
+
+        /* Debug: log first trade from each source so we can see exact field names */
+        if (tradesRes.status === 'fulfilled') {
+          var data = tradesRes.value;
+          var recs = Array.isArray(data.records) ? data.records : (Array.isArray(data) ? data : []);
+          if (recs.length > 0) console.log('[JARVIS] First /api/trades record:', recs[0]);
+        }
+        if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value) && journalRes.value.length > 0) {
+          console.log('[JARVIS] First /api/journal-trades record:', journalRes.value[0]);
+        }
+
         return merged;
       }
 
@@ -691,10 +702,10 @@
         var models   = new Set();
 
         trades.forEach(function (t) {
-          var p = getField(t, 'pair', 'Pair', 'instrument', 'symbol');
-          var a = getField(t, 'account', 'Account');
-          var m = getField(t, 'model', 'Model', 'MODEL');
-          if (p) pairs.add(p);
+          var p = getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol');
+          var a = getField(t, 'account', 'Account', 'ACCOUNT');
+          var m = getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL');
+          if (p) pairs.add(p.toUpperCase());
           if (a) accounts.add(a);
           if (m) models.add(m);
         });
@@ -725,13 +736,13 @@
         filteredTrades = allTrades.filter(function (t) {
           var outcome  = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
           var dir      = getTradeDirection(t);
-          var pairRaw  = (getField(t, 'pair', 'Pair', 'instrument', 'symbol') || '').toLowerCase();
-          var modelRaw = (getField(t, 'model', 'Model', 'MODEL') || '').toLowerCase();
-          var acctRaw  = (getField(t, 'account', 'Account') || '').toLowerCase();
+          var pairRaw  = (getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '').toUpperCase();
+          var modelRaw = (getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '').toLowerCase();
+          var acctRaw  = (getField(t, 'account', 'Account', 'ACCOUNT') || '').toLowerCase();
 
           if (activeFilters.outcome !== 'all' && outcome !== activeFilters.outcome) return false;
           if (activeFilters.direction !== 'all' && dir !== activeFilters.direction) return false;
-          if (activeFilters.pair    !== 'all' && pairRaw  !== activeFilters.pair)   return false;
+          if (activeFilters.pair    !== 'all' && pairRaw  !== activeFilters.pair.toUpperCase())   return false;
           if (activeFilters.model   !== 'all' && modelRaw !== activeFilters.model)  return false;
           if (activeFilters.account !== 'all' && acctRaw  !== activeFilters.account) return false;
           return true;
@@ -781,17 +792,18 @@
 
       function renderCard(trade, idx) {
         var outcome   = normalizeOutcome(getField(trade, 'outcome', 'Outcome', 'OUTCOME'));
-        var pair      = getField(trade, 'pair', 'Pair', 'instrument', 'symbol') || '—';
-        var account   = getField(trade, 'account', 'Account') || '';
+        var pair      = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '';
+        var account   = getField(trade, 'account', 'Account', 'ACCOUNT') || '';
         var rrRaw     = parseFloat(getField(trade, 'rr', 'RR'));
         var rrDisplay = isNaN(rrRaw) ? '—' : rrRaw.toFixed(2) + 'R';
-        var model     = getField(trade, 'model', 'Model', 'MODEL') || '';
-        var notes     = getField(trade, 'notes', 'Notes', 'NOTE') || '';
+        var model     = getField(trade, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '';
+        var notes     = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
         var dateShort = formatDateShort(trade);
         var dateFull  = formatDateFull(trade);
 
         var modelDisplay  = model ? truncate(model, 30) : '';
         var acctBadge     = account ? '<span class="jn-badge jn-badge--acct">' + esc(account) + '</span>' : '';
+        var pairHtml      = pair ? '<span class="jn-card__pair">' + esc(pair.toUpperCase()) + '</span>' : '';
 
         return [
           '<article class="jn-card" data-expanded="false" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
@@ -800,7 +812,7 @@
           '      <span class="jn-card__date">' + esc(dateShort) + '</span>',
           '      ' + outcomeBadgeHtml(outcome),
           '      ' + directionBadgeHtml(trade),
-          '      <span class="jn-card__pair">' + esc(pair) + '</span>',
+          '      ' + pairHtml,
           modelDisplay ? '      <span class="jn-card__model">' + esc(modelDisplay) + '</span>' : '',
           '    </div>',
           '    <div class="jn-card__right">',
@@ -863,8 +875,8 @@
       function askJarvisAboutTrade(trade) {
         var parts = [
           'Tell me about this trade:',
-          getField(trade, 'pair', 'Pair') || '',
-          getField(trade, 'outcome', 'Outcome') || '',
+          getField(trade, 'pair', 'Pair', 'PAIR') || '',
+          getField(trade, 'outcome', 'Outcome', 'OUTCOME') || '',
           getField(trade, 'session', 'Session') || '',
           (function(){ var r = parseFloat(getField(trade,'rr','RR')); return isNaN(r) ? '' : r.toFixed(2)+'R'; })(),
           'on', formatDateFull(trade)
