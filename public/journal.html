@@ -390,6 +390,8 @@
         <div class="jn-filter-row" id="filter-pair">
           <span class="jn-filter-label">Pair</span>
           <button class="jn-filter-pill active" data-group="pair" data-value="all">All</button>
+          <button class="jn-filter-pill" data-group="pair" data-value="XAU/USD">XAU/USD</button>
+          <button class="jn-filter-pill" data-group="pair" data-value="AUD/USD">AUD/USD</button>
         </div>
         <div class="jn-filter-row" id="filter-model">
           <span class="jn-filter-label">Model</span>
@@ -713,13 +715,18 @@
         function addPills(rowId, group, values) {
           var row = document.getElementById(rowId);
           if (!row) return;
-          /* remove previously added dynamic pills (keep All) */
+          /* remove previously added dynamic pills (keep static ones) */
           Array.from(row.querySelectorAll('.jn-filter-pill[data-dynamic]')).forEach(function(el){ el.remove(); });
+          /* collect static pill values so we don't create duplicates */
+          var staticVals = new Set(
+            Array.from(row.querySelectorAll('.jn-filter-pill:not([data-dynamic])')).map(function(el){ return (el.dataset.value || '').toUpperCase(); })
+          );
           values.forEach(function (val) {
+            if (staticVals.has(val.toUpperCase())) return;
             var btn = document.createElement('button');
             btn.className = 'jn-filter-pill';
             btn.dataset.group   = group;
-            btn.dataset.value   = val.toLowerCase();
+            btn.dataset.value   = val;
             btn.dataset.dynamic = '1';
             btn.textContent = val;
             row.appendChild(btn);
@@ -795,7 +802,17 @@
         var pair      = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '';
         var account   = getField(trade, 'account', 'Account', 'ACCOUNT') || '';
         var rrRaw     = parseFloat(getField(trade, 'rr', 'RR'));
-        var rrDisplay = isNaN(rrRaw) ? '—' : rrRaw.toFixed(2) + 'R';
+        var rrDisplay, rrColor;
+        if (!isNaN(rrRaw)) {
+          rrDisplay = rrRaw.toFixed(2) + 'R';
+          rrColor   = '';
+        } else if (outcome === 'loss') {
+          rrDisplay = '-1R';
+          rrColor   = '#ff4444';
+        } else {
+          rrDisplay = '—';
+          rrColor   = '';
+        }
         var model     = getField(trade, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '';
         var notes     = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
         var dateShort = formatDateShort(trade);
@@ -817,7 +834,7 @@
           '    </div>',
           '    <div class="jn-card__right">',
           '      ' + acctBadge,
-          '      <span class="jn-card__rr">' + esc(rrDisplay) + '</span>',
+          '      <span class="jn-card__rr"' + (rrColor ? ' style="color:' + rrColor + '"' : '') + '>' + esc(rrDisplay) + '</span>',
           '      <span class="jn-card__chevron">&#9660;</span>',
           '    </div>',
           '  </div>',
