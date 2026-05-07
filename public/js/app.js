@@ -824,6 +824,245 @@ function startOrb() {
   requestAnimationFrame(frame);
 }
 
+/* ═══════════ Trade logging form ═══════════ */
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+const CORE_FIELD_NAMES = new Set(['date', 'session', 'outcome', 'rr', 'pair', 'account']);
+let tradeFormOpen = false;
+
+function renderCustomField(f) {
+  const id = `tf-${f.field_name.toLowerCase().replace(/\s+/g, '-')}`;
+  const label = escHtml(f.field_name);
+  const req = f.is_required ? 'required' : '';
+  const name = escHtml(f.field_name);
+
+  if (f.field_type === 'dropdown' || f.field_type === 'multiselect') {
+    let options = [];
+    try { options = JSON.parse(f.field_options || '[]'); } catch {}
+    const multiple = f.field_type === 'multiselect' ? 'multiple' : '';
+    const opts = options.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
+    return `<div class="trade-field trade-field--full">
+        <label class="trade-label" for="${id}">${label}</label>
+        <select id="${id}" name="${name}" class="trade-input" data-custom="1" ${multiple} ${req}>
+          <option value="">— select —</option>${opts}
+        </select>
+      </div>`;
+  }
+
+  if (f.field_type === 'number') {
+    return `<div class="trade-field">
+        <label class="trade-label" for="${id}">${label}</label>
+        <input id="${id}" type="number" name="${name}" class="trade-input" data-custom="1" step="0.01" ${req}>
+      </div>`;
+  }
+
+  return `<div class="trade-field trade-field--full">
+      <label class="trade-label" for="${id}">${label}</label>
+      <textarea id="${id}" name="${name}" class="trade-input" data-custom="1" rows="3" ${req}></textarea>
+    </div>`;
+}
+
+async function openTradeForm() {
+  if (tradeFormOpen) return;
+  tradeFormOpen = true;
+
+  const userId = currentUserId || localStorage.getItem('user_id') || 'aidenpasque11@gmail.com';
+  let customFields = [];
+  try {
+    const r = await fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`);
+    const data = await r.json().catch(() => ({}));
+    const all = Array.isArray(data.fields) ? data.fields : [];
+    customFields = all.filter(f => !CORE_FIELD_NAMES.has(f.field_name.toLowerCase()));
+  } catch {}
+
+  const today = new Date().toISOString().slice(0, 10);
+  const customHtml = customFields.map(renderCustomField).join('');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'trade-form-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+
+  overlay.innerHTML = `
+    <div class="trade-form-panel" id="trade-form-panel">
+      <div class="trade-form-header">
+        <span class="trade-form-title">LOG TRADE</span>
+        <button type="button" class="trade-form-close" aria-label="Close">&#x2715;</button>
+      </div>
+      <div class="trade-form-body">
+        <form id="trade-log-form" autocomplete="off" novalidate>
+          <div class="trade-form-grid">
+            <div class="trade-field">
+              <label class="trade-label" for="tf-date">Date</label>
+              <input id="tf-date" type="date" name="date" class="trade-input" value="${escHtml(today)}" required>
+            </div>
+            <div class="trade-field">
+              <label class="trade-label" for="tf-pair">Pair</label>
+              <input id="tf-pair" type="text" name="pair" class="trade-input" placeholder="e.g. XAUUSD">
+            </div>
+            <div class="trade-field">
+              <label class="trade-label" for="tf-session">Session</label>
+              <select id="tf-session" name="session" class="trade-input" required>
+                <option value="">— select —</option>
+                <option value="Asia">Asia</option>
+                <option value="London">London</option>
+                <option value="New York">New York</option>
+                <option value="London/New York">London/New York</option>
+              </select>
+            </div>
+            <div class="trade-field">
+              <label class="trade-label" for="tf-outcome">Outcome</label>
+              <select id="tf-outcome" name="outcome" class="trade-input" required>
+                <option value="">— select —</option>
+                <option value="Win">Win</option>
+                <option value="Loss">Loss</option>
+                <option value="BE">BE</option>
+              </select>
+            </div>
+            <div class="trade-field" id="tf-rr-field">
+              <label class="trade-label" for="tf-rr">RR</label>
+              <input id="tf-rr" type="number" name="rr" class="trade-input" step="0.01" min="0" placeholder="e.g. 2.5">
+            </div>
+            <div class="trade-field">
+              <label class="trade-label" for="tf-account">Account</label>
+              <input id="tf-account" type="text" name="account" class="trade-input" placeholder="e.g. Main">
+            </div>
+            ${customHtml}
+          </div>
+          <div class="trade-form-actions">
+            <button type="submit" class="trade-submit-btn">SAVE TRADE</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(() => {
+    overlay.classList.add('trade-form-overlay--visible');
+    document.getElementById('trade-form-panel')?.classList.add('trade-form-panel--visible');
+  });
+
+  function closeForm() {
+    overlay.classList.remove('trade-form-overlay--visible');
+    document.getElementById('trade-form-panel')?.classList.remove('trade-form-panel--visible');
+    overlay.addEventListener('transitionend', () => {
+      overlay.remove();
+      tradeFormOpen = false;
+    }, { once: true });
+  }
+
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeForm(); });
+  overlay.querySelector('.trade-form-close').addEventListener('click', closeForm);
+
+  const outcomeSelect = document.getElementById('tf-outcome');
+  const rrField = document.getElementById('tf-rr-field');
+  outcomeSelect?.addEventListener('change', () => {
+    if (rrField) rrField.style.display = outcomeSelect.value === 'BE' ? 'none' : '';
+  });
+
+  const form = document.getElementById('trade-log-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await submitTradeForm(form, customFields, closeForm);
+  });
+
+  document.getElementById('tf-date')?.focus();
+}
+
+async function submitTradeForm(form, customFields, closeForm) {
+  const fd = new FormData(form);
+  const userId = currentUserId || localStorage.getItem('user_id') || 'aidenpasque11@gmail.com';
+
+  const dateVal = fd.get('date') || '';
+  const pair = (fd.get('pair') || '').trim();
+  const session = fd.get('session') || '';
+  const outcome = fd.get('outcome') || '';
+  const rrRaw = fd.get('rr');
+  const rr = rrRaw !== '' && rrRaw !== null ? Number(rrRaw) : null;
+  const account = (fd.get('account') || '').trim();
+
+  if (!dateVal || !session || !outcome) {
+    showTradeToast('Date, Session and Outcome are required.', true);
+    return;
+  }
+
+  const custom_data = {};
+  for (const f of customFields) {
+    const val = fd.get(f.field_name);
+    if (val !== null && String(val).trim() !== '') custom_data[f.field_name] = val;
+  }
+
+  const submitBtn = form.querySelector('.trade-submit-btn');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
+
+  try {
+    const res = await fetch('/api/log-trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        traded_at: dateVal + 'T00:00:00.000Z',
+        pair: pair || null,
+        outcome,
+        rr: rr !== null && !isNaN(rr) ? rr : null,
+        session,
+        account: account || null,
+        custom_data,
+      }),
+    });
+
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(readApiErrorMessage(d) || `Save failed (${res.status})`);
+    }
+
+    closeForm();
+    showTradeToast('Trade logged.');
+
+    const rrStr = rr !== null && !isNaN(rr) ? ` ${rr}R` : '';
+    const pairStr = pair ? ` ${pair}` : '';
+    const autoMsg = `Just logged a trade - ${outcome}${pairStr} ${session}${rrStr}`;
+    void loadTrades();
+    sendChatMessage(autoMsg);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Save failed.';
+    showTradeToast(msg, true);
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'SAVE TRADE'; }
+  }
+}
+
+function showTradeToast(message, isError = false) {
+  document.getElementById('trade-toast')?.remove();
+  const toast = document.createElement('div');
+  toast.id = 'trade-toast';
+  toast.className = 'trade-toast' + (isError ? ' trade-toast--error' : '');
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('trade-toast--visible'));
+  setTimeout(() => {
+    toast.classList.remove('trade-toast--visible');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }, 3000);
+}
+
+function initLogTradeBtn() {
+  if (document.getElementById('log-trade-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'log-trade-btn';
+  btn.type = 'button';
+  btn.className = 'log-trade-btn';
+  btn.textContent = 'LOG TRADE';
+  btn.addEventListener('click', openTradeForm);
+  document.body.appendChild(btn);
+}
+
 async function boot() {
   await ensureUserId();
   await fetch("/api/sync").catch(() => {});
@@ -838,6 +1077,7 @@ async function boot() {
   initVoice();
   initMuteButton();
   initMic();
+  initLogTradeBtn();
   setOrbMode("active");
   void loadTrades()
     .then(() => {

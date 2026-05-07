@@ -1443,6 +1443,75 @@ function extractAssistantText(data) {
     .join("");
 }
 
+async function handleJournalFields(req, res) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const userIdRaw =
+    new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
+    "aidenpasque11@gmail.com";
+  const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/journal_fields?user_id=eq.${encodeURIComponent(userId)}&order=display_order.asc`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    const text = await r.text();
+    if (!r.ok) { json(res, r.status, { error: formatSupabaseError(text, r.status) }); return; }
+    const fields = JSON.parse(text);
+    json(res, 200, { fields: Array.isArray(fields) ? fields : [] });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function handleLogTrade(req, res) {
+  let raw;
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
+  let body;
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+
+  const rrVal = body.rr != null && body.rr !== "" ? Number(body.rr) : null;
+  const row = {
+    user_id: body.user_id || "aidenpasque11@gmail.com",
+    traded_at: body.traded_at || new Date().toISOString(),
+    pair: body.pair || "XAU/USD",
+    outcome: body.outcome || null,
+    rr: Number.isFinite(rrVal) ? rrVal : null,
+    session: body.session || null,
+    account: body.account || null,
+    custom_data: body.custom_data && typeof body.custom_data === "object" ? body.custom_data : {},
+  };
+
+  try {
+    const r = await fetch(`${url}/rest/v1/journal_trades`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(row),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try { data = JSON.parse(text); } catch { data = []; }
+    json(res, 201, { trade: Array.isArray(data) ? data[0] : data });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 async function handleInitProfiles(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) {
@@ -1505,6 +1574,16 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/init-profiles")) {
     await handleInitProfiles(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/journal-fields")) {
+    await handleJournalFields(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/log-trade")) {
+    await handleLogTrade(req, res);
     return;
   }
 
