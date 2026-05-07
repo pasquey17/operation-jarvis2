@@ -138,14 +138,57 @@
       }
       .jn-log-btn:active { transform: translateY(0); }
 
-      /* ── Filters ── */
-      .jn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
-      .jn-filter-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+      /* ── Header actions (FILTER + LOG TRADE buttons) ── */
+      .jn-header__actions {
+        display: flex; flex-direction: column; gap: 8px;
+        align-items: flex-end; flex-shrink: 0;
+      }
+
+      /* ── FILTER + toggle button ── */
+      .jn-filter-toggle {
+        position: relative; padding: 10px 18px; border-radius: 6px;
+        border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04);
+        color: rgba(255,255,255,0.5); font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+        cursor: pointer; white-space: nowrap;
+        transition: border-color 0.2s, color 0.2s, background 0.2s;
+      }
+      .jn-filter-toggle:hover { border-color: rgba(0,212,255,0.4); color: rgba(255,255,255,0.85); }
+      .jn-filter-toggle.jn-filter-toggle--open {
+        border-color: rgba(0,212,255,0.5); color: #00d4ff; background: rgba(0,212,255,0.06);
+      }
+      .jn-filter-dot {
+        display: none; position: absolute; top: 7px; right: 7px;
+        width: 6px; height: 6px; border-radius: 50%; background: #00d4ff;
+        box-shadow: 0 0 6px rgba(0,212,255,0.7);
+      }
+      .jn-filter-dot--visible { display: block; }
+
+      /* ── Collapsible filter panel ── */
+      .jn-filter-panel {
+        max-height: 0; overflow: hidden; margin-bottom: 0;
+        transition: max-height 0.38s cubic-bezier(0.22,1,0.36,1), margin-bottom 0.38s;
+      }
+      .jn-filter-panel--open { max-height: 700px; margin-bottom: 20px; }
+      .jn-filter-panel-inner {
+        padding: 20px 22px 16px;
+        background: rgba(0,212,255,0.03);
+        border: 1px solid rgba(0,212,255,0.12);
+        border-radius: 10px;
+      }
+
+      /* ── Filter grid — 3 columns ── */
+      .jn-filter-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 24px;
+      }
+      .jn-filter-row {
+        display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+      }
       .jn-filter-label {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
         letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.28);
-        width: 64px; flex-shrink: 0;
       }
+      .jn-filter-pills { display: flex; flex-wrap: wrap; gap: 5px; }
       .jn-filter-pill {
         padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
         background: transparent; color: rgba(255,255,255,0.35);
@@ -155,6 +198,20 @@
       }
       .jn-filter-pill:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
       .jn-filter-pill.active { border-color: #00d4ff; color: #00d4ff; background: rgba(0,212,255,0.08); }
+
+      /* ── Panel footer (CLEAR ALL) ── */
+      .jn-filter-panel-foot {
+        display: flex; justify-content: flex-end;
+        margin-top: 16px; padding-top: 12px;
+        border-top: 1px solid rgba(255,255,255,0.06);
+      }
+      .jn-filter-clear-btn {
+        background: none; border: none; color: rgba(255,255,255,0.3);
+        font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px;
+        letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; padding: 2px 0;
+        transition: color 0.2s;
+      }
+      .jn-filter-clear-btn:hover { color: #00d4ff; }
 
       /* ── Trade list ── */
       .jn-list { display: flex; flex-direction: column; gap: 6px; }
@@ -286,12 +343,18 @@
       @media (max-width: 640px) {
         .jn-page { padding: 68px 14px 90px; }
         .jn-header { flex-direction: column; gap: 12px; align-items: stretch; }
-        .jn-log-btn { width: 100%; text-align: center; }
+        .jn-header__actions { flex-direction: row; align-items: center; width: 100%; }
+        .jn-filter-toggle { flex: 1; text-align: center; }
+        .jn-log-btn { flex: 1; text-align: center; }
         .jn-title { font-size: 1.5rem; }
         .jn-card__top { padding: 16px 14px; }
         .jn-card__date { font-size: 10px; }
         .jn-stat-pill { min-width: auto; }
         .jn-stat-value { font-size: 18px; }
+        .jn-filter-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 380px) {
+        .jn-filter-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -370,43 +433,67 @@
             </div>
           </div>
         </div>
-        <button class="jn-log-btn" id="jn-log-btn" type="button">LOG TRADE +</button>
+        <div class="jn-header__actions">
+          <button class="jn-filter-toggle" id="jn-filter-toggle" type="button">
+            <span id="jn-filter-toggle-label">FILTER +</span><span class="jn-filter-dot" id="jn-filter-dot"></span>
+          </button>
+          <button class="jn-log-btn" id="jn-log-btn" type="button">LOG TRADE +</button>
+        </div>
       </header>
 
-      <div class="jn-filters" id="jn-filters">
-        <div class="jn-filter-row" id="filter-outcome">
-          <span class="jn-filter-label">Outcome</span>
-          <button class="jn-filter-pill active" data-group="outcome" data-value="all">All</button>
-          <button class="jn-filter-pill" data-group="outcome" data-value="win">Win</button>
-          <button class="jn-filter-pill" data-group="outcome" data-value="loss">Loss</button>
-          <button class="jn-filter-pill" data-group="outcome" data-value="be">BE</button>
-        </div>
-        <div class="jn-filter-row" id="filter-direction">
-          <span class="jn-filter-label">Position</span>
-          <button class="jn-filter-pill active" data-group="direction" data-value="all">All</button>
-          <button class="jn-filter-pill" data-group="direction" data-value="long">Long</button>
-          <button class="jn-filter-pill" data-group="direction" data-value="short">Short</button>
-        </div>
-        <div class="jn-filter-row" id="filter-pair">
-          <span class="jn-filter-label">Pair</span>
-          <button class="jn-filter-pill active" data-group="pair" data-value="all">All</button>
-          <button class="jn-filter-pill" data-group="pair" data-value="XAU/USD">XAU/USD</button>
-          <button class="jn-filter-pill" data-group="pair" data-value="AUD/USD">AUD/USD</button>
-        </div>
-        <div class="jn-filter-row" id="filter-model">
-          <span class="jn-filter-label">Model</span>
-          <button class="jn-filter-pill active" data-group="model" data-value="all">All</button>
-        </div>
-        <div class="jn-filter-row" id="filter-account">
-          <span class="jn-filter-label">Account</span>
-          <button class="jn-filter-pill active" data-group="account" data-value="all">All</button>
-        </div>
-        <div class="jn-filter-row" id="filter-sort">
-          <span class="jn-filter-label">Sort</span>
-          <button class="jn-filter-pill active" data-group="sort" data-value="newest">Newest</button>
-          <button class="jn-filter-pill" data-group="sort" data-value="oldest">Oldest</button>
-          <button class="jn-filter-pill" data-group="sort" data-value="highestrr">Highest RR</button>
-          <button class="jn-filter-pill" data-group="sort" data-value="lowestrr">Lowest RR</button>
+      <div class="jn-filter-panel" id="jn-filter-panel" aria-hidden="true">
+        <div class="jn-filter-panel-inner">
+          <div class="jn-filter-grid" id="jn-filters">
+            <div class="jn-filter-row" id="filter-outcome">
+              <span class="jn-filter-label">Outcome</span>
+              <div class="jn-filter-pills">
+                <button class="jn-filter-pill active" data-group="outcome" data-value="all">All</button>
+                <button class="jn-filter-pill" data-group="outcome" data-value="win">Win</button>
+                <button class="jn-filter-pill" data-group="outcome" data-value="loss">Loss</button>
+                <button class="jn-filter-pill" data-group="outcome" data-value="be">BE</button>
+              </div>
+            </div>
+            <div class="jn-filter-row" id="filter-direction">
+              <span class="jn-filter-label">Position</span>
+              <div class="jn-filter-pills">
+                <button class="jn-filter-pill active" data-group="direction" data-value="all">All</button>
+                <button class="jn-filter-pill" data-group="direction" data-value="long">Long</button>
+                <button class="jn-filter-pill" data-group="direction" data-value="short">Short</button>
+              </div>
+            </div>
+            <div class="jn-filter-row" id="filter-pair">
+              <span class="jn-filter-label">Pair</span>
+              <div class="jn-filter-pills">
+                <button class="jn-filter-pill active" data-group="pair" data-value="all">All</button>
+                <button class="jn-filter-pill" data-group="pair" data-value="XAU/USD">XAU/USD</button>
+                <button class="jn-filter-pill" data-group="pair" data-value="AUD/USD">AUD/USD</button>
+              </div>
+            </div>
+            <div class="jn-filter-row" id="filter-model">
+              <span class="jn-filter-label">Model</span>
+              <div class="jn-filter-pills">
+                <button class="jn-filter-pill active" data-group="model" data-value="all">All</button>
+              </div>
+            </div>
+            <div class="jn-filter-row" id="filter-account">
+              <span class="jn-filter-label">Account</span>
+              <div class="jn-filter-pills">
+                <button class="jn-filter-pill active" data-group="account" data-value="all">All</button>
+              </div>
+            </div>
+            <div class="jn-filter-row" id="filter-sort">
+              <span class="jn-filter-label">Sort</span>
+              <div class="jn-filter-pills">
+                <button class="jn-filter-pill active" data-group="sort" data-value="newest">Newest</button>
+                <button class="jn-filter-pill" data-group="sort" data-value="oldest">Oldest</button>
+                <button class="jn-filter-pill" data-group="sort" data-value="highestrr">Highest RR</button>
+                <button class="jn-filter-pill" data-group="sort" data-value="lowestrr">Lowest RR</button>
+              </div>
+            </div>
+          </div>
+          <div class="jn-filter-panel-foot">
+            <button class="jn-filter-clear-btn" id="jn-filter-clear" type="button">CLEAR ALL</button>
+          </div>
         </div>
       </div>
 
@@ -715,6 +802,7 @@
         function addPills(rowId, group, values) {
           var row = document.getElementById(rowId);
           if (!row) return;
+          var pillsWrap = row.querySelector('.jn-filter-pills') || row;
           /* remove previously added dynamic pills (keep static ones) */
           Array.from(row.querySelectorAll('.jn-filter-pill[data-dynamic]')).forEach(function(el){ el.remove(); });
           /* collect static pill values so we don't create duplicates */
@@ -729,7 +817,7 @@
             btn.dataset.value   = val;
             btn.dataset.dynamic = '1';
             btn.textContent = val;
-            row.appendChild(btn);
+            pillsWrap.appendChild(btn);
           });
         }
 
@@ -913,7 +1001,46 @@
         pill.classList.add('active');
         activeFilters[group] = value;
         applyFilters();
+        updateFilterDot();
       });
+
+      /* ── Filter panel toggle ── */
+      function updateFilterDot() {
+        var hasActive = activeFilters.outcome   !== 'all'    ||
+                        activeFilters.direction !== 'all'    ||
+                        activeFilters.pair      !== 'all'    ||
+                        activeFilters.model     !== 'all'    ||
+                        activeFilters.account   !== 'all'    ||
+                        activeFilters.sort      !== 'newest';
+        var dot = document.getElementById('jn-filter-dot');
+        if (dot) dot.classList.toggle('jn-filter-dot--visible', hasActive);
+      }
+
+      (function () {
+        var toggle  = document.getElementById('jn-filter-toggle');
+        var panel   = document.getElementById('jn-filter-panel');
+        var label   = document.getElementById('jn-filter-toggle-label');
+        var isOpen  = false;
+
+        toggle.addEventListener('click', function () {
+          isOpen = !isOpen;
+          panel.classList.toggle('jn-filter-panel--open', isOpen);
+          panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+          toggle.classList.toggle('jn-filter-toggle--open', isOpen);
+          label.textContent = isOpen ? 'FILTER −' : 'FILTER +';
+        });
+
+        document.getElementById('jn-filter-clear').addEventListener('click', function () {
+          activeFilters = { outcome: 'all', direction: 'all', pair: 'all', model: 'all', account: 'all', sort: 'newest' };
+          document.querySelectorAll('#jn-filters .jn-filter-pill').forEach(function (p) {
+            var isDefault = p.dataset.value === 'all' ||
+                            (p.dataset.group === 'sort' && p.dataset.value === 'newest');
+            p.classList.toggle('active', isDefault);
+          });
+          updateFilterDot();
+          applyFilters();
+        });
+      })();
 
       /* ── Load more ── */
       document.getElementById('jn-load-more').addEventListener('click', function () {
