@@ -184,6 +184,9 @@
       .jn-filter-row {
         display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
       }
+      /* Model pills span full width so long names don't force single-column stacking */
+      #filter-model { grid-column: 1 / -1; }
+      #filter-model .jn-filter-pill { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .jn-filter-label {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
         letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.28);
