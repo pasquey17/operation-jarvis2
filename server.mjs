@@ -275,7 +275,7 @@ DATE RULES — follow these exactly in every response:
 ${recentTradeCount === 0 ? "— IMPORTANT: There are NO trades in the last 7 days. Do NOT present older trades as recent. If asked about recent trades, say so explicitly." : ""}
 — When referencing any trade or period, state the actual date. Never say "recently" or "last week" without confirming the trade date is within the last 7 days.
 — When discussing a specific trade or session, always name the date or date range. Never leave it ambiguous.
-— IMPORTANT: The raw `date` field in every trade row is stored in UTC. The `date_local` field is the correct Adelaide local time (Australia/Adelaide, GMT+10:30). ALWAYS use `date_local` when telling the trader what time or date a trade occurred. Never read the time from the `date` field.`;
+— IMPORTANT: The raw "date" field in every trade row is stored in UTC. The "date_local" field is the correct Adelaide local time (Australia/Adelaide, GMT+10:30). ALWAYS use "date_local" when telling the trader what time or date a trade occurred. Never read the time from the "date" field.`;
 
   const dataJson = JSON.stringify({ columns: columnKeys, trades });
   let briefingSection = "";
