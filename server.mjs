@@ -1364,6 +1364,8 @@ async function handleChat(req, res) {
     "\n\nWhen asked about the most recent trade, ALWAYS use this object (weekday comes from date in Australia/Adelaide). Do not search the list." +
     tradeOutcomeAppend;
 
+  const useWebSearch = needsWebSearch(messageSource);
+
   const anthropicBody = {
     model: ANTHROPIC_MODEL,
     max_tokens: MAX_CHAT_OUTPUT_TOKENS,
@@ -1371,15 +1373,25 @@ async function handleChat(req, res) {
     messages,
   };
 
+  if (useWebSearch) {
+    anthropicBody.tools = [{ type: "web_search_20250305", name: "web_search" }];
+  }
+
+  const requestHeaders = {
+    "x-api-key": apiKey,
+    "anthropic-version": ANTHROPIC_VERSION,
+    "Content-Type": "application/json",
+  };
+
+  if (useWebSearch) {
+    requestHeaders["anthropic-beta"] = "web-search-2025-03-05";
+  }
+
   let ar;
   try {
     ar = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": ANTHROPIC_VERSION,
-        "Content-Type": "application/json",
-      },
+      headers: requestHeaders,
       body: JSON.stringify(anthropicBody),
     });
   } catch (e) {
@@ -1427,6 +1439,24 @@ function formatAnthropicClientError(responseText) {
     /* not JSON */
   }
   return responseText?.trim() || "Unknown error from Anthropic";
+}
+
+/**
+ * Returns true when the user message contains keywords that benefit from live web search:
+ * current prices, news, economic events, gold data, or real-time market context.
+ */
+function needsWebSearch(msg) {
+  const lower = String(msg || "").toLowerCase();
+  return [
+    "price", "prices", "gold", "xau", "aud/usd",
+    "news", "economic", "economy", "event", "events",
+    "fomc", "cpi", "nfp", "gdp", "inflation", "fed",
+    "interest rate", "rate hike", "rate cut", "central bank",
+    "market", "markets", "forecast", "outlook", "analysis",
+    "current", "live", "right now", "today", "this week",
+    "announcement", "release", "data", "report",
+    "search", "look up", "find out", "what is", "what's",
+  ].some((kw) => lower.includes(kw));
 }
 
 /** Messages API: assistant text is in `content` blocks; primary path is `content[0].text`. */
