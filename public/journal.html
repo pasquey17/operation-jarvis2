@@ -518,7 +518,7 @@
       const CORE_FIELDS = new Set(['date','session','outcome','rr','pair','account']);
 
       /* ── State ── */
-      let currentUserId  = null;
+      let currentUserId  = 'aidenpasque11@gmail.com';
       let allTrades      = [];
       let filteredTrades = [];
       let displayedCount = 0;
@@ -675,8 +675,8 @@
       async function fetchAllTrades() {
         var userId = currentUserId || 'aidenpasque11@gmail.com';
         var [tradesRes, journalRes] = await Promise.allSettled([
-          fetch('/api/trades?user_id=eq.' + encodeURIComponent(userId)).then(function (r) { return r.json(); }),
-          fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(userId)).then(function (r) { return r.json(); })
+          fetch('/api/trades?user_id=eq.' + encodeURIComponent(userId), { cache: 'no-store' }).then(function (r) { return r.json(); }),
+          fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(userId), { cache: 'no-store' }).then(function (r) { return r.json(); })
         ]);
         var merged = [];
         if (tradesRes.status === 'fulfilled') {
@@ -1058,7 +1058,7 @@
         var userId = currentUserId || localStorage.getItem('user_id') || 'aidenpasque11@gmail.com';
         var customFields = [];
         try {
-          var r = await fetch('/api/journal-fields?user_id=' + encodeURIComponent(userId));
+          var r = await fetch('/api/journal-fields?user_id=' + encodeURIComponent(userId), { cache: 'no-store' });
           var data = await r.json().catch(function(){ return {}; });
           var all = Array.isArray(data.fields) ? data.fields : [];
           customFields = all.filter(function(f){ return !CORE_FIELDS.has(f.field_name.toLowerCase()); });
@@ -1127,7 +1127,7 @@
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
         try {
           var res = await fetch('/api/log-trade', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, traded_at: dateVal + 'T00:00:00.000Z',
               pair: pair || null, outcome: outcome, rr: (rr !== null && !isNaN(rr)) ? rr : null,
               session: session, account: account || null, custom_data: custom_data })

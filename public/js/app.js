@@ -6,7 +6,7 @@ const MAX_CHAT_MESSAGES_API = 5;
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_CHAT_MESSAGES_STORED = 120;
 
-let currentUserId = null;
+let currentUserId = "aidenpasque11@gmail.com";
 let snapshotRequestSeq = 0;
 
 function ensureUserId() {
@@ -535,7 +535,7 @@ async function loadTrades() {
       currentUserId ||
       localStorage.getItem("user_id") ||
       "aidenpasque11@gmail.com";
-    const res = await fetch(`${API_TRADES}?user_id=eq.${encodeURIComponent(userId)}`);
+    const res = await fetch(`${API_TRADES}?user_id=eq.${encodeURIComponent(userId)}`, { cache: 'no-store' });
     const data = await res.json().catch(() => ({}));
     console.log("FRONTEND RAW DATA:", data);
     if (!res.ok) {
@@ -591,6 +591,7 @@ async function sendChatMessage(text) {
   try {
     const res = await fetch(API_CHAT, {
       method: "POST",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email:
@@ -768,7 +769,7 @@ async function openTradeForm() {
   const userId = currentUserId || localStorage.getItem('user_id') || 'aidenpasque11@gmail.com';
   let customFields = [];
   try {
-    const r = await fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`);
+    const r = await fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`, { cache: 'no-store' });
     const data = await r.json().catch(() => ({}));
     const all = Array.isArray(data.fields) ? data.fields : [];
     customFields = all.filter(f => !CORE_FIELD_NAMES.has(f.field_name.toLowerCase()));
@@ -898,6 +899,7 @@ async function submitTradeForm(form, customFields, closeForm) {
   try {
     const res = await fetch('/api/log-trade', {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         user_id: userId,
@@ -963,7 +965,7 @@ function initLogTradeBtn() {
 
 async function boot() {
   await ensureUserId();
-  await fetch("/api/sync").catch(() => {});
+  await fetch("/api/sync", { cache: 'no-store' }).catch(() => {});
 
   chatMessages = loadChatMessagesFromStorage();
   chatUiMessages = [];
