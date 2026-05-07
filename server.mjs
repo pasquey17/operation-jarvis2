@@ -39,6 +39,8 @@ const MAX_CHAT_MESSAGES = 5;
 /** Per-turn content cap (characters) before API send. */
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
+/** Auto-sync: re-pull from Notion if last sync was more than this many ms ago. */
+const NOTION_SYNC_INTERVAL_MS = 30 * 60 * 1000;
 
 /**
  * Jarvis chat personality — exact copy as requested; dynamic date and trade JSON appended below.
@@ -535,6 +537,67 @@ Respond with ONLY a valid JSON object and no other text:
   return profile;
 }
 
+// === AUTO NOTION SYNC ===
+
+async function getSyncState(syncKey) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return null;
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/sync_state?key=eq.${encodeURIComponent(syncKey)}&limit=1`,
+      {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          Accept: "application/json",
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json().catch(() => null);
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return rows[0].last_synced ? new Date(rows[0].last_synced) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function setSyncState(syncKey) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return;
+  await fetch(`${url}/rest/v1/sync_state`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify({ key: syncKey, last_synced: new Date().toISOString() }),
+  });
+}
+
+async function maybeSyncNotion(userId) {
+  const syncKey = userId === "spasque70@gmail.com" ? "notion_mum" : "notion_aiden";
+  try {
+    const lastSynced = await getSyncState(syncKey);
+    if (lastSynced && Date.now() - lastSynced.getTime() < NOTION_SYNC_INTERVAL_MS) {
+      return; // Data is fresh — skip
+    }
+    const syncFn = userId === "spasque70@gmail.com" ? syncNotionToSupabaseMum : syncNotionToSupabase;
+    const result = await syncFn();
+    if (result.ok || result.skipped) {
+      await setSyncState(syncKey);
+      if (result.ok) {
+        console.log(`[auto-sync] ${userId}: fetched ${result.fetched}, upserted ${result.upserted}`);
+      }
+    }
+  } catch (e) {
+    console.warn("[auto-sync] Failed:", e instanceof Error ? e.message : e);
+    // Never throw — request continues with existing data
+  }
+}
+
 loadEnvFromDotenv();
 
 /** Cap rows pulled from Supabase for briefing/chat payload size. */
@@ -857,6 +920,7 @@ async function handleTrades(req, res) {
       new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+    await maybeSyncNotion(userId);
     const payload = await fetchTradesFromSupabase(userId);
     if (!payload.records.length) {
       json(res, 200, {
@@ -1140,8 +1204,9 @@ async function handleChat(req, res) {
     return;
   }
 
-  // Fetch user profile in parallel with trades — doesn't block on failure
+  // Profile fetch and Notion sync run in parallel — both must finish before the trades query
   const profilePromise = fetchUserProfile(userId);
+  await maybeSyncNotion(userId);
 
   let trades;
   try {

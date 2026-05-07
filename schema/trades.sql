@@ -39,3 +39,15 @@ alter table public.user_profiles enable row level security;
 
 -- Example policy for anon (dev only):
 -- create policy "allow anon all on user_profiles" on public.user_profiles for all using (true) with check (true);
+
+-- Auto-sync state: tracks when Notion was last pulled per sync job.
+-- One row per key (e.g. 'notion_aiden', 'notion_mum').
+create table if not exists public.sync_state (
+  key text primary key,
+  last_synced timestamptz not null default now()
+);
+
+alter table public.sync_state enable row level security;
+
+-- Example policy for anon (dev only):
+-- create policy "allow anon all on sync_state" on public.sync_state for all using (true) with check (true);
