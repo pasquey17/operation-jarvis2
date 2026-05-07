@@ -760,7 +760,7 @@ async function getRecentTrades(userId, options = {}) {
     MAX_SUPABASE_ROWS
   );
   const tableEnc = encodeURIComponent(tableRaw);
-  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&order=date.desc&limit=${limit}`;
+  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}&order=date.desc&limit=${limit}`;
   const res = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -848,7 +848,7 @@ async function fetchTradesFromSupabase(userId) {
   }
 
   const tableEnc = encodeURIComponent(tableRaw);
-  const endpoint = `${url}/rest/v1/${tableEnc}?select=*`;
+  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}`;
   const res = await fetch(endpoint, {
     method: "GET",
     headers: {
