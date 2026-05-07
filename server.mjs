@@ -227,13 +227,52 @@ function deriveTradingSnapshot(trades) {
  * @param {object[]} [allTrades] - full dataset used for stats; falls back to `trades` when omitted
  */
 function buildJarvisChatSystem(columnKeys, trades, briefingMemory = "", allTrades = null, userProfile = null) {
-  const today = new Date().toLocaleDateString("en-AU", {
+  const now = new Date();
+  const today = now.toLocaleDateString("en-AU", {
     timeZone: "Australia/Adelaide",
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgoStr = sevenDaysAgo.toLocaleDateString("en-AU", {
+    timeZone: "Australia/Adelaide",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const forStats = allTrades ?? trades;
+
+  const recentTradeCount = forStats.filter((t) => {
+    const d = new Date(t.date);
+    return !isNaN(d.getTime()) && d >= sevenDaysAgo;
+  }).length;
+
+  const mostRecentTrade = forStats.length > 0 ? forStats[0] : null;
+  const mostRecentTradeDate = mostRecentTrade?.date
+    ? new Date(mostRecentTrade.date).toLocaleDateString("en-AU", {
+        timeZone: "Australia/Adelaide",
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "unknown";
+
+  const dateContextBlock = `TODAY'S DATE: ${today}
+
+DATE RULES — follow these exactly in every response:
+— Today is ${today}. Use this to anchor all time references.
+— A trade is "recent" only if its date falls on or after ${sevenDaysAgoStr}.
+— Trades from the last 7 days in this dataset: ${recentTradeCount} of ${forStats.length} total.
+— Most recent trade on record: ${mostRecentTradeDate}.
+${recentTradeCount === 0 ? "— IMPORTANT: There are NO trades in the last 7 days. Do NOT present older trades as recent. If asked about recent trades, say so explicitly." : ""}
+— When referencing any trade or period, state the actual date. Never say "recently" or "last week" without confirming the trade date is within the last 7 days.
+— When discussing a specific trade or session, always name the date or date range. Never leave it ambiguous.`;
 
   const dataJson = JSON.stringify({ columns: columnKeys, trades });
   let briefingSection = "";
@@ -247,7 +286,6 @@ Prior session briefing notes (cached):
 ${briefingMemory.trim()}`;
   }
 
-  const forStats = allTrades ?? trades;
   const derivedProfile = deriveTradingProfile(forStats);
   const derivedSnapshot = deriveTradingSnapshot(forStats);
 
@@ -283,11 +321,12 @@ HOW YOU MUST USE THIS MEMORY IN EVERY RESPONSE:
 — Your memory is not optional context. It is you. Every response should feel like it comes from someone who has been watching this trader for a long time.`;
   }
 
-  return `${JARVIS_SYSTEM_PROMPT}${persistentMemorySection}
+  return `${dateContextBlock}
 
 ---
 
-Today's date: ${today}.${briefingSection}
+${JARVIS_SYSTEM_PROMPT}${persistentMemorySection}
+${briefingSection}
 
 ---
 
