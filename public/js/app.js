@@ -794,39 +794,24 @@ function startOrb() {
 
     ctx.clearRect(0, 0, logicalW, logicalH);
 
-    // Outer halo — electric blue nebula
-    const haloR = r * (2.35 + (orbMode === "active" ? 0.12 * pulse : 0.05 * slowBreath));
-    const outer = ctx.createRadialGradient(cx, cy, 0, cx, cy, haloR);
-    outer.addColorStop(0, `rgba(0, 191, 255, ${0.2 * glow})`);
-    outer.addColorStop(0.28, `rgba(0, 191, 255, ${0.1 * glow})`);
-    outer.addColorStop(0.55, `rgba(192, 192, 192, ${0.045 * glow})`);
-    outer.addColorStop(0.82, `rgba(0, 20, 40, ${0.02 * glow})`);
-    outer.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-    ctx.fillStyle = outer;
-    ctx.beginPath();
-    ctx.arc(cx, cy, haloR * 0.95, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Mid glow — white-blue core bleeding outward
+    // Mid glow — white-blue core bleeding outward, fades to transparent
     const mid = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.15, 0, cx, cy, r * 1.45);
     mid.addColorStop(0, `rgba(255, 255, 255, ${0.38 * coreBright})`);
     mid.addColorStop(0.12, `rgba(0, 191, 255, ${0.68 * coreBright})`);
     mid.addColorStop(0.48, `rgba(0, 110, 200, ${0.38 * coreBright})`);
-    mid.addColorStop(0.82, `rgba(0, 40, 80, ${0.08 * coreBright})`);
-    mid.addColorStop(1, "rgba(0, 0, 0, 0)");
+    mid.addColorStop(0.82, "rgba(0, 110, 200, 0)");
 
     ctx.fillStyle = mid;
     ctx.beginPath();
     ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2);
     ctx.fill();
 
-    // Core — white centre fading to electric blue (no ring boundary)
+    // Core — white centre fading cleanly to transparent
     const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.58);
     core.addColorStop(0, `rgba(255, 255, 255, ${0.98 * coreBright})`);
     core.addColorStop(0.22, `rgba(200, 238, 255, ${0.92 * coreBright})`);
     core.addColorStop(0.55, `rgba(0, 191, 255, ${0.88 * coreBright})`);
-    core.addColorStop(1, `rgba(0, 80, 160, ${0.7 * coreBright})`);
+    core.addColorStop(1, "rgba(0, 191, 255, 0)");
 
     ctx.fillStyle = core;
     ctx.beginPath();

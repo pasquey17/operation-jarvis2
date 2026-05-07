@@ -226,7 +226,7 @@ function deriveTradingSnapshot(trades) {
  * @param {string} [briefingMemory]
  * @param {object[]} [allTrades] - full dataset used for stats; falls back to `trades` when omitted
  */
-function buildJarvisChatSystem(columnKeys, trades, briefingMemory = "", allTrades = null) {
+function buildJarvisChatSystem(columnKeys, trades, briefingMemory = "", allTrades = null, userProfile = null) {
   const today = new Date().toLocaleDateString("en-AU", {
     timeZone: "Australia/Adelaide",
     weekday: "long",
@@ -251,7 +251,23 @@ ${briefingMemory.trim()}`;
   const derivedProfile = deriveTradingProfile(forStats);
   const derivedSnapshot = deriveTradingSnapshot(forStats);
 
-  return `${JARVIS_SYSTEM_PROMPT}
+  let persistentMemorySection = "";
+  if (userProfile && (userProfile.trading_summary || userProfile.psychological_patterns)) {
+    persistentMemorySection = `
+
+---
+
+PERSISTENT MEMORY — what Jarvis knows about this trader from past conversations:
+
+Trading Summary: ${userProfile.trading_summary || "Not yet established"}
+Psychological Patterns: ${userProfile.psychological_patterns || "Not yet established"}
+Key Triggers: ${userProfile.key_triggers || "Not yet established"}
+Strengths: ${userProfile.strengths || "Not yet established"}
+
+Apply this memory actively. Reference specific patterns when relevant. Do not repeat it verbatim — use it to give more precise, personalised responses.`;
+  }
+
+  return `${JARVIS_SYSTEM_PROMPT}${persistentMemorySection}
 
 ---
 
@@ -274,6 +290,172 @@ Recent trade rows (newest ${trades.length}, newest first — for context only; u
 ${dataJson}
 
 For statistical or performance questions, use the Derived trading snapshot numbers above (they cover all ${forStats.length} trades). The recent rows below are context only.`;
+}
+
+// === USER PROFILE MEMORY LAYER ===
+
+async function fetchUserProfile(userId) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return null;
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          Accept: "application/json",
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json().catch(() => null);
+    return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+async function upsertUserProfile(userId, fields) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return;
+  const body = {
+    user_id: userId,
+    trading_summary: fields.trading_summary ?? null,
+    psychological_patterns: fields.psychological_patterns ?? null,
+    key_triggers: fields.key_triggers ?? null,
+    strengths: fields.strengths ?? null,
+    last_updated: new Date().toISOString(),
+  };
+  await fetch(`${url}/rest/v1/user_profiles`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function generateAndUpdateProfile(userId, messages, reply, currentProfile, allTrades, apiKey) {
+  const conversationLines = messages
+    .map((m) => `${m.role === "user" ? "Trader" : "Jarvis"}: ${m.content.slice(0, 500)}`)
+    .join("\n");
+  const fullConversation = conversationLines + `\nJarvis: ${reply.slice(0, 500)}`;
+
+  const existing = currentProfile
+    ? `Trading Summary: ${currentProfile.trading_summary || "None"}
+Psychological Patterns: ${currentProfile.psychological_patterns || "None"}
+Key Triggers: ${currentProfile.key_triggers || "None"}
+Strengths: ${currentProfile.strengths || "None"}`
+    : "No existing profile yet — build it from scratch based on what you observe.";
+
+  const tradeStats = deriveTradingProfile(allTrades.slice(0, 200));
+
+  const prompt = `You are building a persistent memory profile for a trader based on conversations with their AI trading coach, Jarvis.
+
+EXISTING PROFILE:
+${existing}
+
+TRADER'S STATISTICAL CONTEXT:
+${tradeStats}
+
+LATEST CONVERSATION:
+${fullConversation}
+
+Update the trader's profile by merging new insights from this conversation with the existing profile. Accumulate knowledge — don't erase what's already there unless it's clearly outdated or contradicted. Be specific, use observed patterns, not generic statements.
+
+Respond with ONLY a valid JSON object and no other text:
+{
+  "trading_summary": "3-4 sentences on trading style, tendencies, and current performance state",
+  "psychological_patterns": "Key recurring psychological patterns visible across conversations",
+  "key_triggers": "Specific situations that cause deviation from plan",
+  "strengths": "What this trader consistently executes well"
+}`;
+
+  try {
+    const ar = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": ANTHROPIC_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 512,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!ar.ok) return;
+    const data = await ar.json().catch(() => null);
+    if (!data) return;
+    const text = extractAssistantText(data);
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return;
+    const profileUpdate = JSON.parse(jsonMatch[0]);
+    await upsertUserProfile(userId, profileUpdate);
+    console.log(`[profile-update] Updated profile for ${userId}`);
+  } catch (e) {
+    console.warn("[profile-update] Failed:", e instanceof Error ? e.message : e);
+  }
+}
+
+async function initializeUserProfile(userId, apiKey) {
+  const trades = await getRecentTrades(userId, { limit: MAX_SUPABASE_ROWS });
+  if (!trades.length) throw new Error(`No trades found for ${userId}`);
+
+  const allSlimmed = trades.map(slimTradeRowForPrompt);
+  const tradeStats = deriveTradingProfile(allSlimmed);
+  const snapshot = deriveTradingSnapshot(allSlimmed);
+
+  const prompt = `You are creating an initial persistent memory profile for a trader based on their complete trade history.
+
+STATISTICAL SUMMARY:
+${tradeStats}
+
+SNAPSHOT: ${JSON.stringify(snapshot)}
+
+SAMPLE RECENT TRADES (up to 30):
+${JSON.stringify(allSlimmed.slice(0, 30), null, 2)}
+
+Based purely on their trade data, build an initial profile capturing their trading style, psychological tendencies, strengths, and triggers. Be specific to what the data shows.
+
+Respond with ONLY a valid JSON object and no other text:
+{
+  "trading_summary": "3-4 sentences on trading style, tendencies, and current performance state",
+  "psychological_patterns": "Key recurring psychological patterns visible in the data",
+  "key_triggers": "Situations in the data that correlate with deviation or poor performance",
+  "strengths": "What this trader consistently executes well based on the data"
+}`;
+
+  const ar = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": ANTHROPIC_VERSION,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 512,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!ar.ok) {
+    const errText = await ar.text();
+    throw new Error(`Anthropic error ${ar.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await ar.json();
+  const text = extractAssistantText(data);
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON in Anthropic response");
+  const profile = JSON.parse(jsonMatch[0]);
+  await upsertUserProfile(userId, profile);
+  return profile;
 }
 
 loadEnvFromDotenv();
@@ -881,6 +1063,9 @@ async function handleChat(req, res) {
     return;
   }
 
+  // Fetch user profile in parallel with trades — doesn't block on failure
+  const profilePromise = fetchUserProfile(userId);
+
   let trades;
   try {
     trades = await getRecentTrades(userId, {
@@ -983,6 +1168,9 @@ async function handleChat(req, res) {
 
   messages = clampChatMessagesForTokens(messages, MAX_CHAT_MESSAGES);
 
+  // Await profile — should already be resolved since trades fetch ran concurrently
+  const userProfile = await profilePromise.catch(() => null);
+
   const apiKey =
     (typeof payload.apiKey === "string" && payload.apiKey.trim()) ||
     process.env.ANTHROPIC_API_KEY?.trim();
@@ -1008,7 +1196,7 @@ async function handleChat(req, res) {
           "notes",
         ];
   const system =
-    buildJarvisChatSystem(columnKeys, tradesForPrompt, briefingMemory, allTradesSlimmed) +
+    buildJarvisChatSystem(columnKeys, tradesForPrompt, briefingMemory, allTradesSlimmed, userProfile) +
     "\n\nThe most recent trade is:\n" +
     JSON.stringify(slimRecent ?? null) +
     "\n\nWhen asked about the most recent trade, ALWAYS use this object (weekday comes from date in Australia/Adelaide). Do not search the list." +
@@ -1055,6 +1243,10 @@ async function handleChat(req, res) {
 
   const reply = extractAssistantText(data);
   json(res, 200, { reply });
+
+  // Background profile update — fire-and-forget, never blocks the response
+  void generateAndUpdateProfile(userId, messages, reply, userProfile, allTradesSlimmed, apiKey)
+    .catch((e) => console.warn("[profile-update] Background update failed:", e instanceof Error ? e.message : e));
 }
 
 /**
@@ -1089,6 +1281,31 @@ function extractAssistantText(data) {
     .join("");
 }
 
+async function handleInitProfiles(req, res) {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) {
+    json(res, 401, { error: "ANTHROPIC_API_KEY not set" });
+    return;
+  }
+
+  const users = ["aidenpasque11@gmail.com", "spasque70@gmail.com"];
+  const results = {};
+
+  for (const userId of users) {
+    try {
+      console.log(`[init-profiles] Generating initial profile for ${userId}…`);
+      const profile = await initializeUserProfile(userId, apiKey);
+      results[userId] = { success: true, profile };
+      console.log(`[init-profiles] Done: ${userId}`);
+    } catch (e) {
+      results[userId] = { success: false, error: e instanceof Error ? e.message : String(e) };
+      console.warn(`[init-profiles] Failed for ${userId}:`, e instanceof Error ? e.message : e);
+    }
+  }
+
+  json(res, 200, { results });
+}
+
 async function requestListener(req, res) {
   if (req.method === "OPTIONS") {
     send(res, 204, "", {
@@ -1121,6 +1338,11 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/sync-notion")) {
     await handleSyncNotion(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/init-profiles")) {
+    await handleInitProfiles(req, res);
     return;
   }
 

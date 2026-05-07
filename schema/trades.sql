@@ -24,3 +24,18 @@ alter table public.trades enable row level security;
 
 -- Example policy for anon (dev only):
 -- create policy "allow anon all on trades" on public.trades for all using (true) with check (true);
+
+-- Persistent memory layer: one row per user, accumulates over time.
+create table if not exists public.user_profiles (
+  user_id text primary key,
+  trading_summary text,
+  psychological_patterns text,
+  key_triggers text,
+  strengths text,
+  last_updated timestamptz not null default now()
+);
+
+alter table public.user_profiles enable row level security;
+
+-- Example policy for anon (dev only):
+-- create policy "allow anon all on user_profiles" on public.user_profiles for all using (true) with check (true);
