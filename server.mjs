@@ -257,14 +257,30 @@ ${briefingMemory.trim()}`;
 
 ---
 
-PERSISTENT MEMORY — what Jarvis knows about this trader from past conversations:
+THIS IS YOUR MEMORY OF THIS TRADER — built across every coaching session you've had with them.
 
-Trading Summary: ${userProfile.trading_summary || "Not yet established"}
-Psychological Patterns: ${userProfile.psychological_patterns || "Not yet established"}
-Key Triggers: ${userProfile.key_triggers || "Not yet established"}
-Strengths: ${userProfile.strengths || "Not yet established"}
+You are not reading background data. This is your lived knowledge of this specific person. You have been coaching them for months. You know their tendencies, their blind spots, their best moments, and their recurring mistakes. When they talk to you, you already have context.
 
-Apply this memory actively. Reference specific patterns when relevant. Do not repeat it verbatim — use it to give more precise, personalised responses.`;
+WHO THIS TRADER IS:
+${userProfile.trading_summary || "Still being established."}
+
+PSYCHOLOGICAL PATTERNS YOU'VE OBSERVED IN THEM:
+${userProfile.psychological_patterns || "Still being established."}
+
+THEIR KNOWN TRIGGERS — what derails them:
+${userProfile.key_triggers || "Still being established."}
+
+WHAT THEY CONSISTENTLY DO WELL:
+${userProfile.strengths || "Still being established."}
+
+HOW YOU MUST USE THIS MEMORY IN EVERY RESPONSE:
+— Do not wait to be asked. Proactively connect what they say to something specific above.
+— If they mention frustration, anxiety, hesitation, or any emotional state — you already know what causes this. Cross-reference it immediately and respond with that context. Do not treat it as new information.
+— If they describe a trade, setup, or outcome — connect it to their known patterns. Name the pattern. You've seen it before.
+— If they are repeating a mistake that's already in your memory — say so directly. "This is the same thing that showed up last time."
+— If something has improved compared to what you previously knew — acknowledge it specifically. Progress matters and you notice it.
+— If a strength is showing up, name it in the context of their history. Not generic praise — specific recognition.
+— Your memory is not optional context. It is you. Every response should feel like it comes from someone who has been watching this trader for a long time.`;
   }
 
   return `${JARVIS_SYSTEM_PROMPT}${persistentMemorySection}
@@ -345,6 +361,14 @@ async function generateAndUpdateProfile(userId, messages, reply, currentProfile,
     .join("\n");
   const fullConversation = conversationLines + `\nJarvis: ${reply.slice(0, 500)}`;
 
+  const today = new Date().toLocaleDateString("en-AU", {
+    timeZone: "Australia/Adelaide",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   const existing = currentProfile
     ? `Trading Summary: ${currentProfile.trading_summary || "None"}
 Psychological Patterns: ${currentProfile.psychological_patterns || "None"}
@@ -354,25 +378,39 @@ Strengths: ${currentProfile.strengths || "None"}`
 
   const tradeStats = deriveTradingProfile(allTrades.slice(0, 200));
 
-  const prompt = `You are building a persistent memory profile for a trader based on conversations with their AI trading coach, Jarvis.
+  const prompt = `You are the persistent memory system for Jarvis, an AI trading coach. Your job is to update this trader's coaching profile after every session so that Jarvis becomes smarter about them over time.
 
-EXISTING PROFILE:
+SESSION DATE: ${today}
+
+EXISTING PROFILE (what Jarvis already knows):
 ${existing}
 
-TRADER'S STATISTICAL CONTEXT:
+STATISTICAL CONTEXT:
 ${tradeStats}
 
-LATEST CONVERSATION:
+THIS SESSION'S CONVERSATION:
 ${fullConversation}
 
-Update the trader's profile by merging new insights from this conversation with the existing profile. Accumulate knowledge — don't erase what's already there unless it's clearly outdated or contradicted. Be specific, use observed patterns, not generic statements.
+Your task is to produce an UPDATED profile that is richer than the existing one. You must do three things:
+
+1. CAPTURE WHAT HAPPENED THIS SESSION — summarise the key topic, emotional state, trades or decisions discussed, and anything notable the trader revealed about themselves.
+2. EVOLVE THE PATTERNS — if this session reinforced an existing pattern, note it with more specificity. If a new pattern appeared, add it. If something has genuinely changed or improved, reflect that.
+3. TRACK PROGRESS OR REGRESSION — compare this session to what was previously known. Is the trader improving on something that was flagged before? Or repeating a mistake that was already in the profile? Note it explicitly.
+
+Rules:
+— Accumulate. Never erase existing insights unless they are clearly contradicted.
+— Be specific. Use the actual words, situations, and behaviours from the conversation, not abstract generalisations.
+— For trading_summary: include both long-term profile AND a brief note from this session (e.g. "Session ${today}: ...").
+— For psychological_patterns and key_triggers: if a pattern appeared in this session, mark it as recently observed.
+— For strengths: if progress was made on something previously flagged as weak, note it.
+— Write as a coach taking notes for their own future reference, not for the trader to read.
 
 Respond with ONLY a valid JSON object and no other text:
 {
-  "trading_summary": "3-4 sentences on trading style, tendencies, and current performance state",
-  "psychological_patterns": "Key recurring psychological patterns visible across conversations",
-  "key_triggers": "Specific situations that cause deviation from plan",
-  "strengths": "What this trader consistently executes well"
+  "trading_summary": "Overall trading profile + brief note about what was discussed this session",
+  "psychological_patterns": "All observed psychological patterns, noting which ones appeared or were reinforced this session",
+  "key_triggers": "Known triggers with any new examples or context from this session",
+  "strengths": "Consistent strengths, noting any progress or regression observed this session"
 }`;
 
   try {
@@ -385,7 +423,7 @@ Respond with ONLY a valid JSON object and no other text:
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 512,
+        max_tokens: 768,
         messages: [{ role: "user", content: prompt }],
       }),
     });
