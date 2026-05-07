@@ -343,8 +343,9 @@ body {
 
 #orb-canvas {
   display: block;
-  width: clamp(110px, 14vmin, 150px);
-  height: clamp(110px, 14vmin, 150px);
+  width: clamp(160px, 25vw, 360px);
+  height: clamp(160px, 25vw, 360px);
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -972,6 +973,40 @@ body {
   }
 }
 
+/* ═══════════ Inline LOG TRADE button (mobile bottom bar) ═══════════ */
+.chat-log-trade-btn {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0 12px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid #00BFFF;
+  background: rgba(0, 191, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #00BFFF;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.25s var(--ease-out),
+    transform 0.2s var(--ease-out);
+}
+
+.chat-log-trade-btn:hover {
+  background: rgba(0, 191, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.chat-log-trade-btn:active {
+  transform: translateY(0);
+}
+
 /* ═══════════ Log Trade Button ═══════════ */
 /* ═══════════ LOG TRADE button ═══════════ */
 .log-trade-btn {
@@ -1272,5 +1307,27 @@ textarea.trade-input {
     left: 16px;
     font-size: 12px;
     padding: 9px 16px;
+  }
+}
+
+/* ═══════════ Mobile bottom bar: inline LOG TRADE in chat row ═══════════ */
+@media (max-width: 768px) {
+  /* Show inline LOG TRADE button, hide the fixed one */
+  .chat-log-trade-btn {
+    display: flex;
+  }
+
+  #log-trade-btn {
+    display: none !important;
+  }
+
+  /* Orb: centered, max 280px on mobile */
+  #orb-canvas {
+    width: clamp(160px, 60vw, 280px) !important;
+    height: clamp(160px, 60vw, 280px) !important;
+  }
+
+  .orb-stage {
+    align-items: center;
   }
 }

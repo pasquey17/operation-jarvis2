@@ -10,122 +10,15 @@ let currentUserId = null;
 let snapshotRequestSeq = 0;
 
 function ensureUserId() {
-  const existing = localStorage.getItem("user_id");
+  const existing = localStorage.getItem("user_id") || localStorage.getItem("jarvis_user");
   if (existing && existing.trim()) {
     currentUserId = existing.trim();
     return Promise.resolve(currentUserId);
   }
-
-  return new Promise((resolve) => {
-    const style = document.createElement("style");
-    style.textContent = `
-      .login-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.92);
-        display: grid;
-        place-items: center;
-        z-index: 9999;
-      }
-      .login-card {
-        width: min(420px, calc(100vw - 48px));
-        background: rgba(0, 10, 20, 0.92);
-        border: 1px solid rgba(0, 191, 255, 0.2);
-        border-radius: 16px;
-        padding: 18px;
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 60px rgba(0, 191, 255, 0.05);
-        color: rgba(255, 255, 255, 0.92);
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        backdrop-filter: blur(20px);
-      }
-      .login-title {
-        margin: 0 0 10px 0;
-        font-size: 16px;
-        letter-spacing: 0.06em;
-        color: #00BFFF;
-      }
-      .login-input {
-        width: 100%;
-        box-sizing: border-box;
-        border-radius: 12px;
-        border: 1px solid rgba(0, 191, 255, 0.25);
-        background: rgba(0, 0, 0, 0.5);
-        color: rgba(255, 255, 255, 0.92);
-        padding: 12px 12px;
-        outline: none;
-      }
-      .login-input:focus {
-        border-color: rgba(0, 191, 255, 0.6);
-      }
-      .login-row {
-        display: flex;
-        gap: 10px;
-        margin-top: 12px;
-      }
-      .login-btn {
-        flex: 1;
-        border-radius: 12px;
-        border: 1px solid #00BFFF;
-        background: rgba(0, 191, 255, 0.12);
-        color: #00BFFF;
-        padding: 12px 12px;
-        cursor: pointer;
-        letter-spacing: 0.05em;
-      }
-      .login-btn:hover {
-        background: rgba(0, 191, 255, 0.22);
-      }
-    `;
-
-    const overlay = document.createElement("div");
-    overlay.className = "login-overlay";
-
-    const card = document.createElement("div");
-    card.className = "login-card";
-
-    const title = document.createElement("h2");
-    title.className = "login-title";
-    title.textContent = "LOGIN";
-
-    const input = document.createElement("input");
-    input.className = "login-input";
-    input.placeholder = "Enter your email";
-    input.autocomplete = "email";
-    input.inputMode = "email";
-
-    const row = document.createElement("div");
-    row.className = "login-row";
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "login-btn";
-    btn.textContent = "Continue";
-
-    async function submit() {
-      const email = (input.value || "").trim() || "aidenpasque11@gmail.com";
-      currentUserId = email;
-      localStorage.setItem("user_id", email);
-      await loadTrades();
-      overlay.remove();
-      style.remove();
-      resolve(email);
-    }
-
-    btn.addEventListener("click", submit);
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") submit();
-    });
-
-    row.appendChild(btn);
-    card.appendChild(title);
-    card.appendChild(input);
-    card.appendChild(row);
-    overlay.appendChild(card);
-
-    document.head.appendChild(style);
-    document.body.appendChild(overlay);
-    input.focus();
-  });
+  const defaultUser = "aidenpasque11@gmail.com";
+  currentUserId = defaultUser;
+  try { localStorage.setItem("user_id", defaultUser); } catch {}
+  return Promise.resolve(defaultUser);
 }
 
 let chatSending = false;
@@ -1053,6 +946,11 @@ function showTradeToast(message, isError = false) {
 }
 
 function initLogTradeBtn() {
+  // Wire up the inline button inside the chat form (shown on mobile)
+  const inlineBtn = document.getElementById('chat-log-trade-btn');
+  if (inlineBtn) inlineBtn.addEventListener('click', openTradeForm);
+
+  // Fixed button for desktop
   if (document.getElementById('log-trade-btn')) return;
   const btn = document.createElement('button');
   btn.id = 'log-trade-btn';

@@ -655,42 +655,19 @@
         })();
       }
 
-      /* ── Login gate ── */
+      /* ── User detection — always defaults to aiden, no modal gate ── */
       function ensureUserId() {
         return new Promise(function (resolve) {
-          var existing = localStorage.getItem('user_id');
+          var existing = localStorage.getItem('user_id') || localStorage.getItem('jarvis_user');
           if (existing && existing.trim()) {
             currentUserId = existing.trim();
-            var navUser = document.getElementById('jv-nav-user');
-            if (navUser) navUser.textContent = currentUserId;
-            resolve(currentUserId); return;
+          } else {
+            currentUserId = 'aidenpasque11@gmail.com';
+            try { localStorage.setItem('user_id', currentUserId); } catch(e) {}
           }
-          var style = document.createElement('style');
-          style.textContent = [
-            '.jn-login-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:grid;place-items:center;z-index:9999}',
-            '.jn-login-card{width:min(420px,calc(100vw - 48px));background:rgba(0,10,20,0.92);border:1px solid rgba(0,191,255,0.2);border-radius:16px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,0.7);backdrop-filter:blur(20px)}',
-            '.jn-login-title{margin:0 0 14px;font-size:15px;letter-spacing:0.1em;color:#00BFFF;font-family:"Share Tech Mono","Courier New",monospace;text-transform:uppercase}',
-            '.jn-login-input{width:100%;box-sizing:border-box;border-radius:10px;border:1px solid rgba(0,191,255,0.25);background:rgba(0,0,0,0.5);color:rgba(255,255,255,0.92);padding:12px 14px;outline:none;font-family:"Share Tech Mono","Courier New",monospace}',
-            '.jn-login-input:focus{border-color:rgba(0,191,255,0.6)}',
-            '.jn-login-btn{margin-top:12px;width:100%;border-radius:10px;border:1px solid #00BFFF;background:rgba(0,191,255,0.12);color:#00BFFF;padding:12px;cursor:pointer;font-family:"Share Tech Mono","Courier New",monospace;letter-spacing:0.08em}',
-            '.jn-login-btn:hover{background:rgba(0,191,255,0.22)}'
-          ].join('');
-          document.head.appendChild(style);
-          var overlay = document.createElement('div');
-          overlay.className = 'jn-login-overlay';
-          overlay.innerHTML = '<div class="jn-login-card"><h2 class="jn-login-title">Login</h2><input class="jn-login-input" id="jn-login-input" placeholder="Enter your email" autocomplete="email" inputmode="email"><button class="jn-login-btn" id="jn-login-btn" type="button">Continue</button></div>';
-          document.body.appendChild(overlay);
-          function submit() {
-            var email = (document.getElementById('jn-login-input').value || '').trim() || 'aidenpasque11@gmail.com';
-            currentUserId = email;
-            localStorage.setItem('user_id', email); localStorage.setItem('jarvis_user', email);
-            var navUser = document.getElementById('jv-nav-user');
-            if (navUser) navUser.textContent = email;
-            overlay.remove(); style.remove(); resolve(email);
-          }
-          document.getElementById('jn-login-btn').addEventListener('click', submit);
-          document.getElementById('jn-login-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
-          document.getElementById('jn-login-input').focus();
+          var navUser = document.getElementById('jv-nav-user');
+          if (navUser) navUser.textContent = currentUserId;
+          resolve(currentUserId);
         });
       }
 
