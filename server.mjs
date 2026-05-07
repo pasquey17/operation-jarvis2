@@ -1357,14 +1357,20 @@ async function handleChat(req, res) {
           "model",
           "notes",
         ];
+  const useWebSearch = needsWebSearch(messageSource);
+  console.log(
+    `[web-search] ${useWebSearch ? "TRIGGERED" : "not triggered"} — query: "${messageSource.slice(0, 120)}"`
+  );
+
   const system =
     buildJarvisChatSystem(columnKeys, tradesForPrompt, briefingMemory, allTradesSlimmed, userProfile) +
     "\n\nThe most recent trade is:\n" +
     JSON.stringify(slimRecent ?? null) +
     "\n\nWhen asked about the most recent trade, ALWAYS use this object (weekday comes from date in Australia/Adelaide). Do not search the list." +
-    tradeOutcomeAppend;
-
-  const useWebSearch = needsWebSearch(messageSource);
+    tradeOutcomeAppend +
+    (useWebSearch
+      ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
+      : "");
 
   const anthropicBody = {
     model: ANTHROPIC_MODEL,
@@ -1375,6 +1381,7 @@ async function handleChat(req, res) {
 
   if (useWebSearch) {
     anthropicBody.tools = [{ type: "web_search_20250305", name: "web_search" }];
+    console.log("[web-search] Tools array:", JSON.stringify(anthropicBody.tools));
   }
 
   const requestHeaders = {
@@ -1385,6 +1392,7 @@ async function handleChat(req, res) {
 
   if (useWebSearch) {
     requestHeaders["anthropic-beta"] = "web-search-2025-03-05";
+    console.log("[web-search] Beta header: web-search-2025-03-05");
   }
 
   let ar;
