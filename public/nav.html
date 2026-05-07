@@ -1,0 +1,239 @@
+<style>
+  .jv-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 0;
+  }
+
+  .jv-nav__brand {
+    color: #00d4ff;
+    font-family: "Share Tech Mono", "Courier New", monospace;
+    font-size: 15px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .jv-nav__links {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  .jv-nav__links a {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    font-family: "Share Tech Mono", "Courier New", monospace;
+    font-size: 11px;
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding-bottom: 2px;
+    border-bottom: 1px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .jv-nav__links a:hover {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .jv-nav__links a.jv-nav--active,
+  .jv-nav__links a[aria-current="page"] {
+    color: #00d4ff;
+    border-bottom: 1px solid #00d4ff;
+  }
+
+  .jv-nav__user {
+    font-family: "Share Tech Mono", "Courier New", monospace;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .jv-nav__hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .jv-nav__hamburger span {
+    display: block;
+    width: 20px;
+    height: 1.5px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 2px;
+    transition: background 0.2s;
+  }
+
+  .jv-nav__hamburger:hover span {
+    background: #00d4ff;
+  }
+
+  .jv-nav__dropdown {
+    display: none;
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+    z-index: 999;
+    flex-direction: column;
+    padding: 8px 0;
+  }
+
+  .jv-nav__dropdown.jv-nav--open {
+    display: flex;
+  }
+
+  .jv-nav__dropdown a {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    font-family: "Share Tech Mono", "Courier New", monospace;
+    font-size: 12px;
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 12px 24px;
+    border-left: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .jv-nav__dropdown a:hover {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .jv-nav__dropdown a.jv-nav--active,
+  .jv-nav__dropdown a[aria-current="page"] {
+    color: #00d4ff;
+    border-left-color: #00d4ff;
+  }
+
+  @media (max-width: 640px) {
+    .jv-nav__links,
+    .jv-nav__user {
+      display: none;
+    }
+
+    .jv-nav__hamburger {
+      display: flex;
+    }
+  }
+</style>
+
+<nav class="jv-nav" aria-label="Main navigation">
+  <a class="jv-nav__brand" href="/index.html">JARVIS</a>
+
+  <ul class="jv-nav__links" role="list">
+    <li><a href="/index.html" id="nav-home">Home</a></li>
+    <li><a href="/journal.html" id="nav-journal">Journal</a></li>
+    <li><a href="/analytics.html" id="nav-analytics">Analytics</a></li>
+    <li><a href="/history.html" id="nav-history">History</a></li>
+    <li><a href="/calendar.html" id="nav-calendar">Calendar</a></li>
+  </ul>
+
+  <span class="jv-nav__user" id="jv-nav-user" aria-label="Current user"></span>
+
+  <button
+    class="jv-nav__hamburger"
+    id="jv-nav-hamburger"
+    aria-label="Toggle navigation"
+    aria-expanded="false"
+    aria-controls="jv-nav-dropdown"
+  >
+    <span aria-hidden="true"></span>
+    <span aria-hidden="true"></span>
+    <span aria-hidden="true"></span>
+  </button>
+</nav>
+
+<div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
+  <a href="/index.html">Home</a>
+  <a href="/journal.html">Journal</a>
+  <a href="/analytics.html">Analytics</a>
+  <a href="/history.html">History</a>
+  <a href="/calendar.html">Calendar</a>
+</div>
+
+<script>
+  (function () {
+    // Current user from localStorage
+    var user = localStorage.getItem("jarvis_user");
+    if (user) {
+      document.getElementById("jv-nav-user").textContent = user;
+    }
+
+    // Mark active link based on current page
+    var page = location.pathname.split("/").pop() || "index.html";
+    var map = {
+      "index.html": ["nav-home"],
+      "journal.html": ["nav-journal"],
+      "analytics.html": ["nav-analytics"],
+      "history.html": ["nav-history"],
+      "calendar.html": ["nav-calendar"],
+    };
+    var ids = map[page] || [];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.classList.add("jv-nav--active");
+        el.setAttribute("aria-current", "page");
+      }
+    });
+
+    // Mark active in dropdown too
+    var dropdownLinks = document.querySelectorAll(".jv-nav__dropdown a");
+    dropdownLinks.forEach(function (a) {
+      var href = a.getAttribute("href").replace(/^\//, "");
+      if (href === page) {
+        a.classList.add("jv-nav--active");
+        a.setAttribute("aria-current", "page");
+      }
+    });
+
+    // Hamburger toggle
+    var btn = document.getElementById("jv-nav-hamburger");
+    var dropdown = document.getElementById("jv-nav-dropdown");
+    btn.addEventListener("click", function () {
+      var open = dropdown.classList.toggle("jv-nav--open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      dropdown.setAttribute("aria-hidden", open ? "false" : "true");
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener("click", function (e) {
+      if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.remove("jv-nav--open");
+        btn.setAttribute("aria-expanded", "false");
+        dropdown.setAttribute("aria-hidden", "true");
+      }
+    });
+  })();
+</script>
