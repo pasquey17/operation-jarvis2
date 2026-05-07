@@ -274,7 +274,8 @@ DATE RULES — follow these exactly in every response:
 — Most recent trade on record: ${mostRecentTradeDate}.
 ${recentTradeCount === 0 ? "— IMPORTANT: There are NO trades in the last 7 days. Do NOT present older trades as recent. If asked about recent trades, say so explicitly." : ""}
 — When referencing any trade or period, state the actual date. Never say "recently" or "last week" without confirming the trade date is within the last 7 days.
-— When discussing a specific trade or session, always name the date or date range. Never leave it ambiguous.`;
+— When discussing a specific trade or session, always name the date or date range. Never leave it ambiguous.
+— IMPORTANT: The raw `date` field in every trade row is stored in UTC. The `date_local` field is the correct Adelaide local time (Australia/Adelaide, GMT+10:30). ALWAYS use `date_local` when telling the trader what time or date a trade occurred. Never read the time from the `date` field.`;
 
   const dataJson = JSON.stringify({ columns: columnKeys, trades });
   let briefingSection = "";
@@ -695,6 +696,23 @@ function weekdayAdelaideFromTradeDate(dateValue) {
     .toLowerCase();
 }
 
+/** Converts a UTC date value to a human-readable Adelaide local time string. */
+function formatDateAdelaide(dateValue) {
+  if (!dateValue) return "";
+  const d = new Date(dateValue);
+  if (isNaN(d.getTime())) return String(dateValue);
+  return d.toLocaleString("en-AU", {
+    timeZone: "Australia/Adelaide",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 /** Small allowlist for chat system JSON — avoids huge Supabase payloads. */
 function slimTradeRowForPrompt(t) {
   if (!t || typeof t !== "object") return t;
@@ -708,8 +726,10 @@ function slimTradeRowForPrompt(t) {
   if (notes.length > MAX_PROMPT_TRADE_NOTES_CHARS) {
     notes = `${notes.slice(0, MAX_PROMPT_TRADE_NOTES_CHARS)}…`;
   }
+  const rawDate = readField(t, ["date", "Date"]);
   return {
-    date: readField(t, ["date", "Date"]),
+    date: rawDate,
+    date_local: formatDateAdelaide(rawDate),
     weekday: readField(t, ["weekday", "Weekday"]),
     session: readField(t, ["session", "SESSION", "Session"]) ?? "",
     outcome: readField(t, ["outcome", "Outcome", "OUTCOME"]) ?? "",
