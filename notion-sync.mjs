@@ -38,6 +38,8 @@ function notionPageToTrade(page) {
   const rr = typeof p.RR?.number === "number" && !Number.isNaN(p.RR.number) ? p.RR.number : null;
   const model = p["ENTRY MODEL"]?.select?.name != null ? String(p["ENTRY MODEL"].select.name) : "";
   const notes = plainFromRichText(p["TRADE SUMMARY"]?.rich_text);
+  const pair = p["PAIR"]?.select?.name || plainFromRichText(p["PAIR"]?.rich_text) || null;
+  const direction = p["POSITION TYPE"]?.select?.name || plainFromRichText(p["POSITION TYPE"]?.rich_text) || null;
 
   return {
     notion_id: page.id,
@@ -48,6 +50,8 @@ function notionPageToTrade(page) {
     rr,
     model,
     notes,
+    pair,
+    direction,
     updated_at: new Date().toISOString(),
   };
 }
@@ -103,7 +107,7 @@ async function upsertTradeBatch(supabaseUrl, supabaseKey, rows) {
   if (!rows.length) return;
 
   // Explicit column list ensures ON CONFLICT DO UPDATE overwrites every field.
-  const columns = "notion_id,date,user_id,session,outcome,rr,model,notes,updated_at";
+  const columns = "notion_id,date,user_id,session,outcome,rr,model,notes,pair,direction,updated_at";
   const res = await fetch(
     `${supabaseUrl}/rest/v1/trades?on_conflict=notion_id&columns=${columns}`,
     {
