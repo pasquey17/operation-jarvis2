@@ -3,12 +3,63 @@ import { motion } from "framer-motion";
 
 export function PricingPage() {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-  const price = useMemo(() => {
-    const mul = billing === "yearly" ? 0.85 : 1;
+  const plans = useMemo(() => {
+    const yearlyDiscount = 0.8;
+    const monthly = {
+      core: { amount: 15, unit: "month" as const },
+      edge: { amount: 30, unit: "month" as const },
+    };
+    const yearly = {
+      core: { amount: 144, unit: "year" as const, equivPerMonth: 12 },
+      edge: { amount: 288, unit: "year" as const, equivPerMonth: 24 },
+    };
+
+    const isYearly = billing === "yearly";
     return {
-      starter: Math.round(19 * mul),
-      pro: Math.round(49 * mul),
-      elite: Math.round(99 * mul),
+      yearlyDiscount,
+      isYearly,
+      core: {
+        name: "CORE",
+        positioning: "Build consistency. Understand your behaviour.",
+        price: isYearly ? yearly.core.amount : monthly.core.amount,
+        unit: isYearly ? yearly.core.unit : monthly.core.unit,
+        billedLine: isYearly
+          ? `$${yearly.core.equivPerMonth}/month billed yearly`
+          : undefined,
+        strikeMonthly: isYearly ? monthly.core.amount : undefined,
+        cta: "Start Building Consistency",
+        items: [
+          "AI journaling system",
+          "Trade / activity logging",
+          "Basic performance insights",
+          "Weekly summary reports",
+          "Limited memory history",
+          "Standard analytics dashboard",
+        ],
+      },
+      edge: {
+        name: "EDGE",
+        positioning: "Full AI performance intelligence system.",
+        price: isYearly ? yearly.edge.amount : monthly.edge.amount,
+        unit: isYearly ? yearly.edge.unit : monthly.edge.unit,
+        billedLine: isYearly
+          ? `$${yearly.edge.equivPerMonth}/month billed yearly`
+          : undefined,
+        strikeMonthly: isYearly ? monthly.edge.amount : undefined,
+        cta: "Activate Full Edge",
+        badge: "Most Popular",
+        items: [
+          "Full behavioural memory system",
+          "Deep pattern recognition across history",
+          "AI coaching on decisions",
+          "Real-time session insights",
+          "Advanced performance analytics",
+          "Unlimited history tracking",
+          "Psychological behaviour mapping",
+          "Priority AI intelligence layer",
+          "Weekly + monthly reports",
+        ],
+      },
     };
   }, [billing]);
 
@@ -26,64 +77,33 @@ export function PricingPage() {
           that remembers your patterns — and calls you out with specifics.
         </p>
 
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button
-            onClick={() => setBilling("monthly")}
-            className={toggleClass(billing === "monthly")}
-            type="button"
-          >
-            MONTHLY
-          </button>
-          <button
-            onClick={() => setBilling("yearly")}
-            className={toggleClass(billing === "yearly")}
-            type="button"
-          >
-            YEARLY <span className="ml-2 text-[color:rgba(0,255,136,0.85)]">-15%</span>
-          </button>
-          <span className="font-mono text-[10px] tracking-[0.18em] text-white/35">
-            No backend changes required.
-          </span>
-        </div>
+        <BillingToggle billing={billing} setBilling={setBilling} />
       </header>
 
-      <section className="grid gap-6 md:grid-cols-3">
+      <section className="grid gap-6 md:grid-cols-2">
         <PlanCard
-          name="Starter"
-          price={price.starter}
-          billing={billing}
+          name={plans.core.name}
+          positioning={plans.core.positioning}
+          price={plans.core.price}
+          unit={plans.core.unit}
+          billedLine={plans.core.billedLine}
+          strikeMonthly={plans.core.strikeMonthly}
           tone="neutral"
-          items={[
-            "Trade logging + notes",
-            "Psychology tracking prompts",
-            "Weekly review summaries",
-            "Baseline analytics",
-          ]}
+          cta={plans.core.cta}
+          items={plans.core.items}
         />
         <PlanCard
-          name="Pro"
-          price={price.pro}
-          billing={billing}
           tone="primary"
-          badge="Most popular"
-          items={[
-            "Full AI coaching chat",
-            "Memory system (dated examples)",
-            "Advanced analytics + trends",
-            "Proactive reminders + focus",
-          ]}
-        />
-        <PlanCard
-          name="Elite"
-          price={price.elite}
-          billing={billing}
-          tone="neutral"
-          items={[
-            "Complete Jarvis OS layer",
-            "Deep personalization",
-            "Elite reviews + rules audit",
-            "Future premium tools",
-          ]}
+          badge={plans.edge.badge}
+          name={plans.edge.name}
+          positioning={plans.edge.positioning}
+          price={plans.edge.price}
+          unit={plans.edge.unit}
+          billedLine={plans.edge.billedLine}
+          strikeMonthly={plans.edge.strikeMonthly}
+          cta={plans.edge.cta}
+          items={plans.edge.items}
+          savingsBadge={plans.isYearly ? "Save 20%" : undefined}
         />
       </section>
 
@@ -128,34 +148,83 @@ export function PricingPage() {
   );
 }
 
-function toggleClass(active: boolean) {
+function BillingToggle({
+  billing,
+  setBilling,
+}: {
+  billing: "monthly" | "yearly";
+  setBilling: (v: "monthly" | "yearly") => void;
+}) {
+  const isYearly = billing === "yearly";
   return (
-    "rounded-full border px-4 py-2 font-mono text-[10px] tracking-[0.18em] transition " +
-    (active
-      ? "border-[color:rgba(0,212,255,0.5)] bg-[color:rgba(0,212,255,0.10)] text-[color:rgba(0,212,255,0.92)]"
-      : "border-white/10 bg-white/5 text-white/55 hover:border-white/20 hover:bg-white/10 hover:text-white/80")
+    <div className="flex flex-wrap items-center gap-3 pt-2">
+      <div className="flex items-center gap-3">
+        <span className={"font-mono text-[10px] tracking-[0.18em] " + (isYearly ? "text-white/45" : "text-white/80")}>
+          MONTHLY
+        </span>
+        <button
+          type="button"
+          aria-label="Toggle billing period"
+          onClick={() => setBilling(isYearly ? "monthly" : "yearly")}
+          className={
+            "relative h-9 w-[86px] rounded-full border backdrop-blur-2xl transition " +
+            (isYearly
+              ? "border-[color:rgba(0,255,136,0.26)] bg-[color:rgba(0,255,136,0.08)]"
+              : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8")
+          }
+        >
+          <motion.span
+            layout
+            transition={{ type: "spring", stiffness: 420, damping: 28 }}
+            className={
+              "absolute top-[4px] h-[26px] w-[40px] rounded-full border " +
+              (isYearly
+                ? "left-[42px] border-[color:rgba(0,255,136,0.26)] bg-[color:rgba(0,0,0,0.25)]"
+                : "left-[4px] border-[color:rgba(0,212,255,0.22)] bg-[color:rgba(0,0,0,0.25)]")
+            }
+          />
+        </button>
+        <span className={"font-mono text-[10px] tracking-[0.18em] " + (isYearly ? "text-white/80" : "text-white/45")}>
+          YEARLY
+        </span>
+      </div>
+
+      <span className="rounded-full border border-[color:rgba(0,255,136,0.22)] bg-[color:rgba(0,255,136,0.08)] px-3 py-2 font-mono text-[10px] tracking-[0.18em] text-[color:rgba(0,255,136,0.9)]">
+        SAVE ~20%
+      </span>
+    </div>
   );
 }
 
 function PlanCard({
   name,
+  positioning,
   price,
-  billing,
+  unit,
+  billedLine,
+  strikeMonthly,
   items,
+  cta,
   badge,
   tone,
+  savingsBadge,
 }: {
   name: string;
+  positioning: string;
   price: number;
-  billing: "monthly" | "yearly";
+  unit: "month" | "year";
+  billedLine?: string;
+  strikeMonthly?: number;
   items: string[];
+  cta: string;
   badge?: string;
   tone: "primary" | "neutral";
+  savingsBadge?: string;
 }) {
   const primary = tone === "primary";
   return (
     <motion.article
-      whileHover={{ y: -2 }}
+      whileHover={{ y: primary ? -3 : -2 }}
       transition={{ duration: 0.25 }}
       className={
         "relative overflow-hidden rounded-[22px] border bg-[color:var(--panel)] p-7 backdrop-blur-2xl " +
@@ -172,20 +241,40 @@ function PlanCard({
           <p className="font-mono text-[10px] tracking-[0.22em] text-white/55">
             {name.toUpperCase()}
           </p>
-          {badge && (
-            <span className="rounded-full border border-[color:rgba(0,212,255,0.22)] bg-[color:rgba(0,212,255,0.10)] px-3 py-1 font-mono text-[10px] tracking-[0.18em] text-[color:rgba(0,212,255,0.9)]">
-              {badge.toUpperCase()}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {savingsBadge && (
+              <span className="rounded-full border border-[color:rgba(0,255,136,0.22)] bg-[color:rgba(0,255,136,0.08)] px-3 py-1 font-mono text-[10px] tracking-[0.18em] text-[color:rgba(0,255,136,0.9)]">
+                {savingsBadge.toUpperCase()}
+              </span>
+            )}
+            {badge && (
+              <span className="rounded-full border border-[color:rgba(0,212,255,0.22)] bg-[color:rgba(0,212,255,0.10)] px-3 py-1 font-mono text-[10px] tracking-[0.18em] text-[color:rgba(0,212,255,0.9)]">
+                {badge.toUpperCase()}
+              </span>
+            )}
+          </div>
         </div>
+        <p className="text-[14px] leading-[1.7] text-white/70">{positioning}</p>
         <div className="flex items-end gap-2">
-          <span className="text-4xl font-semibold tracking-[-0.03em] text-white">
-            ${price}
-          </span>
+          <div className="flex items-end gap-3">
+            <span className="text-4xl font-semibold tracking-[-0.03em] text-white">
+              ${price}
+            </span>
+            {typeof strikeMonthly === "number" && (
+              <span className="pb-1 text-[13px] text-white/45 line-through">
+                ${strikeMonthly}/mo
+              </span>
+            )}
+          </div>
           <span className="pb-1 font-mono text-[10px] tracking-[0.18em] text-white/45">
-            / {billing === "monthly" ? "MONTH" : "MONTH (BILLED YEARLY)"}
+            / {unit === "month" ? "MONTH" : "YEAR"}
           </span>
         </div>
+        {billedLine && (
+          <p className="font-mono text-[10px] tracking-[0.18em] text-white/45">
+            {billedLine.toUpperCase()}
+          </p>
+        )}
         <ul className="space-y-3 text-[14px] leading-[1.6] text-white/72">
           {items.map((it) => (
             <li key={it} className="flex gap-3">
@@ -203,7 +292,7 @@ function PlanCard({
               : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10 hover:text-white/85")
           }
         >
-          GET STARTED
+          {cta.toUpperCase()}
         </a>
       </div>
     </motion.article>
