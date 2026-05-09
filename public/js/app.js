@@ -847,6 +847,26 @@ function updateSendEnabled() {
   }
 }
 
+const SESSION_PENDING_JARVIS = "jarvis_pending_message";
+
+/** Journal → Home: auto-send trade analysis after trades load (sessionStorage set by journal.html). */
+async function maybeFlushPendingJournalAsk() {
+  let pending = "";
+  try {
+    pending = sessionStorage.getItem(SESSION_PENDING_JARVIS) || "";
+  } catch {
+    return false;
+  }
+  if (!pending.trim()) return false;
+  if (tradeData?.loadError || !tradeData?.records?.length) return false;
+  try {
+    sessionStorage.removeItem(SESSION_PENDING_JARVIS);
+  } catch {}
+  const msg = truncateChatContent(pending.trim());
+  await sendChatMessage(msg);
+  return true;
+}
+
 async function sendChatMessage(text) {
   if (chatSending || !text.trim()) return;
   enterChatMode();
@@ -1808,9 +1828,10 @@ async function boot() {
   initLogoutButton();
   setOrbMode("active");
   void loadTrades()
-    .then(() => {
+    .then(async () => {
       updateSendEnabled();
-      showGreeting();
+      const flushed = await maybeFlushPendingJournalAsk();
+      if (!flushed) void showGreeting();
     })
     .finally(() => setOrbMode("idle"));
   els.chatInput?.focus();

@@ -1084,16 +1084,40 @@
         if (card) card.dataset.expanded = card.dataset.expanded === 'true' ? 'false' : 'true';
       });
 
+      function buildAskJarvisPrompt(trade) {
+        var pair = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '—';
+        var outcome = getField(trade, 'outcome', 'Outcome', 'OUTCOME') || '—';
+        var session = getField(trade, 'session', 'Session', 'SESSION') || '—';
+        var model = getField(trade, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '';
+        var notes = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
+        var account = getField(trade, 'account', 'Account', 'ACCOUNT') || '';
+        var rrStr = (function () {
+          var r = parseFloat(getField(trade, 'rr', 'RR'));
+          return isNaN(r) ? '—' : r.toFixed(2) + 'R';
+        })();
+        var dir = getTradeDirection(trade);
+        var lines = [
+          'I want your honest take on this single trade from my journal (focus on this setup only).',
+          'Please give: (1) a brief rundown of the trade, (2) what was solid vs weak in the idea or execution, (3) one concrete lesson or tweak for next time. Be direct and supportive.',
+          '',
+          '--- TRADE ---',
+          'Date/time: ' + formatDateFull(trade),
+          'Pair: ' + pair,
+          'Direction: ' + (dir ? dir.toUpperCase() : '—'),
+          'Outcome: ' + outcome,
+          'R multiple: ' + rrStr,
+          'Session: ' + session
+        ];
+        if (account) lines.push('Account: ' + account);
+        if (model) lines.push('Entry model: ' + model);
+        if (notes) lines.push('My notes: ' + notes);
+        return lines.join('\n');
+      }
+
       function askJarvisAboutTrade(trade) {
-        var parts = [
-          'Tell me about this trade:',
-          getField(trade, 'pair', 'Pair', 'PAIR') || '',
-          getField(trade, 'outcome', 'Outcome', 'OUTCOME') || '',
-          getField(trade, 'session', 'Session') || '',
-          (function(){ var r = parseFloat(getField(trade,'rr','RR')); return isNaN(r) ? '' : r.toFixed(2)+'R'; })(),
-          'on', formatDateFull(trade)
-        ].filter(Boolean);
-        sessionStorage.setItem('jarvis_pending_message', parts.join(' '));
+        try {
+          sessionStorage.setItem('jarvis_pending_message', buildAskJarvisPrompt(trade));
+        } catch (e) {}
         window.location.href = '/index.html';
       }
 
