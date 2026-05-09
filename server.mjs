@@ -483,7 +483,11 @@ Rules:
 — Include instruments/setups where relevant. If you mention a trade event, include pair + entry model when available.
 — Avoid vague labels. Do not write "revenge trading" / "tilt" / "overtrading" unless you anchor it to a concrete example with a date (and pair/model if available).
 — Avoid fuzzy frequency words ("often", "sometimes", "tends to") unless you add either a count or an example date.
-— Keep it concise: coach-notes style. Short lines, no essays.
+— Output formatting matters: each field must be 5–8 SHORT LINES max.
+— Use this exact line style inside each field string:
+   - "• " prefix per line (bullet), newline separated (\n).
+   - Each line should include at least ONE of: date_local, pair, model, or an explicit count.
+— Keep it concise: coach-notes style. No essays.
 — For trading_summary: include both long-term profile AND a brief note from this session (e.g. "Session ${today}: ...").
 — For psychological_patterns and key_triggers: if a pattern appeared in this session, mark it as recently observed.
 — For strengths: if progress was made on something previously flagged as weak, note it.
@@ -491,10 +495,10 @@ Rules:
 
 Respond with ONLY a valid JSON object and no other text:
 {
-  "trading_summary": "Overall trading profile + brief note about what was discussed this session",
-  "psychological_patterns": "All observed psychological patterns, noting which ones appeared or were reinforced this session",
-  "key_triggers": "Known triggers with any new examples or context from this session",
-  "strengths": "Consistent strengths, noting any progress or regression observed this session"
+  "trading_summary": "5–8 bullet lines total (\\n separated). Include one line starting with: \\"Session ${today}:\\"",
+  "psychological_patterns": "5–8 bullet lines total (\\n separated). Each line anchored to date_local/pair/model or a count.",
+  "key_triggers": "5–8 bullet lines total (\\n separated). Each trigger anchored to at least one dated example.",
+  "strengths": "5–8 bullet lines total (\\n separated). Anchor strengths to examples or counts; note progress/regression."
 }`;
 
   try {
@@ -549,14 +553,18 @@ Rules:
 — Be specific. Avoid vague summaries.
 — When you claim a psychological pattern/trigger, anchor it to at least one concrete example: include date_local plus instrument (pair) and/or entry model when available.
 — If you cannot support something from the data, do not include it.
+— Output formatting matters: each field must be 5–8 SHORT LINES max.
+— Use this exact line style inside each field string:
+   - "• " prefix per line (bullet), newline separated (\n).
+   - Each line should include at least ONE of: date_local, pair, model, or an explicit count.
 — Keep it concise and coach-notes style.
 
 Respond with ONLY a valid JSON object and no other text:
 {
-  "trading_summary": "3-4 sentences on trading style, tendencies, and current performance state",
-  "psychological_patterns": "Key recurring psychological patterns visible in the data",
-  "key_triggers": "Situations in the data that correlate with deviation or poor performance",
-  "strengths": "What this trader consistently executes well based on the data"
+  "trading_summary": "5–8 bullet lines total (\\n separated).",
+  "psychological_patterns": "5–8 bullet lines total (\\n separated). Each line anchored to date_local/pair/model or a count.",
+  "key_triggers": "5–8 bullet lines total (\\n separated). Each trigger anchored to at least one dated example.",
+  "strengths": "5–8 bullet lines total (\\n separated). Anchor strengths to examples or counts."
 }`;
 
   const ar = await fetch("https://api.anthropic.com/v1/messages", {
