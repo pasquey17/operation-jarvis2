@@ -970,15 +970,20 @@ function startOrb() {
 
   let hullN = 0;
   let interiorN = 0;
+  let mistN = 0;
   let nucleusN = 0;
   let shellN = 0;
   let strayN = 0;
+  let coronaN = 0;
   let hullX,
     hullY,
     hullZ,
     interiorX,
     interiorY,
     interiorZ,
+    mistX,
+    mistY,
+    mistZ,
     nucleusX,
     nucleusY,
     nucleusZ,
@@ -987,7 +992,10 @@ function startOrb() {
     shellZ,
     strayX,
     strayY,
-    strayZ;
+    strayZ,
+    coronaX,
+    coronaY,
+    coronaZ;
 
   function phasor(i, salt) {
     const t = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453123;
@@ -999,19 +1007,61 @@ function startOrb() {
   const N_BUCK = 24;
   const dotBuckets = Array.from({ length: N_BUCK }, () => []);
 
+  /** Cheap rotating “turbulence” for cloudy density (no textures; GPU-friendly). */
+  function cloudDensity(wx, wy, wz, t, active) {
+    const tt = t * (active ? 0.55 : 0.28);
+    let n =
+      Math.sin(wx * 4.15 + wy * 2.08 + wz * 3.31 + tt * 1.1) *
+        Math.cos(wy * 3.62 - wz * 4.08 + tt * 0.72) *
+        0.55 +
+      Math.sin(wx * 8.22 + wz * 6.05 + tt * 0.65) * 0.28 +
+      Math.cos(wz * 7.41 + wx * 5.13 + wy * 2.77 + tt * 0.48) * 0.22 +
+      Math.sin((wx + wy + wz) * 2.91 + tt * 0.38) * 0.18;
+    const shaped = 0.5 + 0.5 * Math.sin(n * 2.17);
+    return 0.38 + 0.62 * Math.pow(Math.max(0, Math.min(1, shaped)), 1.35);
+  }
+
   function computeCloudBudget() {
     const m = Math.min(logicalW, logicalH);
     const area = logicalW * logicalH;
     if (area < 150000 || m < 300) {
-      return { hull: 260, shell: 420, interior: 190, nucleus: 110, stray: 45 };
+      return {
+        hull: 240,
+        shell: 380,
+        interior: 220,
+        nucleus: 115,
+        stray: 40,
+        corona: 140,
+      };
     }
     if (area < 320000 || m < 420) {
-      return { hull: 400, shell: 720, interior: 340, nucleus: 170, stray: 80 };
+      return {
+        hull: 380,
+        shell: 660,
+        interior: 400,
+        nucleus: 185,
+        stray: 75,
+        corona: 260,
+      };
     }
     if (area < 700000) {
-      return { hull: 560, shell: 1080, interior: 500, nucleus: 240, stray: 110 };
+      return {
+        hull: 520,
+        shell: 980,
+        interior: 580,
+        nucleus: 260,
+        stray: 105,
+        corona: 400,
+      };
     }
-    return { hull: 720, shell: 1480, interior: 680, nucleus: 300, stray: 150 };
+    return {
+      hull: 680,
+      shell: 1320,
+      interior: 760,
+      nucleus: 320,
+      stray: 145,
+      corona: 560,
+    };
   }
 
   function fibonacciSpherePoint(i, n, outX, outY, outZ, scale) {
@@ -1030,15 +1080,17 @@ function startOrb() {
 
   function rebuildPointCloudModels() {
     const b = computeCloudBudget();
-    const key = `${b.hull}|${b.shell}|${b.interior}|${b.nucleus}|${b.stray}`;
+    const key = `${b.hull}|${b.shell}|${b.interior}|${b.nucleus}|${b.stray}|${b.corona}`;
     if (key === cloudCacheKey && hullX?.length === b.hull) return;
     cloudCacheKey = key;
 
     hullN = b.hull;
     interiorN = b.interior;
+    mistN = Math.floor(interiorN * 0.48);
     nucleusN = b.nucleus;
     shellN = b.shell;
     strayN = b.stray;
+    coronaN = b.corona;
 
     hullX = new Float32Array(hullN);
     hullY = new Float32Array(hullN);
@@ -1076,11 +1128,25 @@ function startOrb() {
     for (let i = 0; i < interiorN; i++) {
       const u = phasor(i, 2) * 2 - 1;
       const th = phasor(i, 5) * PI2;
-      const rad = 0.14 + phasor(i, 8) * 0.82;
+      const rPow = Math.pow(phasor(i, 8), 0.62);
+      const rad = 0.12 + rPow * 0.84;
       const rr = Math.sqrt(Math.max(0, 1 - u * u)) * rad;
       interiorX[i] = rr * Math.cos(th);
       interiorY[i] = rr * Math.sin(th);
       interiorZ[i] = u * rad;
+    }
+
+    mistX = new Float32Array(mistN);
+    mistY = new Float32Array(mistN);
+    mistZ = new Float32Array(mistN);
+    for (let i = 0; i < mistN; i++) {
+      const u = phasor(i + 4000, 2) * 2 - 1;
+      const th = phasor(i + 4000, 5) * PI2;
+      const rad = 0.22 + Math.pow(phasor(i + 4000, 8), 0.48) * 0.72;
+      const rr = Math.sqrt(Math.max(0, 1 - u * u)) * rad;
+      mistX[i] = rr * Math.cos(th);
+      mistY[i] = rr * Math.sin(th);
+      mistZ[i] = u * rad;
     }
 
     nucleusX = new Float32Array(nucleusN);
@@ -1108,6 +1174,23 @@ function startOrb() {
       strayY[i] = rr * Math.sin(th);
       strayZ[i] = u * rad;
     }
+
+    coronaX = new Float32Array(coronaN);
+    coronaY = new Float32Array(coronaN);
+    coronaZ = new Float32Array(coronaN);
+    for (let i = 0; i < coronaN; i++) {
+      const t = (i + 0.5) / coronaN;
+      const phi = Math.acos(1 - 2 * t);
+      const theta = PI2 * (1 + Math.sqrt(5)) * (i + 33);
+      const sinp = Math.sin(phi);
+      const fx = sinp * Math.cos(theta);
+      const fy = sinp * Math.sin(theta);
+      const fz = Math.cos(phi);
+      const shell = 1.01 + phasor(i + 2400, 1) * 0.11;
+      coronaX[i] = fx * shell;
+      coronaY[i] = fy * shell;
+      coronaZ[i] = fz * shell;
+    }
   }
 
   function clearDotBuckets() {
@@ -1124,37 +1207,74 @@ function startOrb() {
   function fillPointBuckets(rx, ry, rz, active) {
     const tw = active ? 1.38 : 1;
     const flick = reducedMotion ? 0 : Math.sin(timeSec * (active ? 2 : 0.68));
+    const tNoise = timeSec * (active ? 0.9 : 0.45);
 
     function spinPoint(x, y, z) {
       return eulerRotate(x, y, z, rx, ry, rz);
     }
 
-    /** Distant sparkles — drawn first in buckets (farther Z typically earlier draws ok) */
+    /** Outer corona — soft fuzzy edge (no hard rim) */
+    for (let i = 0; i < coronaN; i++) {
+      const px = spinPoint(coronaX[i], coronaY[i], coronaZ[i]);
+      const sz = px[2];
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
+      const dens = cloudDensity(coronaX[i], coronaY[i], coronaZ[i], tNoise, active);
+      let a =
+        (0.018 + frontal * 0.11 + phasor(i, 701) * 0.04) * dens * tw * (active ? 1.28 : 1);
+      const rad =
+        (0.85 + frontal * 1.55 + phasor(i, 801) * 0.65) * (active ? 1.06 : 1.02);
+      bucketPush(sz, sx, sy, rad, Math.min(0.42, Math.max(0.015, a)));
+    }
+
     for (let i = 0; i < strayN; i++) {
       const px = spinPoint(strayX[i], strayY[i], strayZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
-      let a = (0.03 + frontal * 0.14 + phasor(i, 501) * 0.06) * tw * (active ? 1.35 : 1);
-      const rad = (0.28 + frontal * 0.55 + phasor(i, 602) * 0.35) * (active ? 1.08 : 1);
-      bucketPush(sz, sx, sy, rad, Math.min(0.38, Math.max(0.02, a)));
+      let a = (0.028 + frontal * 0.12 + phasor(i, 501) * 0.055) * tw * (active ? 1.35 : 1);
+      const rad = (0.32 + frontal * 0.62 + phasor(i, 602) * 0.42) * (active ? 1.08 : 1);
+      bucketPush(sz, sx, sy, rad, Math.min(0.36, Math.max(0.02, a)));
+    }
+
+    for (let i = 0; i < mistN; i++) {
+      const dens = cloudDensity(mistX[i], mistY[i], mistZ[i], tNoise, active);
+      const px = spinPoint(mistX[i], mistY[i], mistZ[i]);
+      const sz = px[2];
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
+      let a =
+        (0.03 + frontal * 0.26 + Math.sqrt(phasor(i + 8000, 91)) * 0.09) *
+        dens *
+        tw *
+        (active ? 1.28 : 0.92);
+      const rad =
+        (0.38 + frontal * 0.82 + phasor(i + 8000, 71) * 0.48) * (active ? 1.08 : 1);
+      bucketPush(sz, sx, sy, rad, Math.min(0.62, Math.max(0.02, a)));
     }
 
     for (let i = 0; i < interiorN; i++) {
+      const dens = cloudDensity(interiorX[i], interiorY[i], interiorZ[i], tNoise, active);
       const px = spinPoint(interiorX[i], interiorY[i], interiorZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
       let a =
-        (0.035 + frontal * 0.22 + Math.sqrt(phasor(i, 91)) * 0.07) * tw * (active ? 1.22 : 0.88);
+        (0.032 + frontal * 0.26 + Math.sqrt(phasor(i, 91)) * 0.08) *
+        dens *
+        tw *
+        (active ? 1.25 : 0.9);
       const rad =
-        (0.28 + frontal * 0.68 + phasor(i, 71) * 0.38) * (active ? 1.04 : 0.96);
-      bucketPush(sz, sx, sy, rad, Math.min(0.58, Math.max(0.02, a)));
+        (0.32 + frontal * 0.74 + phasor(i, 71) * 0.42) * (active ? 1.06 : 0.98);
+      bucketPush(sz, sx, sy, rad, Math.min(0.62, Math.max(0.02, a)));
     }
 
     for (let i = 0; i < shellN; i++) {
+      const dens = cloudDensity(shellX[i], shellY[i], shellZ[i], tNoise, active);
       const px = spinPoint(shellX[i], shellY[i], shellZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
@@ -1163,25 +1283,29 @@ function startOrb() {
       const dist = Math.hypot(shellX[i], shellY[i], shellZ[i]) || 0.01;
       const shellFac = Math.max(0, Math.min(1, (dist - 0.32) / 0.68));
       let a =
-        (0.07 + frontal * 0.42 * (0.35 + shellFac * 0.65) + (phasor(i, 3) - 0.5) * 0.04) * tw;
-      a += frontal * (active ? 0.05 + flick * 0.018 : flick * 0.01);
+        (0.065 + frontal * 0.4 * (0.35 + shellFac * 0.65) + (phasor(i, 3) - 0.5) * 0.035) *
+        dens *
+        tw;
+      a += frontal * (active ? 0.048 + flick * 0.016 : flick * 0.009);
       const rad =
-        (0.32 + frontal * (0.85 + shellFac * 0.55) + phasor(i, 99) * 0.12) * (active ? 1.05 : 1);
-      bucketPush(sz, sx, sy, rad, Math.min(0.88, Math.max(0.04, a)));
+        (0.34 + frontal * (0.88 + shellFac * 0.58) + phasor(i, 99) * 0.14) * (active ? 1.05 : 1);
+      bucketPush(sz, sx, sy, rad, Math.min(0.88, Math.max(0.035, a)));
     }
 
     for (let i = 0; i < hullN; i++) {
+      const dens = cloudDensity(hullX[i], hullY[i], hullZ[i], tNoise * 0.85, active);
       const px = spinPoint(hullX[i], hullY[i], hullZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
-      let a = (0.12 + frontal * 0.42 + (phasor(i, 11) - 0.5) * 0.04) * tw;
-      a += frontal * (active ? 0.07 + flick * 0.022 : flick * 0.014);
+      let a =
+        (0.09 + frontal * 0.38 + (phasor(i, 11) - 0.5) * 0.038) * (0.72 + dens * 0.28) * tw;
+      a += frontal * (active ? 0.065 + flick * 0.02 : flick * 0.012);
       const rad =
-        (0.38 + frontal * (active ? 1.38 : 0.96) + (phasor(i, 199) - 0.5) * 0.08) *
+        (0.42 + frontal * (active ? 1.42 : 1.02) + (phasor(i, 199) - 0.5) * 0.09) *
         (active ? 1.05 : 1);
-      bucketPush(sz, sx, sy, rad, Math.min(0.92, Math.max(0.05, a)));
+      bucketPush(sz, sx, sy, rad, Math.min(0.9, Math.max(0.045, a)));
     }
 
     for (let i = 0; i < nucleusN; i++) {
@@ -1198,11 +1322,13 @@ function startOrb() {
     }
   }
 
-  /** Fast fills for mist; soft gradients only on bright nucleus-grade dots (keeps 60fps). */
+  /** Fast fills + selective gradients — layered discs read as soft “gas” without shader cost. */
   function drawBucketsScreen() {
     ctx.globalCompositeOperation = "lighter";
-    const gradAlphaMin = 0.56;
-    const gradRadMin = 1.05;
+    const gradAlphaMin = 0.54;
+    const gradRadMin = 1.08;
+    const mistLo = 0.13;
+    const mistHi = 0.53;
     for (let bi = 0; bi < N_BUCK; bi++) {
       const pack = dotBuckets[bi];
       for (let j = 0; j < pack.length; j += 4) {
@@ -1211,7 +1337,7 @@ function startOrb() {
         const rad = pack[j + 2];
         const alpha = pack[j + 3];
         if (alpha >= gradAlphaMin && rad >= gradRadMin) {
-          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad * (1.65 + alpha * 0.35));
+          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad * (1.62 + alpha * 0.32));
           g.addColorStop(0, `rgba(255,255,255,${alpha * 0.78})`);
           g.addColorStop(
             0.32,
@@ -1223,14 +1349,28 @@ function startOrb() {
           ctx.beginPath();
           ctx.arc(sx, sy, rad, 0, PI2);
           ctx.fill();
+        } else if (alpha >= mistLo && alpha <= mistHi) {
+          const o = alpha * 0.9;
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad * 0.62, 0, PI2);
+          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${o * 0.38})`;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad * 0.4, 0, PI2);
+          ctx.fillStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${o * 0.28})`;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad * 0.18, 0, PI2);
+          ctx.fillStyle = `rgba(255,255,255,${o * 0.16})`;
+          ctx.fill();
         } else {
           ctx.beginPath();
           ctx.arc(sx, sy, rad * 0.52, 0, PI2);
-          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.88})`;
+          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.86})`;
           ctx.fill();
           ctx.beginPath();
           ctx.arc(sx, sy, rad * 0.14, 0, PI2);
-          ctx.fillStyle = `rgba(255,255,255,${alpha * (0.28 + alpha * 0.14)})`;
+          ctx.fillStyle = `rgba(255,255,255,${alpha * (0.26 + alpha * 0.14)})`;
           ctx.fill();
         }
       }
@@ -1319,6 +1459,26 @@ function startOrb() {
     ctx.fillStyle = halo;
     ctx.beginPath();
     ctx.arc(cx, cy, breathOuter * 1.06, 0, Math.PI * 2);
+    ctx.fill();
+
+    const veilR =
+      projScale * (1.12 + 0.022 * Math.sin(timeSec * (active ? 0.48 : 0.31)));
+    const veil = ctx.createRadialGradient(
+      cx - veilR * 0.06,
+      cy - veilR * 0.09,
+      0,
+      cx,
+      cy,
+      veilR * 1.48
+    );
+    veil.addColorStop(0, `rgba(255,255,255,${active ? 0.038 : 0.024})`);
+    veil.addColorStop(0.22, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${active ? 0.072 : 0.048})`);
+    veil.addColorStop(0.52, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${active ? 0.058 : 0.038})`);
+    veil.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = veil;
+    ctx.beginPath();
+    ctx.arc(cx, cy, veilR * 1.02, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.globalCompositeOperation = "source-over";
