@@ -20,6 +20,36 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Static assets live under `public/` (Vercel convention + predictable Lambda layout). On Vercel, bundled files sit under `cwd`; locally `__dirname` is the repo root next to `server.mjs`. */
 const STATIC_ROOT = path.join(process.env.VERCEL ? process.cwd() : __dirname, "public");
 const PORT = Number(process.env.PORT) || 8787;
+
+/** Local dev only: SSE clients that receive a ping when `public/` files change → auto-refresh browser. */
+const liveReloadClients = new Set();
+
+function broadcastLiveReload() {
+  const payload = `data: ${JSON.stringify({ reload: true })}\n\n`;
+  for (const clientRes of liveReloadClients) {
+    try {
+      clientRes.write(payload);
+    } catch {
+      liveReloadClients.delete(clientRes);
+    }
+  }
+}
+
+function startPublicFolderWatcher() {
+  if (process.env.VERCEL) return;
+  let debounce = null;
+  try {
+    fs.watch(STATIC_ROOT, { recursive: true }, () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => broadcastLiveReload(), 160);
+    });
+  } catch (e) {
+    console.warn(
+      "[livereload] fs.watch failed — save files and refresh manually:",
+      e instanceof Error ? e.message : e
+    );
+  }
+}
 const ANTHROPIC_VERSION = "2023-06-01";
 /**
  * `claude-3-sonnet-20240229` was retired (see Anthropic model deprecations). Use current Sonnet.
@@ -1585,6 +1615,21 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (!process.env.VERCEL && req.method === "GET" && req.url.split("?")[0] === "/__livereload") {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-store",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
+    res.write(": ok\n\n");
+    liveReloadClients.add(res);
+    req.on("close", () => {
+      liveReloadClients.delete(res);
+    });
+    return;
+  }
+
   if (req.method === "POST" && req.url.startsWith("/api/briefing")) {
     await handleBriefing(req, res);
     return;
@@ -1664,7 +1709,19 @@ async function requestListener(req, res) {
       send(res, 500, "Error reading file");
       return;
     }
-    send(res, 200, data, { "Content-Type": type });
+    let body = data;
+    const headers = { "Content-Type": type };
+    if (
+      !process.env.VERCEL &&
+      (ext === ".html" || ext === ".htm") &&
+      Buffer.isBuffer(data)
+    ) {
+      const inject = Buffer.from(
+        '<script>new EventSource("/__livereload").onmessage=function(){location.reload()};</script>'
+      );
+      body = Buffer.concat([data, inject]);
+    }
+    send(res, 200, body, headers);
   });
 }
 
@@ -1673,6 +1730,10 @@ const server = http.createServer(requestListener);
 if (!process.env.VERCEL) {
   server.listen(PORT, () => {
     console.log(`Trading journal: http://localhost:${PORT}`);
+    console.log(
+      `[livereload] Edit files under public/ — the browser will auto-refresh when you save (local dev only).`
+    );
+    startPublicFolderWatcher();
     console.log(`Trades API: GET http://localhost:${PORT}/api/trades (Supabase)`);
     console.log(`Notion sync: GET http://localhost:${PORT}/api/sync-notion`);
     console.log(`Briefing API: POST http://localhost:${PORT}/api/briefing`);
