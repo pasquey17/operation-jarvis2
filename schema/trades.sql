@@ -25,6 +25,9 @@ alter table public.trades enable row level security;
 -- Example policy for anon (dev only):
 -- create policy "allow anon all on trades" on public.trades for all using (true) with check (true);
 
+-- Optional: screenshots from Notion (see schema/trade_images.sql)
+-- alter table public.trades add column if not exists trade_images jsonb not null default '[]'::jsonb;
+
 -- Persistent memory layer: one row per user, accumulates over time.
 create table if not exists public.user_profiles (
   user_id text primary key,

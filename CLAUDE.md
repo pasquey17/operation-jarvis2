@@ -40,7 +40,7 @@ Jarvis is a personal AI trading intelligence OS. It ingests trades logged in Not
 
 | Table | Has `user_id`? | Purpose |
 |---|---|---|
-| `trades` | YES | Notion-synced trade history. Conflict key: `notion_id`. |
+| `trades` | YES | Notion-synced trade history. Conflict key: `notion_id`. Optional `trade_images` (jsonb array of URLs) for journal charts — add via `schema/trade_images.sql`. |
 | `journal_trades` | YES | Manually logged trades from the LOG TRADE form. |
 | `journal_fields` | YES | Per-user journal field configuration. |
 | `user_profiles` | YES | AI-generated trader profiles stored as text blobs. |

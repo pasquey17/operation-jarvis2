@@ -23,6 +23,26 @@ function plainFromRichText(rich) {
   return rich.map((b) => (typeof b?.plain_text === "string" ? b.plain_text : "")).join("").trim();
 }
 
+/** Collect HTTPS URLs from every Notion `files` property on the page. */
+function extractTradeImagesFromProps(props) {
+  const urls = [];
+  if (!props || typeof props !== "object") return urls;
+  for (const prop of Object.values(props)) {
+    if (!prop || prop.type !== "files" || !Array.isArray(prop.files)) continue;
+    for (const f of prop.files) {
+      if (!f) continue;
+      const u =
+        f.type === "external" && f.external?.url
+          ? String(f.external.url).trim()
+          : f.type === "file" && f.file?.url
+            ? String(f.file.url).trim()
+            : "";
+      if (u && /^https?:\/\//i.test(u)) urls.push(u);
+    }
+  }
+  return urls;
+}
+
 function notionPageToTrade(page) {
   if (!page || page.object !== "page" || page.in_trash) return null;
   const p = page.properties;
@@ -58,6 +78,8 @@ function notionPageToTrade(page) {
   const model = p["ENTRY MODEL"]?.select?.name != null ? String(p["ENTRY MODEL"].select.name) : "";
   const notes = plainFromRichText(p["TRADE SUMMARY"]?.rich_text);
 
+  const trade_images = extractTradeImagesFromProps(p);
+
   return {
     notion_id: page.id,
     date: dateIso,
@@ -67,6 +89,7 @@ function notionPageToTrade(page) {
     rr,
     model,
     notes,
+    trade_images,
     updated_at: new Date().toISOString(),
   };
 }
@@ -122,7 +145,8 @@ async function upsertTradeBatch(supabaseUrl, supabaseKey, rows) {
   if (!rows.length) return;
 
   // Explicit column list ensures ON CONFLICT DO UPDATE overwrites every field.
-  const columns = "notion_id,date,user_id,session,outcome,rr,model,notes,updated_at";
+  const columns =
+    "notion_id,date,user_id,session,outcome,rr,model,notes,trade_images,updated_at";
   const res = await fetch(
     `${supabaseUrl}/rest/v1/trades?on_conflict=notion_id&columns=${columns}`,
     {

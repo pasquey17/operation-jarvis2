@@ -401,6 +401,44 @@
         color: rgba(255,255,255,0.5); line-height: 1.65; white-space: pre-wrap;
         word-break: break-word; margin: 0;
       }
+      .jn-trade-photos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 4px;
+      }
+      .jn-photo-link {
+        display: block;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(0, 212, 255, 0.18);
+        flex: 0 0 auto;
+        max-width: 100%;
+      }
+      .jn-photo-thumb {
+        display: block;
+        width: 140px;
+        height: 88px;
+        object-fit: cover;
+        vertical-align: middle;
+      }
+      .jn-photo-link:hover {
+        border-color: rgba(0, 212, 255, 0.45);
+        box-shadow: 0 0 16px rgba(0, 212, 255, 0.12);
+      }
+      .jn-card__photo-hit {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 6px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid rgba(0, 212, 255, 0.22);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px;
+        letter-spacing: 0.14em;
+        color: rgba(0, 212, 255, 0.75);
+        vertical-align: middle;
+      }
       .jn-ask-btn {
         align-self: flex-start; padding: 8px 16px; border-radius: 6px;
         border: 1px solid rgba(0,212,255,0.35); background: rgba(0,212,255,0.06);
@@ -990,6 +1028,44 @@
         return '<span class="jn-badge ' + cls + '">' + dir.toUpperCase() + '</span>';
       }
 
+      /** Notion-synced trades: trade_images JSON array. Manual journal: custom_data.trade_images or .photos */
+      function tradeImageUrls(trade) {
+        if (!trade || typeof trade !== 'object') return [];
+        var v = trade.trade_images;
+        if (v == null && trade.custom_data && typeof trade.custom_data === 'object') {
+          v = trade.custom_data.trade_images || trade.custom_data.photos || trade.custom_data.images;
+        }
+        if (v == null || v === '') return [];
+        if (typeof v === 'string') {
+          try { v = JSON.parse(v); } catch (e) { return []; }
+        }
+        if (!Array.isArray(v)) return [];
+        var out = [];
+        for (var i = 0; i < v.length; i++) {
+          var u = v[i];
+          if (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) out.push(u.trim());
+        }
+        return out;
+      }
+
+      function tradePhotosSectionHtml(trade) {
+        var urls = tradeImageUrls(trade);
+        if (!urls.length) return '';
+        var thumbs = urls.map(function (u, ix) {
+          return (
+            '<a class="jn-photo-link" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' +
+            '<img class="jn-photo-thumb" src="' + esc(u) + '" alt="Trade chart ' + (ix + 1) + '" loading="lazy" decoding="async" />' +
+            '</a>'
+          );
+        }).join('');
+        return (
+          '<div class="jn-detail">' +
+          '  <span class="jn-detail__label">Charts</span>' +
+          '  <div class="jn-trade-photos">' + thumbs + '</div>' +
+          '</div>'
+        );
+      }
+
       function renderCard(trade, idx) {
         var outcome   = normalizeOutcome(getField(trade, 'outcome', 'Outcome', 'OUTCOME'));
         var pair      = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '';
@@ -1014,6 +1090,8 @@
         var modelDisplay  = model ? truncate(model, 30) : '';
         var acctBadge     = account ? '<span class="jn-badge jn-badge--acct">' + esc(account) + '</span>' : '';
         var pairHtml      = pair ? '<span class="jn-card__pair">' + esc(pair.toUpperCase()) + '</span>' : '';
+        var imgs = tradeImageUrls(trade);
+        var chartHint = imgs.length ? '<span class="jn-card__photo-hit" title="' + imgs.length + ' chart(s)">IMG</span>' : '';
 
         return [
           '<article class="jn-card" data-expanded="false" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
@@ -1022,7 +1100,7 @@
           '      <span class="jn-card__date">' + esc(dateShort) + '</span>',
           '      ' + outcomeBadgeHtml(outcome),
           '      ' + directionBadgeHtml(trade),
-          '      ' + pairHtml,
+          '      ' + pairHtml + chartHint,
           modelDisplay ? '      <span class="jn-card__model">' + esc(modelDisplay) + '</span>' : '',
           '    </div>',
           '    <div class="jn-card__right">',
@@ -1036,6 +1114,7 @@
           model ? '      <div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' + esc(model) + '</span></div>' : '',
           '      <div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' + esc(dateFull) + '</span></div>',
           notes ? '      <div class="jn-detail"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' + esc(notes) + '</p></div>' : '',
+          tradePhotosSectionHtml(trade),
           '      <button class="jn-ask-btn" data-idx="' + idx + '" type="button">Ask Jarvis about this trade</button>',
           '    </div>',
           '  </div>',
