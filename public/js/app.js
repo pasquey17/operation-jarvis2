@@ -743,19 +743,37 @@ function startOrb() {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const logicalW = canvas.width;
-  const logicalH = canvas.height;
-  canvas.style.width = `${logicalW}px`;
-  canvas.style.height = `${logicalH}px`;
-  canvas.width = Math.floor(logicalW * dpr);
-  canvas.height = Math.floor(logicalH * dpr);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
   let t = 0;
-  const cx = logicalW / 2;
-  const cy = logicalH / 2;
-  const baseR = Math.min(logicalW, logicalH) * 0.325;
+  let logicalW = 0;
+  let logicalH = 0;
+  let cx = 0;
+  let cy = 0;
+  let baseR = 0;
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+
+    // Backing buffer scales for DPR, but layout is controlled by CSS.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const bw = Math.max(1, Math.floor(w * dpr));
+    const bh = Math.max(1, Math.floor(h * dpr));
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
+    }
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    logicalW = w;
+    logicalH = h;
+    cx = logicalW / 2;
+    cy = logicalH / 2;
+    baseR = Math.min(logicalW, logicalH) * 0.325;
+  }
+
+  resizeCanvas();
+  window.addEventListener("resize", resizeCanvas);
 
   function frame() {
     t += orbMode === "active" ? 0.2 : 0.036;
