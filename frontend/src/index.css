@@ -21,10 +21,17 @@
 
 html,
 body {
-  height: auto;
+  height: 100%;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+body {
   min-height: 100%;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 
 body {
