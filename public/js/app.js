@@ -944,7 +944,7 @@ els.chatInput?.addEventListener("input", () => {
   if ((els.chatInput?.value || "").trim()) enterChatMode();
 });
 
-/* ═══════════ Jarvis-style holographic core — dense point cloud + HUD shells (2D canvas) ═══════════ */
+/* ═══════════ Nucleus-cell orb — volumetric shells only, no wireframe lines (2D canvas) ═══════════ */
 function startOrb() {
   const canvas = els.orbCanvas;
   if (!canvas) return;
@@ -952,8 +952,9 @@ function startOrb() {
   if (!ctx) return;
 
   const BLUE = [0, 191, 255];
-  const BLUE_DEEP = [0, 90, 180];
-  const BLUE_HOT = [210, 252, 255];
+  const BLUE_DEEP = [0, 75, 165];
+  const BLUE_HOT = [215, 252, 255];
+  const PI2 = Math.PI * 2;
 
   const reducedMotion =
     typeof window.matchMedia === "function" &&
@@ -967,12 +968,11 @@ function startOrb() {
   let timeSec = 0;
   let lastFrameTs = performance.now();
 
-  /** Volumetric + shell point counts scale with drawable area */
   let hullN = 0;
   let interiorN = 0;
   let nucleusN = 0;
-  let fiberPairs = 0;
-  /** Pre-baked XYZ on unit-ish sphere / interior volumes (rebuilt on resize) */
+  let shellN = 0;
+  let strayN = 0;
   let hullX,
     hullY,
     hullZ,
@@ -982,9 +982,13 @@ function startOrb() {
     nucleusX,
     nucleusY,
     nucleusZ,
-    fiberA,
-    fiberB;
-  /** Hash for stable micro-variation without per-frame noise */
+    shellX,
+    shellY,
+    shellZ,
+    strayX,
+    strayY,
+    strayZ;
+
   function phasor(i, salt) {
     const t = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453123;
     return t - Math.floor(t);
@@ -992,74 +996,78 @@ function startOrb() {
 
   let cloudCacheKey = "";
 
-  const rawNormals = [
-    [0, 0, 1],
-    [0, 1, 0],
-    [1, 0, 0],
-    [1, 1, 0],
-    [1, 0, 1],
-    [0, 1, 1],
-    [1, -1, 0],
-    [1, 0, -1],
-    [0, 1, -1],
-    [-1, 1, 1],
-    [1, 1, 1],
-    [-1, 1, 0],
-    [1, -1, 2],
-    [2, -1, 1],
-    [-1, 0, 1],
-  ];
-  const ringNormals = rawNormals.map((v) => {
-    const len = Math.hypot(v[0], v[1], v[2]) || 1;
-    return [v[0] / len, v[1] / len, v[2] / len];
-  });
-
-  const tmpCross = [0, 0, 0];
-  const uHat = [0, 0, 0];
-  const vHat = [0, 0, 0];
-
-  /** One point buffer per ring so depth-sorted draws stay correct across frames */
-  const ringCaches = ringNormals.map(() => []);
-
-  const N_BUCK = 32;
+  const N_BUCK = 24;
   const dotBuckets = Array.from({ length: N_BUCK }, () => []);
 
   function computeCloudBudget() {
     const m = Math.min(logicalW, logicalH);
     const area = logicalW * logicalH;
     if (area < 150000 || m < 300) {
-      return { hull: 480, interior: 160, nucleus: 70, fibers: 180 };
+      return { hull: 260, shell: 420, interior: 190, nucleus: 110, stray: 45 };
     }
     if (area < 320000 || m < 420) {
-      return { hull: 820, interior: 290, nucleus: 100, fibers: 320 };
+      return { hull: 400, shell: 720, interior: 340, nucleus: 170, stray: 80 };
     }
-    if (area < 520000) {
-      return { hull: 1200, interior: 420, nucleus: 140, fibers: 460 };
+    if (area < 700000) {
+      return { hull: 560, shell: 1080, interior: 500, nucleus: 240, stray: 110 };
     }
-    return { hull: 1650, interior: 560, nucleus: 180, fibers: 600 };
+    return { hull: 720, shell: 1480, interior: 680, nucleus: 300, stray: 150 };
+  }
+
+  function fibonacciSpherePoint(i, n, outX, outY, outZ, scale) {
+    const t = (i + 0.5) / n;
+    const phi = Math.acos(1 - 2 * t);
+    const theta = PI2 * (1 + Math.sqrt(5)) * (i + 0.5);
+    const sinp = Math.sin(phi);
+    const fx = sinp * Math.cos(theta);
+    const fy = sinp * Math.sin(theta);
+    const fz = Math.cos(phi);
+    const j = 0.985 + phasor(i, 44) * 0.03;
+    outX[i] = fx * scale * j;
+    outY[i] = fy * scale * j;
+    outZ[i] = fz * scale * j;
   }
 
   function rebuildPointCloudModels() {
     const b = computeCloudBudget();
-    const key = `${b.hull}|${b.interior}|${b.nucleus}|${b.fibers}`;
+    const key = `${b.hull}|${b.shell}|${b.interior}|${b.nucleus}|${b.stray}`;
     if (key === cloudCacheKey && hullX?.length === b.hull) return;
     cloudCacheKey = key;
+
     hullN = b.hull;
     interiorN = b.interior;
     nucleusN = b.nucleus;
-    fiberPairs = b.fibers;
+    shellN = b.shell;
+    strayN = b.stray;
 
     hullX = new Float32Array(hullN);
     hullY = new Float32Array(hullN);
     hullZ = new Float32Array(hullN);
-    for (let i = 0; i < hullN; i++) {
-      const t = (i + 0.5) / hullN;
-      const phi = Math.acos(1 - 2 * t);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-      const sinp = Math.sin(phi);
-      hullX[i] = sinp * Math.cos(theta);
-      hullY[i] = sinp * Math.sin(theta);
-      hullZ[i] = Math.cos(phi);
+    for (let i = 0; i < hullN; i++) fibonacciSpherePoint(i, hullN, hullX, hullY, hullZ, 1);
+
+    const numLayers = Math.min(6, Math.max(4, Math.floor(shellN / 180)));
+    const perLayer = Math.floor(shellN / numLayers);
+    shellX = new Float32Array(shellN);
+    shellY = new Float32Array(shellN);
+    shellZ = new Float32Array(shellN);
+    let si = 0;
+    for (let li = 0; li < numLayers && si < shellN; li++) {
+      const rBase = 0.36 + (li / Math.max(1, numLayers - 1)) * 0.52;
+      const count = li === numLayers - 1 ? shellN - si : perLayer;
+      for (let k = 0; k < count && si < shellN; k++, si++) {
+        const t = (k + 0.5) / count;
+        const phi = Math.acos(1 - 2 * t);
+        const theta = PI2 * (1 + Math.sqrt(5)) * (k + li * 997);
+        const sinp = Math.sin(phi);
+        const fx = sinp * Math.cos(theta);
+        const fy = sinp * Math.sin(theta);
+        const fz = Math.cos(phi);
+        const jitter = 0.96 + phasor(si, 17 + li) * 0.08;
+        const rad = rBase * jitter;
+        shellX[si] = fx * rad;
+        shellY[si] = fy * rad;
+        shellZ[si] = fz * rad;
+      }
     }
 
     interiorX = new Float32Array(interiorN);
@@ -1067,8 +1075,8 @@ function startOrb() {
     interiorZ = new Float32Array(interiorN);
     for (let i = 0; i < interiorN; i++) {
       const u = phasor(i, 2) * 2 - 1;
-      const th = phasor(i, 5) * Math.PI * 2;
-      const rad = 0.32 + phasor(i, 8) * 0.62;
+      const th = phasor(i, 5) * PI2;
+      const rad = 0.14 + phasor(i, 8) * 0.82;
       const rr = Math.sqrt(Math.max(0, 1 - u * u)) * rad;
       interiorX[i] = rr * Math.cos(th);
       interiorY[i] = rr * Math.sin(th);
@@ -1080,46 +1088,25 @@ function startOrb() {
     nucleusZ = new Float32Array(nucleusN);
     for (let i = 0; i < nucleusN; i++) {
       const u = phasor(i + 900, 1) * 2 - 1;
-      const th = phasor(i + 900, 4) * Math.PI * 2;
-      const rad = 0.08 + phasor(i + 900, 7) * 0.38;
+      const th = phasor(i + 900, 4) * PI2;
+      const rad = 0.03 + phasor(i + 900, 7) * 0.26;
       const rr = Math.sqrt(Math.max(0, 1 - u * u)) * rad;
       nucleusX[i] = rr * Math.cos(th);
       nucleusY[i] = rr * Math.sin(th);
       nucleusZ[i] = u * rad;
     }
 
-    fiberA = new Float32Array(fiberPairs * 3);
-    fiberB = new Float32Array(fiberPairs * 3);
-    for (let i = 0; i < fiberPairs; i++) {
-      const j = Math.min(hullN - 1, ((i * 7919) >>> 0) % hullN);
-      let bx = hullX[j];
-      let by = hullY[j];
-      let bz = hullZ[j];
-      const ax = phasor(i, 13) - 0.5;
-      const ay = phasor(i, 21) - 0.5;
-      const az = phasor(i, 31) - 0.5;
-      let tx = ay * bz - az * by;
-      let ty = az * bx - ax * bz;
-      let tz = ax * by - ay * bx;
-      const tlen = Math.hypot(tx, ty, tz) || 1;
-      tx /= tlen;
-      ty /= tlen;
-      tz /= tlen;
-      const span = 0.028 + phasor(i, 41) * 0.058;
-      const ax0 = bx + tx * span;
-      const ay0 = by + ty * span;
-      const az0 = bz + tz * span;
-      const bx0 = bx - tx * span * 1.07;
-      const by0 = by - ty * span * 1.07;
-      const bz0 = bz - tz * span * 1.07;
-      const ln0 = Math.hypot(ax0, ay0, az0) || 1;
-      const ln1 = Math.hypot(bx0, by0, bz0) || 1;
-      fiberA[i * 3 + 0] = ax0 / ln0;
-      fiberA[i * 3 + 1] = ay0 / ln0;
-      fiberA[i * 3 + 2] = az0 / ln0;
-      fiberB[i * 3 + 0] = bx0 / ln1;
-      fiberB[i * 3 + 1] = by0 / ln1;
-      fiberB[i * 3 + 2] = bz0 / ln1;
+    strayX = new Float32Array(strayN);
+    strayY = new Float32Array(strayN);
+    strayZ = new Float32Array(strayN);
+    for (let i = 0; i < strayN; i++) {
+      const u = phasor(i + 1200, 3) * 2 - 1;
+      const th = phasor(i + 1200, 6) * PI2;
+      const rad = 1.02 + phasor(i + 1200, 9) * 0.14;
+      const rr = Math.sqrt(Math.max(0, 1 - u * u)) * rad;
+      strayX[i] = rr * Math.cos(th);
+      strayY[i] = rr * Math.sin(th);
+      strayZ[i] = u * rad;
     }
   }
 
@@ -1131,98 +1118,91 @@ function startOrb() {
     let bi = Math.floor(((sz + 1) * 0.5) * N_BUCK);
     if (bi < 0) bi = 0;
     if (bi >= N_BUCK) bi = N_BUCK - 1;
-    const arr = dotBuckets[bi];
-    arr.push(sx, sy, radius, alpha);
+    dotBuckets[bi].push(sx, sy, radius, alpha);
   }
 
   function fillPointBuckets(rx, ry, rz, active) {
-    const tw = active ? 1.42 : 1;
-    const flick = reducedMotion ? 0 : Math.sin(timeSec * (active ? 2.1 : 0.73));
+    const tw = active ? 1.38 : 1;
+    const flick = reducedMotion ? 0 : Math.sin(timeSec * (active ? 2 : 0.68));
 
-    /** Hull shell — bright edge, sharper when toward camera */
-    for (let i = 0; i < hullN; i++) {
-      const px = eulerRotate(hullX[i], hullY[i], hullZ[i], rx, ry, rz);
-      const sz = px[2];
-      const sx = cx + px[0] * projScale;
-      const sy = cy - px[1] * projScale;
-      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
-      let a = (0.1 + frontal * 0.38 + (phasor(i, 3) - 0.5) * 0.045) * tw;
-      a += frontal * (active ? 0.06 + flick * 0.02 : flick * 0.012);
-      const rad =
-        (0.36 + frontal * (active ? 1.46 : 0.94) + (phasor(i, 99) - 0.5) * 0.09) *
-        (active ? 1.06 : 1);
-      bucketPush(sz, sx, sy, rad, Math.min(0.92, Math.max(0.04, a)));
+    function spinPoint(x, y, z) {
+      return eulerRotate(x, y, z, rx, ry, rz);
     }
 
-    /** Volumetric mist */
+    /** Distant sparkles — drawn first in buckets (farther Z typically earlier draws ok) */
+    for (let i = 0; i < strayN; i++) {
+      const px = spinPoint(strayX[i], strayY[i], strayZ[i]);
+      const sz = px[2];
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
+      let a = (0.03 + frontal * 0.14 + phasor(i, 501) * 0.06) * tw * (active ? 1.35 : 1);
+      const rad = (0.28 + frontal * 0.55 + phasor(i, 602) * 0.35) * (active ? 1.08 : 1);
+      bucketPush(sz, sx, sy, rad, Math.min(0.38, Math.max(0.02, a)));
+    }
+
     for (let i = 0; i < interiorN; i++) {
-      const px = eulerRotate(interiorX[i], interiorY[i], interiorZ[i], rx, ry, rz);
+      const px = spinPoint(interiorX[i], interiorY[i], interiorZ[i]);
       const sz = px[2];
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
-      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       let a =
-        (0.04 + frontal * 0.2 + Math.sqrt(phasor(i, 91)) * 0.08) *
-        tw *
-        (active ? 1.25 : 0.85);
+        (0.035 + frontal * 0.22 + Math.sqrt(phasor(i, 91)) * 0.07) * tw * (active ? 1.22 : 0.88);
       const rad =
-        (0.32 + frontal * 0.75 + phasor(i, 71) * 0.42) *
-        (active ? 1.05 : 0.94);
-      bucketPush(sz, sx, sy, rad, Math.min(0.65, Math.max(0.02, a)));
+        (0.28 + frontal * 0.68 + phasor(i, 71) * 0.38) * (active ? 1.04 : 0.96);
+      bucketPush(sz, sx, sy, rad, Math.min(0.58, Math.max(0.02, a)));
     }
 
-    /** Super-bright nucleus specks — Iron Man/Jarvis “white-hot core” texture */
-    for (let i = 0; i < nucleusN; i++) {
-      const px = eulerRotate(nucleusX[i], nucleusY[i], nucleusZ[i], rx, ry, rz);
+    for (let i = 0; i < shellN; i++) {
+      const px = spinPoint(shellX[i], shellY[i], shellZ[i]);
       const sz = px[2];
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
+      const dist = Math.hypot(shellX[i], shellY[i], shellZ[i]) || 0.01;
+      const shellFac = Math.max(0, Math.min(1, (dist - 0.32) / 0.68));
+      let a =
+        (0.07 + frontal * 0.42 * (0.35 + shellFac * 0.65) + (phasor(i, 3) - 0.5) * 0.04) * tw;
+      a += frontal * (active ? 0.05 + flick * 0.018 : flick * 0.01);
+      const rad =
+        (0.32 + frontal * (0.85 + shellFac * 0.55) + phasor(i, 99) * 0.12) * (active ? 1.05 : 1);
+      bucketPush(sz, sx, sy, rad, Math.min(0.88, Math.max(0.04, a)));
+    }
+
+    for (let i = 0; i < hullN; i++) {
+      const px = spinPoint(hullX[i], hullY[i], hullZ[i]);
+      const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
+      let a = (0.12 + frontal * 0.42 + (phasor(i, 11) - 0.5) * 0.04) * tw;
+      a += frontal * (active ? 0.07 + flick * 0.022 : flick * 0.014);
+      const rad =
+        (0.38 + frontal * (active ? 1.38 : 0.96) + (phasor(i, 199) - 0.5) * 0.08) *
+        (active ? 1.05 : 1);
+      bucketPush(sz, sx, sy, rad, Math.min(0.92, Math.max(0.05, a)));
+    }
+
+    for (let i = 0; i < nucleusN; i++) {
+      const px = spinPoint(nucleusX[i], nucleusY[i], nucleusZ[i]);
+      const sz = px[2];
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
       let a =
-        (0.32 + frontal * 0.5 + phasor(i, 117) * 0.36) *
-        (active ? 1.12 : 0.78 + flick * 0.05);
-      const rad = (1.05 + frontal * (active ? 1.95 : 1.15) + phasor(i, 223) * 0.95) * 1.06;
-      bucketPush(sz, sx, sy, rad, Math.min(0.99, Math.max(0.1, a)));
+        (0.38 + frontal * 0.58 + phasor(i, 117) * 0.32) * (active ? 1.1 : 0.82 + flick * 0.05);
+      const rad =
+        (1.02 + frontal * (active ? 2.05 : 1.28) + phasor(i, 223) * 0.88) * 1.04;
+      bucketPush(sz, sx, sy, rad, Math.min(0.99, Math.max(0.12, a)));
     }
   }
 
-  function strokeFiberBuckets(rx, ry, rz, active) {
-    ctx.globalCompositeOperation = "lighter";
-    ctx.lineCap = "round";
-    for (let i = 0; i < fiberPairs; i++) {
-      const ix = i * 3;
-      const p0 = eulerRotate(fiberA[ix], fiberA[ix + 1], fiberA[ix + 2], rx, ry, rz);
-      const p1 = eulerRotate(fiberB[ix], fiberB[ix + 1], fiberB[ix + 2], rx, ry, rz);
-      const zmid = (p0[2] + p1[2]) * 0.5;
-      const front = Math.max(0, Math.min(1, (zmid + 1) * 0.5));
-      let a =
-        (0.04 + front * (active ? 0.52 : 0.28)) *
-        (0.92 + phasor(i, 311) * 0.08);
-      if (front < 0.22) a *= front / 0.22 + 0.04;
-      const x0 = cx + p0[0] * projScale;
-      const y0 = cy - p0[1] * projScale;
-      const x1 = cx + p1[0] * projScale;
-      const y1 = cy - p1[1] * projScale;
-
-      ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${(a * 0.62).toFixed(3)})`;
-      ctx.globalAlpha = 1;
-      ctx.lineWidth = (active ? 2.85 : 1.85) * (0.35 + front);
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
-      ctx.stroke();
-
-      ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${(a * (active ? 0.94 : 0.62)).toFixed(3)})`;
-      ctx.lineWidth = (active ? 1.2 : 0.82) * (0.38 + front);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-  }
-
-  /** Hybrid: inexpensive fills for fog + selective gradients where the core reads “premium” */
+  /** Fast fills for mist; soft gradients only on bright nucleus-grade dots (keeps 60fps). */
   function drawBucketsScreen() {
     ctx.globalCompositeOperation = "lighter";
+    const gradAlphaMin = 0.56;
+    const gradRadMin = 1.05;
     for (let bi = 0; bi < N_BUCK; bi++) {
       const pack = dotBuckets[bi];
       for (let j = 0; j < pack.length; j += 4) {
@@ -1230,233 +1210,60 @@ function startOrb() {
         const sy = pack[j + 1];
         const rad = pack[j + 2];
         const alpha = pack[j + 3];
-
-        let useGrad = alpha > 0.48 || rad > 0.94;
-        if (useGrad) {
-          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad * (1.95 + alpha * 0.4));
-          g.addColorStop(0, `rgba(255,255,255,${alpha * 0.74})`);
+        if (alpha >= gradAlphaMin && rad >= gradRadMin) {
+          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad * (1.65 + alpha * 0.35));
+          g.addColorStop(0, `rgba(255,255,255,${alpha * 0.78})`);
           g.addColorStop(
-            0.35,
-            `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.88})`
+            0.32,
+            `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.86})`
           );
-          g.addColorStop(0.75, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${alpha * 0.42})`);
+          g.addColorStop(0.72, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${alpha * 0.36})`);
           g.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
           ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(sx, sy, rad, 0, Math.PI * 2);
+          ctx.arc(sx, sy, rad, 0, PI2);
           ctx.fill();
         } else {
           ctx.beginPath();
-          ctx.arc(sx, sy, rad * 0.56, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.84})`;
+          ctx.arc(sx, sy, rad * 0.52, 0, PI2);
+          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.88})`;
           ctx.fill();
-
           ctx.beginPath();
-          ctx.arc(sx, sy, rad * 0.16, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255,255,255,${alpha * (0.32 + alpha * 0.18)})`;
+          ctx.arc(sx, sy, rad * 0.14, 0, PI2);
+          ctx.fillStyle = `rgba(255,255,255,${alpha * (0.28 + alpha * 0.14)})`;
           ctx.fill();
         }
       }
     }
     ctx.globalCompositeOperation = "source-over";
-  }
-
-  function drawFragmentedHUDShell(rx, ry, rz, spin, active) {
-    ctx.save();
-    ctx.globalCompositeOperation = "screen";
-    const belts = active ? 4 : 3;
-    const glowOk = Math.min(logicalW, logicalH) > 340;
-
-    for (let belt = 0; belt < belts; belt++) {
-      const yaw = belt * ((Math.PI * 2) / belts) + spin * (active ? 0.092 : 0.042);
-      const pitch = belt * 0.38 + spin * (active ? 0.058 : 0.031);
-
-      ctx.setLineDash(
-        belt % 3 === 0
-          ? [2 + belt, 22, 1, 9, 4, 16]
-          : belt % 3 === 1
-            ? [4, 28, 2, 8, 1, 20]
-            : [1.5, 18, 3, 12, 2, 25]
-      );
-      ctx.lineDashOffset = -(timeSec * (active ? 22 : 9) + belt * 40);
-
-      const step = belt % 2 === 0 ? 128 : 96;
-      function buildBeltPath() {
-        ctx.beginPath();
-        for (let s = 0; s <= step; s++) {
-          const th = (s / step) * Math.PI * 2;
-          const px = eulerRotate(
-            Math.cos(th + yaw),
-            0,
-            Math.sin(th + yaw),
-            rx + pitch * 0.92,
-            ry + yaw * 0.12,
-            rz
-          );
-          let x = px[0];
-          let y = px[1];
-          y *= 0.985 + belt * 0.03 * Math.sin(th * (3 + belt) + spin);
-          let sx =
-            cx +
-            x * projScale * (1 + belt * 0.018 + Math.sin(th * (2 + belt) + spin * 2) * 0.026);
-          let sy = cy - y * projScale * (1 + belt * 0.014);
-          if (s === 0) ctx.moveTo(sx, sy);
-          else ctx.lineTo(sx, sy);
-        }
-        ctx.closePath();
-      }
-
-      buildBeltPath();
-      ctx.lineWidth =
-        (active ? 1.06 : 0.72) - belt * (active ? 0.062 : 0.048);
-      ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${
-        Math.max(0.04, (active ? 0.12 : 0.062) - belt * 0.018)
-      })`;
-      if (glowOk) {
-        ctx.shadowBlur = active ? 12 : 7;
-        ctx.shadowColor = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${active ? 0.36 : 0.2})`;
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      buildBeltPath();
-      ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${
-        (active ? 0.068 : 0.038).toFixed(3)
-      })`;
-      ctx.lineWidth = ((active ? 1.06 : 0.72) - belt * (active ? 0.062 : 0.048)) * 0.42;
-      ctx.stroke();
-    }
-
-    ctx.setLineDash([]);
-    ctx.lineDashOffset = 0;
-    ctx.restore();
-  }
-
-  function normalize3(x, y, z, out) {
-    const len = Math.hypot(x, y, z) || 1;
-    out[0] = x / len;
-    out[1] = y / len;
-    out[2] = z / len;
-    return out;
-  }
-
-  function cross(ax, ay, az, bx, by, bz, out) {
-    out[0] = ay * bz - az * by;
-    out[1] = az * bx - ax * bz;
-    out[2] = ax * by - ay * bx;
-    return out;
   }
 
   function eulerRotate(x, y, z, rx, ry, rz) {
     let c = Math.cos(rx);
     let s = Math.sin(rx);
-    let y1 = y * c - z * s;
-    let z1 = y * s + z * c;
+    const y1 = y * c - z * s;
+    const z1 = y * s + z * c;
     let x1 = x;
     c = Math.cos(ry);
     s = Math.sin(ry);
-    let x2 = x1 * c + z1 * s;
-    let y2 = y1;
-    let z2 = -x1 * s + z1 * c;
+    const x2 = x1 * c + z1 * s;
+    const y2 = y1;
+    const z2 = -x1 * s + z1 * c;
     c = Math.cos(rz);
     s = Math.sin(rz);
     return [x2 * c - y2 * s, x2 * s + y2 * c, z2];
-  }
-
-  function ringPoints(nx, ny, nz, segments, rx, ry, rz, out) {
-    const ax = Math.abs(ny) > 0.85 ? 1 : 0;
-    const ay = Math.abs(ny) > 0.85 ? 0 : 1;
-    const az = Math.abs(ny) > 0.85 ? 0 : 0;
-    cross(ax, ay, az, nx, ny, nz, tmpCross);
-    normalize3(tmpCross[0], tmpCross[1], tmpCross[2], uHat);
-    cross(nx, ny, nz, uHat[0], uHat[1], uHat[2], tmpCross);
-    normalize3(tmpCross[0], tmpCross[1], tmpCross[2], vHat);
-
-    out.length = segments + 1;
-    for (let i = 0; i <= segments; i++) {
-      const th = (i / segments) * Math.PI * 2;
-      const co = Math.cos(th);
-      const si = Math.sin(th);
-      const px = co * uHat[0] + si * vHat[0];
-      const py = co * uHat[1] + si * vHat[1];
-      const pz = co * uHat[2] + si * vHat[2];
-      const r = eulerRotate(px, py, pz, rx, ry, rz);
-      if (!out[i]) out[i] = { x: 0, y: 0, z: 0 };
-      out[i].x = cx + r[0] * projScale;
-      out[i].y = cy - r[1] * projScale;
-      out[i].z = r[2];
-    }
-    return out;
-  }
-
-  /** Sort depth: avg Z ascending ≈ farther rings first */
-  function buildFrameRingData(segments, rx, ry, rz) {
-    const rows = [];
-    const useRings =
-      Math.min(logicalW, logicalH) < 420 ? Math.min(11, ringNormals.length) : ringNormals.length;
-    for (let r = 0; r < useRings; r++) {
-      const n = ringNormals[r];
-      const pts = ringPoints(n[0], n[1], n[2], segments, rx, ry, rz, ringCaches[r]);
-      let sumZ = 0;
-      for (let i = 0; i < pts.length; i++) sumZ += pts[i].z;
-      rows.push({ avgZ: sumZ / pts.length, pts });
-    }
-    rows.sort((a, b) => a.avgZ - b.avgZ);
-    return rows;
-  }
-
-  function drawRingStroke(pts, avgZ, active, thetaPulse) {
-    const depthFac = Math.max(0, Math.min(1, (avgZ + 1) * 0.5));
-    const baseA =
-      0.1 + depthFac * 0.55 + (active ? 0.09 : 0);
-    const pulse = active ? 0.05 * Math.sin(thetaPulse * 3.05) : 0;
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-
-    ctx.globalCompositeOperation = "screen";
-
-    ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${(baseA * 0.15 + pulse + 0.02).toFixed(3)})`;
-    ctx.lineWidth = active ? 4.6 : 3.55;
-    ctx.stroke();
-
-    ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${(baseA * 0.32 + pulse * 0.75).toFixed(3)})`;
-    ctx.lineWidth = active ? 2.05 : 1.55;
-    ctx.stroke();
-
-    ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${Math.min(
-      0.88,
-      baseA * 0.62 + pulse * 1.05 + (active ? 0.085 : 0)
-    ).toFixed(3)})`;
-    ctx.lineWidth = active ? 0.92 : 0.74;
-    ctx.stroke();
-
-    ctx.globalCompositeOperation = "source-over";
-  }
-
-  function drawLatticeNodes(pts, avgZ, active, seed) {
-    const depthFac = Math.max(0, Math.min(1, (avgZ + 1) * 0.5));
-    const step = active ? 13 : 16;
-    for (let i = 0; i < pts.length; i += step) {
-      const p = pts[i];
-      const a = depthFac * 0.5 + (((seed * 31 + i * 17) % 13) / 130) * 0.35 + (active ? 0.16 : 0);
-      const rad = active ? 2.15 : 1.5;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad * 3.2);
-      g.addColorStop(0, `rgba(255,255,255,${0.45 * a + 0.12})`);
-      g.addColorStop(0.5, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${0.75 * a})`);
-      g.addColorStop(1, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},0)`);
-      ctx.fillStyle = g;
-      ctx.fill();
-    }
   }
 
   function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
     const w = Math.max(1, Math.round(rect.width));
     const h = Math.max(1, Math.round(rect.height));
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const m = Math.min(w, h);
+    const area = w * h;
+    let dprCap = 2;
+    if (area > 550000 && m > 480) dprCap = 2.5;
+    if (area > 900000 && m > 640) dprCap = 3;
+    const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
     const bw = Math.max(1, Math.floor(w * dpr));
     const bh = Math.max(1, Math.floor(h * dpr));
     if (canvas.width !== bw || canvas.height !== bh) {
@@ -1479,11 +1286,6 @@ function startOrb() {
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
 
-  function segmentCount() {
-    const m = Math.min(logicalW, logicalH);
-    return Math.min(128, Math.max(52, Math.floor(m * 0.29)));
-  }
-
   function frame(now) {
     const dt = reducedMotion ? 0 : Math.min((now - lastFrameTs) / 1000, 0.05);
     lastFrameTs = now;
@@ -1503,9 +1305,6 @@ function startOrb() {
     const rz =
       Math.cos(spin * 0.71) * 0.07 + spin * (active ? 0.68 : 0.42) + Math.sin(timeSec * 0.23) * 0.09;
 
-    const segs = segmentCount();
-    const ringRows = buildFrameRingData(segs, rx, ry, rz);
-
     ctx.clearRect(0, 0, logicalW, logicalH);
 
     const breathOuter =
@@ -1524,21 +1323,9 @@ function startOrb() {
 
     ctx.globalCompositeOperation = "source-over";
 
-    const thetaPulse = spin * (active ? 2.65 : 1.15);
-
-    for (const row of ringRows) drawRingStroke(row.pts, row.avgZ, active, thetaPulse);
-
     clearDotBuckets();
     fillPointBuckets(rx, ry, rz, active);
     drawBucketsScreen();
-
-    strokeFiberBuckets(rx, ry, rz, active);
-
-    drawFragmentedHUDShell(rx, ry, rz, spin, active);
-
-    ctx.globalCompositeOperation = "lighter";
-    ringRows.forEach((row, i) => drawLatticeNodes(row.pts, row.avgZ, active, i));
-    ctx.globalCompositeOperation = "source-over";
 
     const corePulse = active ? 1.06 + 0.035 * Math.sin(timeSec * 3.1) : 1 + 0.028 * Math.sin(timeSec * 0.96);
     const cr = projScale * 0.5 * corePulse;
