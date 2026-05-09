@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { pathToFileURL } from "node:url";
+import { fetchImageUrlsFromNotionPageBlocks } from "./notion-page-images.mjs";
 
 /**
  * Notion → Supabase sync for `public.trades` (mum).
@@ -141,6 +142,45 @@ async function fetchAllNotionPages(notionKey, dataSourceId) {
   return results;
 }
 
+const BODY_IMAGE_CONCURRENCY = Math.min(
+  8,
+  Math.max(1, Number(process.env.NOTION_BODY_IMAGE_CONCURRENCY) || 6)
+);
+
+async function enrichTradeRowsWithPageBodyImages(notionKey, pages) {
+  const rows = [];
+  for (let i = 0; i < pages.length; i += BODY_IMAGE_CONCURRENCY) {
+    const chunk = pages.slice(i, i + BODY_IMAGE_CONCURRENCY);
+    const batch = await Promise.all(
+      chunk.map(async (page) => {
+        const t = notionPageToTrade(page);
+        if (!t) return null;
+        try {
+          const fromBlocks = await fetchImageUrlsFromNotionPageBlocks(notionKey, page.id, {
+            maxUrls: 48,
+            maxBlockRequests: 150,
+          });
+          const merged = [...(Array.isArray(t.trade_images) ? t.trade_images : [])];
+          const seen = new Set(merged);
+          for (const u of fromBlocks) {
+            if (!seen.has(u)) {
+              seen.add(u);
+              merged.push(u);
+            }
+          }
+          t.trade_images = merged;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.warn(`[notion-sync-mum] page body images ${page?.id}: ${msg}`);
+        }
+        return t;
+      })
+    );
+    for (const t of batch) if (t) rows.push(t);
+  }
+  return rows;
+}
+
 async function upsertTradeBatch(supabaseUrl, supabaseKey, rows) {
   if (!rows.length) return;
 
@@ -194,11 +234,7 @@ export async function syncNotionToSupabaseMum() {
   const pages = await fetchAllNotionPages(notionKey, dataSourceId);
   const fetched = pages.length;
 
-  const rows = [];
-  for (const page of pages) {
-    const t = notionPageToTrade(page);
-    if (t) rows.push(t);
-  }
+  const rows = await enrichTradeRowsWithPageBodyImages(notionKey, pages);
   const upserted = rows.length;
 
   for (let i = 0; i < rows.length; i += UPSERT_BATCH_SIZE) {

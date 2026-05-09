@@ -5,4 +5,4 @@ alter table public.trades
   add column if not exists trade_images jsonb not null default '[]'::jsonb;
 
 comment on column public.trades.trade_images is
-  'Array of image URLs (from Notion file properties or uploads), newest-first optional.';
+  'Array of image URLs: Notion Files properties plus image/file blocks in the page body (e.g. under TRADE PHOTO headings).';
