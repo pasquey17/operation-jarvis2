@@ -461,7 +461,7 @@ function renderSnapshot() {
     if (els.snapAvgRR) els.snapAvgRR.textContent = "—";
     if (els.snapExpectancy) els.snapExpectancy.textContent = "—";
     if (els.snapTotal) els.snapTotal.textContent = "—";
-    if (els.snapInsight) els.snapInsight.textContent = "Loading your system…";
+    if (els.snapInsight) els.snapInsight.textContent = "Syncing ledger…";
     return;
   }
 
@@ -476,9 +476,11 @@ function renderSnapshot() {
     els.snapExpectancy.textContent =
       s.expectancy == null ? "—" : `${Number(s.expectancy).toFixed(2)}R`;
   if (els.snapInsight) {
-    let line = s.bestSession ? `Most active session: ${s.bestSession}` : "—";
+    let line = s.bestSession
+      ? `Edge clusters in ${s.bestSession}.`
+      : "Session mix flat — no dominant window yet.";
     if (tradeData?.warning) {
-      line = `${line}${line && line !== "—" ? " · " : ""}${tradeData.warning}`;
+      line = `${line} · ${tradeData.warning}`;
     }
     els.snapInsight.textContent = line;
   }
@@ -492,9 +494,13 @@ function getRecentTradesForChat(records) {
 /* ═══════════ Greeting ═══════════ */
 function getGreeting() {
   const h = new Date().getHours();
-  if (h < 12) return "Systems online. Good morning. Ready when you are.";
-  if (h < 17) return "Systems online. Good afternoon. Standing by.";
-  return "Systems online. Good evening. Let's review your session.";
+  if (h < 12) {
+    return "Core online — good morning. Telemetry is live on your ledger whenever you need it.";
+  }
+  if (h < 17) {
+    return "Core online — good afternoon. Your stats are streaming; ask anything or keep watching the board.";
+  }
+  return "Core online — good evening. Ready to decompress the session or tighten tomorrow’s plan.";
 }
 
 async function showGreeting() {
