@@ -284,10 +284,6 @@
         width: 100%;
         min-width: 0;
       }
-      .jn-card[data-expanded="true"] {
-        overflow: visible;
-        z-index: 5;
-      }
       .jn-card::after {
         content: "";
         position: absolute;
@@ -410,10 +406,8 @@
         flex-shrink: 0; white-space: nowrap;
       }
       .jn-card__chevron {
-        font-size: 10px; color: rgba(255,255,255,0.22); flex-shrink: 0;
-        transition: transform 0.25s cubic-bezier(0.22,1,0.36,1);
+        font-size: 10px; color: rgba(255,255,255,0.18); flex-shrink: 0;
       }
-      .jn-card[data-expanded="true"] .jn-card__chevron { transform: rotate(180deg); }
 
       /* ── Badges ── */
       .jn-badge {
@@ -430,27 +424,16 @@
       .jn-badge--short { background: rgba(255,140,0,0.12); color: #ff8c00; border-color: rgba(255,140,0,0.35); }
       .jn-badge--acct  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.38); border-color: rgba(255,255,255,0.1); font-weight: 400; font-size: 9px; }
 
-      /* ── Expanded content (grid clip) ── */
-      .jn-card__expand {
-        display: grid;
-        grid-template-rows: 0fr;
-        transition: grid-template-rows 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-        border-top: 0 solid transparent;
-      }
-      .jn-card[data-expanded="true"] .jn-card__expand {
-        grid-template-rows: 1fr;
-        border-top: 1px solid rgba(0, 212, 255, 0.14);
-        overflow: visible;
-      }
-      .jn-card__expand > .jn-expand-inner {
-        min-height: 0;
-      }
+      /* ── Trade detail pane (modal body reuses these) ── */
       .jn-expand-inner {
         padding: 13px 12px 14px;
         display: flex;
         flex-direction: column;
         gap: 12px;
         background: rgba(0, 0, 0, 0.25);
+      }
+      .jn-trade-modal .jn-expand-inner {
+        background: transparent;
       }
       .jn-detail { display: flex; flex-direction: column; gap: 3px; }
       .jn-detail__label {
@@ -514,6 +497,117 @@
       .jn-photo-open:hover {
         border-color: rgba(0, 212, 255, 0.45);
         box-shadow: 0 0 16px rgba(0, 212, 255, 0.12);
+      }
+
+      /* ── Trade detail modal (Notion page–style peek) ── */
+      .jn-trade-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 199000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+          max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+      }
+      .jn-trade-modal[hidden] {
+        display: none !important;
+      }
+      .jn-trade-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.76);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        cursor: pointer;
+      }
+      .jn-trade-modal__panel {
+        position: relative;
+        z-index: 1;
+        width: min(100%, 580px);
+        max-height: min(90vh, 920px);
+        display: flex;
+        flex-direction: column;
+        border-radius: var(--radius-panel, 14px);
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        border-left-width: 4px;
+        border-left-color: rgba(255, 255, 255, 0.16);
+        background: rgba(0, 0, 0, 0.93);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.06) inset,
+          0 28px 90px rgba(0, 0, 0, 0.55);
+        overflow: hidden;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+      .jn-trade-modal__panel[data-outcome="win"] {
+        border-left-color: #00ff88;
+      }
+      .jn-trade-modal__panel[data-outcome="loss"] {
+        border-left-color: #ff5050;
+      }
+      .jn-trade-modal__panel[data-outcome="be"] {
+        border-left-color: rgba(192, 192, 192, 0.35);
+      }
+      .jn-trade-modal__head {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(0, 212, 255, 0.14);
+      }
+      .jn-trade-modal__title {
+        margin: 0;
+        font-family: "Outfit", system-ui, sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.95);
+        letter-spacing: 0.02em;
+        line-height: 1.3;
+      }
+      .jn-trade-modal__close {
+        flex-shrink: 0;
+        width: 38px;
+        height: 38px;
+        border: 1px solid rgba(0, 212, 255, 0.35);
+        border-radius: var(--radius-soft, 10px);
+        background: rgba(0, 0, 0, 0.45);
+        color: #00d4ff;
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .jn-trade-modal__close:hover {
+        background: rgba(0, 212, 255, 0.12);
+        border-color: #00d4ff;
+      }
+      .jn-trade-modal__scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+      .jn-trade-modal__hero {
+        width: 100%;
+        max-height: min(260px, 36vh);
+        background: rgba(22, 24, 28, 0.98);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+        line-height: 0;
+      }
+      .jn-trade-modal__hero-img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-height: min(260px, 36vh);
+        object-fit: contain;
+        object-position: center top;
       }
 
       /* Chart lightbox */
@@ -655,7 +749,6 @@
       }
       @media (prefers-reduced-motion: reduce) {
         .jn-card,
-        .jn-card__expand,
         .jn-filter-panel {
           transition-duration: 0.01ms !important;
         }
@@ -821,6 +914,18 @@
         <button class="jn-load-more hidden" id="jn-load-more" type="button">Load more</button>
       </div>
     </main>
+
+    <!-- Notion-like trade detail (journal only) -->
+    <div id="jn-trade-modal" class="jn-trade-modal" hidden role="dialog" aria-modal="true" aria-labelledby="jn-trade-modal-title" aria-hidden="true">
+      <div class="jn-trade-modal__backdrop" id="jn-trade-modal-backdrop" tabindex="-1"></div>
+      <div class="jn-trade-modal__panel" id="jn-trade-modal-panel" data-outcome="">
+        <header class="jn-trade-modal__head">
+          <h2 class="jn-trade-modal__title" id="jn-trade-modal-title">Trade</h2>
+          <button type="button" class="jn-trade-modal__close" id="jn-trade-modal-close" aria-label="Close trade detail">&times;</button>
+        </header>
+        <div class="jn-trade-modal__scroll" id="jn-trade-modal-scroll"></div>
+      </div>
+    </div>
 
     <!-- Full-screen chart preview (journal only) -->
     <div id="jn-lightbox" class="jn-lightbox" hidden role="dialog" aria-modal="true" aria-label="Chart preview">
@@ -1290,6 +1395,98 @@
         );
       }
 
+      /** Cover image block for modal (same TRADE PHOTO rule as compact cards). */
+      function tradeModalHeroHtml(trade) {
+        var imgItems = tradeImageItems(trade);
+        var coverItem = tradeCardCoverItem(imgItems);
+        if (!coverItem || !coverItem.url) return '';
+        return (
+          '<div class="jn-trade-modal__hero">' +
+          '  <img class="jn-trade-modal__hero-img" src="' + esc(coverItem.url) + '" alt="" decoding="async" />' +
+          '</div>'
+        );
+      }
+
+      /** Entry Model, date, notes, charts, Ask Jarvis — same markup as legacy inline expand. */
+      function tradeDetailPaneHtml(trade, idx) {
+        var model = getField(trade, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '';
+        var notes = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
+        var dateFull = formatDateFull(trade);
+        var parts = [];
+        if (model) {
+          parts.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' +
+              esc(model) +
+              '</span></div>'
+          );
+        }
+        parts.push(
+          '<div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' +
+            esc(dateFull) +
+            '</span></div>'
+        );
+        if (notes) {
+          parts.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' +
+              esc(notes) +
+              '</p></div>'
+          );
+        }
+        parts.push(tradePhotosSectionHtml(trade));
+        parts.push(
+          '<button class="jn-ask-btn" data-idx="' + idx + '" type="button">Ask Jarvis about this trade</button>'
+        );
+        return '<div class="jn-expand-inner">' + parts.join('') + '</div>';
+      }
+
+      function openTradeModal(idx) {
+        var trade = filteredTrades[idx];
+        if (!trade) return;
+        var modal = document.getElementById('jn-trade-modal');
+        var scrollEl = document.getElementById('jn-trade-modal-scroll');
+        var titleEl = document.getElementById('jn-trade-modal-title');
+        var panel = document.getElementById('jn-trade-modal-panel');
+        if (!modal || !scrollEl || !panel) return;
+
+        var outcome = normalizeOutcome(getField(trade, 'outcome', 'Outcome', 'OUTCOME'));
+        var pairRaw = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '';
+        var dateShort = formatDateShort(trade);
+        titleEl.textContent = pairRaw
+          ? dateShort + ' · ' + String(pairRaw).toUpperCase()
+          : dateShort;
+
+        panel.setAttribute('data-outcome', outcome);
+
+        scrollEl.innerHTML = tradeModalHeroHtml(trade) + tradeDetailPaneHtml(trade, idx);
+        modal.removeAttribute('hidden');
+        modal.setAttribute('aria-hidden', 'false');
+
+        try {
+          document.body.style.overflow = 'hidden';
+        } catch (e1) {}
+
+        try {
+          document.getElementById('jn-trade-modal-close').focus();
+        } catch (e2) {}
+      }
+
+      function closeTradeModal() {
+        var modal = document.getElementById('jn-trade-modal');
+        var lb = document.getElementById('jn-lightbox');
+        if (!modal) return;
+        modal.setAttribute('hidden', '');
+        modal.setAttribute('aria-hidden', 'true');
+
+        var scrollEl = document.getElementById('jn-trade-modal-scroll');
+        if (scrollEl) scrollEl.innerHTML = '';
+
+        try {
+          if (!lb || lb.hasAttribute('hidden')) {
+            document.body.style.overflow = '';
+          }
+        } catch (e) {}
+      }
+
       function renderCard(trade, idx) {
         var outcome   = normalizeOutcome(getField(trade, 'outcome', 'Outcome', 'OUTCOME'));
         var pair      = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '';
@@ -1307,9 +1504,7 @@
           rrColor   = '';
         }
         var model     = getField(trade, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '';
-        var notes     = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
         var dateShort = formatDateShort(trade);
-        var dateFull  = formatDateFull(trade);
 
         var modelDisplay  = model ? truncate(model, 26) : '';
         var acctBadge     = account ? '<span class="jn-badge jn-badge--acct">' + esc(account) + '</span>' : '';
@@ -1326,7 +1521,7 @@
         }
 
         return [
-          '<article class="jn-card" data-expanded="false" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
+          '<article class="jn-card" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
           coverPiece,
           '  <div class="jn-card__top">',
           '    <span class="jn-card__date">' + esc(dateShort) + '</span>',
@@ -1342,15 +1537,6 @@
           '      <span class="jn-card__rr"' + (rrColor ? ' style="color:' + rrColor + '"' : '') + '>' + esc(rrDisplay) + '</span>',
           '      <span class="jn-card__chevron">&#9660;</span>',
           '      </div>',
-          '    </div>',
-          '  </div>',
-          '  <div class="jn-card__expand">',
-          '    <div class="jn-expand-inner">',
-          model ? '      <div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' + esc(model) + '</span></div>' : '',
-          '      <div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' + esc(dateFull) + '</span></div>',
-          notes ? '      <div class="jn-detail"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' + esc(notes) + '</p></div>' : '',
-          tradePhotosSectionHtml(trade),
-          '      <button class="jn-ask-btn" data-idx="' + idx + '" type="button">Ask Jarvis about this trade</button>',
           '    </div>',
           '  </div>',
           '</article>'
@@ -1414,12 +1600,15 @@
       function closeJnLightbox() {
         var lb = document.getElementById('jn-lightbox');
         var imgEl = lb && lb.querySelector('.jn-lightbox__img');
+        var modal = document.getElementById('jn-trade-modal');
         if (!lb) return;
         lb.setAttribute('hidden', '');
         lb.setAttribute('aria-hidden', 'true');
         if (imgEl) imgEl.src = '';
         try {
-          document.body.style.overflow = '';
+          if (!modal || modal.hasAttribute('hidden')) {
+            document.body.style.overflow = '';
+          }
         } catch (e) {}
       }
 
@@ -1430,14 +1619,31 @@
         closeJnLightbox();
       });
       document.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Escape') return;
         var lb = document.getElementById('jn-lightbox');
-        if (lb && !lb.hasAttribute('hidden') && ev.key === 'Escape') {
+        if (lb && !lb.hasAttribute('hidden')) {
           closeJnLightbox();
+          return;
+        }
+        var modal = document.getElementById('jn-trade-modal');
+        if (modal && !modal.hasAttribute('hidden')) {
+          closeTradeModal();
         }
       });
 
-      /* ── Card interaction ── */
-      document.getElementById('jn-list').addEventListener('click', function (e) {
+      document.getElementById('jn-trade-modal-close').addEventListener('click', function () {
+        closeTradeModal();
+      });
+      document.getElementById('jn-trade-modal-backdrop').addEventListener('click', function () {
+        closeTradeModal();
+      });
+
+      /* ── Card / modal: photo zoom, Ask Jarvis, open detail (Notion-style) ── */
+      document.addEventListener('click', function (e) {
+        var inList = e.target.closest('#jn-list');
+        var inModal = e.target.closest('#jn-trade-modal');
+        if (!inList && !inModal) return;
+
         var photoBtn = e.target.closest('.jn-photo-open');
         if (photoBtn) {
           e.preventDefault();
@@ -1448,15 +1654,20 @@
           );
           return;
         }
+
         var askBtn = e.target.closest('.jn-ask-btn');
         if (askBtn) {
           e.stopPropagation();
-          var trade = filteredTrades[parseInt(askBtn.dataset.idx, 10)];
-          if (trade) askJarvisAboutTrade(trade);
+          var tAsk = filteredTrades[parseInt(askBtn.dataset.idx, 10)];
+          if (tAsk) askJarvisAboutTrade(tAsk);
           return;
         }
+
         var card = e.target.closest('.jn-card');
-        if (card) card.dataset.expanded = card.dataset.expanded === 'true' ? 'false' : 'true';
+        if (card && inList) {
+          var idx = parseInt(card.getAttribute('data-idx'), 10);
+          if (!isNaN(idx)) openTradeModal(idx);
+        }
       });
 
       function buildAskJarvisPrompt(trade) {
