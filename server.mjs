@@ -912,11 +912,18 @@ function rowsToTradesPayload(rows) {
 
   const headers = Object.keys(rows[0]);
 
-  const records = rows.map(row => {
+  const records = rows.map((row) => {
     const rec = {};
     for (const h of headers) {
       const v = row[h];
-      rec[h] = v === null || v === undefined ? "" : String(v);
+      if (v === null || v === undefined) {
+        rec[h] = "";
+      } else if (typeof v === "object") {
+        // Keep jsonb / arrays (e.g. trade_images) as parseable JSON for journal UI.
+        rec[h] = JSON.stringify(v);
+      } else {
+        rec[h] = String(v);
+      }
     }
     return rec;
   });
