@@ -11,10 +11,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        app: path.resolve(__dirname, "app/index.html"),
-        pricing: path.resolve(__dirname, "app/pricing/index.html"),
-        onboarding: path.resolve(__dirname, "app/onboarding/index.html"),
-        dashboard: path.resolve(__dirname, "app/dashboard/index.html"),
+        index: path.resolve(__dirname, "index.html"),
+        pricing: path.resolve(__dirname, "pricing/index.html"),
+        onboarding: path.resolve(__dirname, "onboarding/index.html"),
+        dashboard: path.resolve(__dirname, "dashboard/index.html"),
       },
     },
   },
