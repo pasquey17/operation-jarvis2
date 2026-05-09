@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { pathToFileURL } from "node:url";
-import { fetchImageUrlsFromNotionPageBlocks } from "./notion-page-images.mjs";
+import { fetchTradeImagesFromNotionPageBlocks } from "./notion-page-images.mjs";
 
 /**
  * Notion → Supabase sync for `public.trades`.
@@ -62,7 +62,8 @@ function notionPageToTrade(page) {
   const pair = p["PAIR"]?.select?.name || plainFromRichText(p["PAIR"]?.rich_text) || null;
   const direction = p["POSITION TYPE"]?.select?.name || plainFromRichText(p["POSITION TYPE"]?.rich_text) || null;
 
-  const trade_images = extractTradeImagesFromProps(p);
+  const propUrls = extractTradeImagesFromProps(p);
+  const trade_images = propUrls.map((url) => ({ url, label: "" }));
 
   return {
     notion_id: page.id,
@@ -132,6 +133,43 @@ const BODY_IMAGE_CONCURRENCY = Math.min(
   Math.max(1, Number(process.env.NOTION_BODY_IMAGE_CONCURRENCY) || 6)
 );
 
+function normalizeTradeImageEntry(x) {
+  if (typeof x === "string") {
+    const u = x.trim();
+    if (!/^https?:\/\//i.test(u)) return null;
+    return { url: u, label: "" };
+  }
+  if (x && typeof x === "object" && typeof x.url === "string") {
+    const u = x.url.trim();
+    if (!/^https?:\/\//i.test(u)) return null;
+    return {
+      url: u,
+      label: typeof x.label === "string" ? x.label.trim() : "",
+    };
+  }
+  return null;
+}
+
+function mergeTradeImages(baseList, fromBlocks) {
+  const merged = [];
+  const seen = new Set();
+  for (const raw of baseList || []) {
+    const n = normalizeTradeImageEntry(raw);
+    if (n && !seen.has(n.url)) {
+      seen.add(n.url);
+      merged.push(n);
+    }
+  }
+  for (const raw of fromBlocks || []) {
+    const n = normalizeTradeImageEntry(raw);
+    if (n && !seen.has(n.url)) {
+      seen.add(n.url);
+      merged.push(n);
+    }
+  }
+  return merged;
+}
+
 /**
  * Merge Notion **page body** image/file blocks into trade_images (your charts live under headings, not Files columns).
  */
@@ -144,19 +182,11 @@ async function enrichTradeRowsWithPageBodyImages(notionKey, pages) {
         const t = notionPageToTrade(page);
         if (!t) return null;
         try {
-          const fromBlocks = await fetchImageUrlsFromNotionPageBlocks(notionKey, page.id, {
+          const fromBlocks = await fetchTradeImagesFromNotionPageBlocks(notionKey, page.id, {
             maxUrls: 48,
             maxBlockRequests: 150,
           });
-          const merged = [...(Array.isArray(t.trade_images) ? t.trade_images : [])];
-          const seen = new Set(merged);
-          for (const u of fromBlocks) {
-            if (!seen.has(u)) {
-              seen.add(u);
-              merged.push(u);
-            }
-          }
-          t.trade_images = merged;
+          t.trade_images = mergeTradeImages(t.trade_images, fromBlocks);
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           console.warn(`[notion-sync] page body images ${page?.id}: ${msg}`);

@@ -1,6 +1,6 @@
 /**
- * Pull image/file URLs from Notion **page body** (block children), not only DB properties.
- * Covers image blocks and file blocks under headings like "TRADE PHOTO:".
+ * Pull image/file URLs from Notion **page body** (block children), with captions
+ * from the nearest preceding heading (e.g. "TRADE PHOTO", "Higher time frame Photo").
  */
 
 const NOTION_API = "https://api.notion.com/v1";
@@ -15,25 +15,45 @@ function urlFromNotionFileLike(obj) {
   return "";
 }
 
+function plainFromRichText(rich) {
+  if (!Array.isArray(rich)) return "";
+  return rich
+    .map((b) => (typeof b?.plain_text === "string" ? b.plain_text : ""))
+    .join("")
+    .trim();
+}
+
+function headingPlainText(block) {
+  if (!block?.type?.startsWith?.("heading_")) return "";
+  const payload = block[block.type];
+  return plainFromRichText(payload?.rich_text);
+}
+
 /**
  * @param {string} notionKey
  * @param {string} blockId - page id or block id
- * @param {{ maxUrls?: number, maxBlockRequests?: number }} [opts]
- * @returns {Promise<string[]>}
+ * @param {{ maxItems?: number, maxBlockRequests?: number }} [opts]
+ * @returns {Promise<{ url: string, label: string }[]>}
  */
-export async function fetchImageUrlsFromNotionPageBlocks(notionKey, blockId, opts = {}) {
-  const maxUrls = Math.min(Math.max(1, Number(opts.maxUrls) || 48), 100);
+export async function fetchTradeImagesFromNotionPageBlocks(notionKey, blockId, opts = {}) {
+  const maxItems = Math.min(
+    Math.max(1, Number(opts.maxItems ?? opts.maxUrls) || 48),
+    100
+  );
   const maxBlockRequests = Math.min(Math.max(1, Number(opts.maxBlockRequests) || 400), 2000);
 
-  const urls = [];
+  const items = [];
   const seen = new Set();
   let blockRequests = 0;
+  /** @type {string} */
+  let lastHeading = "";
 
-  function pushUrl(u) {
-    if (!u || !/^https?:\/\//i.test(u)) return;
-    if (seen.has(u)) return;
-    seen.add(u);
-    urls.push(u);
+  function pushItem(url, label) {
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    if (seen.has(url)) return;
+    seen.add(url);
+    const cleaned = (label || "").replace(/\s*:\s*$/u, "").trim();
+    items.push({ url, label: cleaned });
   }
 
   async function fetchChildrenPage(parentId, startCursor) {
@@ -69,20 +89,23 @@ export async function fetchImageUrlsFromNotionPageBlocks(notionKey, blockId, opt
   }
 
   async function walk(parentId, depth) {
-    if (depth > 16 || urls.length >= maxUrls || blockRequests >= maxBlockRequests) return;
+    if (depth > 16 || items.length >= maxItems || blockRequests >= maxBlockRequests) return;
 
     let cursor = undefined;
     for (;;) {
       const { results, has_more, next_cursor } = await fetchChildrenPage(parentId, cursor);
       for (const block of results) {
-        if (urls.length >= maxUrls || blockRequests >= maxBlockRequests) return;
+        if (items.length >= maxItems || blockRequests >= maxBlockRequests) return;
+
+        const h = headingPlainText(block);
+        if (h) lastHeading = h;
 
         if (block?.type === "image" && block.image) {
           const u = urlFromNotionFileLike(block.image);
-          if (u) pushUrl(u);
+          if (u) pushItem(u, lastHeading);
         } else if (block?.type === "file" && block.file) {
           const u = urlFromNotionFileLike(block.file);
-          if (u) pushUrl(u);
+          if (u) pushItem(u, lastHeading);
         }
 
         if (block?.has_children && block.id) {
@@ -96,5 +119,11 @@ export async function fetchImageUrlsFromNotionPageBlocks(notionKey, blockId, opt
   }
 
   await walk(blockId, 0);
-  return urls;
+  return items;
+}
+
+/** @deprecated Use fetchTradeImagesFromNotionPageBlocks for labels */
+export async function fetchImageUrlsFromNotionPageBlocks(notionKey, blockId, opts) {
+  const rows = await fetchTradeImagesFromNotionPageBlocks(notionKey, blockId, opts);
+  return rows.map((r) => r.url);
 }

@@ -404,16 +404,39 @@
       .jn-trade-photos {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 14px 18px;
         margin-top: 4px;
+        align-items: flex-start;
       }
-      .jn-photo-link {
+      .jn-photo-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 0 0 auto;
+        max-width: min(160px, 100%);
+      }
+      .jn-photo-caption {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.48);
+        line-height: 1.35;
+        word-break: break-word;
+      }
+      .jn-photo-open {
         display: block;
+        margin: 0;
+        padding: 0;
+        border: none;
         border-radius: 10px;
         overflow: hidden;
+        cursor: zoom-in;
+        background: rgba(0, 0, 0, 0.35);
         border: 1px solid rgba(0, 212, 255, 0.18);
         flex: 0 0 auto;
         max-width: 100%;
+        line-height: 0;
       }
       .jn-photo-thumb {
         display: block;
@@ -421,10 +444,80 @@
         height: 88px;
         object-fit: cover;
         vertical-align: middle;
+        pointer-events: none;
       }
-      .jn-photo-link:hover {
+      .jn-photo-open:hover {
         border-color: rgba(0, 212, 255, 0.45);
         box-shadow: 0 0 16px rgba(0, 212, 255, 0.12);
+      }
+
+      /* Chart lightbox */
+      .jn-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 200000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      }
+      .jn-lightbox[hidden] {
+        display: none !important;
+      }
+      .jn-lightbox__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        backdrop-filter: blur(10px);
+        cursor: zoom-out;
+      }
+      .jn-lightbox__close {
+        position: absolute;
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+        z-index: 2;
+        width: 44px;
+        height: 44px;
+        border: 1px solid rgba(0, 212, 255, 0.35);
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #00d4ff;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .jn-lightbox__close:hover {
+        background: rgba(0, 212, 255, 0.12);
+        border-color: #00d4ff;
+      }
+      .jn-lightbox__figure {
+        position: relative;
+        z-index: 1;
+        margin: 0;
+        max-width: min(96vw, 1280px);
+        text-align: center;
+      }
+      .jn-lightbox__img {
+        max-width: 100%;
+        max-height: min(82vh, 880px);
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 212, 255, 0.22);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
+      }
+      .jn-lightbox__caption {
+        margin-top: 14px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.88);
+        line-height: 1.45;
       }
       .jn-card__photo-hit {
         display: inline-flex;
@@ -653,6 +746,16 @@
         <button class="jn-load-more hidden" id="jn-load-more" type="button">Load more</button>
       </div>
     </main>
+
+    <!-- Full-screen chart preview (journal only) -->
+    <div id="jn-lightbox" class="jn-lightbox" hidden role="dialog" aria-modal="true" aria-label="Chart preview">
+      <div class="jn-lightbox__backdrop" id="jn-lightbox-backdrop" tabindex="-1"></div>
+      <button type="button" class="jn-lightbox__close" id="jn-lightbox-close" aria-label="Close">&times;</button>
+      <figure class="jn-lightbox__figure">
+        <img class="jn-lightbox__img" src="" alt="" />
+        <figcaption class="jn-lightbox__caption" id="jn-lightbox-caption"></figcaption>
+      </figure>
+    </div>
 
     <script>
     (function () {
@@ -1028,8 +1131,11 @@
         return '<span class="jn-badge ' + cls + '">' + dir.toUpperCase() + '</span>';
       }
 
-      /** Notion-synced trades: trade_images JSON array. Manual journal: custom_data.trade_images or .photos */
-      function tradeImageUrls(trade) {
+      /**
+       * trade_images: JSON array of { url, label } or legacy string URLs.
+       * Manual journal: custom_data.trade_images / photos / images (same shapes).
+       */
+      function tradeImageItems(trade) {
         if (!trade || typeof trade !== 'object') return [];
         var v = trade.trade_images;
         if (v == null && trade.custom_data && typeof trade.custom_data === 'object') {
@@ -1042,20 +1148,36 @@
         if (!Array.isArray(v)) return [];
         var out = [];
         for (var i = 0; i < v.length; i++) {
-          var u = v[i];
-          if (typeof u === 'string' && /^https?:\/\//i.test(u.trim())) out.push(u.trim());
+          var item = v[i];
+          if (typeof item === 'string') {
+            var su = item.trim();
+            if (/^https?:\/\//i.test(su)) out.push({ url: su, label: '' });
+            continue;
+          }
+          if (item && typeof item === 'object' && typeof item.url === 'string') {
+            var u = item.url.trim();
+            if (!/^https?:\/\//i.test(u)) continue;
+            var lbl = typeof item.label === 'string' ? item.label.trim() : '';
+            out.push({ url: u, label: lbl });
+          }
         }
         return out;
       }
 
       function tradePhotosSectionHtml(trade) {
-        var urls = tradeImageUrls(trade);
-        if (!urls.length) return '';
-        var thumbs = urls.map(function (u, ix) {
+        var items = tradeImageItems(trade);
+        if (!items.length) return '';
+        var thumbs = items.map(function (it, ix) {
+          var cap = it.label ? it.label.replace(/\s*:+\s*$/,'').trim() : '';
+          var lineLabel = cap || ('Chart ' + (ix + 1));
+          var dataCap = cap;
           return (
-            '<a class="jn-photo-link" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' +
-            '<img class="jn-photo-thumb" src="' + esc(u) + '" alt="Trade chart ' + (ix + 1) + '" loading="lazy" decoding="async" />' +
-            '</a>'
+            '<div class="jn-photo-item">' +
+            '  <span class="jn-photo-caption">' + esc(lineLabel) + '</span>' +
+            '  <button type="button" class="jn-photo-open" data-src="' + esc(it.url) + '" data-caption="' + esc(dataCap) + '" aria-label="Expand chart">' +
+            '    <img class="jn-photo-thumb" src="' + esc(it.url) + '" alt="' + esc(lineLabel) + '" loading="lazy" decoding="async" />' +
+            '  </button>' +
+            '</div>'
           );
         }).join('');
         return (
@@ -1090,8 +1212,8 @@
         var modelDisplay  = model ? truncate(model, 30) : '';
         var acctBadge     = account ? '<span class="jn-badge jn-badge--acct">' + esc(account) + '</span>' : '';
         var pairHtml      = pair ? '<span class="jn-card__pair">' + esc(pair.toUpperCase()) + '</span>' : '';
-        var imgs = tradeImageUrls(trade);
-        var chartHint = imgs.length ? '<span class="jn-card__photo-hit" title="' + imgs.length + ' chart(s)">IMG</span>' : '';
+        var imgItems = tradeImageItems(trade);
+        var chartHint = imgItems.length ? '<span class="jn-card__photo-hit" title="' + imgItems.length + ' chart(s)">IMG</span>' : '';
 
         return [
           '<article class="jn-card" data-expanded="false" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
@@ -1148,8 +1270,71 @@
         }
       }
 
+      /* ── Chart lightbox ── */
+      function openJnLightbox(src, caption) {
+        var lb = document.getElementById('jn-lightbox');
+        var imgEl = lb && lb.querySelector('.jn-lightbox__img');
+        var capEl = document.getElementById('jn-lightbox-caption');
+        if (!lb || !imgEl) return;
+        imgEl.src = src || '';
+        imgEl.alt = caption ? caption : 'Chart';
+        if (capEl) {
+          var c = caption ? String(caption).trim() : '';
+          if (c) {
+            capEl.textContent = c;
+            capEl.removeAttribute('hidden');
+          } else {
+            capEl.textContent = '';
+            capEl.setAttribute('hidden', '');
+          }
+        }
+        lb.removeAttribute('hidden');
+        lb.setAttribute('aria-hidden', 'false');
+        try {
+          document.body.style.overflow = 'hidden';
+        } catch (err) {}
+        try {
+          document.getElementById('jn-lightbox-close').focus();
+        } catch (err2) {}
+      }
+
+      function closeJnLightbox() {
+        var lb = document.getElementById('jn-lightbox');
+        var imgEl = lb && lb.querySelector('.jn-lightbox__img');
+        if (!lb) return;
+        lb.setAttribute('hidden', '');
+        lb.setAttribute('aria-hidden', 'true');
+        if (imgEl) imgEl.src = '';
+        try {
+          document.body.style.overflow = '';
+        } catch (e) {}
+      }
+
+      document.getElementById('jn-lightbox-close').addEventListener('click', function () {
+        closeJnLightbox();
+      });
+      document.getElementById('jn-lightbox-backdrop').addEventListener('click', function () {
+        closeJnLightbox();
+      });
+      document.addEventListener('keydown', function (ev) {
+        var lb = document.getElementById('jn-lightbox');
+        if (lb && !lb.hasAttribute('hidden') && ev.key === 'Escape') {
+          closeJnLightbox();
+        }
+      });
+
       /* ── Card interaction ── */
       document.getElementById('jn-list').addEventListener('click', function (e) {
+        var photoBtn = e.target.closest('.jn-photo-open');
+        if (photoBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          openJnLightbox(
+            photoBtn.getAttribute('data-src') || '',
+            photoBtn.getAttribute('data-caption') || ''
+          );
+          return;
+        }
         var askBtn = e.target.closest('.jn-ask-btn');
         if (askBtn) {
           e.stopPropagation();
