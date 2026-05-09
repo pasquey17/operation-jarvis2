@@ -165,17 +165,32 @@
       }
       .jn-filter-dot--visible { display: block; }
 
-      /* ── Collapsible filter panel ── */
+      /* ── Collapsible filter panel (grid clip — smoother than fixed max-height) ── */
       .jn-filter-panel {
-        max-height: 0; overflow: hidden; margin-bottom: 0;
-        transition: max-height 0.38s cubic-bezier(0.22,1,0.36,1), margin-bottom 0.38s;
+        display: grid;
+        grid-template-rows: 0fr;
+        margin-bottom: 0;
+        transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+          margin-bottom 0.45s cubic-bezier(0.22, 1, 0.36, 1);
       }
-      .jn-filter-panel--open { max-height: 700px; margin-bottom: 20px; }
+      .jn-filter-panel--open {
+        grid-template-rows: 1fr;
+        margin-bottom: 22px;
+      }
       .jn-filter-panel-inner {
-        padding: 20px 22px 16px;
-        background: rgba(0,212,255,0.03);
-        border: 1px solid rgba(0,212,255,0.12);
-        border-radius: 10px;
+        min-height: 0;
+        overflow: hidden;
+        padding: 20px 22px 18px;
+        background: linear-gradient(
+          165deg,
+          rgba(0, 212, 255, 0.06) 0%,
+          rgba(0, 0, 0, 0.45) 100%
+        );
+        border: 1px solid rgba(0, 212, 255, 0.15);
+        border-radius: 12px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.04),
+          0 16px 48px rgba(0, 0, 0, 0.35);
       }
 
       /* ── Filter grid — 3 columns ── */
@@ -222,17 +237,58 @@
 
       /* ── Card ── */
       .jn-card {
-        border-radius: 8px;
-        border: 1px solid rgba(0,212,255,0.15);
-        border-left: 3px solid rgba(255,255,255,0.12); /* default/BE */
-        background: rgba(255,255,255,0.03);
-        overflow: hidden; cursor: pointer;
-        transition: border-color 0.2s, background 0.2s;
+        position: relative;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 212, 255, 0.12);
+        border-left: 4px solid rgba(255, 255, 255, 0.14);
+        background: rgba(0, 0, 0, 0.4);
+        overflow: hidden;
+        cursor: pointer;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        transition:
+          border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+          background 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.04) inset,
+          0 12px 32px rgba(0, 0, 0, 0.32);
       }
-      .jn-card:hover { background: rgba(255,255,255,0.055); }
-      .jn-card[data-outcome="win"]  { border-left-color: #00ff88; }
-      .jn-card[data-outcome="loss"] { border-left-color: #ff4444; }
-      .jn-card[data-outcome="be"]   { border-left-color: rgba(255,255,255,0.18); }
+      .jn-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background: radial-gradient(
+          ellipse 120% 80% at 100% 0%,
+          rgba(0, 212, 255, 0.08),
+          transparent 55%
+        );
+        transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .jn-card:hover {
+        background: rgba(0, 212, 255, 0.06);
+        border-color: rgba(0, 212, 255, 0.22);
+        transform: translateY(-2px);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.06) inset,
+          0 20px 48px rgba(0, 0, 0, 0.4),
+          0 0 40px rgba(0, 191, 255, 0.08);
+      }
+      .jn-card:hover::after {
+        opacity: 1;
+      }
+      .jn-card[data-outcome="win"] {
+        border-left-color: #00ff88;
+      }
+      .jn-card[data-outcome="loss"] {
+        border-left-color: #ff5050;
+      }
+      .jn-card[data-outcome="be"] {
+        border-left-color: rgba(192, 192, 192, 0.35);
+      }
 
       /* ── Card top row ── */
       .jn-card__top {
@@ -292,14 +348,27 @@
       .jn-badge--short { background: rgba(255,140,0,0.12); color: #ff8c00; border-color: rgba(255,140,0,0.35); }
       .jn-badge--acct  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.38); border-color: rgba(255,255,255,0.1); font-weight: 400; font-size: 9px; }
 
-      /* ── Expanded content ── */
+      /* ── Expanded content (grid clip) ── */
       .jn-card__expand {
-        max-height: 0; overflow: hidden;
-        transition: max-height 0.38s cubic-bezier(0.22,1,0.36,1);
-        border-top: 0 solid rgba(0,212,255,0.1);
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+        border-top: 0 solid transparent;
       }
-      .jn-card[data-expanded="true"] .jn-card__expand { max-height: 700px; border-top-width: 1px; }
-      .jn-expand-inner { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+      .jn-card[data-expanded="true"] .jn-card__expand {
+        grid-template-rows: 1fr;
+        border-top: 1px solid rgba(0, 212, 255, 0.14);
+      }
+      .jn-card__expand > .jn-expand-inner {
+        min-height: 0;
+      }
+      .jn-expand-inner {
+        padding: 18px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        background: rgba(0, 0, 0, 0.25);
+      }
       .jn-detail { display: flex; flex-direction: column; gap: 3px; }
       .jn-detail__label {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
@@ -358,6 +427,17 @@
         .jn-week-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .jn-filter-grid { grid-template-columns: 1fr; }
         #filter-model { grid-column: 1; }
+        .jn-card:hover { transform: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .jn-card,
+        .jn-card__expand,
+        .jn-filter-panel {
+          transition-duration: 0.01ms !important;
+        }
+        .jn-card:hover {
+          transform: none;
+        }
       }
     </style>
   </head>
@@ -655,20 +735,37 @@
         })();
       }
 
-      /* ── User detection — always defaults to aiden, no modal gate ── */
+      var DEFAULT_USER_ID = 'aidenpasque11@gmail.com';
+
+      /** Match app.js: jarvis_user wins so mum’s profile overrides stale user_id. */
       function ensureUserId() {
         return new Promise(function (resolve) {
-          var existing = localStorage.getItem('user_id') || localStorage.getItem('jarvis_user');
-          if (existing && existing.trim()) {
-            currentUserId = existing.trim();
+          var ju = (localStorage.getItem('jarvis_user') || '').trim();
+          var uid = (localStorage.getItem('user_id') || '').trim();
+          if (ju) {
+            currentUserId = ju;
+            if (uid !== ju) {
+              try { localStorage.setItem('user_id', ju); } catch (e) {}
+            }
+          } else if (uid) {
+            currentUserId = uid;
           } else {
-            currentUserId = 'aidenpasque11@gmail.com';
-            try { localStorage.setItem('user_id', currentUserId); } catch(e) {}
+            currentUserId = DEFAULT_USER_ID;
+            try {
+              localStorage.setItem('user_id', DEFAULT_USER_ID);
+              localStorage.setItem('jarvis_user', DEFAULT_USER_ID);
+            } catch (e) {}
           }
           var navUser = document.getElementById('jv-nav-user');
           if (navUser) navUser.textContent = currentUserId;
           resolve(currentUserId);
         });
+      }
+
+      function normalizeTradesApiBody(data) {
+        if (!data || typeof data !== 'object') return { records: [] };
+        var inner = data.payload && typeof data.payload === 'object' ? data.payload : data;
+        return { records: Array.isArray(inner.records) ? inner.records : [] };
       }
 
       /* ── Data fetching ── */
@@ -681,7 +778,8 @@
         var merged = [];
         if (tradesRes.status === 'fulfilled') {
           var data = tradesRes.value;
-          var recs = Array.isArray(data.records) ? data.records : (Array.isArray(data) ? data : []);
+          var norm = normalizeTradesApiBody(data);
+          var recs = norm.records;
           merged = merged.concat(recs);
         }
         if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value)) {
@@ -692,8 +790,8 @@
         /* Debug: log first trade from each source so we can see exact field names */
         if (tradesRes.status === 'fulfilled') {
           var data = tradesRes.value;
-          var recs = Array.isArray(data.records) ? data.records : (Array.isArray(data) ? data : []);
-          if (recs.length > 0) console.log('[JARVIS] First /api/trades record:', recs[0]);
+          var n = normalizeTradesApiBody(data);
+          if (n.records.length > 0) console.log('[JARVIS] First /api/trades record:', n.records[0]);
         }
         if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value) && journalRes.value.length > 0) {
           console.log('[JARVIS] First /api/journal-trades record:', journalRes.value[0]);

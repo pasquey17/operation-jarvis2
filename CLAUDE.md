@@ -32,7 +32,7 @@ Jarvis is a personal AI trading intelligence OS. It ingests trades logged in Not
 | Aiden | `aidenpasque11@gmail.com` | `notion-sync.mjs` / `NOTION_API_KEY` |
 | Mum (Sandra) | `spasque70@gmail.com` | `notion-sync-mum.mjs` / `NOTION_API_KEY_MUM` |
 
-`currentUserId` in all frontend JS defaults to `aidenpasque11@gmail.com` — there is no login gate. If localStorage has `user_id` or `jarvis_user` it uses that, otherwise falls back to the hardcoded email. Do not add a login modal.
+`currentUserId` defaults to `aidenpasque11@gmail.com` — there is no login gate. Resolution order (**must stay in sync in `app.js` and `journal.html`**): **`jarvis_user` first**, then `user_id`, then default. If both keys exist but differ (e.g. mum set `jarvis_user` while an old `user_id` was still Aiden’s), **`jarvis_user` wins** and `user_id` is updated to match. Do not add a login modal.
 
 ---
 
@@ -98,7 +98,7 @@ The nav bar is duplicated inline in `index.html` and `journal.html` — it is no
 | `POST` | `/api/log-trade` | `handleLogTrade` | Log a trade to `journal_trades`. |
 | `GET` | `/api/init-profiles` | `handleInitProfiles` | Admin: generate initial AI profiles for both users. |
 
-**Note:** `/api/sync` does NOT exist. The correct path is `/api/sync-notion`. The frontend `boot()` call to `/api/sync` silently 404s — this is a known bug.
+**Note:** `/api/sync` is not used by the app; use `/api/sync-notion` or `/api/sync-mum` to force sync.
 
 ---
 
@@ -156,7 +156,7 @@ Token budgets:
 
 ## Known Bugs / Issues
 
-1. **`/api/sync` 404** — `boot()` in `app.js` calls `/api/sync` which doesn't exist. The correct endpoint is `/api/sync-notion`. This silently fails on startup.
+1. ~~**`/api/sync` 404**~~ — **Fixed:** `boot()` no longer calls `/api/sync`. Use **`GET /api/sync-notion`** or **`GET /api/sync-mum`** manually when you need to force Notion ingest.
 
 2. **Analytics / History / Calendar pages** — Nav links to `/analytics.html`, `/history.html`, `/calendar.html` all 404. These pages have not been built yet.
 

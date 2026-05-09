@@ -1,24 +1,58 @@
 const API_CHAT = "/api/chat";
 const API_TRADES = "/api/trades";
+const DEFAULT_USER_ID = "aidenpasque11@gmail.com";
 const STORAGE_KEY_CHAT = "operationJarvis.chat.v1";
 const CHAT_RECENT_TRADES = 15;
 const MAX_CHAT_MESSAGES_API = 5;
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_CHAT_MESSAGES_STORED = 120;
 
-let currentUserId = "aidenpasque11@gmail.com";
+let currentUserId = DEFAULT_USER_ID;
 let snapshotRequestSeq = 0;
 
 function ensureUserId() {
-  const existing = localStorage.getItem("user_id") || localStorage.getItem("jarvis_user");
-  if (existing && existing.trim()) {
-    currentUserId = existing.trim();
+  const jarvisUser = (localStorage.getItem("jarvis_user") || "").trim();
+  const storedUserId = (localStorage.getItem("user_id") || "").trim();
+
+  if (jarvisUser) {
+    currentUserId = jarvisUser;
+    if (storedUserId !== jarvisUser) {
+      try {
+        localStorage.setItem("user_id", jarvisUser);
+      } catch {}
+    }
     return Promise.resolve(currentUserId);
   }
-  const defaultUser = "aidenpasque11@gmail.com";
-  currentUserId = defaultUser;
-  try { localStorage.setItem("user_id", defaultUser); } catch {}
-  return Promise.resolve(defaultUser);
+
+  if (storedUserId) {
+    currentUserId = storedUserId;
+    return Promise.resolve(currentUserId);
+  }
+
+  currentUserId = DEFAULT_USER_ID;
+  try {
+    localStorage.setItem("user_id", DEFAULT_USER_ID);
+    localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
+  } catch {}
+  return Promise.resolve(DEFAULT_USER_ID);
+}
+
+/** Normalize /api/trades JSON (handles optional `payload` wrapper or bad shapes). */
+function normalizeTradesApiBody(data) {
+  if (!data || typeof data !== "object") {
+    return { headers: [], records: [], snapshot: null, warning: "" };
+  }
+  const inner =
+    data.payload != null && typeof data.payload === "object" ? data.payload : data;
+  return {
+    headers: Array.isArray(inner.headers) ? inner.headers : [],
+    records: Array.isArray(inner.records) ? inner.records : [],
+    snapshot:
+      inner.snapshot != null && typeof inner.snapshot === "object"
+        ? inner.snapshot
+        : null,
+    warning: typeof inner.warning === "string" ? inner.warning : "",
+  };
 }
 
 let chatSending = false;
@@ -203,7 +237,16 @@ function hideTypingIndicator() {
   document.getElementById("typing-indicator")?.remove();
 }
 
-async function renderSnapshot() {
+function renderSnapshot() {
+  if (tradeData?.loadError) {
+    if (els.snapWinrate) els.snapWinrate.textContent = "—";
+    if (els.snapAvgRR) els.snapAvgRR.textContent = "—";
+    if (els.snapExpectancy) els.snapExpectancy.textContent = "—";
+    if (els.snapTotal) els.snapTotal.textContent = "—";
+    if (els.snapInsight) els.snapInsight.textContent = tradeData.loadError;
+    return;
+  }
+
   const s = tradeData?.snapshot;
   if (!s || typeof s !== "object") {
     if (els.snapWinrate) els.snapWinrate.textContent = "—";
@@ -225,9 +268,11 @@ async function renderSnapshot() {
     els.snapExpectancy.textContent =
       s.expectancy == null ? "—" : `${Number(s.expectancy).toFixed(2)}R`;
   if (els.snapInsight) {
-    els.snapInsight.textContent = s.bestSession
-      ? `Most active session: ${s.bestSession}`
-      : "—";
+    let line = s.bestSession ? `Most active session: ${s.bestSession}` : "—";
+    if (tradeData?.warning) {
+      line = `${line}${line && line !== "—" ? " · " : ""}${tradeData.warning}`;
+    }
+    els.snapInsight.textContent = line;
   }
 }
 
@@ -529,33 +574,65 @@ function initMic() {
 }
 
 /* ═══════════ Trade data ═══════════ */
-async function loadTrades() {
-  try {
-    const userId =
-      currentUserId ||
-      localStorage.getItem("user_id") ||
-      "aidenpasque11@gmail.com";
-    const res = await fetch(`${API_TRADES}?user_id=eq.${encodeURIComponent(userId)}`, { cache: 'no-store' });
-    const data = await res.json().catch(() => ({}));
-    console.log("FRONTEND RAW DATA:", data);
-    if (!res.ok) {
-      console.warn(readApiErrorMessage(data) || "Trades request failed");
-      return;
-    }
-    const headers = Array.isArray(data.headers) ? data.headers : [];
-    const records = Array.isArray(data.records) ? data.records : [];
-    tradeData = { headers, records, snapshot: data.snapshot };
-    console.log("FRONTEND RECORDS:", tradeData.records.length);
-    tradesLoaded = true;
+async function loadTradesAttempt() {
+  const userId =
+    currentUserId ||
+    localStorage.getItem("jarvis_user") ||
+    localStorage.getItem("user_id") ||
+    DEFAULT_USER_ID;
+  const res = await fetch(`${API_TRADES}?user_id=eq.${encodeURIComponent(userId)}`, {
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  console.log("FRONTEND RAW DATA:", data);
+
+  if (!res.ok) {
+    const msg =
+      readApiErrorMessage(data) || `Could not load trades (${res.status}). Pull to refresh or try again.`;
+    tradeData = {
+      headers: [],
+      records: [],
+      snapshot: null,
+      loadError: msg,
+    };
+    tradesLoaded = false;
     renderSnapshot();
-  } catch (e) {
-    console.warn("Could not load trades", e);
+    updateSendEnabled();
+    throw new Error(msg);
+  }
+
+  const normalized = normalizeTradesApiBody(data);
+  tradeData = {
+    headers: normalized.headers,
+    records: normalized.records,
+    snapshot: normalized.snapshot,
+    ...(normalized.warning ? { warning: normalized.warning } : {}),
+  };
+  console.log("FRONTEND RECORDS:", tradeData.records.length);
+  tradesLoaded = true;
+  renderSnapshot();
+  updateSendEnabled();
+}
+
+async function loadTrades() {
+  const maxAttempts = 3;
+  const delayMs = 500;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await loadTradesAttempt();
+      return;
+    } catch (e) {
+      console.warn(`loadTrades attempt ${attempt}/${maxAttempts}`, e);
+      if (attempt === maxAttempts) return;
+      await new Promise((r) => setTimeout(r, delayMs * attempt));
+    }
   }
 }
 
 function updateSendEnabled() {
   if (els.chatSend) {
-    els.chatSend.disabled = chatSending || !tradesLoaded;
+    const blocked = Boolean(tradeData?.loadError);
+    els.chatSend.disabled = chatSending || !tradesLoaded || blocked;
   }
   if (els.chatInput) {
     els.chatInput.disabled = chatSending;
@@ -566,6 +643,13 @@ async function sendChatMessage(text) {
   if (chatSending || !text.trim()) return;
   enterChatMode();
   console.log("JARVIS CHECK RECORDS:", tradeData?.records?.length);
+  if (tradeData?.loadError) {
+    const msg = tradeData.loadError;
+    chatMessages.push({ role: "error", content: msg });
+    chatUiMessages.push({ role: "error", content: msg });
+    renderChatHistory({ animateLast: true });
+    return;
+  }
   if (!tradeData?.records?.length) {
     const msg = "No trade data yet. Check the server and Supabase, then refresh the page.";
     chatMessages.push({ role: "error", content: msg });
@@ -596,8 +680,9 @@ async function sendChatMessage(text) {
       body: JSON.stringify({
         email:
           currentUserId ||
+          localStorage.getItem("jarvis_user") ||
           localStorage.getItem("user_id") ||
-          "aidenpasque11@gmail.com",
+          DEFAULT_USER_ID,
         headers: tradeData.headers,
         trades: tradeData.records,
         messages: apiMessages,
@@ -766,7 +851,11 @@ async function openTradeForm() {
   if (tradeFormOpen) return;
   tradeFormOpen = true;
 
-  const userId = currentUserId || localStorage.getItem('user_id') || 'aidenpasque11@gmail.com';
+  const userId =
+    currentUserId ||
+    localStorage.getItem("jarvis_user") ||
+    localStorage.getItem("user_id") ||
+    DEFAULT_USER_ID;
   let customFields = [];
   try {
     const r = await fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`, { cache: 'no-store' });
@@ -872,7 +961,11 @@ async function openTradeForm() {
 
 async function submitTradeForm(form, customFields, closeForm) {
   const fd = new FormData(form);
-  const userId = currentUserId || localStorage.getItem('user_id') || 'aidenpasque11@gmail.com';
+  const userId =
+    currentUserId ||
+    localStorage.getItem("jarvis_user") ||
+    localStorage.getItem("user_id") ||
+    DEFAULT_USER_ID;
 
   const dateVal = fd.get('date') || '';
   const pair = (fd.get('pair') || '').trim();
@@ -965,7 +1058,6 @@ function initLogTradeBtn() {
 
 async function boot() {
   await ensureUserId();
-  await fetch("/api/sync", { cache: 'no-store' }).catch(() => {});
 
   chatMessages = loadChatMessagesFromStorage();
   chatUiMessages = [];
@@ -987,5 +1079,16 @@ async function boot() {
     .finally(() => setOrbMode("idle"));
   els.chatInput?.focus();
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible" || chatSending) return;
+  if (tradeData?.loadError || !tradesLoaded) {
+    void loadTrades();
+  }
+});
+
+window.addEventListener("pageshow", (ev) => {
+  if (ev.persisted && !chatSending) void loadTrades();
+});
 
 boot();
