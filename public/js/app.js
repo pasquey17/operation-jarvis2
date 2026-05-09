@@ -967,6 +967,8 @@ function startOrb() {
   let projScale = 1;
   let timeSec = 0;
   let lastFrameTs = performance.now();
+  /** Smoothed 0–1 “reply energy” — eases orb reaction when chat is active (no snap). */
+  let orbEnergy = 0;
 
   let hullN = 0;
   let interiorN = 0;
@@ -1008,8 +1010,8 @@ function startOrb() {
   const dotBuckets = Array.from({ length: N_BUCK }, () => []);
 
   /** Cheap rotating “turbulence” for cloudy density (no textures; GPU-friendly). */
-  function cloudDensity(wx, wy, wz, t, active) {
-    const tt = t * (active ? 0.55 : 0.28);
+  function cloudDensity(wx, wy, wz, t, energy) {
+    const tt = t * (0.28 + 0.27 * energy);
     let n =
       Math.sin(wx * 4.15 + wy * 2.08 + wz * 3.31 + tt * 1.1) *
         Math.cos(wy * 3.62 - wz * 4.08 + tt * 0.72) *
@@ -1204,10 +1206,10 @@ function startOrb() {
     dotBuckets[bi].push(sx, sy, radius, alpha);
   }
 
-  function fillPointBuckets(rx, ry, rz, active) {
-    const tw = active ? 1.38 : 1;
-    const flick = reducedMotion ? 0 : Math.sin(timeSec * (active ? 2 : 0.68));
-    const tNoise = timeSec * (active ? 0.9 : 0.45);
+  function fillPointBuckets(rx, ry, rz, e) {
+    const tw = 1 + 0.38 * e;
+    const flick = reducedMotion ? 0 : Math.sin(timeSec * (0.68 + 0.42 * e));
+    const tNoise = timeSec * (0.45 + 0.45 * e);
 
     function spinPoint(x, y, z) {
       return eulerRotate(x, y, z, rx, ry, rz);
@@ -1220,11 +1222,11 @@ function startOrb() {
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
-      const dens = cloudDensity(coronaX[i], coronaY[i], coronaZ[i], tNoise, active);
+      const dens = cloudDensity(coronaX[i], coronaY[i], coronaZ[i], tNoise, e);
       let a =
-        (0.018 + frontal * 0.11 + phasor(i, 701) * 0.04) * dens * tw * (active ? 1.28 : 1);
+        (0.018 + frontal * 0.11 + phasor(i, 701) * 0.04) * dens * tw * (1 + 0.28 * e);
       const rad =
-        (0.85 + frontal * 1.55 + phasor(i, 801) * 0.65) * (active ? 1.06 : 1.02);
+        (0.85 + frontal * 1.55 + phasor(i, 801) * 0.65) * (1.02 + 0.04 * e);
       bucketPush(sz, sx, sy, rad, Math.min(0.42, Math.max(0.015, a)));
     }
 
@@ -1234,13 +1236,13 @@ function startOrb() {
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
-      let a = (0.028 + frontal * 0.12 + phasor(i, 501) * 0.055) * tw * (active ? 1.35 : 1);
-      const rad = (0.32 + frontal * 0.62 + phasor(i, 602) * 0.42) * (active ? 1.08 : 1);
+      let a = (0.028 + frontal * 0.12 + phasor(i, 501) * 0.055) * tw * (1 + 0.35 * e);
+      const rad = (0.32 + frontal * 0.62 + phasor(i, 602) * 0.42) * (1 + 0.08 * e);
       bucketPush(sz, sx, sy, rad, Math.min(0.36, Math.max(0.02, a)));
     }
 
     for (let i = 0; i < mistN; i++) {
-      const dens = cloudDensity(mistX[i], mistY[i], mistZ[i], tNoise, active);
+      const dens = cloudDensity(mistX[i], mistY[i], mistZ[i], tNoise, e);
       const px = spinPoint(mistX[i], mistY[i], mistZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
@@ -1250,14 +1252,14 @@ function startOrb() {
         (0.03 + frontal * 0.26 + Math.sqrt(phasor(i + 8000, 91)) * 0.09) *
         dens *
         tw *
-        (active ? 1.28 : 0.92);
+        (0.92 + 0.36 * e);
       const rad =
-        (0.38 + frontal * 0.82 + phasor(i + 8000, 71) * 0.48) * (active ? 1.08 : 1);
+        (0.38 + frontal * 0.82 + phasor(i + 8000, 71) * 0.48) * (1 + 0.08 * e);
       bucketPush(sz, sx, sy, rad, Math.min(0.62, Math.max(0.02, a)));
     }
 
     for (let i = 0; i < interiorN; i++) {
-      const dens = cloudDensity(interiorX[i], interiorY[i], interiorZ[i], tNoise, active);
+      const dens = cloudDensity(interiorX[i], interiorY[i], interiorZ[i], tNoise, e);
       const px = spinPoint(interiorX[i], interiorY[i], interiorZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
@@ -1267,14 +1269,14 @@ function startOrb() {
         (0.032 + frontal * 0.26 + Math.sqrt(phasor(i, 91)) * 0.08) *
         dens *
         tw *
-        (active ? 1.25 : 0.9);
+        (0.9 + 0.35 * e);
       const rad =
-        (0.32 + frontal * 0.74 + phasor(i, 71) * 0.42) * (active ? 1.06 : 0.98);
+        (0.32 + frontal * 0.74 + phasor(i, 71) * 0.42) * (0.98 + 0.08 * e);
       bucketPush(sz, sx, sy, rad, Math.min(0.62, Math.max(0.02, a)));
     }
 
     for (let i = 0; i < shellN; i++) {
-      const dens = cloudDensity(shellX[i], shellY[i], shellZ[i], tNoise, active);
+      const dens = cloudDensity(shellX[i], shellY[i], shellZ[i], tNoise, e);
       const px = spinPoint(shellX[i], shellY[i], shellZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
@@ -1286,14 +1288,14 @@ function startOrb() {
         (0.065 + frontal * 0.4 * (0.35 + shellFac * 0.65) + (phasor(i, 3) - 0.5) * 0.035) *
         dens *
         tw;
-      a += frontal * (active ? 0.048 + flick * 0.016 : flick * 0.009);
+      a += frontal * (flick * (0.009 + 0.007 * e) + 0.048 * e);
       const rad =
-        (0.34 + frontal * (0.88 + shellFac * 0.58) + phasor(i, 99) * 0.14) * (active ? 1.05 : 1);
+        (0.34 + frontal * (0.88 + shellFac * 0.58) + phasor(i, 99) * 0.14) * (1 + 0.05 * e);
       bucketPush(sz, sx, sy, rad, Math.min(0.88, Math.max(0.035, a)));
     }
 
     for (let i = 0; i < hullN; i++) {
-      const dens = cloudDensity(hullX[i], hullY[i], hullZ[i], tNoise * 0.85, active);
+      const dens = cloudDensity(hullX[i], hullY[i], hullZ[i], tNoise * 0.85, e);
       const px = spinPoint(hullX[i], hullY[i], hullZ[i]);
       const sz = px[2];
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
@@ -1301,10 +1303,10 @@ function startOrb() {
       const sy = cy - px[1] * projScale;
       let a =
         (0.09 + frontal * 0.38 + (phasor(i, 11) - 0.5) * 0.038) * (0.72 + dens * 0.28) * tw;
-      a += frontal * (active ? 0.065 + flick * 0.02 : flick * 0.012);
+      a += frontal * (flick * (0.012 + 0.008 * e) + 0.053 * e);
       const rad =
-        (0.42 + frontal * (active ? 1.42 : 1.02) + (phasor(i, 199) - 0.5) * 0.09) *
-        (active ? 1.05 : 1);
+        (0.42 + frontal * (1.02 + 0.4 * e) + (phasor(i, 199) - 0.5) * 0.09) *
+        (1 + 0.05 * e);
       bucketPush(sz, sx, sy, rad, Math.min(0.9, Math.max(0.045, a)));
     }
 
@@ -1314,10 +1316,12 @@ function startOrb() {
       const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
       const sx = cx + px[0] * projScale;
       const sy = cy - px[1] * projScale;
+      const idleMul = 0.82 + flick * 0.05;
       let a =
-        (0.38 + frontal * 0.58 + phasor(i, 117) * 0.32) * (active ? 1.1 : 0.82 + flick * 0.05);
+        (0.38 + frontal * 0.58 + phasor(i, 117) * 0.32) *
+        (idleMul + e * (1.1 - idleMul));
       const rad =
-        (1.02 + frontal * (active ? 2.05 : 1.28) + phasor(i, 223) * 0.88) * 1.04;
+        (1.02 + frontal * (1.28 + 0.77 * e) + phasor(i, 223) * 0.88) * 1.04;
       bucketPush(sz, sx, sy, rad, Math.min(0.99, Math.max(0.12, a)));
     }
   }
@@ -1431,29 +1435,38 @@ function startOrb() {
     lastFrameTs = now;
     if (!reducedMotion) timeSec += dt;
 
-    const active = orbMode === "active";
+    const target = orbMode === "active" ? 1 : 0;
+    if (reducedMotion) {
+      orbEnergy = target;
+    } else {
+      const ramp = target > orbEnergy ? 5.1 : 3.4;
+      orbEnergy += (target - orbEnergy) * Math.min(1, dt * ramp);
+    }
+    const e = orbEnergy;
 
-    /** Slow drift idle; noticeably more energy when Jarvis replies, still subdued */
+    /** Slow drift idle; ramps smoothly while Jarvis streams a reply */
     const idleRadPerSec = 0.25;
-    const activeRadPerSec = 0.52;
-    const spin = reducedMotion ? 0 : timeSec * (active ? activeRadPerSec : idleRadPerSec);
+    const activeRadPerSec = 0.44;
+    const spinRate = idleRadPerSec + (activeRadPerSec - idleRadPerSec) * e;
+    const spin = reducedMotion ? 0 : timeSec * spinRate;
 
-    const wobbleAmp = active ? 0.11 : 0.06;
+    const wobbleAmp = 0.06 + 0.05 * e;
     const rx =
-      Math.sin(timeSec * 0.19) * wobbleAmp + Math.sin(spin * 0.42) * (active ? 0.16 : 0.1);
-    const ry = spin * 1.12 + Math.cos(timeSec * 0.11) * 0.06;
+      Math.sin(timeSec * 0.17) * wobbleAmp + Math.sin(spin * 0.38) * (0.1 + 0.055 * e);
+    const ry = spin * 1.08 + Math.cos(timeSec * 0.11) * 0.06;
     const rz =
-      Math.cos(spin * 0.71) * 0.07 + spin * (active ? 0.68 : 0.42) + Math.sin(timeSec * 0.23) * 0.09;
+      Math.cos(spin * 0.65) * 0.065 +
+      spin * (0.42 + 0.24 * e) +
+      Math.sin(timeSec * 0.21) * 0.085;
 
     ctx.clearRect(0, 0, logicalW, logicalH);
 
-    const breathOuter =
-      active
-        ? projScale * (1.06 + 0.045 * Math.sin(timeSec * 2.1))
-        : projScale * (1 + 0.018 * Math.sin(timeSec * 0.72));
+    const breathIdle = projScale * (1 + 0.018 * Math.sin(timeSec * 0.72));
+    const breathActive = projScale * (1.06 + 0.045 * Math.sin(timeSec * 2.1));
+    const breathOuter = breathIdle * (1 - e) + breathActive * e;
     const halo = ctx.createRadialGradient(cx - breathOuter * 0.06, cy - breathOuter * 0.1, 0, cx, cy, breathOuter * 1.32);
-    halo.addColorStop(0, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${active ? 0.11 : 0.06})`);
-    halo.addColorStop(0.35, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${active ? 0.085 : 0.045})`);
+    halo.addColorStop(0, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${0.06 + 0.05 * e})`);
+    halo.addColorStop(0.35, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${0.045 + 0.04 * e})`);
     halo.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
     ctx.globalCompositeOperation = "screen";
     ctx.fillStyle = halo;
@@ -1461,8 +1474,8 @@ function startOrb() {
     ctx.arc(cx, cy, breathOuter * 1.06, 0, Math.PI * 2);
     ctx.fill();
 
-    const veilR =
-      projScale * (1.12 + 0.022 * Math.sin(timeSec * (active ? 0.48 : 0.31)));
+    const veilFreq = 0.31 + 0.17 * e;
+    const veilR = projScale * (1.12 + 0.022 * Math.sin(timeSec * veilFreq));
     const veil = ctx.createRadialGradient(
       cx - veilR * 0.06,
       cy - veilR * 0.09,
@@ -1471,9 +1484,9 @@ function startOrb() {
       cy,
       veilR * 1.48
     );
-    veil.addColorStop(0, `rgba(255,255,255,${active ? 0.038 : 0.024})`);
-    veil.addColorStop(0.22, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${active ? 0.072 : 0.048})`);
-    veil.addColorStop(0.52, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${active ? 0.058 : 0.038})`);
+    veil.addColorStop(0, `rgba(255,255,255,${0.024 + 0.014 * e})`);
+    veil.addColorStop(0.22, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${0.048 + 0.024 * e})`);
+    veil.addColorStop(0.52, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${0.038 + 0.02 * e})`);
     veil.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
     ctx.globalCompositeOperation = "lighter";
     ctx.fillStyle = veil;
@@ -1484,15 +1497,18 @@ function startOrb() {
     ctx.globalCompositeOperation = "source-over";
 
     clearDotBuckets();
-    fillPointBuckets(rx, ry, rz, active);
+    fillPointBuckets(rx, ry, rz, e);
     drawBucketsScreen();
 
-    const corePulse = active ? 1.06 + 0.035 * Math.sin(timeSec * 3.1) : 1 + 0.028 * Math.sin(timeSec * 0.96);
+    const pulseIdle = 1 + 0.028 * Math.sin(timeSec * 0.96);
+    const pulseActive = 1.06 + 0.035 * Math.sin(timeSec * 3.1);
+    const corePulse = pulseIdle * (1 - e) + pulseActive * e;
     const cr = projScale * 0.5 * corePulse;
 
     ctx.globalCompositeOperation = "screen";
     const mid = ctx.createRadialGradient(cx - cr * 0.18, cy - cr * 0.14, 0, cx, cy, cr * 1.38);
-    const midBright = active ? 0.98 : 0.58 + 0.18 * Math.sin(timeSec * 0.91);
+    const midBright =
+      (0.58 + 0.18 * Math.sin(timeSec * 0.91)) * (1 - e) + 0.98 * e;
     mid.addColorStop(0, `rgba(255, 255, 255, ${0.42 * midBright})`);
     mid.addColorStop(0.12, `rgba(${BLUE_HOT[0]}, ${BLUE_HOT[1]}, ${BLUE_HOT[2]}, ${0.52 * midBright})`);
     mid.addColorStop(0.45, `rgba(${BLUE[0]}, ${BLUE[1]}, ${BLUE[2]}, ${0.62 * midBright})`);
@@ -1504,7 +1520,7 @@ function startOrb() {
     ctx.fill();
 
     const inner = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 0.72);
-    const coreHot = active ? 1 : 0.62 + 0.16 * Math.sin(timeSec * 1.07);
+    const coreHot = (0.62 + 0.16 * Math.sin(timeSec * 1.07)) * (1 - e) + e;
     inner.addColorStop(0, `rgba(255, 255, 255, ${0.98 * coreHot})`);
     inner.addColorStop(0.2, `rgba(${BLUE_HOT[0]}, ${BLUE_HOT[1]}, ${BLUE_HOT[2]}, ${0.94 * coreHot})`);
     inner.addColorStop(0.5, `rgba(${BLUE[0]}, ${BLUE[1]}, ${BLUE[2]}, ${0.92 * coreHot})`);
