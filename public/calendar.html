@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>CALENDAR · JARVIS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+    <style>
+      /* ── Unlock scroll (global HUD locks overflow) ── */
+      html,
+      body {
+        overflow: auto !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+      }
+
+      /* ═══════════════════ NAV BAR (inlined) ═══════════════════ */
+      .jv-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 52px;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        gap: 0;
+      }
+      .jv-nav__brand {
+        color: #00d4ff;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 15px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        flex-shrink: 0;
+        text-decoration: none;
+      }
+      .jv-nav__links {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        list-style: none;
+        margin: 0 auto;
+        padding: 0;
+      }
+      .jv-nav__links a {
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        font-variant: small-caps;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding-bottom: 2px;
+        border-bottom: 1px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__links a:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .jv-nav__links a.jv-nav--active,
+      .jv-nav__links a[aria-current="page"] {
+        color: #00d4ff;
+        border-bottom: 1px solid #00d4ff;
+      }
+      .jv-nav__user {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.3);
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .jv-nav__logout {
+        margin-left: 14px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.25);
+        background: rgba(0, 212, 255, 0.06);
+        color: rgba(0, 212, 255, 0.85);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .jv-nav__logout:hover {
+        background: rgba(0, 212, 255, 0.14);
+        border-color: rgba(0, 212, 255, 0.55);
+      }
+      .jv-nav__hamburger {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        margin-left: auto;
+        flex-shrink: 0;
+      }
+      .jv-nav__hamburger span {
+        display: block;
+        width: 20px;
+        height: 1.5px;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 2px;
+        transition: background 0.2s;
+      }
+      .jv-nav__hamburger:hover span {
+        background: #00d4ff;
+      }
+      .jv-nav__dropdown {
+        display: none;
+        position: fixed;
+        top: 52px;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+        z-index: 999;
+        flex-direction: column;
+        padding: 8px 0;
+      }
+      .jv-nav__dropdown.jv-nav--open {
+        display: flex;
+      }
+      .jv-nav__dropdown a {
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 12px;
+        font-variant: small-caps;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 12px 24px;
+        border-left: 2px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__dropdown a:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .jv-nav__dropdown a.jv-nav--active,
+      .jv-nav__dropdown a[aria-current="page"] {
+        color: #00d4ff;
+        border-left-color: #00d4ff;
+      }
+      @media (max-width: 768px) {
+        .jv-nav__links,
+        .jv-nav__user {
+          display: none;
+        }
+        .jv-nav__hamburger {
+          display: flex;
+        }
+        .jv-nav__brand {
+          font-size: 13px;
+        }
+      }
+
+      /* ═══════════════════ CALENDAR PAGE ═══════════════════ */
+      .cal-viewport {
+        position: relative;
+        z-index: 1;
+        padding-top: 70px;
+      }
+      .cal-shell {
+        width: min(1280px, calc(100vw - 40px));
+        margin: 0 auto;
+      }
+      @media (max-width: 768px) {
+        .cal-shell {
+          width: min(1280px, calc(100vw - 24px));
+        }
+      }
+
+      .cal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+      .cal-title {
+        margin: 0;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: clamp(1.55rem, 3.5vw, 2.25rem);
+        color: #00d4ff;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        text-shadow: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 70px rgba(0, 212, 255, 0.18);
+      }
+      .cal-subtitle {
+        margin: 6px 0 0;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.3);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .cal-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .cal-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        background: rgba(0, 212, 255, 0.06);
+        box-shadow: 0 0 0 1px rgba(0, 191, 255, 0.06) inset;
+        color: rgba(0, 212, 255, 0.85);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        user-select: none;
+      }
+      .cal-pill__dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(0, 212, 255, 0.9);
+        box-shadow: 0 0 12px rgba(0, 212, 255, 0.7);
+        animation: calPulse 1.7s ease-in-out infinite;
+      }
+      @keyframes calPulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 0.65;
+        }
+        50% {
+          transform: scale(1.18);
+          opacity: 1;
+        }
+      }
+
+      .cal-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(255, 255, 255, 0.55);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition:
+          transform 0.25s var(--ease-out),
+          border-color 0.25s var(--ease-out),
+          background 0.25s var(--ease-out),
+          color 0.25s var(--ease-out);
+        user-select: none;
+      }
+      .cal-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(0, 212, 255, 0.35);
+        background: rgba(0, 212, 255, 0.06);
+        color: rgba(255, 255, 255, 0.82);
+      }
+      .cal-btn:active {
+        transform: translateY(0);
+      }
+      .cal-btn.cal-btn--active {
+        border-color: rgba(0, 212, 255, 0.5);
+        background: rgba(0, 212, 255, 0.1);
+        color: #00d4ff;
+      }
+      .cal-btn.cal-btn--icon {
+        width: 42px;
+        padding: 10px 0;
+        border-radius: 12px;
+      }
+
+      .cal-board {
+        position: relative;
+        border-radius: 20px;
+        border: 1px solid rgba(0, 212, 255, 0.14);
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        overflow: hidden;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 18px 60px rgba(0, 0, 0, 0.48);
+      }
+      .cal-board__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 14px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .cal-range {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.7);
+      }
+      .cal-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .cal-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .cal-colhead {
+        padding: 12px 12px 10px;
+        background: rgba(0, 0, 0, 0.82);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.8);
+      }
+      .cal-cell {
+        min-height: 120px;
+        padding: 10px 10px 12px;
+        background: rgba(0, 0, 0, 0.82);
+        cursor: pointer;
+        transition:
+          background 0.25s var(--ease-out),
+          transform 0.25s var(--ease-out);
+        position: relative;
+        overflow: hidden;
+      }
+      .cal-cell:hover {
+        background: rgba(0, 212, 255, 0.06);
+        transform: translateY(-1px);
+      }
+      .cal-cell.cal-cell--muted {
+        background: rgba(0, 0, 0, 0.7);
+        opacity: 0.78;
+      }
+      .cal-cell.cal-cell--selected {
+        outline: 1px solid rgba(0, 212, 255, 0.5);
+        box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.12) inset, 0 0 22px rgba(0, 191, 255, 0.12);
+      }
+      .cal-date {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .cal-date__num {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .cal-date__meta {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.28);
+        white-space: nowrap;
+      }
+
+      .cal-dots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      }
+      .dot--win {
+        background: #00ff88;
+        box-shadow: 0 0 12px rgba(0, 255, 136, 0.35);
+      }
+      .dot--loss {
+        background: #ff5050;
+        box-shadow: 0 0 12px rgba(255, 80, 80, 0.35);
+      }
+      .dot--be {
+        background: rgba(192, 192, 192, 0.9);
+        box-shadow: 0 0 12px rgba(192, 192, 192, 0.25);
+      }
+      .dot--unk {
+        background: rgba(255, 255, 255, 0.35);
+      }
+
+      .cal-panel {
+        margin-top: 14px;
+        position: relative;
+        border-radius: 20px;
+        border: 1px solid rgba(0, 212, 255, 0.12);
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        overflow: hidden;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 18px 60px rgba(0, 0, 0, 0.42);
+      }
+      .cal-panel__top {
+        padding: 14px 14px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .cal-panel__title {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.85);
+      }
+      .cal-panel__hint {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.28);
+        white-space: nowrap;
+      }
+      .cal-list {
+        padding: 12px 12px 14px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .cal-trade {
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 12px 12px;
+        transition:
+          transform 0.25s var(--ease-out),
+          border-color 0.25s var(--ease-out),
+          background 0.25s var(--ease-out);
+        overflow: hidden;
+      }
+      .cal-trade:hover {
+        transform: translateY(-1px);
+        border-color: rgba(0, 212, 255, 0.22);
+        background: rgba(0, 212, 255, 0.05);
+      }
+      .cal-trade__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .cal-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.25);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.72);
+        white-space: nowrap;
+      }
+      .cal-badge__dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+      }
+      .cal-badge--win {
+        border-color: rgba(0, 255, 136, 0.35);
+        color: rgba(0, 255, 136, 0.95);
+      }
+      .cal-badge--win .cal-badge__dot {
+        background: #00ff88;
+        box-shadow: 0 0 10px rgba(0, 255, 136, 0.35);
+      }
+      .cal-badge--loss {
+        border-color: rgba(255, 80, 80, 0.35);
+        color: rgba(255, 80, 80, 0.92);
+      }
+      .cal-badge--loss .cal-badge__dot {
+        background: #ff5050;
+        box-shadow: 0 0 10px rgba(255, 80, 80, 0.35);
+      }
+      .cal-badge--be {
+        border-color: rgba(192, 192, 192, 0.22);
+        color: rgba(192, 192, 192, 0.92);
+      }
+      .cal-badge--be .cal-badge__dot {
+        background: rgba(192, 192, 192, 0.95);
+        box-shadow: 0 0 10px rgba(192, 192, 192, 0.22);
+      }
+      .cal-kv {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .cal-k {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.28);
+      }
+      .cal-v {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.72);
+        letter-spacing: 0.06em;
+        text-align: right;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 1024px) {
+        .cal-list {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      @media (max-width: 768px) {
+        .cal-header {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .cal-controls {
+          justify-content: flex-start;
+        }
+        .cal-cell {
+          min-height: 92px;
+        }
+        .cal-list {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .cal-pill__dot {
+          animation: none;
+        }
+        .cal-cell,
+        .cal-trade,
+        .cal-btn {
+          transition-duration: 0.01ms !important;
+        }
+        .cal-cell:hover,
+        .cal-trade:hover,
+        .cal-btn:hover {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══════════════════ NAV BAR ═══════════════════ -->
+    <nav class="jv-nav" aria-label="Main navigation">
+      <a class="jv-nav__brand" href="/index.html">JARVIS</a>
+      <ul class="jv-nav__links" role="list">
+        <li><a href="/index.html" id="nav-home">Home</a></li>
+        <li><a href="/journal.html" id="nav-journal">Journal</a></li>
+        <li><a href="/analytics.html" id="nav-analytics">Analytics</a></li>
+        <li>
+          <a href="/calendar.html" id="nav-calendar" class="jv-nav--active" aria-current="page"
+            >Calendar</a
+          >
+        </li>
+      </ul>
+      <span class="jv-nav__user" id="jv-nav-user" aria-label="Current user"></span>
+      <button class="jv-nav__logout" id="logout-btn" type="button">Logout</button>
+      <button
+        class="jv-nav__hamburger"
+        id="jv-nav-hamburger"
+        aria-label="Toggle navigation"
+        aria-expanded="false"
+        aria-controls="jv-nav-dropdown"
+      >
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+    </nav>
+
+    <div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
+      <a href="/index.html">Home</a>
+      <a href="/journal.html">Journal</a>
+      <a href="/analytics.html">Analytics</a>
+      <a href="/calendar.html" class="jv-nav--active" aria-current="page">Calendar</a>
+    </div>
+
+    <script>
+      (function () {
+        var user = localStorage.getItem("jarvis_user") || localStorage.getItem("user_id");
+        if (user) document.getElementById("jv-nav-user").textContent = user;
+
+        var logoutBtn = document.getElementById("logout-btn");
+        if (logoutBtn) {
+          logoutBtn.addEventListener("click", function () {
+            try {
+              localStorage.removeItem("jarvis_user");
+              localStorage.removeItem("user_id");
+            } catch (e) {}
+            window.location.href = "/index.html";
+          });
+        }
+
+        var btn = document.getElementById("jv-nav-hamburger");
+        var dropdown = document.getElementById("jv-nav-dropdown");
+        btn.addEventListener("click", function () {
+          var open = dropdown.classList.toggle("jv-nav--open");
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+          dropdown.setAttribute("aria-hidden", open ? "false" : "true");
+        });
+        document.addEventListener("click", function (e) {
+          if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove("jv-nav--open");
+            btn.setAttribute("aria-expanded", "false");
+            dropdown.setAttribute("aria-hidden", "true");
+          }
+        });
+      })();
+    </script>
+    <!-- ═══════════════════ END NAV BAR ═══════════════════ -->
+
+    <canvas id="particle-canvas" aria-hidden="true"></canvas>
+
+    <div class="cal-viewport">
+      <div class="hud-frame" data-hud-frame>
+        <span class="hud-corner hud-corner--tl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--tr" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--bl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--br" aria-hidden="true"></span>
+
+        <div class="cal-shell">
+          <header class="cal-header">
+            <div>
+              <h1 class="cal-title">CALENDAR</h1>
+              <p class="cal-subtitle">Weekday grid · click day for trades</p>
+            </div>
+
+            <div class="cal-controls" aria-label="Calendar controls">
+              <div class="cal-pill" title="Data stream status">
+                <span class="cal-pill__dot" aria-hidden="true"></span>
+                Streaming
+              </div>
+              <button class="cal-btn cal-btn--active" id="view-week" type="button">Week</button>
+              <button class="cal-btn" id="view-month" type="button">Month</button>
+              <button class="cal-btn" id="btn-today" type="button">Today</button>
+            </div>
+          </header>
+
+          <section class="cal-board" aria-label="Calendar grid">
+            <div class="cal-board__top">
+              <div class="cal-range" id="cal-range">—</div>
+              <div class="cal-nav">
+                <button class="cal-btn cal-btn--icon" id="btn-prev" type="button" aria-label="Previous">
+                  ‹
+                </button>
+                <button class="cal-btn cal-btn--icon" id="btn-next" type="button" aria-label="Next">
+                  ›
+                </button>
+              </div>
+            </div>
+            <div class="cal-grid" id="cal-grid" aria-live="polite"></div>
+          </section>
+
+          <section class="cal-panel" aria-label="Day trades">
+            <div class="cal-panel__top">
+              <div class="cal-panel__title" id="panel-title">Select a day</div>
+              <div class="cal-panel__hint" id="panel-hint">—</div>
+            </div>
+            <div class="cal-list" id="panel-list">
+              <div class="cal-trade" style="grid-column: 1 / -1; opacity: 0.7">
+                <div class="cal-trade__row">
+                  <span class="cal-badge"><span class="cal-badge__dot" style="background:rgba(255,255,255,0.3)"></span>READY</span>
+                  <span class="cal-badge" style="opacity:0.8">WAITING FOR DATA</span>
+                </div>
+                <div class="cal-kv">
+                  <div class="cal-k">Hint</div>
+                  <div class="cal-v">Click any weekday cell</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var DEFAULT_USER_ID = "aidenpasque11@gmail.com";
+        var currentUserId = DEFAULT_USER_ID;
+        var TZ = "Australia/Adelaide";
+        var viewMode = "week"; // week | month
+        var anchorDate = new Date(); // used for current view range
+        var selectedKey = ""; // YYYY-MM-DD
+
+        var trades = [];
+        var byDay = Object.create(null);
+
+        function ensureUserId() {
+          return new Promise(function (resolve) {
+            var ju = (localStorage.getItem("jarvis_user") || "").trim();
+            var uid = (localStorage.getItem("user_id") || "").trim();
+            if (ju) {
+              currentUserId = ju;
+              if (uid !== ju) {
+                try {
+                  localStorage.setItem("user_id", ju);
+                } catch (e) {}
+              }
+            } else if (uid) {
+              currentUserId = uid;
+            } else {
+              currentUserId = DEFAULT_USER_ID;
+              try {
+                localStorage.setItem("user_id", DEFAULT_USER_ID);
+                localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
+              } catch (e) {}
+            }
+            var navUser = document.getElementById("jv-nav-user");
+            if (navUser) navUser.textContent = currentUserId;
+            resolve(currentUserId);
+          });
+        }
+
+        function getField(obj) {
+          for (var i = 1; i < arguments.length; i++) {
+            var v = obj[arguments[i]];
+            if (v !== undefined && v !== null && v !== "") return v;
+          }
+          return "";
+        }
+
+        function normalizeOutcome(raw) {
+          var v = String(raw || "").trim().toLowerCase();
+          if (v === "win" || v === "w") return "win";
+          if (v === "loss" || v === "l") return "loss";
+          if (v === "be" || v === "breakeven" || v === "break even" || v === "break-even") return "be";
+          return v || "unk";
+        }
+
+        function tradeDate(t) {
+          return new Date(getField(t, "date", "traded_at", "Date") || "");
+        }
+
+        function partsYMD(d) {
+          try {
+            var f = new Intl.DateTimeFormat("en-CA", {
+              timeZone: TZ,
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            });
+            var p = f.formatToParts(d).reduce(function (acc, it) {
+              acc[it.type] = it.value;
+              return acc;
+            }, {});
+            return { y: p.year, m: p.month, d: p.day };
+          } catch (e) {
+            // fallback: local
+            var y = d.getFullYear();
+            var m = String(d.getMonth() + 1).padStart(2, "0");
+            var dd = String(d.getDate()).padStart(2, "0");
+            return { y: String(y), m: m, d: dd };
+          }
+        }
+
+        function dayKey(d) {
+          var p = partsYMD(d);
+          return p.y + "-" + p.m + "-" + p.d;
+        }
+
+        function formatRangeLabelWeek(start, end) {
+          try {
+            var fmt = new Intl.DateTimeFormat("en-AU", { timeZone: TZ, day: "2-digit", month: "short", year: "numeric" });
+            return fmt.format(start) + " → " + fmt.format(end);
+          } catch (e) {
+            return start.toDateString() + " → " + end.toDateString();
+          }
+        }
+
+        function formatRangeLabelMonth(d) {
+          try {
+            return new Intl.DateTimeFormat("en-AU", { timeZone: TZ, month: "long", year: "numeric" }).format(d);
+          } catch (e) {
+            return d.toLocaleString("en-AU", { month: "long", year: "numeric" });
+          }
+        }
+
+        function toUtcLikeMidnight(key) {
+          // key is YYYY-MM-DD
+          return new Date(key + "T00:00:00.000Z");
+        }
+
+        function mondayOfWeek(d) {
+          // Use TZ-aware YMD then convert to UTC-like midnight and compute weekday
+          var p = partsYMD(d);
+          var x = new Date(p.y + "-" + p.m + "-" + p.d + "T00:00:00.000Z");
+          var day = x.getUTCDay(); // 0 Sun..6 Sat
+          var daysToMon = day === 0 ? 6 : day - 1;
+          var mon = new Date(x);
+          mon.setUTCDate(x.getUTCDate() - daysToMon);
+          mon.setUTCHours(0, 0, 0, 0);
+          return mon;
+        }
+
+        function addDaysUTC(d, n) {
+          var x = new Date(d);
+          x.setUTCDate(x.getUTCDate() + n);
+          return x;
+        }
+
+        function normalizeTradesApiBody(data) {
+          if (!data || typeof data !== "object") return { records: [] };
+          var inner = data.payload && typeof data.payload === "object" ? data.payload : data;
+          var tradesArr = Array.isArray(inner.trades) ? inner.trades : null;
+          var recsArr = Array.isArray(inner.records) ? inner.records : null;
+          return { records: tradesArr || recsArr || [] };
+        }
+
+        async function fetchAllTrades() {
+          var userId = currentUserId || DEFAULT_USER_ID;
+          var reqs = [
+            fetch("/api/trades?user_id=eq." + encodeURIComponent(userId), { cache: "no-store" }).then(function (r) {
+              return r.json();
+            }),
+            fetch("/api/journal-trades?user_id=eq." + encodeURIComponent(userId), { cache: "no-store" }).then(function (r) {
+              return r.json();
+            }),
+          ];
+          var res = await Promise.allSettled(reqs);
+          var merged = [];
+          if (res[0].status === "fulfilled") merged = merged.concat(normalizeTradesApiBody(res[0].value).records);
+          if (res[1].status === "fulfilled" && Array.isArray(res[1].value)) merged = merged.concat(res[1].value);
+          merged = merged.filter(function (t) {
+            return !isNaN(tradeDate(t));
+          });
+          merged.sort(function (a, b) {
+            return tradeDate(b) - tradeDate(a);
+          });
+          return merged;
+        }
+
+        function buildIndex(trs) {
+          byDay = Object.create(null);
+          trs.forEach(function (t) {
+            var k = dayKey(tradeDate(t));
+            if (!byDay[k]) byDay[k] = [];
+            byDay[k].push(t);
+          });
+          Object.keys(byDay).forEach(function (k) {
+            byDay[k].sort(function (a, b) {
+              return tradeDate(a) - tradeDate(b);
+            });
+          });
+        }
+
+        function weekdayHeads() {
+          return ["Mon", "Tue", "Wed", "Thu", "Fri"];
+        }
+
+        function setViewButtons() {
+          var w = document.getElementById("view-week");
+          var m = document.getElementById("view-month");
+          if (w) w.classList.toggle("cal-btn--active", viewMode === "week");
+          if (m) m.classList.toggle("cal-btn--active", viewMode === "month");
+        }
+
+        function renderGrid() {
+          setViewButtons();
+          var grid = document.getElementById("cal-grid");
+          if (!grid) return;
+          grid.innerHTML = "";
+
+          // Column headers
+          var heads = weekdayHeads();
+          heads.forEach(function (h) {
+            var el = document.createElement("div");
+            el.className = "cal-colhead";
+            el.textContent = h;
+            grid.appendChild(el);
+          });
+
+          if (viewMode === "week") renderWeek(grid);
+          else renderMonth(grid);
+        }
+
+        function renderWeek(grid) {
+          var mon = mondayOfWeek(anchorDate);
+          var fri = addDaysUTC(mon, 4);
+
+          var rangeEl = document.getElementById("cal-range");
+          if (rangeEl) rangeEl.textContent = formatRangeLabelWeek(mon, fri);
+
+          for (var i = 0; i < 5; i++) {
+            var d = addDaysUTC(mon, i);
+            grid.appendChild(buildCell(d, false));
+          }
+        }
+
+        function firstOfMonth(d) {
+          var p = partsYMD(d);
+          return new Date(p.y + "-" + p.m + "-01T00:00:00.000Z");
+        }
+
+        function renderMonth(grid) {
+          var first = firstOfMonth(anchorDate);
+          var p = partsYMD(anchorDate);
+          var monthLabel = document.getElementById("cal-range");
+          if (monthLabel) monthLabel.textContent = formatRangeLabelMonth(new Date(p.y + "-" + p.m + "-01T00:00:00.000Z"));
+
+          // Find the Monday on or before the first day of month (based on UTC-like midnight of TZ date)
+          var mon = mondayOfWeek(first);
+
+          // Build 6 weeks max, weekdays only (Mon–Fri)
+          var startKey = p.y + "-" + p.m + "-01";
+          var monthNum = Number(p.m);
+          var cursor = new Date(mon);
+          for (var week = 0; week < 6; week++) {
+            for (var col = 0; col < 5; col++) {
+              var cellDate = addDaysUTC(cursor, week * 7 + col);
+              var cellParts = partsYMD(cellDate);
+              var cellMonth = Number(cellParts.m);
+              var muted = cellMonth !== monthNum;
+              grid.appendChild(buildCell(cellDate, muted));
+            }
+          }
+        }
+
+        function buildCell(dUtcLike, muted) {
+          var p = partsYMD(dUtcLike);
+          var key = p.y + "-" + p.m + "-" + p.d;
+          var list = byDay[key] || [];
+
+          var el = document.createElement("div");
+          el.className = "cal-cell" + (muted ? " cal-cell--muted" : "") + (key === selectedKey ? " cal-cell--selected" : "");
+          el.dataset.key = key;
+
+          var top = document.createElement("div");
+          top.className = "cal-date";
+          var left = document.createElement("div");
+          left.className = "cal-date__num";
+          left.textContent = p.d;
+          var right = document.createElement("div");
+          right.className = "cal-date__meta";
+          right.textContent = list.length ? list.length + " trades" : "—";
+          top.appendChild(left);
+          top.appendChild(right);
+
+          var dots = document.createElement("div");
+          dots.className = "cal-dots";
+          var maxDots = 16;
+          for (var i = 0; i < Math.min(maxDots, list.length); i++) {
+            var o = normalizeOutcome(getField(list[i], "outcome", "Outcome", "OUTCOME"));
+            var dot = document.createElement("span");
+            dot.className =
+              "dot " +
+              (o === "win" ? "dot--win" : o === "loss" ? "dot--loss" : o === "be" ? "dot--be" : "dot--unk");
+            dots.appendChild(dot);
+          }
+          if (list.length > maxDots) {
+            var more = document.createElement("span");
+            more.className = "cal-date__meta";
+            more.style.marginTop = "6px";
+            more.textContent = "+" + (list.length - maxDots);
+            dots.appendChild(more);
+          }
+
+          el.appendChild(top);
+          el.appendChild(dots);
+          return el;
+        }
+
+        function setPanel(key) {
+          selectedKey = key || "";
+          renderGrid();
+
+          var title = document.getElementById("panel-title");
+          var hint = document.getElementById("panel-hint");
+          var listEl = document.getElementById("panel-list");
+          if (!title || !hint || !listEl) return;
+
+          if (!selectedKey) {
+            title.textContent = "Select a day";
+            hint.textContent = "—";
+            listEl.innerHTML = "";
+            return;
+          }
+
+          var d = toUtcLikeMidnight(selectedKey);
+          try {
+            title.textContent = new Intl.DateTimeFormat("en-AU", {
+              timeZone: TZ,
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }).format(d);
+          } catch (e) {
+            title.textContent = selectedKey;
+          }
+
+          var dayTrades = byDay[selectedKey] || [];
+          hint.textContent = dayTrades.length ? dayTrades.length + " trades" : "No trades logged";
+
+          if (!dayTrades.length) {
+            listEl.innerHTML =
+              '<div class="cal-trade" style="grid-column: 1 / -1; opacity: 0.72">' +
+              '<div class="cal-trade__row">' +
+              '<span class="cal-badge"><span class="cal-badge__dot" style="background:rgba(255,255,255,0.3)"></span>EMPTY</span>' +
+              '<span class="cal-badge" style="opacity:0.8">NO TRADES</span>' +
+              "</div>" +
+              '<div class="cal-kv"><div class="cal-k">Tip</div><div class="cal-v">Use Journal → LOG TRADE</div></div>' +
+              "</div>";
+            return;
+          }
+
+          var frag = document.createDocumentFragment();
+          dayTrades.forEach(function (t) {
+            var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
+            var badgeCls = o === "win" ? "cal-badge--win" : o === "loss" ? "cal-badge--loss" : o === "be" ? "cal-badge--be" : "";
+            var badgeText = o === "win" ? "WIN" : o === "loss" ? "LOSS" : o === "be" ? "BE" : "—";
+
+            var pair = String(getField(t, "pair", "Pair", "PAIR", "instrument", "symbol") || "—").toUpperCase();
+            var session = String(getField(t, "session", "Session", "SESSION") || "—");
+            var model = String(getField(t, "model", "Model", "MODEL", "ENTRY MODEL") || "—");
+            var account = String(getField(t, "account", "Account", "ACCOUNT") || "—");
+            var rr = parseFloat(getField(t, "rr", "RR"));
+            var rrStr = isNaN(rr) ? "—" : rr.toFixed(2) + "R";
+
+            var card = document.createElement("div");
+            card.className = "cal-trade";
+            card.innerHTML =
+              '<div class="cal-trade__row">' +
+              '<span class="cal-badge ' +
+              badgeCls +
+              '"><span class="cal-badge__dot" aria-hidden="true"></span>' +
+              badgeText +
+              "</span>" +
+              '<span class="cal-badge" style="opacity:0.9">' +
+              pair +
+              "</span>" +
+              "</div>" +
+              '<div class="cal-kv">' +
+              '<div class="cal-k">Session</div><div class="cal-v">' +
+              escapeHtml(session) +
+              "</div>" +
+              '<div class="cal-k">RR</div><div class="cal-v">' +
+              escapeHtml(rrStr) +
+              "</div>" +
+              '<div class="cal-k">Model</div><div class="cal-v" title="' +
+              escapeHtml(model) +
+              '">' +
+              escapeHtml(model) +
+              "</div>" +
+              '<div class="cal-k">Account</div><div class="cal-v" title="' +
+              escapeHtml(account) +
+              '">' +
+              escapeHtml(account) +
+              "</div>" +
+              "</div>";
+
+            frag.appendChild(card);
+          });
+
+          listEl.innerHTML = "";
+          listEl.appendChild(frag);
+        }
+
+        function escapeHtml(s) {
+          return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        function initParticles() {
+          var canvas = document.getElementById("particle-canvas");
+          if (!canvas) return;
+          var ctx = canvas.getContext("2d");
+          var particles = [];
+          var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          var mobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+          var PARTICLE_COUNT = reduce ? 0 : mobile ? 220 : 340;
+          if (!PARTICLE_COUNT) return;
+
+          function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+          }
+          resize();
+          window.addEventListener("resize", resize);
+
+          function Particle() {
+            this.x = Math.random() * window.innerWidth;
+            this.y = Math.random() * window.innerHeight;
+            var speed = Math.random() * 0.3 + 0.04;
+            var angle = Math.random() * Math.PI * 2;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.size = Math.random() * 0.7 + 0.2;
+            this.baseAlpha = Math.random() * 0.45 + 0.08;
+            this.twinkle = Math.random() * Math.PI * 2;
+            var r = Math.random();
+            if (r < 0.65) {
+              this.cr = 0;
+              this.cg = 191;
+              this.cb = 255;
+            } else if (r < 0.93) {
+              this.cr = 192;
+              this.cg = 192;
+              this.cb = 192;
+            } else {
+              this.cr = 255;
+              this.cg = 255;
+              this.cb = 255;
+              this.size = Math.random() * 1.0 + 0.2;
+              this.baseAlpha = Math.random() * 0.6 + 0.2;
+            }
+          }
+          for (var i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+
+          (function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (var j = 0; j < particles.length; j++) {
+              var p = particles[j];
+              p.twinkle += 0.018;
+              var a = p.baseAlpha * (0.72 + 0.28 * Math.sin(p.twinkle));
+              p.vx *= 0.998;
+              p.vy *= 0.998;
+              p.vx += (Math.random() - 0.5) * 0.004;
+              p.vy += (Math.random() - 0.5) * 0.004;
+              p.x += p.vx;
+              p.y += p.vy;
+              var W = window.innerWidth,
+                H = window.innerHeight;
+              if (p.x < -20) p.x = W + 20;
+              if (p.x > W + 20) p.x = -20;
+              if (p.y < -20) p.y = H + 20;
+              if (p.y > H + 20) p.y = -20;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+              ctx.fillStyle = "rgba(" + p.cr + "," + p.cg + "," + p.cb + "," + a + ")";
+              ctx.fill();
+            }
+            requestAnimationFrame(loop);
+          })();
+        }
+
+        function goToday() {
+          anchorDate = new Date();
+          var key = dayKey(new Date());
+          // if today is weekend, select Monday of current week
+          var mon = mondayOfWeek(anchorDate);
+          var todayKey = dayKey(anchorDate);
+          var day = mon.getUTCDay(); // mon is monday; but compute from today instead:
+          var p = partsYMD(anchorDate);
+          var x = new Date(p.y + "-" + p.m + "-" + p.d + "T00:00:00.000Z");
+          var dow = x.getUTCDay();
+          if (dow === 0 || dow === 6) {
+            todayKey = dayKey(mon);
+          }
+          setPanel(todayKey);
+        }
+
+        function shiftRange(dir) {
+          var delta = viewMode === "week" ? 7 : 30;
+          // month shift should be by 1 month, not 30 days; handled below.
+          if (viewMode === "week") {
+            anchorDate = addDaysUTC(mondayOfWeek(anchorDate), dir * 7);
+          } else {
+            var p = partsYMD(anchorDate);
+            var y = Number(p.y);
+            var m = Number(p.m);
+            m += dir;
+            if (m <= 0) {
+              m = 12;
+              y -= 1;
+            }
+            if (m >= 13) {
+              m = 1;
+              y += 1;
+            }
+            var mm = String(m).padStart(2, "0");
+            anchorDate = new Date(String(y) + "-" + mm + "-01T00:00:00.000Z");
+          }
+          renderGrid();
+        }
+
+        function wire() {
+          var grid = document.getElementById("cal-grid");
+          if (grid) {
+            grid.addEventListener("click", function (e) {
+              var cell = e.target.closest(".cal-cell");
+              if (!cell) return;
+              var key = cell.dataset.key || "";
+              if (key) setPanel(key);
+            });
+          }
+
+          var prev = document.getElementById("btn-prev");
+          var next = document.getElementById("btn-next");
+          var today = document.getElementById("btn-today");
+          var vw = document.getElementById("view-week");
+          var vm = document.getElementById("view-month");
+
+          prev && prev.addEventListener("click", function () { shiftRange(-1); });
+          next && next.addEventListener("click", function () { shiftRange(1); });
+          today && today.addEventListener("click", function () { goToday(); renderGrid(); });
+
+          vw &&
+            vw.addEventListener("click", function () {
+              viewMode = "week";
+              renderGrid();
+            });
+          vm &&
+            vm.addEventListener("click", function () {
+              viewMode = "month";
+              renderGrid();
+            });
+        }
+
+        async function boot() {
+          initParticles();
+          wire();
+          await ensureUserId();
+
+          var panelHint = document.getElementById("panel-hint");
+          if (panelHint) panelHint.textContent = "Loading trades…";
+
+          try {
+            trades = await fetchAllTrades();
+          } catch (e) {
+            trades = [];
+          }
+
+          buildIndex(trades);
+          goToday();
+          renderGrid();
+        }
+
+        boot();
+      })();
+    </script>
+  </body>
+</html>
+
