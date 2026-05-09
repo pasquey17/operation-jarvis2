@@ -28,7 +28,8 @@ export function LandingPage() {
 
   const heroScale = useTransform(pHero, [0, 1], [1.06, 1]);
   const heroBlur = useTransform(pHero, [0, 1], [14, 0]);
-  const heroOpacity = useTransform(pHero, [0, 1], [0.0, 1.0]);
+  // Hero fades out as the next scene comes in to prevent overlap stacking.
+  const heroOpacity = useTransform(scrollYProgress, [0.0, 0.12, 0.18, 0.22], [1, 1, 0, 0]);
 
   const bgShift = useTransform(scrollYProgress, [0, 1], [0, -120]);
   const vignette = useTransform(scrollYProgress, [0, 1], [0.15, 0.35]);
@@ -142,7 +143,7 @@ function SceneHero({
 
 function SceneProblem({ progress }: { progress: any }) {
   const y = useTransform(progress, [0, 1], [28, 0]);
-  const opacity = useTransform(progress, [0, 0.25, 1], [0, 1, 1]);
+  const opacity = useTransform(progress, [0, 0.16, 0.84, 1], [0, 1, 1, 0]);
   const blur = useTransform(progress, [0, 1], [16, 0]);
   const blurFilter = useTransform(blur, (v) => `blur(${v}px)`);
   return (
@@ -183,7 +184,7 @@ function SceneProblem({ progress }: { progress: any }) {
 }
 
 function SceneSystem({ progress }: { progress: any }) {
-  const opacity = useTransform(progress, [0, 0.2, 1], [0, 1, 1]);
+  const opacity = useTransform(progress, [0, 0.16, 0.84, 1], [0, 1, 1, 0]);
   const y = useTransform(progress, [0, 1], [24, 0]);
   const panelScale = useTransform(progress, [0, 1], [0.98, 1]);
   return (
@@ -218,7 +219,7 @@ function SceneSystem({ progress }: { progress: any }) {
 }
 
 function SceneMemory({ progress }: { progress: any }) {
-  const opacity = useTransform(progress, [0, 0.18, 1], [0, 1, 1]);
+  const opacity = useTransform(progress, [0, 0.16, 0.84, 1], [0, 1, 1, 0]);
   const y = useTransform(progress, [0, 1], [22, 0]);
   const leftX = useTransform(progress, [0, 1], [-18, 0]);
   const rightX = useTransform(progress, [0, 1], [18, 0]);
@@ -257,7 +258,7 @@ function SceneMemory({ progress }: { progress: any }) {
 }
 
 function SceneCoaching({ progress }: { progress: any }) {
-  const opacity = useTransform(progress, [0, 0.18, 1], [0, 1, 1]);
+  const opacity = useTransform(progress, [0, 0.16, 0.84, 1], [0, 1, 1, 0]);
   const y = useTransform(progress, [0, 1], [22, 0]);
   const hud = useTransform(progress, [0, 1], [0.96, 1]);
   return (
@@ -289,7 +290,7 @@ function SceneCoaching({ progress }: { progress: any }) {
 }
 
 function SceneReview({ progress }: { progress: any }) {
-  const opacity = useTransform(progress, [0, 0.18, 1], [0, 1, 1]);
+  const opacity = useTransform(progress, [0, 0.16, 0.84, 1], [0, 1, 1, 0]);
   const y = useTransform(progress, [0, 1], [22, 0]);
   return (
     <motion.section style={{ opacity, y }} className="absolute inset-0 px-6 py-10">
@@ -313,6 +314,7 @@ function SceneReview({ progress }: { progress: any }) {
 }
 
 function SceneCTA({ progress }: { progress: any }) {
+  // Final CTA can stay visible at the end; no fade-out needed beyond end-of-scroll.
   const opacity = useTransform(progress, [0, 0.25, 1], [0, 1, 1]);
   const y = useTransform(progress, [0, 1], [26, 0]);
   const scale = useTransform(progress, [0, 1], [0.98, 1]);
