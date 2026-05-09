@@ -944,84 +944,284 @@ els.chatInput?.addEventListener("input", () => {
   if ((els.chatInput?.value || "").trim()) enterChatMode();
 });
 
-/* ═══════════ Energy orb canvas — electric blue, no idle ring ═══════════ */
+/* ═══════════ Holographic orb — multi-layer electric-blue sphere (2D canvas) ═══════════ */
 function startOrb() {
   const canvas = els.orbCanvas;
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  let t = 0;
+  const BLUE = [0, 191, 255];
+  const BLUE_DEEP = [0, 110, 200];
+  const BLUE_HOT = [200, 245, 255];
+
+  const reducedMotion =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   let logicalW = 0;
   let logicalH = 0;
   let cx = 0;
   let cy = 0;
-  let baseR = 0;
+  let projScale = 1;
+  let timeSec = 0;
+  let lastFrameTs = performance.now();
+
+  const rawNormals = [
+    [0, 0, 1],
+    [0, 1, 0],
+    [1, 0, 0],
+    [1, 1, 0],
+    [1, 0, 1],
+    [0, 1, 1],
+    [1, -1, 0],
+    [1, 0, -1],
+    [0, 1, -1],
+    [-1, 1, 1],
+    [1, 1, 1],
+    [-1, 1, 0],
+    [1, -1, 2],
+    [2, -1, 1],
+    [-1, 0, 1],
+  ];
+  const ringNormals = rawNormals.map((v) => {
+    const len = Math.hypot(v[0], v[1], v[2]) || 1;
+    return [v[0] / len, v[1] / len, v[2] / len];
+  });
+
+  const tmpCross = [0, 0, 0];
+  const uHat = [0, 0, 0];
+  const vHat = [0, 0, 0];
+
+  /** One point buffer per ring so depth-sorted draws stay correct across frames */
+  const ringCaches = ringNormals.map(() => []);
+
+  function normalize3(x, y, z, out) {
+    const len = Math.hypot(x, y, z) || 1;
+    out[0] = x / len;
+    out[1] = y / len;
+    out[2] = z / len;
+    return out;
+  }
+
+  function cross(ax, ay, az, bx, by, bz, out) {
+    out[0] = ay * bz - az * by;
+    out[1] = az * bx - ax * bz;
+    out[2] = ax * by - ay * bx;
+    return out;
+  }
+
+  function eulerRotate(x, y, z, rx, ry, rz) {
+    let c = Math.cos(rx);
+    let s = Math.sin(rx);
+    let y1 = y * c - z * s;
+    let z1 = y * s + z * c;
+    let x1 = x;
+    c = Math.cos(ry);
+    s = Math.sin(ry);
+    let x2 = x1 * c + z1 * s;
+    let y2 = y1;
+    let z2 = -x1 * s + z1 * c;
+    c = Math.cos(rz);
+    s = Math.sin(rz);
+    return [x2 * c - y2 * s, x2 * s + y2 * c, z2];
+  }
+
+  function ringPoints(nx, ny, nz, segments, rx, ry, rz, out) {
+    const ax = Math.abs(ny) > 0.85 ? 1 : 0;
+    const ay = Math.abs(ny) > 0.85 ? 0 : 1;
+    const az = Math.abs(ny) > 0.85 ? 0 : 0;
+    cross(ax, ay, az, nx, ny, nz, tmpCross);
+    normalize3(tmpCross[0], tmpCross[1], tmpCross[2], uHat);
+    cross(nx, ny, nz, uHat[0], uHat[1], uHat[2], tmpCross);
+    normalize3(tmpCross[0], tmpCross[1], tmpCross[2], vHat);
+
+    out.length = segments + 1;
+    for (let i = 0; i <= segments; i++) {
+      const th = (i / segments) * Math.PI * 2;
+      const co = Math.cos(th);
+      const si = Math.sin(th);
+      const px = co * uHat[0] + si * vHat[0];
+      const py = co * uHat[1] + si * vHat[1];
+      const pz = co * uHat[2] + si * vHat[2];
+      const r = eulerRotate(px, py, pz, rx, ry, rz);
+      if (!out[i]) out[i] = { x: 0, y: 0, z: 0 };
+      out[i].x = cx + r[0] * projScale;
+      out[i].y = cy - r[1] * projScale;
+      out[i].z = r[2];
+    }
+    return out;
+  }
+
+  /** Sort depth: avg Z ascending ≈ farther rings first */
+  function buildFrameRingData(segments, rx, ry, rz) {
+    const rows = [];
+    const useRings =
+      Math.min(logicalW, logicalH) < 420 ? Math.min(11, ringNormals.length) : ringNormals.length;
+    for (let r = 0; r < useRings; r++) {
+      const n = ringNormals[r];
+      const pts = ringPoints(n[0], n[1], n[2], segments, rx, ry, rz, ringCaches[r]);
+      let sumZ = 0;
+      for (let i = 0; i < pts.length; i++) sumZ += pts[i].z;
+      rows.push({ avgZ: sumZ / pts.length, pts });
+    }
+    rows.sort((a, b) => a.avgZ - b.avgZ);
+    return rows;
+  }
+
+  function drawRingStroke(pts, avgZ, active, thetaPulse) {
+    const depthFac = Math.max(0, Math.min(1, (avgZ + 1) * 0.5));
+    const baseA = 0.14 + depthFac * 0.78 + (active ? 0.1 : 0);
+    const pulse = active ? 0.06 * Math.sin(thetaPulse * 3.2) : 0;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+
+    ctx.globalCompositeOperation = "screen";
+
+    ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${(baseA * 0.18 + pulse + 0.02).toFixed(3)})`;
+    ctx.lineWidth = active ? 7.2 : 5.4;
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${(baseA * 0.36 + pulse * 0.8).toFixed(3)})`;
+    ctx.lineWidth = active ? 3 : 2.35;
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${Math.min(
+      0.95,
+      baseA * 0.72 + pulse * 1.1 + (active ? 0.09 : 0)
+    ).toFixed(3)})`;
+    ctx.lineWidth = active ? 1.45 : 1.05;
+    ctx.stroke();
+
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  function drawLatticeNodes(pts, avgZ, active, seed) {
+    const depthFac = Math.max(0, Math.min(1, (avgZ + 1) * 0.5));
+    const step = active ? 7 : 9;
+    for (let i = 0; i < pts.length; i += step) {
+      const p = pts[i];
+      const a = depthFac * 0.5 + (((seed * 31 + i * 17) % 13) / 130) * 0.35 + (active ? 0.16 : 0);
+      const rad = active ? 2.15 : 1.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad * 3.2);
+      g.addColorStop(0, `rgba(255,255,255,${0.45 * a + 0.12})`);
+      g.addColorStop(0.5, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${0.75 * a})`);
+      g.addColorStop(1, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},0)`);
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+  }
 
   function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
     const w = Math.max(1, Math.round(rect.width));
     const h = Math.max(1, Math.round(rect.height));
-
-    // Backing buffer scales for DPR, but layout is controlled by CSS.
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     const bw = Math.max(1, Math.floor(w * dpr));
     const bh = Math.max(1, Math.floor(h * dpr));
     if (canvas.width !== bw || canvas.height !== bh) {
       canvas.width = bw;
       canvas.height = bh;
     }
-
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     logicalW = w;
     logicalH = h;
     cx = logicalW / 2;
     cy = logicalH / 2;
-    baseR = Math.min(logicalW, logicalH) * 0.325;
+    projScale = Math.min(logicalW, logicalH) * 0.4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    if ("imageSmoothingEnabled" in ctx) ctx.imageSmoothingEnabled = true;
+    if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
   }
 
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
 
-  function frame() {
-    t += orbMode === "active" ? 0.2 : 0.036;
+  function segmentCount() {
+    const m = Math.min(logicalW, logicalH);
+    return Math.min(128, Math.max(52, Math.floor(m * 0.29)));
+  }
 
-    const pulse = 0.5 + 0.5 * Math.sin(t * 1.15);
-    const slowBreath = 0.5 + 0.5 * Math.sin(t * 0.38);
-    const surge =
-      orbMode === "active" ? 1.38 + 0.14 * Math.sin(t * 3.35) : 1 + 0.02 * slowBreath;
-    const r = baseR * (0.9 + 0.11 * pulse) * surge;
-    const glow =
-      orbMode === "active"
-        ? 0.65 + 0.3 * pulse
-        : 0.3 + 0.15 * pulse + 0.06 * slowBreath;
-    const coreBright = orbMode === "active" ? 0.98 : 0.5 + 0.25 * pulse;
+  function frame(now) {
+    const dt = reducedMotion ? 0 : Math.min((now - lastFrameTs) / 1000, 0.05);
+    lastFrameTs = now;
+    if (!reducedMotion) timeSec += dt;
+
+    const active = orbMode === "active";
+
+    /** Slow drift idle; noticeably more energy when Jarvis replies, still subdued */
+    const idleRadPerSec = 0.25;
+    const activeRadPerSec = 0.52;
+    const spin = reducedMotion ? 0 : timeSec * (active ? activeRadPerSec : idleRadPerSec);
+
+    const wobbleAmp = active ? 0.11 : 0.06;
+    const rx =
+      Math.sin(timeSec * 0.19) * wobbleAmp + Math.sin(spin * 0.42) * (active ? 0.16 : 0.1);
+    const ry = spin * 1.12 + Math.cos(timeSec * 0.11) * 0.06;
+    const rz =
+      Math.cos(spin * 0.71) * 0.07 + spin * (active ? 0.68 : 0.42) + Math.sin(timeSec * 0.23) * 0.09;
+
+    const segs = segmentCount();
+    const ringRows = buildFrameRingData(segs, rx, ry, rz);
 
     ctx.clearRect(0, 0, logicalW, logicalH);
 
-    // Mid glow — white-blue core bleeding outward, fades to transparent
-    const mid = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.15, 0, cx, cy, r * 1.45);
-    mid.addColorStop(0, `rgba(255, 255, 255, ${0.38 * coreBright})`);
-    mid.addColorStop(0.12, `rgba(0, 191, 255, ${0.68 * coreBright})`);
-    mid.addColorStop(0.48, `rgba(0, 110, 200, ${0.38 * coreBright})`);
-    mid.addColorStop(0.82, "rgba(0, 110, 200, 0)");
+    const breathOuter =
+      active
+        ? projScale * (1.06 + 0.045 * Math.sin(timeSec * 2.1))
+        : projScale * (1 + 0.018 * Math.sin(timeSec * 0.72));
+    const halo = ctx.createRadialGradient(cx - breathOuter * 0.06, cy - breathOuter * 0.1, 0, cx, cy, breathOuter * 1.32);
+    halo.addColorStop(0, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${active ? 0.11 : 0.06})`);
+    halo.addColorStop(0.35, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${active ? 0.085 : 0.045})`);
+    halo.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, breathOuter * 1.06, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalCompositeOperation = "source-over";
+
+    const thetaPulse = spin * (active ? 2.65 : 1.15);
+
+    for (const row of ringRows) drawRingStroke(row.pts, row.avgZ, active, thetaPulse);
+
+    ctx.globalCompositeOperation = "lighter";
+    ringRows.forEach((row, i) => drawLatticeNodes(row.pts, row.avgZ, active, i));
+    ctx.globalCompositeOperation = "source-over";
+
+    const corePulse = active ? 1.06 + 0.035 * Math.sin(timeSec * 3.1) : 1 + 0.028 * Math.sin(timeSec * 0.96);
+    const cr = projScale * 0.5 * corePulse;
+
+    ctx.globalCompositeOperation = "screen";
+    const mid = ctx.createRadialGradient(cx - cr * 0.18, cy - cr * 0.14, 0, cx, cy, cr * 1.38);
+    const midBright = active ? 0.98 : 0.58 + 0.18 * Math.sin(timeSec * 0.91);
+    mid.addColorStop(0, `rgba(255, 255, 255, ${0.42 * midBright})`);
+    mid.addColorStop(0.12, `rgba(${BLUE_HOT[0]}, ${BLUE_HOT[1]}, ${BLUE_HOT[2]}, ${0.52 * midBright})`);
+    mid.addColorStop(0.45, `rgba(${BLUE[0]}, ${BLUE[1]}, ${BLUE[2]}, ${0.62 * midBright})`);
+    mid.addColorStop(0.86, `rgba(${BLUE_DEEP[0]}, ${BLUE_DEEP[1]}, ${BLUE_DEEP[2]}, 0)`);
 
     ctx.fillStyle = mid;
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2);
+    ctx.arc(cx, cy, cr * 1.05, 0, Math.PI * 2);
     ctx.fill();
 
-    // Core — white centre fading cleanly to transparent
-    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.58);
-    core.addColorStop(0, `rgba(255, 255, 255, ${0.98 * coreBright})`);
-    core.addColorStop(0.22, `rgba(200, 238, 255, ${0.92 * coreBright})`);
-    core.addColorStop(0.55, `rgba(0, 191, 255, ${0.88 * coreBright})`);
-    core.addColorStop(1, "rgba(0, 191, 255, 0)");
+    const inner = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 0.72);
+    const coreHot = active ? 1 : 0.62 + 0.16 * Math.sin(timeSec * 1.07);
+    inner.addColorStop(0, `rgba(255, 255, 255, ${0.98 * coreHot})`);
+    inner.addColorStop(0.2, `rgba(${BLUE_HOT[0]}, ${BLUE_HOT[1]}, ${BLUE_HOT[2]}, ${0.94 * coreHot})`);
+    inner.addColorStop(0.5, `rgba(${BLUE[0]}, ${BLUE[1]}, ${BLUE[2]}, ${0.92 * coreHot})`);
+    inner.addColorStop(1, "rgba(0, 191, 255, 0)");
 
-    ctx.fillStyle = core;
+    ctx.fillStyle = inner;
     ctx.beginPath();
-    ctx.arc(cx, cy, r * 0.52, 0, Math.PI * 2);
+    ctx.arc(cx, cy, cr * 0.58, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
 
     requestAnimationFrame(frame);
   }
