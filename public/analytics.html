@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>ANALYTICS · JARVIS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+    <style>
+      /* ═══════════════════ NAV BAR (inlined) ═══════════════════ */
+      .jv-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 52px;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        gap: 0;
+      }
+      .jv-nav__brand {
+        color: #00d4ff;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 15px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        flex-shrink: 0;
+        text-decoration: none;
+      }
+      .jv-nav__links {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        list-style: none;
+        margin: 0 auto;
+        padding: 0;
+      }
+      .jv-nav__links a {
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        font-variant: small-caps;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding-bottom: 2px;
+        border-bottom: 1px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__links a:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .jv-nav__links a.jv-nav--active,
+      .jv-nav__links a[aria-current="page"] {
+        color: #00d4ff;
+        border-bottom: 1px solid #00d4ff;
+      }
+      .jv-nav__user {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.3);
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .jv-nav__logout {
+        margin-left: 14px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.25);
+        background: rgba(0, 212, 255, 0.06);
+        color: rgba(0, 212, 255, 0.85);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .jv-nav__logout:hover {
+        background: rgba(0, 212, 255, 0.14);
+        border-color: rgba(0, 212, 255, 0.55);
+      }
+      .jv-nav__hamburger {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        gap: 5px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        margin-left: auto;
+        flex-shrink: 0;
+      }
+      .jv-nav__hamburger span {
+        display: block;
+        width: 20px;
+        height: 1.5px;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 2px;
+        transition: background 0.2s;
+      }
+      .jv-nav__hamburger:hover span {
+        background: #00d4ff;
+      }
+      .jv-nav__dropdown {
+        display: none;
+        position: fixed;
+        top: 52px;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+        z-index: 999;
+        flex-direction: column;
+        padding: 8px 0;
+      }
+      .jv-nav__dropdown.jv-nav--open {
+        display: flex;
+      }
+      .jv-nav__dropdown a {
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 12px;
+        font-variant: small-caps;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 12px 24px;
+        border-left: 2px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__dropdown a:hover {
+        color: rgba(255, 255, 255, 0.85);
+      }
+      .jv-nav__dropdown a.jv-nav--active,
+      .jv-nav__dropdown a[aria-current="page"] {
+        color: #00d4ff;
+        border-left-color: #00d4ff;
+      }
+      @media (max-width: 768px) {
+        .jv-nav__links,
+        .jv-nav__user {
+          display: none;
+        }
+        .jv-nav__hamburger {
+          display: flex;
+        }
+        .jv-nav__brand {
+          font-size: 13px;
+        }
+      }
+
+      /* ═══════════════════ ANALYTICS PAGE ═══════════════════ */
+      .an-viewport {
+        position: relative;
+        z-index: 1;
+        padding-top: 70px;
+      }
+      .an-shell {
+        width: min(1280px, calc(100vw - 40px));
+        margin: 0 auto;
+      }
+      .an-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+      .an-title {
+        margin: 0;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: clamp(1.55rem, 3.5vw, 2.25rem);
+        color: #00d4ff;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        text-shadow: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 70px rgba(0, 212, 255, 0.18);
+      }
+      .an-subtitle {
+        margin: 6px 0 0;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.3);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .an-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        background: rgba(0, 212, 255, 0.06);
+        box-shadow: 0 0 0 1px rgba(0, 191, 255, 0.06) inset;
+        color: rgba(0, 212, 255, 0.85);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        user-select: none;
+      }
+      .an-status__dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(0, 212, 255, 0.9);
+        box-shadow: 0 0 12px rgba(0, 212, 255, 0.7);
+        animation: anPulse 1.7s ease-in-out infinite;
+      }
+      @keyframes anPulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 0.65;
+        }
+        50% {
+          transform: scale(1.18);
+          opacity: 1;
+        }
+      }
+
+      .an-grid {
+        display: grid;
+        grid-template-columns: 1.45fr 1fr;
+        gap: 18px;
+      }
+      .an-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+
+      /* Reusable chart card styling */
+      .an-card {
+        position: relative;
+        border-radius: 20px;
+        border: 1px solid rgba(0, 212, 255, 0.14);
+        background: rgba(0, 0, 0, 0.78);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        overflow: hidden;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 18px 60px rgba(0, 0, 0, 0.48);
+        transition:
+          transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+          border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .an-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background: radial-gradient(
+          ellipse 120% 90% at 100% 0%,
+          rgba(0, 212, 255, 0.12),
+          transparent 55%
+        );
+        transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .an-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(0, 212, 255, 0.28);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 26px 80px rgba(0, 0, 0, 0.55),
+          0 0 48px rgba(0, 191, 255, 0.06);
+      }
+      .an-card:hover::after {
+        opacity: 1;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .an-card,
+        .an-card::after {
+          transition-duration: 0.01ms !important;
+        }
+        .an-card:hover {
+          transform: none;
+        }
+        .an-status__dot {
+          animation: none;
+        }
+      }
+
+      .an-card__top {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 18px 10px;
+      }
+      .an-card__eyebrow {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.85);
+      }
+      .an-card__meta {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.32);
+        white-space: nowrap;
+      }
+      .an-card__body {
+        padding: 0 16px 16px;
+      }
+      .an-canvas {
+        display: block;
+        width: 100%;
+        height: 300px;
+      }
+      .an-canvas--tall {
+        height: 360px;
+      }
+      .an-footer {
+        margin-top: 16px;
+        padding: 0 4px 10px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.25);
+      }
+
+      @media (max-width: 1024px) {
+        .an-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 768px) {
+        .an-shell {
+          width: min(1280px, calc(100vw - 24px));
+        }
+        .an-header {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .an-status {
+          align-self: flex-start;
+        }
+        .an-row {
+          grid-template-columns: 1fr;
+        }
+        .an-canvas {
+          height: 260px;
+        }
+        .an-canvas--tall {
+          height: 320px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ═══════════════════ NAV BAR ═══════════════════ -->
+    <nav class="jv-nav" aria-label="Main navigation">
+      <a class="jv-nav__brand" href="/index.html">JARVIS</a>
+      <ul class="jv-nav__links" role="list">
+        <li><a href="/index.html" id="nav-home">Home</a></li>
+        <li><a href="/journal.html" id="nav-journal">Journal</a></li>
+        <li>
+          <a href="/analytics.html" id="nav-analytics" class="jv-nav--active" aria-current="page"
+            >Analytics</a
+          >
+        </li>
+        <li><a href="/calendar.html" id="nav-calendar">Calendar</a></li>
+      </ul>
+      <span class="jv-nav__user" id="jv-nav-user" aria-label="Current user"></span>
+      <button class="jv-nav__logout" id="logout-btn" type="button">Logout</button>
+      <button
+        class="jv-nav__hamburger"
+        id="jv-nav-hamburger"
+        aria-label="Toggle navigation"
+        aria-expanded="false"
+        aria-controls="jv-nav-dropdown"
+      >
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+    </nav>
+
+    <div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
+      <a href="/index.html">Home</a>
+      <a href="/journal.html">Journal</a>
+      <a href="/analytics.html" class="jv-nav--active" aria-current="page">Analytics</a>
+      <a href="/calendar.html">Calendar</a>
+    </div>
+
+    <script>
+      (function () {
+        var user = localStorage.getItem("jarvis_user") || localStorage.getItem("user_id");
+        if (user) document.getElementById("jv-nav-user").textContent = user;
+
+        var logoutBtn = document.getElementById("logout-btn");
+        if (logoutBtn) {
+          logoutBtn.addEventListener("click", function () {
+            try {
+              localStorage.removeItem("jarvis_user");
+              localStorage.removeItem("user_id");
+            } catch (e) {}
+            window.location.href = "/index.html";
+          });
+        }
+
+        var btn = document.getElementById("jv-nav-hamburger");
+        var dropdown = document.getElementById("jv-nav-dropdown");
+        btn.addEventListener("click", function () {
+          var open = dropdown.classList.toggle("jv-nav--open");
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+          dropdown.setAttribute("aria-hidden", open ? "false" : "true");
+        });
+        document.addEventListener("click", function (e) {
+          if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove("jv-nav--open");
+            btn.setAttribute("aria-expanded", "false");
+            dropdown.setAttribute("aria-hidden", "true");
+          }
+        });
+      })();
+    </script>
+    <!-- ═══════════════════ END NAV BAR ═══════════════════ -->
+
+    <canvas id="particle-canvas" aria-hidden="true"></canvas>
+
+    <div class="an-viewport">
+      <div class="hud-frame" data-hud-frame>
+        <span class="hud-corner hud-corner--tl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--tr" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--bl" aria-hidden="true"></span>
+        <span class="hud-corner hud-corner--br" aria-hidden="true"></span>
+
+        <div class="an-shell">
+          <header class="an-header">
+            <div>
+              <h1 class="an-title">ANALYTICS</h1>
+              <p class="an-subtitle">System-level performance diagnostics</p>
+            </div>
+            <div class="an-status" aria-label="Analytics status">
+              <span class="an-status__dot" aria-hidden="true"></span>
+              Streaming
+            </div>
+          </header>
+
+          <section class="an-grid" aria-label="Analytics charts">
+            <article class="an-card" aria-label="Equity curve">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">Equity curve</div>
+                <div class="an-card__meta" id="meta-equity">—</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas an-canvas--tall" id="chart-equity"></canvas>
+              </div>
+            </article>
+
+            <article class="an-card" aria-label="Win rate trend">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">Win-rate trend</div>
+                <div class="an-card__meta" id="meta-winrate">—</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas an-canvas--tall" id="chart-winrate"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <section class="an-row" aria-label="Breakdowns">
+            <article class="an-card" aria-label="Performance by session">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">By session</div>
+                <div class="an-card__meta" id="meta-session">—</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas" id="chart-session"></canvas>
+              </div>
+            </article>
+
+            <article class="an-card" aria-label="Performance by entry model">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">By entry model</div>
+                <div class="an-card__meta" id="meta-model">—</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas" id="chart-model"></canvas>
+              </div>
+            </article>
+
+            <article class="an-card" aria-label="Performance by weekday">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">By weekday</div>
+                <div class="an-card__meta" id="meta-weekday">—</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas" id="chart-weekday"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <div class="an-footer" id="an-foot">Loading trades…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart.js via CDN only -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var DEFAULT_USER_ID = "aidenpasque11@gmail.com";
+        var currentUserId = DEFAULT_USER_ID;
+
+        function ensureUserId() {
+          return new Promise(function (resolve) {
+            var ju = (localStorage.getItem("jarvis_user") || "").trim();
+            var uid = (localStorage.getItem("user_id") || "").trim();
+            if (ju) {
+              currentUserId = ju;
+              if (uid !== ju) {
+                try {
+                  localStorage.setItem("user_id", ju);
+                } catch (e) {}
+              }
+            } else if (uid) {
+              currentUserId = uid;
+            } else {
+              currentUserId = DEFAULT_USER_ID;
+              try {
+                localStorage.setItem("user_id", DEFAULT_USER_ID);
+                localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
+              } catch (e) {}
+            }
+            var navUser = document.getElementById("jv-nav-user");
+            if (navUser) navUser.textContent = currentUserId;
+            resolve(currentUserId);
+          });
+        }
+
+        function getField(obj) {
+          for (var i = 1; i < arguments.length; i++) {
+            var v = obj[arguments[i]];
+            if (v !== undefined && v !== null && v !== "") return v;
+          }
+          return "";
+        }
+
+        function normalizeOutcome(raw) {
+          var v = String(raw || "").trim().toLowerCase();
+          if (v === "win" || v === "w") return "win";
+          if (v === "loss" || v === "l") return "loss";
+          if (
+            v === "be" ||
+            v === "breakeven" ||
+            v === "break even" ||
+            v === "break-even"
+          )
+            return "be";
+          return v;
+        }
+
+        function tradeDate(t) {
+          return new Date(getField(t, "date", "traded_at", "Date") || "");
+        }
+
+        function formatDateShort(t) {
+          var d = tradeDate(t);
+          if (isNaN(d)) return "—";
+          try {
+            return d.toLocaleDateString("en-AU", {
+              timeZone: "Australia/Adelaide",
+              day: "2-digit",
+              month: "short",
+            });
+          } catch (e) {
+            return d.toDateString();
+          }
+        }
+
+        function weekdayName(d) {
+          try {
+            return d.toLocaleDateString("en-AU", {
+              timeZone: "Australia/Adelaide",
+              weekday: "short",
+            });
+          } catch (e) {
+            return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+          }
+        }
+
+        function normalizeTradesApiBody(data) {
+          if (!data || typeof data !== "object") return { records: [] };
+          var inner = data.payload && typeof data.payload === "object" ? data.payload : data;
+          // Support both { trades: [...] } and { records: [...] } shapes
+          var trades = Array.isArray(inner.trades) ? inner.trades : null;
+          var recs = Array.isArray(inner.records) ? inner.records : null;
+          return { records: trades || recs || [] };
+        }
+
+        async function fetchAllTrades() {
+          var userId = currentUserId || DEFAULT_USER_ID;
+          var reqs = [
+            fetch("/api/trades?user_id=eq." + encodeURIComponent(userId), {
+              cache: "no-store",
+            }).then(function (r) {
+              return r.json();
+            }),
+            // Existing pipeline already used by journal.html
+            fetch("/api/journal-trades?user_id=eq." + encodeURIComponent(userId), {
+              cache: "no-store",
+            }).then(function (r) {
+              return r.json();
+            }),
+          ];
+
+          var res = await Promise.allSettled(reqs);
+          var merged = [];
+
+          if (res[0].status === "fulfilled") {
+            var norm = normalizeTradesApiBody(res[0].value);
+            merged = merged.concat(norm.records);
+          }
+          if (res[1].status === "fulfilled" && Array.isArray(res[1].value)) {
+            merged = merged.concat(res[1].value);
+          }
+
+          merged.sort(function (a, b) {
+            return tradeDate(b) - tradeDate(a);
+          });
+
+          return merged;
+        }
+
+        function rDeltaForTrade(t) {
+          var outcome = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
+          var rr = parseFloat(getField(t, "rr", "RR"));
+
+          if (outcome === "win") return !isNaN(rr) ? rr : 0;
+          if (outcome === "loss") return !isNaN(rr) ? -Math.abs(rr) : -1;
+          if (outcome === "be") return 0;
+          return 0;
+        }
+
+        function computeStats(trades) {
+          var total = trades.length;
+          var wins = 0;
+          var losses = 0;
+          var netR = 0;
+
+          trades.forEach(function (t) {
+            var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
+            if (o === "win") wins++;
+            if (o === "loss") losses++;
+            netR += rDeltaForTrade(t);
+          });
+
+          return {
+            total: total,
+            wins: wins,
+            losses: losses,
+            winRate: total > 0 ? (wins / total) * 100 : null,
+            netR: netR,
+          };
+        }
+
+        function weekKey(d) {
+          // Week start Monday in Adelaide time using UTC math fallback
+          var x = new Date(d);
+          if (isNaN(x)) return "";
+          // Convert to AU local-like date by shifting via locale string (best-effort)
+          try {
+            var parts = new Intl.DateTimeFormat("en-CA", {
+              timeZone: "Australia/Adelaide",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            })
+              .formatToParts(x)
+              .reduce(function (acc, p) {
+                acc[p.type] = p.value;
+                return acc;
+              }, {});
+            x = new Date(parts.year + "-" + parts.month + "-" + parts.day + "T00:00:00Z");
+          } catch (e) {}
+
+          var day = x.getUTCDay(); // 0=Sun..6=Sat
+          var daysToMon = day === 0 ? 6 : day - 1;
+          var mon = new Date(x);
+          mon.setUTCDate(x.getUTCDate() - daysToMon);
+          mon.setUTCHours(0, 0, 0, 0);
+          return mon.toISOString().slice(0, 10);
+        }
+
+        function buildEquitySeries(tradesAsc) {
+          var labels = [];
+          var data = [];
+          var cum = 0;
+          tradesAsc.forEach(function (t) {
+            cum += rDeltaForTrade(t);
+            labels.push(formatDateShort(t));
+            data.push(Number(cum.toFixed(2)));
+          });
+          return { labels: labels, data: data };
+        }
+
+        function buildWeeklyWinRate(tradesAsc) {
+          var buckets = {};
+          tradesAsc.forEach(function (t) {
+            var d = tradeDate(t);
+            if (isNaN(d)) return;
+            var k = weekKey(d);
+            if (!k) return;
+            if (!buckets[k]) buckets[k] = { total: 0, wins: 0 };
+            buckets[k].total++;
+            var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
+            if (o === "win") buckets[k].wins++;
+          });
+
+          var keys = Object.keys(buckets).sort();
+          var labels = keys.map(function (k) {
+            return k.slice(5); // MM-DD
+          });
+          var data = keys.map(function (k) {
+            var b = buckets[k];
+            return b.total > 0 ? Number(((b.wins / b.total) * 100).toFixed(1)) : 0;
+          });
+          return { labels: labels, data: data, points: keys.length };
+        }
+
+        function groupBreakdown(trades, keyFn) {
+          var map = {};
+          trades.forEach(function (t) {
+            var k = keyFn(t);
+            if (!k) return;
+            if (!map[k]) map[k] = { total: 0, wins: 0, netR: 0 };
+            map[k].total++;
+            var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
+            if (o === "win") map[k].wins++;
+            map[k].netR += rDeltaForTrade(t);
+          });
+          return map;
+        }
+
+        function setMeta(id, text) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = text;
+        }
+
+        function initParticles() {
+          var canvas = document.getElementById("particle-canvas");
+          if (!canvas) return;
+          var ctx = canvas.getContext("2d");
+          var particles = [];
+          var PARTICLE_COUNT = 320;
+
+          function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+          }
+          resize();
+          window.addEventListener("resize", resize);
+
+          function Particle() {
+            this.x = Math.random() * window.innerWidth;
+            this.y = Math.random() * window.innerHeight;
+            var speed = Math.random() * 0.3 + 0.04;
+            var angle = Math.random() * Math.PI * 2;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.size = Math.random() * 0.7 + 0.2;
+            this.baseAlpha = Math.random() * 0.45 + 0.08;
+            this.twinkle = Math.random() * Math.PI * 2;
+            var r = Math.random();
+            if (r < 0.65) {
+              this.cr = 0;
+              this.cg = 191;
+              this.cb = 255;
+            } else if (r < 0.93) {
+              this.cr = 192;
+              this.cg = 192;
+              this.cb = 192;
+            } else {
+              this.cr = 255;
+              this.cg = 255;
+              this.cb = 255;
+              this.size = Math.random() * 1.0 + 0.2;
+              this.baseAlpha = Math.random() * 0.6 + 0.2;
+            }
+          }
+          for (var i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
+
+          (function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (var j = 0; j < particles.length; j++) {
+              var p = particles[j];
+              p.twinkle += 0.018;
+              var a = p.baseAlpha * (0.72 + 0.28 * Math.sin(p.twinkle));
+              p.vx *= 0.998;
+              p.vy *= 0.998;
+              p.vx += (Math.random() - 0.5) * 0.004;
+              p.vy += (Math.random() - 0.5) * 0.004;
+              p.x += p.vx;
+              p.y += p.vy;
+              var W = window.innerWidth,
+                H = window.innerHeight;
+              if (p.x < -20) p.x = W + 20;
+              if (p.x > W + 20) p.x = -20;
+              if (p.y < -20) p.y = H + 20;
+              if (p.y > H + 20) p.y = -20;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+              ctx.fillStyle = "rgba(" + p.cr + "," + p.cg + "," + p.cb + "," + a + ")";
+              ctx.fill();
+            }
+            requestAnimationFrame(loop);
+          })();
+        }
+
+        function chartDefaults() {
+          Chart.defaults.color = "rgba(255,255,255,0.72)";
+          Chart.defaults.font.family = '"Outfit", system-ui, sans-serif';
+        }
+
+        function gridColor() {
+          return "rgba(0, 212, 255, 0.10)";
+        }
+
+        function axisCommon() {
+          return {
+            ticks: {
+              color: "rgba(255,255,255,0.50)",
+              maxTicksLimit: 7,
+            },
+            grid: {
+              color: gridColor(),
+            },
+            border: {
+              color: "rgba(0, 212, 255, 0.20)",
+            },
+          };
+        }
+
+        function buildLineChart(ctx, labels, series, opts) {
+          return new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: opts.label,
+                  data: series,
+                  borderColor: "rgba(0, 212, 255, 0.95)",
+                  backgroundColor: "rgba(0, 212, 255, 0.18)",
+                  fill: true,
+                  tension: 0.35,
+                  pointRadius: 0,
+                  pointHitRadius: 10,
+                  borderWidth: 2,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: { duration: 900, easing: "easeOutQuart" },
+              interaction: { mode: "index", intersect: false },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: "rgba(0,0,0,0.92)",
+                  borderColor: "rgba(0, 212, 255, 0.25)",
+                  borderWidth: 1,
+                  titleColor: "rgba(255,255,255,0.9)",
+                  bodyColor: "rgba(255,255,255,0.75)",
+                  displayColors: false,
+                  callbacks: opts.tooltipCb || {},
+                },
+              },
+              scales: {
+                x: axisCommon(),
+                y: axisCommon(),
+              },
+            },
+          });
+        }
+
+        function buildBarChart(ctx, labels, series, opts) {
+          return new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: opts.label,
+                  data: series,
+                  backgroundColor: "rgba(0, 212, 255, 0.22)",
+                  borderColor: "rgba(0, 212, 255, 0.85)",
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  hoverBackgroundColor: "rgba(0, 212, 255, 0.34)",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: { duration: 900, easing: "easeOutQuart" },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: "rgba(0,0,0,0.92)",
+                  borderColor: "rgba(0, 212, 255, 0.25)",
+                  borderWidth: 1,
+                  titleColor: "rgba(255,255,255,0.9)",
+                  bodyColor: "rgba(255,255,255,0.75)",
+                  displayColors: false,
+                  callbacks: opts.tooltipCb || {},
+                },
+              },
+              scales: {
+                x: axisCommon(),
+                y: axisCommon(),
+              },
+            },
+          });
+        }
+
+        var charts = [];
+        function destroyCharts() {
+          charts.forEach(function (c) {
+            try {
+              c.destroy();
+            } catch (e) {}
+          });
+          charts = [];
+        }
+
+        function bootRender(trades) {
+          destroyCharts();
+          chartDefaults();
+
+          var stats = computeStats(trades);
+          var foot = document.getElementById("an-foot");
+          if (foot) {
+            var wr = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
+            foot.textContent =
+              "Trades: " +
+              stats.total +
+              " · Win-rate: " +
+              wr +
+              " · Net: " +
+              stats.netR.toFixed(2) +
+              "R";
+          }
+
+          var tradesAsc = trades
+            .slice()
+            .sort(function (a, b) {
+              return tradeDate(a) - tradeDate(b);
+            })
+            .filter(function (t) {
+              return !isNaN(tradeDate(t));
+            });
+
+          // 1) Equity curve (cumulative R)
+          var equity = buildEquitySeries(tradesAsc);
+          setMeta("meta-equity", "CUM " + (equity.data.length ? equity.data[equity.data.length - 1].toFixed(2) + "R" : "—"));
+          var ec = document.getElementById("chart-equity");
+          if (ec) {
+            charts.push(
+              buildLineChart(
+                ec.getContext("2d"),
+                equity.labels,
+                equity.data,
+                {
+                  label: "Cumulative R",
+                  tooltipCb: {
+                    label: function (ctx) {
+                      return "CUM: " + Number(ctx.parsed.y).toFixed(2) + "R";
+                    },
+                  },
+                }
+              )
+            );
+          }
+
+          // 2) Win rate trend (weekly)
+          var wrt = buildWeeklyWinRate(tradesAsc);
+          setMeta("meta-winrate", (wrt.points ? wrt.points + " wks" : "—"));
+          var wc = document.getElementById("chart-winrate");
+          if (wc) {
+            charts.push(
+              buildLineChart(wc.getContext("2d"), wrt.labels, wrt.data, {
+                label: "Win-rate %",
+                tooltipCb: {
+                  label: function (ctx) {
+                    return "WR: " + Number(ctx.parsed.y).toFixed(1) + "%";
+                  },
+                },
+              })
+            );
+          }
+
+          // 3) Performance by session
+          var bySession = groupBreakdown(trades, function (t) {
+            return String(getField(t, "session", "Session", "SESSION") || "").trim();
+          });
+          var sessionKeys = Object.keys(bySession).sort(function (a, b) {
+            return bySession[b].total - bySession[a].total;
+          });
+          setMeta("meta-session", sessionKeys.length ? sessionKeys.length + " groups" : "—");
+
+          var sessionLabels = sessionKeys;
+          var sessionNet = sessionKeys.map(function (k) {
+            return Number(bySession[k].netR.toFixed(2));
+          });
+          var sc = document.getElementById("chart-session");
+          if (sc) {
+            charts.push(
+              buildBarChart(sc.getContext("2d"), sessionLabels, sessionNet, {
+                label: "Net R",
+                tooltipCb: {
+                  label: function (ctx) {
+                    var k = ctx.label;
+                    var b = bySession[k];
+                    var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : "—";
+                    return (
+                      "Net: " +
+                      Number(ctx.parsed.y).toFixed(2) +
+                      "R · WR: " +
+                      wr +
+                      "% · N: " +
+                      b.total
+                    );
+                  },
+                },
+              })
+            );
+          }
+
+          // 4) Performance by entry model (top 8 by count)
+          var byModel = groupBreakdown(trades, function (t) {
+            var m = String(getField(t, "model", "Model", "MODEL", "ENTRY MODEL") || "").trim();
+            return m;
+          });
+          var modelKeys = Object.keys(byModel)
+            .sort(function (a, b) {
+              return byModel[b].total - byModel[a].total;
+            })
+            .slice(0, 8);
+          setMeta("meta-model", modelKeys.length ? "Top " + modelKeys.length : "—");
+          var modelLabels = modelKeys.map(function (k) {
+            return k.length > 22 ? k.slice(0, 22) + "…" : k;
+          });
+          var modelNet = modelKeys.map(function (k) {
+            return Number(byModel[k].netR.toFixed(2));
+          });
+          var mc = document.getElementById("chart-model");
+          if (mc) {
+            charts.push(
+              buildBarChart(mc.getContext("2d"), modelLabels, modelNet, {
+                label: "Net R",
+                tooltipCb: {
+                  title: function (items) {
+                    var idx = items[0].dataIndex;
+                    return modelKeys[idx];
+                  },
+                  label: function (ctx) {
+                    var idx = ctx.dataIndex;
+                    var key = modelKeys[idx];
+                    var b = byModel[key];
+                    var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : "—";
+                    return (
+                      "Net: " +
+                      Number(ctx.parsed.y).toFixed(2) +
+                      "R · WR: " +
+                      wr +
+                      "% · N: " +
+                      b.total
+                    );
+                  },
+                },
+              })
+            );
+          }
+
+          // 5) Performance by weekday
+          var byWeekday = groupBreakdown(trades, function (t) {
+            var d = tradeDate(t);
+            if (isNaN(d)) return "";
+            return weekdayName(d);
+          });
+          var weekdayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+          var weekdayKeys = weekdayOrder.filter(function (k) {
+            return byWeekday[k] && byWeekday[k].total > 0;
+          });
+          setMeta("meta-weekday", weekdayKeys.length ? weekdayKeys.length + " days" : "—");
+          var weekdayNet = weekdayKeys.map(function (k) {
+            return Number(byWeekday[k].netR.toFixed(2));
+          });
+          var wdc = document.getElementById("chart-weekday");
+          if (wdc) {
+            charts.push(
+              buildBarChart(wdc.getContext("2d"), weekdayKeys, weekdayNet, {
+                label: "Net R",
+                tooltipCb: {
+                  label: function (ctx) {
+                    var k = ctx.label;
+                    var b = byWeekday[k];
+                    var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : "—";
+                    return (
+                      "Net: " +
+                      Number(ctx.parsed.y).toFixed(2) +
+                      "R · WR: " +
+                      wr +
+                      "% · N: " +
+                      b.total
+                    );
+                  },
+                },
+              })
+            );
+          }
+        }
+
+        function debounce(fn, ms) {
+          var t = null;
+          return function () {
+            var args = arguments;
+            clearTimeout(t);
+            t = setTimeout(function () {
+              fn.apply(null, args);
+            }, ms);
+          };
+        }
+
+        async function boot() {
+          initParticles();
+          await ensureUserId();
+
+          var foot = document.getElementById("an-foot");
+          if (foot) foot.textContent = "Loading trades…";
+
+          if (!window.Chart) {
+            if (foot) foot.textContent = "Charts offline. CDN blocked.";
+            return;
+          }
+
+          var trades = [];
+          try {
+            trades = await fetchAllTrades();
+          } catch (e) {
+            trades = [];
+          }
+
+          if (!trades.length) {
+            if (foot) foot.textContent = "No trades found for this user.";
+            return;
+          }
+
+          bootRender(trades);
+          window.addEventListener(
+            "resize",
+            debounce(function () {
+              bootRender(trades);
+            }, 220)
+          );
+        }
+
+        boot();
+      })();
+    </script>
+  </body>
+</html>
+
