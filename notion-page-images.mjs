@@ -29,6 +29,18 @@ function headingPlainText(block) {
   return plainFromRichText(payload?.rich_text);
 }
 
+/** Toggle title acts like a caption for charts inside the toggle */
+function toggleTitlePlain(block) {
+  if (block?.type !== "toggle" || !block.toggle) return "";
+  return plainFromRichText(block.toggle.rich_text);
+}
+
+function captionSourcePlainText(block) {
+  const fromHeading = headingPlainText(block);
+  if (fromHeading) return fromHeading;
+  return toggleTitlePlain(block);
+}
+
 /**
  * @param {string} notionKey
  * @param {string} blockId - page id or block id
@@ -97,8 +109,8 @@ export async function fetchTradeImagesFromNotionPageBlocks(notionKey, blockId, o
       for (const block of results) {
         if (items.length >= maxItems || blockRequests >= maxBlockRequests) return;
 
-        const h = headingPlainText(block);
-        if (h) lastHeading = h;
+        const labelLine = captionSourcePlainText(block);
+        if (labelLine) lastHeading = labelLine;
 
         if (block?.type === "image" && block.image) {
           const u = urlFromNotionFileLike(block.image);

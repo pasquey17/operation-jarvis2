@@ -153,14 +153,16 @@ function normalizeTradeImageEntry(x) {
 function mergeTradeImages(baseList, fromBlocks) {
   const merged = [];
   const seen = new Set();
-  for (const raw of baseList || []) {
+  // Prefer page-body images first — same URL appears in Files with label ""
+  // and under headings from the block walker; captions must win.
+  for (const raw of fromBlocks || []) {
     const n = normalizeTradeImageEntry(raw);
     if (n && !seen.has(n.url)) {
       seen.add(n.url);
       merged.push(n);
     }
   }
-  for (const raw of fromBlocks || []) {
+  for (const raw of baseList || []) {
     const n = normalizeTradeImageEntry(raw);
     if (n && !seen.has(n.url)) {
       seen.add(n.url);
