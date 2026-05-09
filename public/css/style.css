@@ -109,14 +109,6 @@ body {
   flex-direction: column;
 }
 
-/* Desktop-only: prevent ultra-wide stretch (mobile unchanged) */
-@media (min-width: 1181px) {
-  .hud-frame {
-    max-width: 1280px;
-    margin: 0 auto;
-  }
-}
-
 /* Corner brackets */
 .hud-corner {
   position: absolute;
