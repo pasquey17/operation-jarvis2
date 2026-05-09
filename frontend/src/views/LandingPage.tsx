@@ -27,7 +27,8 @@ export function LandingPage() {
   const pCta = useTransform(scrollYProgress, [0.92, 1.0], [0, 1]);
 
   const heroScale = useTransform(pHero, [0, 1], [1.06, 1]);
-  const heroBlur = useTransform(pHero, [0, 1], [14, 0]);
+  // Start readable (no blur) and introduce blur only during the transition.
+  const heroBlur = useTransform(pHero, [0, 1], [0, 14]);
   // Hero fades out as the next scene comes in to prevent overlap stacking.
   const heroOpacity = useTransform(scrollYProgress, [0.0, 0.12, 0.18, 0.22], [1, 1, 0, 0]);
 
