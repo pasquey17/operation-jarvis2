@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #07070a;
+  --panel: rgba(10, 10, 14, 0.68);
+  --panel2: rgba(10, 10, 14, 0.42);
+  --border: rgba(255, 255, 255, 0.10);
+  --border2: rgba(255, 255, 255, 0.06);
+  --text: rgba(255, 255, 255, 0.86);
+  --muted: rgba(255, 255, 255, 0.58);
+  --faint: rgba(255, 255, 255, 0.34);
+
+  --blue: #00d4ff;
+  --blue2: rgba(0, 212, 255, 0.16);
+  --good: #00ff88;
+  --bad: #ff5050;
+
+  --radius: 18px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 20% 0%, rgba(0, 212, 255, 0.10), transparent 55%),
+    radial-gradient(900px 700px at 85% 15%, rgba(120, 80, 255, 0.10), transparent 60%),
+    linear-gradient(180deg, #050507, #07070a 36%, #07070a);
+  font-family: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
