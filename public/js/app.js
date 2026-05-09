@@ -944,7 +944,7 @@ els.chatInput?.addEventListener("input", () => {
   if ((els.chatInput?.value || "").trim()) enterChatMode();
 });
 
-/* ═══════════ Holographic orb — multi-layer electric-blue sphere (2D canvas) ═══════════ */
+/* ═══════════ Jarvis-style holographic core — dense point cloud + HUD shells (2D canvas) ═══════════ */
 function startOrb() {
   const canvas = els.orbCanvas;
   if (!canvas) return;
@@ -952,8 +952,8 @@ function startOrb() {
   if (!ctx) return;
 
   const BLUE = [0, 191, 255];
-  const BLUE_DEEP = [0, 110, 200];
-  const BLUE_HOT = [200, 245, 255];
+  const BLUE_DEEP = [0, 90, 180];
+  const BLUE_HOT = [210, 252, 255];
 
   const reducedMotion =
     typeof window.matchMedia === "function" &&
@@ -966,6 +966,31 @@ function startOrb() {
   let projScale = 1;
   let timeSec = 0;
   let lastFrameTs = performance.now();
+
+  /** Volumetric + shell point counts scale with drawable area */
+  let hullN = 0;
+  let interiorN = 0;
+  let nucleusN = 0;
+  let fiberPairs = 0;
+  /** Pre-baked XYZ on unit-ish sphere / interior volumes (rebuilt on resize) */
+  let hullX,
+    hullY,
+    hullZ,
+    interiorX,
+    interiorY,
+    interiorZ,
+    nucleusX,
+    nucleusY,
+    nucleusZ,
+    fiberA,
+    fiberB;
+  /** Hash for stable micro-variation without per-frame noise */
+  function phasor(i, salt) {
+    const t = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453123;
+    return t - Math.floor(t);
+  }
+
+  let cloudCacheKey = "";
 
   const rawNormals = [
     [0, 0, 1],
@@ -995,6 +1020,317 @@ function startOrb() {
 
   /** One point buffer per ring so depth-sorted draws stay correct across frames */
   const ringCaches = ringNormals.map(() => []);
+
+  const N_BUCK = 32;
+  const dotBuckets = Array.from({ length: N_BUCK }, () => []);
+
+  function computeCloudBudget() {
+    const m = Math.min(logicalW, logicalH);
+    const area = logicalW * logicalH;
+    if (area < 150000 || m < 300) {
+      return { hull: 480, interior: 160, nucleus: 70, fibers: 180 };
+    }
+    if (area < 320000 || m < 420) {
+      return { hull: 820, interior: 290, nucleus: 100, fibers: 320 };
+    }
+    if (area < 520000) {
+      return { hull: 1200, interior: 420, nucleus: 140, fibers: 460 };
+    }
+    return { hull: 1650, interior: 560, nucleus: 180, fibers: 600 };
+  }
+
+  function rebuildPointCloudModels() {
+    const b = computeCloudBudget();
+    const key = `${b.hull}|${b.interior}|${b.nucleus}|${b.fibers}`;
+    if (key === cloudCacheKey && hullX?.length === b.hull) return;
+    cloudCacheKey = key;
+    hullN = b.hull;
+    interiorN = b.interior;
+    nucleusN = b.nucleus;
+    fiberPairs = b.fibers;
+
+    hullX = new Float32Array(hullN);
+    hullY = new Float32Array(hullN);
+    hullZ = new Float32Array(hullN);
+    for (let i = 0; i < hullN; i++) {
+      const t = (i + 0.5) / hullN;
+      const phi = Math.acos(1 - 2 * t);
+      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+      const sinp = Math.sin(phi);
+      hullX[i] = sinp * Math.cos(theta);
+      hullY[i] = sinp * Math.sin(theta);
+      hullZ[i] = Math.cos(phi);
+    }
+
+    interiorX = new Float32Array(interiorN);
+    interiorY = new Float32Array(interiorN);
+    interiorZ = new Float32Array(interiorN);
+    for (let i = 0; i < interiorN; i++) {
+      const u = phasor(i, 2) * 2 - 1;
+      const th = phasor(i, 5) * Math.PI * 2;
+      const rad = 0.32 + phasor(i, 8) * 0.62;
+      const rr = Math.sqrt(Math.max(0, 1 - u * u)) * rad;
+      interiorX[i] = rr * Math.cos(th);
+      interiorY[i] = rr * Math.sin(th);
+      interiorZ[i] = u * rad;
+    }
+
+    nucleusX = new Float32Array(nucleusN);
+    nucleusY = new Float32Array(nucleusN);
+    nucleusZ = new Float32Array(nucleusN);
+    for (let i = 0; i < nucleusN; i++) {
+      const u = phasor(i + 900, 1) * 2 - 1;
+      const th = phasor(i + 900, 4) * Math.PI * 2;
+      const rad = 0.08 + phasor(i + 900, 7) * 0.38;
+      const rr = Math.sqrt(Math.max(0, 1 - u * u)) * rad;
+      nucleusX[i] = rr * Math.cos(th);
+      nucleusY[i] = rr * Math.sin(th);
+      nucleusZ[i] = u * rad;
+    }
+
+    fiberA = new Float32Array(fiberPairs * 3);
+    fiberB = new Float32Array(fiberPairs * 3);
+    for (let i = 0; i < fiberPairs; i++) {
+      const j = Math.min(hullN - 1, ((i * 7919) >>> 0) % hullN);
+      let bx = hullX[j];
+      let by = hullY[j];
+      let bz = hullZ[j];
+      const ax = phasor(i, 13) - 0.5;
+      const ay = phasor(i, 21) - 0.5;
+      const az = phasor(i, 31) - 0.5;
+      let tx = ay * bz - az * by;
+      let ty = az * bx - ax * bz;
+      let tz = ax * by - ay * bx;
+      const tlen = Math.hypot(tx, ty, tz) || 1;
+      tx /= tlen;
+      ty /= tlen;
+      tz /= tlen;
+      const span = 0.028 + phasor(i, 41) * 0.058;
+      const ax0 = bx + tx * span;
+      const ay0 = by + ty * span;
+      const az0 = bz + tz * span;
+      const bx0 = bx - tx * span * 1.07;
+      const by0 = by - ty * span * 1.07;
+      const bz0 = bz - tz * span * 1.07;
+      const ln0 = Math.hypot(ax0, ay0, az0) || 1;
+      const ln1 = Math.hypot(bx0, by0, bz0) || 1;
+      fiberA[i * 3 + 0] = ax0 / ln0;
+      fiberA[i * 3 + 1] = ay0 / ln0;
+      fiberA[i * 3 + 2] = az0 / ln0;
+      fiberB[i * 3 + 0] = bx0 / ln1;
+      fiberB[i * 3 + 1] = by0 / ln1;
+      fiberB[i * 3 + 2] = bz0 / ln1;
+    }
+  }
+
+  function clearDotBuckets() {
+    for (let b = 0; b < N_BUCK; b++) dotBuckets[b].length = 0;
+  }
+
+  function bucketPush(sz, sx, sy, radius, alpha) {
+    let bi = Math.floor(((sz + 1) * 0.5) * N_BUCK);
+    if (bi < 0) bi = 0;
+    if (bi >= N_BUCK) bi = N_BUCK - 1;
+    const arr = dotBuckets[bi];
+    arr.push(sx, sy, radius, alpha);
+  }
+
+  function fillPointBuckets(rx, ry, rz, active) {
+    const tw = active ? 1.42 : 1;
+    const flick = reducedMotion ? 0 : Math.sin(timeSec * (active ? 2.1 : 0.73));
+
+    /** Hull shell — bright edge, sharper when toward camera */
+    for (let i = 0; i < hullN; i++) {
+      const px = eulerRotate(hullX[i], hullY[i], hullZ[i], rx, ry, rz);
+      const sz = px[2];
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      let a = (0.1 + frontal * 0.38 + (phasor(i, 3) - 0.5) * 0.045) * tw;
+      a += frontal * (active ? 0.06 + flick * 0.02 : flick * 0.012);
+      const rad =
+        (0.36 + frontal * (active ? 1.46 : 0.94) + (phasor(i, 99) - 0.5) * 0.09) *
+        (active ? 1.06 : 1);
+      bucketPush(sz, sx, sy, rad, Math.min(0.92, Math.max(0.04, a)));
+    }
+
+    /** Volumetric mist */
+    for (let i = 0; i < interiorN; i++) {
+      const px = eulerRotate(interiorX[i], interiorY[i], interiorZ[i], rx, ry, rz);
+      const sz = px[2];
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      let a =
+        (0.04 + frontal * 0.2 + Math.sqrt(phasor(i, 91)) * 0.08) *
+        tw *
+        (active ? 1.25 : 0.85);
+      const rad =
+        (0.32 + frontal * 0.75 + phasor(i, 71) * 0.42) *
+        (active ? 1.05 : 0.94);
+      bucketPush(sz, sx, sy, rad, Math.min(0.65, Math.max(0.02, a)));
+    }
+
+    /** Super-bright nucleus specks — Iron Man/Jarvis “white-hot core” texture */
+    for (let i = 0; i < nucleusN; i++) {
+      const px = eulerRotate(nucleusX[i], nucleusY[i], nucleusZ[i], rx, ry, rz);
+      const sz = px[2];
+      const sx = cx + px[0] * projScale;
+      const sy = cy - px[1] * projScale;
+      const frontal = Math.max(0, Math.min(1, (sz + 1) * 0.5));
+      let a =
+        (0.32 + frontal * 0.5 + phasor(i, 117) * 0.36) *
+        (active ? 1.12 : 0.78 + flick * 0.05);
+      const rad = (1.05 + frontal * (active ? 1.95 : 1.15) + phasor(i, 223) * 0.95) * 1.06;
+      bucketPush(sz, sx, sy, rad, Math.min(0.99, Math.max(0.1, a)));
+    }
+  }
+
+  function strokeFiberBuckets(rx, ry, rz, active) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round";
+    for (let i = 0; i < fiberPairs; i++) {
+      const ix = i * 3;
+      const p0 = eulerRotate(fiberA[ix], fiberA[ix + 1], fiberA[ix + 2], rx, ry, rz);
+      const p1 = eulerRotate(fiberB[ix], fiberB[ix + 1], fiberB[ix + 2], rx, ry, rz);
+      const zmid = (p0[2] + p1[2]) * 0.5;
+      const front = Math.max(0, Math.min(1, (zmid + 1) * 0.5));
+      let a =
+        (0.04 + front * (active ? 0.52 : 0.28)) *
+        (0.92 + phasor(i, 311) * 0.08);
+      if (front < 0.22) a *= front / 0.22 + 0.04;
+      const x0 = cx + p0[0] * projScale;
+      const y0 = cy - p0[1] * projScale;
+      const x1 = cx + p1[0] * projScale;
+      const y1 = cy - p1[1] * projScale;
+
+      ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${(a * 0.62).toFixed(3)})`;
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = (active ? 2.85 : 1.85) * (0.35 + front);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+
+      ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${(a * (active ? 0.94 : 0.62)).toFixed(3)})`;
+      ctx.lineWidth = (active ? 1.2 : 0.82) * (0.38 + front);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  /** Hybrid: inexpensive fills for fog + selective gradients where the core reads “premium” */
+  function drawBucketsScreen() {
+    ctx.globalCompositeOperation = "lighter";
+    for (let bi = 0; bi < N_BUCK; bi++) {
+      const pack = dotBuckets[bi];
+      for (let j = 0; j < pack.length; j += 4) {
+        const sx = pack[j];
+        const sy = pack[j + 1];
+        const rad = pack[j + 2];
+        const alpha = pack[j + 3];
+
+        let useGrad = alpha > 0.48 || rad > 0.94;
+        if (useGrad) {
+          const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad * (1.95 + alpha * 0.4));
+          g.addColorStop(0, `rgba(255,255,255,${alpha * 0.74})`);
+          g.addColorStop(
+            0.35,
+            `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.88})`
+          );
+          g.addColorStop(0.75, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${alpha * 0.42})`);
+          g.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad * 0.56, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.84})`;
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(sx, sy, rad * 0.16, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${alpha * (0.32 + alpha * 0.18)})`;
+          ctx.fill();
+        }
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  function drawFragmentedHUDShell(rx, ry, rz, spin, active) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    const belts = active ? 4 : 3;
+    const glowOk = Math.min(logicalW, logicalH) > 340;
+
+    for (let belt = 0; belt < belts; belt++) {
+      const yaw = belt * ((Math.PI * 2) / belts) + spin * (active ? 0.092 : 0.042);
+      const pitch = belt * 0.38 + spin * (active ? 0.058 : 0.031);
+
+      ctx.setLineDash(
+        belt % 3 === 0
+          ? [2 + belt, 22, 1, 9, 4, 16]
+          : belt % 3 === 1
+            ? [4, 28, 2, 8, 1, 20]
+            : [1.5, 18, 3, 12, 2, 25]
+      );
+      ctx.lineDashOffset = -(timeSec * (active ? 22 : 9) + belt * 40);
+
+      const step = belt % 2 === 0 ? 128 : 96;
+      function buildBeltPath() {
+        ctx.beginPath();
+        for (let s = 0; s <= step; s++) {
+          const th = (s / step) * Math.PI * 2;
+          const px = eulerRotate(
+            Math.cos(th + yaw),
+            0,
+            Math.sin(th + yaw),
+            rx + pitch * 0.92,
+            ry + yaw * 0.12,
+            rz
+          );
+          let x = px[0];
+          let y = px[1];
+          y *= 0.985 + belt * 0.03 * Math.sin(th * (3 + belt) + spin);
+          let sx =
+            cx +
+            x * projScale * (1 + belt * 0.018 + Math.sin(th * (2 + belt) + spin * 2) * 0.026);
+          let sy = cy - y * projScale * (1 + belt * 0.014);
+          if (s === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+      }
+
+      buildBeltPath();
+      ctx.lineWidth =
+        (active ? 1.06 : 0.72) - belt * (active ? 0.062 : 0.048);
+      ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${
+        Math.max(0.04, (active ? 0.12 : 0.062) - belt * 0.018)
+      })`;
+      if (glowOk) {
+        ctx.shadowBlur = active ? 12 : 7;
+        ctx.shadowColor = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${active ? 0.36 : 0.2})`;
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      buildBeltPath();
+      ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${
+        (active ? 0.068 : 0.038).toFixed(3)
+      })`;
+      ctx.lineWidth = ((active ? 1.06 : 0.72) - belt * (active ? 0.062 : 0.048)) * 0.42;
+      ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+    ctx.lineDashOffset = 0;
+    ctx.restore();
+  }
 
   function normalize3(x, y, z, out) {
     const len = Math.hypot(x, y, z) || 1;
@@ -1071,27 +1407,28 @@ function startOrb() {
 
   function drawRingStroke(pts, avgZ, active, thetaPulse) {
     const depthFac = Math.max(0, Math.min(1, (avgZ + 1) * 0.5));
-    const baseA = 0.14 + depthFac * 0.78 + (active ? 0.1 : 0);
-    const pulse = active ? 0.06 * Math.sin(thetaPulse * 3.2) : 0;
+    const baseA =
+      0.1 + depthFac * 0.55 + (active ? 0.09 : 0);
+    const pulse = active ? 0.05 * Math.sin(thetaPulse * 3.05) : 0;
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
 
     ctx.globalCompositeOperation = "screen";
 
-    ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${(baseA * 0.18 + pulse + 0.02).toFixed(3)})`;
-    ctx.lineWidth = active ? 7.2 : 5.4;
+    ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${(baseA * 0.15 + pulse + 0.02).toFixed(3)})`;
+    ctx.lineWidth = active ? 4.6 : 3.55;
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${(baseA * 0.36 + pulse * 0.8).toFixed(3)})`;
-    ctx.lineWidth = active ? 3 : 2.35;
+    ctx.strokeStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${(baseA * 0.32 + pulse * 0.75).toFixed(3)})`;
+    ctx.lineWidth = active ? 2.05 : 1.55;
     ctx.stroke();
 
     ctx.strokeStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${Math.min(
-      0.95,
-      baseA * 0.72 + pulse * 1.1 + (active ? 0.09 : 0)
+      0.88,
+      baseA * 0.62 + pulse * 1.05 + (active ? 0.085 : 0)
     ).toFixed(3)})`;
-    ctx.lineWidth = active ? 1.45 : 1.05;
+    ctx.lineWidth = active ? 0.92 : 0.74;
     ctx.stroke();
 
     ctx.globalCompositeOperation = "source-over";
@@ -1099,7 +1436,7 @@ function startOrb() {
 
   function drawLatticeNodes(pts, avgZ, active, seed) {
     const depthFac = Math.max(0, Math.min(1, (avgZ + 1) * 0.5));
-    const step = active ? 7 : 9;
+    const step = active ? 13 : 16;
     for (let i = 0; i < pts.length; i += step) {
       const p = pts[i];
       const a = depthFac * 0.5 + (((seed * 31 + i * 17) % 13) / 130) * 0.35 + (active ? 0.16 : 0);
@@ -1136,6 +1473,7 @@ function startOrb() {
     ctx.lineJoin = "round";
     if ("imageSmoothingEnabled" in ctx) ctx.imageSmoothingEnabled = true;
     if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+    rebuildPointCloudModels();
   }
 
   resizeCanvas();
@@ -1189,6 +1527,14 @@ function startOrb() {
     const thetaPulse = spin * (active ? 2.65 : 1.15);
 
     for (const row of ringRows) drawRingStroke(row.pts, row.avgZ, active, thetaPulse);
+
+    clearDotBuckets();
+    fillPointBuckets(rx, ry, rz, active);
+    drawBucketsScreen();
+
+    strokeFiberBuckets(rx, ry, rz, active);
+
+    drawFragmentedHUDShell(rx, ry, rz, spin, active);
 
     ctx.globalCompositeOperation = "lighter";
     ringRows.forEach((row, i) => drawLatticeNodes(row.pts, row.avgZ, active, i));
