@@ -449,6 +449,7 @@ Strengths: ${currentProfile.strengths || "None"}`
     : "No existing profile yet — build it from scratch based on what you observe.";
 
   const tradeStats = deriveTradingProfile(allTrades.slice(0, 200));
+  const evidence = buildProfileEvidenceBundle(allTrades, 30);
 
   const prompt = `You are the persistent memory system for Jarvis, an AI trading coach. Your job is to update this trader's coaching profile after every session so that Jarvis becomes smarter about them over time.
 
@@ -459,6 +460,12 @@ ${existing}
 
 STATISTICAL CONTEXT:
 ${tradeStats}
+
+EVIDENCE — RECENT TRADE EXAMPLES (use these to anchor observations with dates + instruments + setups):
+${JSON.stringify(evidence.examples, null, 2)}
+
+EVIDENCE — NOTES WITH CONTEXT (use only if relevant; do not overfit):
+${JSON.stringify(evidence.notesWithDates, null, 2)}
 
 THIS SESSION'S CONVERSATION:
 ${fullConversation}
@@ -472,6 +479,11 @@ Your task is to produce an UPDATED profile that is richer than the existing one.
 Rules:
 — Accumulate. Never erase existing insights unless they are clearly contradicted.
 — Be specific. Use the actual words, situations, and behaviours from the conversation, not abstract generalisations.
+— Include dates where relevant. Prefer the trade's date_local string (Australia/Adelaide).
+— Include instruments/setups where relevant. If you mention a trade event, include pair + entry model when available.
+— Avoid vague labels. Do not write "revenge trading" / "tilt" / "overtrading" unless you anchor it to a concrete example with a date (and pair/model if available).
+— Avoid fuzzy frequency words ("often", "sometimes", "tends to") unless you add either a count or an example date.
+— Keep it concise: coach-notes style. Short lines, no essays.
 — For trading_summary: include both long-term profile AND a brief note from this session (e.g. "Session ${today}: ...").
 — For psychological_patterns and key_triggers: if a pattern appeared in this session, mark it as recently observed.
 — For strengths: if progress was made on something previously flagged as weak, note it.
@@ -531,7 +543,13 @@ SNAPSHOT: ${JSON.stringify(snapshot)}
 SAMPLE RECENT TRADES (up to 30):
 ${JSON.stringify(allSlimmed.slice(0, 30), null, 2)}
 
-Based purely on their trade data, build an initial profile capturing their trading style, psychological tendencies, strengths, and triggers. Be specific to what the data shows.
+Based purely on their trade data, build an initial profile capturing their trading style, psychological tendencies, strengths, and triggers.
+
+Rules:
+— Be specific. Avoid vague summaries.
+— When you claim a psychological pattern/trigger, anchor it to at least one concrete example: include date_local plus instrument (pair) and/or entry model when available.
+— If you cannot support something from the data, do not include it.
+— Keep it concise and coach-notes style.
 
 Respond with ONLY a valid JSON object and no other text:
 {
@@ -762,11 +780,45 @@ function slimTradeRowForPrompt(t) {
     date_local: formatDateAdelaide(rawDate),
     weekday: readField(t, ["weekday", "Weekday"]),
     session: readField(t, ["session", "SESSION", "Session"]) ?? "",
+    pair: readField(t, ["pair", "Pair", "PAIR", "instrument", "symbol"]) ?? "",
     outcome: readField(t, ["outcome", "Outcome", "OUTCOME"]) ?? "",
     rr: readField(t, ["rr", "RR"]) ?? null,
     model: readField(t, ["model", "MODEL", "Model"]) ?? "",
+    account: readField(t, ["account", "Account", "ACCOUNT"]) ?? "",
     notes,
   };
+}
+
+function buildProfileEvidenceBundle(allTradesSlimmed, maxExamples = 30) {
+  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+  const max = clamp(Number(maxExamples) || 0, 0, 60);
+  const examples = Array.isArray(allTradesSlimmed)
+    ? allTradesSlimmed.slice(0, max).map((t) => ({
+        date_local: t?.date_local || "",
+        weekday: t?.weekday || "",
+        session: t?.session || "",
+        pair: t?.pair || "",
+        model: t?.model || "",
+        outcome: t?.outcome || "",
+        rr: t?.rr ?? null,
+        account: t?.account || "",
+        notes: t?.notes || "",
+      }))
+    : [];
+
+  const notesWithDates = examples
+    .filter((t) => t.notes && String(t.notes).trim())
+    .slice(0, 12)
+    .map((t) => ({
+      date_local: t.date_local,
+      pair: t.pair,
+      model: t.model,
+      outcome: t.outcome,
+      rr: t.rr,
+      notes: t.notes,
+    }));
+
+  return { examples, notesWithDates };
 }
 
 /**
