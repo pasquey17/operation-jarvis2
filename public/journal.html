@@ -51,6 +51,24 @@
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px;
         color: rgba(255,255,255,0.3); letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
       }
+      .jv-nav__logout {
+        margin-left: 14px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.25);
+        background: rgba(0, 212, 255, 0.06);
+        color: rgba(0, 212, 255, 0.85);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .jv-nav__logout:hover {
+        background: rgba(0, 212, 255, 0.14);
+        border-color: rgba(0, 212, 255, 0.55);
+      }
       .jv-nav__hamburger {
         display: none; flex-direction: column; justify-content: center; gap: 5px;
         background: none; border: none; cursor: pointer; padding: 4px;
@@ -453,6 +471,7 @@
         <li><a href="/calendar.html" id="nav-calendar">Calendar</a></li>
       </ul>
       <span class="jv-nav__user" id="jv-nav-user" aria-label="Current user"></span>
+      <button class="jv-nav__logout" id="logout-btn" type="button">Logout</button>
       <button class="jv-nav__hamburger" id="jv-nav-hamburger" aria-label="Toggle navigation"
               aria-expanded="false" aria-controls="jv-nav-dropdown">
         <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
@@ -471,6 +490,16 @@
       (function () {
         var user = localStorage.getItem('jarvis_user') || localStorage.getItem('user_id');
         if (user) document.getElementById('jv-nav-user').textContent = user;
+        var logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function () {
+            try {
+              localStorage.removeItem('jarvis_user');
+              localStorage.removeItem('user_id');
+            } catch (e) {}
+            window.location.href = '/index.html';
+          });
+        }
         var btn = document.getElementById('jv-nav-hamburger');
         var dd  = document.getElementById('jv-nav-dropdown');
         btn.addEventListener('click', function () {

@@ -1,6 +1,7 @@
 const API_CHAT = "/api/chat";
 const API_TRADES = "/api/trades";
 const DEFAULT_USER_ID = "aidenpasque11@gmail.com";
+const USER_MUM_ID = "spasque70@gmail.com";
 const STORAGE_KEY_CHAT = "operationJarvis.chat.v1";
 const CHAT_RECENT_TRADES = 15;
 const MAX_CHAT_MESSAGES_API = 5;
@@ -10,31 +11,238 @@ const MAX_CHAT_MESSAGES_STORED = 120;
 let currentUserId = DEFAULT_USER_ID;
 let snapshotRequestSeq = 0;
 
+function setUserId(userId) {
+  currentUserId = userId;
+  try {
+    localStorage.setItem("jarvis_user", userId);
+    localStorage.setItem("user_id", userId);
+  } catch {}
+}
+
+function getStoredUserId() {
+  const jarvisUser = (localStorage.getItem("jarvis_user") || "").trim();
+  const storedUserId = (localStorage.getItem("user_id") || "").trim();
+  return jarvisUser || storedUserId || DEFAULT_USER_ID;
+}
+
+function clearUserId() {
+  try {
+    localStorage.removeItem("jarvis_user");
+    localStorage.removeItem("user_id");
+  } catch {}
+  currentUserId = DEFAULT_USER_ID;
+}
+
+function promptForUser() {
+  return new Promise((resolve) => {
+    const existing = (localStorage.getItem("jarvis_user") || localStorage.getItem("user_id") || "").trim();
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .jv-login-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.82);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+      .jv-login-card {
+        width: min(520px, calc(100vw - 44px));
+        border-radius: 18px;
+        border: 1px solid rgba(0, 191, 255, 0.22);
+        background: rgba(0, 0, 0, 0.78);
+        box-shadow:
+          0 0 0 1px rgba(0, 191, 255, 0.08) inset,
+          0 24px 90px rgba(0, 0, 0, 0.78);
+        padding: 18px;
+        color: rgba(255, 255, 255, 0.92);
+        font-family: "Share Tech Mono","Courier New",monospace;
+      }
+      .jv-login-title {
+        margin: 0 0 10px 0;
+        font-size: 12px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(0, 191, 255, 0.85);
+      }
+      .jv-login-sub {
+        margin: 0 0 14px 0;
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.32);
+      }
+      .jv-login-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .jv-login-btn {
+        border-radius: 12px;
+        border: 1px solid rgba(0, 191, 255, 0.28);
+        background: rgba(0, 191, 255, 0.08);
+        color: rgba(255, 255, 255, 0.9);
+        padding: 12px 12px;
+        cursor: pointer;
+        font-family: inherit;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-size: 11px;
+        transition: background 0.2s, border-color 0.2s, transform 0.2s;
+      }
+      .jv-login-btn:hover {
+        background: rgba(0, 191, 255, 0.16);
+        border-color: rgba(0, 191, 255, 0.6);
+        transform: translateY(-1px);
+      }
+      .jv-login-input {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 191, 255, 0.22);
+        background: rgba(0, 0, 0, 0.45);
+        color: rgba(255, 255, 255, 0.9);
+        padding: 12px 12px;
+        outline: none;
+        font-family: inherit;
+        letter-spacing: 0.04em;
+      }
+      .jv-login-input:focus {
+        border-color: rgba(0, 191, 255, 0.7);
+        box-shadow: 0 0 0 2px rgba(0, 191, 255, 0.12);
+      }
+      .jv-login-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 12px;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      .jv-login-continue {
+        border-radius: 12px;
+        border: 1px solid rgba(0, 191, 255, 0.65);
+        background: rgba(0, 191, 255, 0.14);
+        color: rgba(0, 191, 255, 0.95);
+        padding: 10px 14px;
+        cursor: pointer;
+        font-family: inherit;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-size: 11px;
+      }
+    `;
+
+    const overlay = document.createElement("div");
+    overlay.className = "jv-login-overlay";
+
+    const card = document.createElement("div");
+    card.className = "jv-login-card";
+
+    const title = document.createElement("h2");
+    title.className = "jv-login-title";
+    title.textContent = "LOGIN";
+
+    const sub = document.createElement("p");
+    sub.className = "jv-login-sub";
+    sub.textContent = "Select user profile";
+
+    const row = document.createElement("div");
+    row.className = "jv-login-row";
+
+    const btnAiden = document.createElement("button");
+    btnAiden.type = "button";
+    btnAiden.className = "jv-login-btn";
+    btnAiden.textContent = "Aiden";
+
+    const btnMum = document.createElement("button");
+    btnMum.type = "button";
+    btnMum.className = "jv-login-btn";
+    btnMum.textContent = "Mum";
+
+    const input = document.createElement("input");
+    input.className = "jv-login-input";
+    input.type = "email";
+    input.autocomplete = "email";
+    input.inputMode = "email";
+    input.placeholder = "Or enter email…";
+    input.value = existing;
+
+    const actions = document.createElement("div");
+    actions.className = "jv-login-actions";
+
+    const cont = document.createElement("button");
+    cont.type = "button";
+    cont.className = "jv-login-continue";
+    cont.textContent = "Continue";
+
+    function submit(value) {
+      const email = (value || "").trim() || DEFAULT_USER_ID;
+      setUserId(email);
+      overlay.remove();
+      style.remove();
+      resolve(email);
+    }
+
+    btnAiden.addEventListener("click", () => submit(DEFAULT_USER_ID));
+    btnMum.addEventListener("click", () => submit(USER_MUM_ID));
+    cont.addEventListener("click", () => submit(input.value));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submit(input.value);
+    });
+
+    row.appendChild(btnAiden);
+    row.appendChild(btnMum);
+    actions.appendChild(cont);
+
+    card.appendChild(title);
+    card.appendChild(sub);
+    card.appendChild(row);
+    card.appendChild(input);
+    card.appendChild(actions);
+
+    overlay.appendChild(card);
+
+    document.head.appendChild(style);
+    document.body.appendChild(overlay);
+    input.focus();
+    input.select();
+  });
+}
+
 function ensureUserId() {
   const jarvisUser = (localStorage.getItem("jarvis_user") || "").trim();
   const storedUserId = (localStorage.getItem("user_id") || "").trim();
 
   if (jarvisUser) {
-    currentUserId = jarvisUser;
+    setUserId(jarvisUser);
     if (storedUserId !== jarvisUser) {
       try {
         localStorage.setItem("user_id", jarvisUser);
       } catch {}
     }
-    return Promise.resolve(currentUserId);
+    return Promise.resolve(jarvisUser);
   }
 
   if (storedUserId) {
-    currentUserId = storedUserId;
-    return Promise.resolve(currentUserId);
+    setUserId(storedUserId);
+    return Promise.resolve(storedUserId);
   }
 
-  currentUserId = DEFAULT_USER_ID;
-  try {
-    localStorage.setItem("user_id", DEFAULT_USER_ID);
-    localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
-  } catch {}
-  return Promise.resolve(DEFAULT_USER_ID);
+  return promptForUser();
+}
+
+function initLogoutButton() {
+  const btn = document.getElementById("logout-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    clearUserId();
+    // reload so the app re-initializes cleanly into the login prompt
+    window.location.reload();
+  });
 }
 
 /** Normalize /api/trades JSON (handles optional `payload` wrapper or bad shapes). */
@@ -1088,6 +1296,7 @@ async function boot() {
   initMuteButton();
   initMic();
   initLogTradeBtn();
+  initLogoutButton();
   setOrbMode("active");
   void loadTrades()
     .then(() => {
