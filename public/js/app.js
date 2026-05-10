@@ -373,6 +373,75 @@ function scrollChatToBottom() {
   els.chatScroll.scrollTo({ top: els.chatScroll.scrollHeight, behavior: "smooth" });
 }
 
+/** Strip accidental trailing punctuation captured after the URL in prose. */
+function normalizeChatUrl(raw) {
+  let s = String(raw || "").trim();
+  s = s.replace(/[)\].,;!?]+$/g, "");
+  return s.trim();
+}
+
+function chatHttpsUrlIsInlineImage(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    const blob = parsed.pathname + parsed.search;
+    if (/\.(png|jpe?g|gif|webp)(\?|$)/i.test(blob)) return true;
+    if (/\.amazonaws\.com$/i.test(parsed.hostname)) return true;
+    if (/\.(notion\.so|notion\.site)$/i.test(parsed.hostname)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Renders Jarvis text with trade screenshot HTTPS URLs shown as inline images (not raw links).
+ */
+function fillJarvisMessageElement(el, rawText) {
+  el.textContent = "";
+  const text = rawText == null ? "" : String(rawText);
+  if (!text) return;
+
+  const urlRe = /https?:\/\/\S+/gi;
+  let idx = 0;
+  for (const match of text.matchAll(urlRe)) {
+    const start = match.index ?? 0;
+    if (start > idx) {
+      el.appendChild(document.createTextNode(text.slice(idx, start)));
+    }
+    const url = normalizeChatUrl(match[0]);
+    if (chatHttpsUrlIsInlineImage(url)) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg-inline-img-wrap";
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Trade screenshot";
+      img.className = "msg-inline-img";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      wrap.appendChild(img);
+      el.appendChild(wrap);
+    } else {
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.className = "msg-inline-link";
+      link.textContent = url.length > 56 ? `${url.slice(0, 53)}…` : url;
+      el.appendChild(link);
+    }
+    idx = start + match[0].length;
+  }
+  if (idx < text.length) {
+    el.appendChild(document.createTextNode(text.slice(idx)));
+  }
+}
+
+function jarvisReplyProbablyHasDisplayableUrl(txt) {
+  return /https?:\/\/\S+/i.test(String(txt || ""));
+}
+
 /**
  * @param {{ animateLast?: boolean, streamLast?: boolean }} [options]
  */
@@ -392,7 +461,15 @@ function renderChatHistory(options) {
         : m.role === "error"
           ? "msg msg--error"
           : "msg msg--jarvis";
-    row.textContent = streamLast && isLast ? "" : m.content;
+    if (m.role === "assistant") {
+      if (streamLast && isLast) {
+        row.textContent = "";
+      } else {
+        fillJarvisMessageElement(row, m.content);
+      }
+    } else {
+      row.textContent = streamLast && isLast ? "" : m.content;
+    }
     frag.appendChild(row);
   }
   els.chatHistory.appendChild(frag);
@@ -509,7 +586,10 @@ async function showGreeting() {
   setUIMode("chat");
   renderChatHistory({ streamLast: true });
   const lastEl = els.chatHistory?.lastElementChild;
-  if (lastEl) {
+  if (lastEl && jarvisReplyProbablyHasDisplayableUrl(text)) {
+    fillJarvisMessageElement(lastEl, text);
+    scrollChatToBottom();
+  } else if (lastEl) {
     // speakText(text);
     await streamWords(text, lastEl);
   }
@@ -941,7 +1021,12 @@ async function sendChatMessage(text) {
     renderChatHistory({ streamLast: true });
     const lastEl = els.chatHistory?.lastElementChild;
     // speakText(reply);
-    if (lastEl) await streamWords(reply, lastEl);
+    if (lastEl && jarvisReplyProbablyHasDisplayableUrl(reply)) {
+      fillJarvisMessageElement(lastEl, reply);
+      scrollChatToBottom();
+    } else if (lastEl) {
+      await streamWords(reply, lastEl);
+    }
   } catch (e) {
     hideTypingIndicator();
     const errMsg = e instanceof Error ? e.message : "Something went wrong.";

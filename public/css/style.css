@@ -676,6 +676,26 @@ body {
   -webkit-backdrop-filter: none;
 }
 
+.msg-inline-img-wrap {
+  margin: 0.55rem 0;
+  max-width: 100%;
+}
+
+.msg-inline-img {
+  display: block;
+  max-width: min(100%, 440px);
+  width: auto;
+  height: auto;
+  border-radius: var(--radius-soft, 14px);
+  border: 1px solid rgba(0, 191, 255, 0.14);
+  box-shadow: 0 0 14px rgba(0, 191, 255, 0.1);
+}
+
+.msg-inline-link {
+  color: var(--blue, #00bfff);
+  word-break: break-all;
+}
+
 .msg--user {
   align-self: flex-end;
   margin-left: auto;
