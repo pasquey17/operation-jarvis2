@@ -1410,6 +1410,92 @@ textarea.trade-input {
   color: rgba(255, 160, 160, 1);
 }
 
+/* ═══════════ LOG TRADE — guided coach prompts (shared: Home + Journal) ═══════════ */
+.tf-guided-bar {
+  grid-column: 1 / -1;
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+}
+
+.tf-guided-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  user-select: none;
+}
+
+.tf-guided-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #00bfff;
+  cursor: pointer;
+}
+
+.tf-guided-microcopy {
+  margin: 10px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.36);
+}
+
+.tf-guided-line {
+  margin: 0 0 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  letter-spacing: 0.03em;
+  color: rgba(0, 212, 255, 0.55);
+}
+
+.tf-guided-line:last-child {
+  margin-bottom: 10px;
+}
+
+.tf-guided-only {
+  display: none !important;
+}
+
+.trade-form-panel--guided .tf-guided-only:not(.tf-psych-chips) {
+  display: block !important;
+}
+
+.trade-form-panel--guided .tf-psych-chips.tf-guided-only {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tf-psych-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 212, 255, 0.28);
+  background: rgba(0, 212, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--ease-out),
+    background 0.2s var(--ease-out),
+    color 0.2s var(--ease-out);
+}
+
+.tf-psych-chip:hover {
+  border-color: rgba(0, 212, 255, 0.55);
+  background: rgba(0, 212, 255, 0.12);
+  color: #00d4ff;
+}
+
 @media (max-width: 620px) {
   .trade-form-grid {
     grid-template-columns: 1fr;

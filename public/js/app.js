@@ -1,3 +1,5 @@
+import { openLogTradeModal } from "/js/log-trade-modal.js";
+
 const API_CHAT = "/api/chat";
 const API_TRADES = "/api/trades";
 const DEFAULT_USER_ID = "aidenpasque11@gmail.com";
@@ -1742,305 +1744,28 @@ function startOrb() {
   requestAnimationFrame(frame);
 }
 
-/* ═══════════ Trade logging form ═══════════ */
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-const CORE_FIELD_NAMES = new Set(['date', 'session', 'outcome', 'rr', 'pair', 'account']);
-let tradeFormOpen = false;
-
-function parseMaybeJsonCell(val) {
-  if (val == null || String(val).trim() === '') return null;
-  const s = String(val).trim();
-  if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
-    try {
-      return JSON.parse(s);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-function formatExtrasValue(v) {
-  if (v == null) return '';
-  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
-  if (Array.isArray(v)) return v.map(String).join(', ');
-  return '';
-}
-
-/** Prefill LOG TRADE from the newest synced trade row / matching notion_extras keys — non-blocking. */
-function fillLogTradeFormDefaults(customFields) {
-  const rows = tradeData?.records;
-  if (!Array.isArray(rows) || rows.length === 0) return;
-  const last = rows[0];
-  const get = (key) => {
-    const v = last[key];
-    if (v != null && String(v).trim() !== '') return String(v).trim();
-    return '';
-  };
-
-  const pairEl = document.getElementById('tf-pair');
-  if (pairEl && get('pair')) pairEl.value = get('pair');
-
-  const sessionEl = document.getElementById('tf-session');
-  if (sessionEl && get('session')) sessionEl.value = get('session');
-
-  const outcomeEl = document.getElementById('tf-outcome');
-  if (outcomeEl && get('outcome')) outcomeEl.value = get('outcome');
-
-  const rrEl = document.getElementById('tf-rr');
-  if (rrEl && get('rr')) rrEl.value = get('rr');
-
-  const accountEl = document.getElementById('tf-account');
-  if (accountEl && get('account')) accountEl.value = get('account');
-
-  let extras = parseMaybeJsonCell(last.notion_extras);
-  if (!extras || typeof extras !== 'object') extras = null;
-
-  const form = document.getElementById('trade-log-form');
-  for (const f of customFields || []) {
-    const name = f.field_name;
-    if (!name) continue;
-    const nk =
-      extras &&
-      Object.keys(extras).find((k) => k.toLowerCase() === name.toLowerCase());
-    if (!nk) continue;
-    const val = formatExtrasValue(extras[nk]);
-    if (!val) continue;
-    const el = form?.elements?.namedItem(name);
-    if (!el || !('value' in el)) continue;
-    if (el.tagName === 'SELECT' && el.multiple) {
-      const parts = val.split(',').map((x) => x.trim()).filter(Boolean);
-      for (const opt of el.options) {
-        opt.selected = parts.includes(opt.value);
-      }
-    } else {
-      el.value = val;
-    }
-  }
-}
-
-function renderCustomField(f) {
-  const id = `tf-${f.field_name.toLowerCase().replace(/\s+/g, '-')}`;
-  const label = escHtml(f.field_name);
-  const req = f.is_required ? 'required' : '';
-  const name = escHtml(f.field_name);
-
-  if (f.field_type === 'dropdown' || f.field_type === 'multiselect') {
-    let options = [];
-    try { options = JSON.parse(f.field_options || '[]'); } catch {}
-    const multiple = f.field_type === 'multiselect' ? 'multiple' : '';
-    const opts = options.map(o => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join('');
-    return `<div class="trade-field trade-field--full">
-        <label class="trade-label" for="${id}">${label}</label>
-        <select id="${id}" name="${name}" class="trade-input" data-custom="1" ${multiple} ${req}>
-          <option value="">— select —</option>${opts}
-        </select>
-      </div>`;
-  }
-
-  if (f.field_type === 'number') {
-    return `<div class="trade-field">
-        <label class="trade-label" for="${id}">${label}</label>
-        <input id="${id}" type="number" name="${name}" class="trade-input" data-custom="1" step="0.01" ${req}>
-      </div>`;
-  }
-
-  return `<div class="trade-field trade-field--full">
-      <label class="trade-label" for="${id}">${label}</label>
-      <textarea id="${id}" name="${name}" class="trade-input" data-custom="1" rows="3" ${req}></textarea>
-    </div>`;
-}
-
+/* ═══════════ Trade logging form (shared modal: /js/log-trade-modal.js) ═══════════ */
 async function openTradeForm() {
-  if (tradeFormOpen) return;
-  tradeFormOpen = true;
-
-  const userId =
-    currentUserId ||
-    localStorage.getItem("jarvis_user") ||
-    localStorage.getItem("user_id") ||
-    DEFAULT_USER_ID;
-  let customFields = [];
-  try {
-    const r = await fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`, { cache: 'no-store' });
-    const data = await r.json().catch(() => ({}));
-    const all = Array.isArray(data.fields) ? data.fields : [];
-    customFields = all.filter(f => !CORE_FIELD_NAMES.has(f.field_name.toLowerCase()));
-  } catch {}
-
-  const today = new Date().toISOString().slice(0, 10);
-  const customHtml = customFields.map(renderCustomField).join('');
-
-  const overlay = document.createElement('div');
-  overlay.className = 'trade-form-overlay';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-modal', 'true');
-
-  overlay.innerHTML = `
-    <div class="trade-form-panel" id="trade-form-panel">
-      <div class="trade-form-header">
-        <span class="trade-form-title">LOG TRADE</span>
-        <button type="button" class="trade-form-close" aria-label="Close">&#x2715;</button>
-      </div>
-      <div class="trade-form-body">
-        <form id="trade-log-form" autocomplete="off" novalidate>
-          <div class="trade-form-grid">
-            <div class="trade-field">
-              <label class="trade-label" for="tf-date">Date</label>
-              <input id="tf-date" type="date" name="date" class="trade-input" value="${escHtml(today)}" required>
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-pair">Pair</label>
-              <input id="tf-pair" type="text" name="pair" class="trade-input" placeholder="e.g. XAUUSD">
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-session">Session</label>
-              <select id="tf-session" name="session" class="trade-input" required>
-                <option value="">— select —</option>
-                <option value="Asia">Asia</option>
-                <option value="London">London</option>
-                <option value="New York">New York</option>
-                <option value="London/New York">London/New York</option>
-              </select>
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-outcome">Outcome</label>
-              <select id="tf-outcome" name="outcome" class="trade-input" required>
-                <option value="">— select —</option>
-                <option value="Win">Win</option>
-                <option value="Loss">Loss</option>
-                <option value="BE">BE</option>
-              </select>
-            </div>
-            <div class="trade-field" id="tf-rr-field">
-              <label class="trade-label" for="tf-rr">RR</label>
-              <input id="tf-rr" type="number" name="rr" class="trade-input" step="0.01" min="0" placeholder="e.g. 2.5">
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-account">Account</label>
-              <input id="tf-account" type="text" name="account" class="trade-input" placeholder="e.g. Main">
-            </div>
-            ${customHtml}
-          </div>
-          <div class="trade-form-actions">
-            <button type="submit" class="trade-submit-btn">SAVE TRADE</button>
-          </div>
-        </form>
-      </div>
-    </div>`;
-
-  document.body.appendChild(overlay);
-
-  try {
-    fillLogTradeFormDefaults(customFields);
-  } catch (e) {
-    console.warn('[log-trade] defaults', e);
-  }
-
-  requestAnimationFrame(() => {
-    overlay.classList.add('trade-form-overlay--visible');
-    document.getElementById('trade-form-panel')?.classList.add('trade-form-panel--visible');
+  await openLogTradeModal({
+    getUserId: () =>
+      currentUserId ||
+      localStorage.getItem("jarvis_user") ||
+      localStorage.getItem("user_id") ||
+      DEFAULT_USER_ID,
+    fetchTradeRowsForPrefill: async () => {
+      await loadTrades();
+      return Array.isArray(tradeData?.records) ? tradeData.records : [];
+    },
+    readApiErrorMessage,
+    showToast: showTradeToast,
+    onTradeSaved: async ({ outcome, pair, session, rr }) => {
+      const rrStr = rr !== null && !Number.isNaN(rr) ? ` ${rr}R` : "";
+      const pairStr = pair ? ` ${pair}` : "";
+      const autoMsg = `Just logged a trade - ${outcome}${pairStr} ${session}${rrStr}`;
+      await loadTrades();
+      sendChatMessage(autoMsg);
+    },
   });
-
-  function closeForm() {
-    overlay.classList.remove('trade-form-overlay--visible');
-    document.getElementById('trade-form-panel')?.classList.remove('trade-form-panel--visible');
-    overlay.addEventListener('transitionend', () => {
-      overlay.remove();
-      tradeFormOpen = false;
-    }, { once: true });
-  }
-
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeForm(); });
-  overlay.querySelector('.trade-form-close').addEventListener('click', closeForm);
-
-  const outcomeSelect = document.getElementById('tf-outcome');
-  const rrField = document.getElementById('tf-rr-field');
-  outcomeSelect?.addEventListener('change', () => {
-    if (rrField) rrField.style.display = outcomeSelect.value === 'BE' ? 'none' : '';
-  });
-
-  const form = document.getElementById('trade-log-form');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    await submitTradeForm(form, customFields, closeForm);
-  });
-
-  document.getElementById('tf-date')?.focus();
-}
-
-async function submitTradeForm(form, customFields, closeForm) {
-  const fd = new FormData(form);
-  const userId =
-    currentUserId ||
-    localStorage.getItem("jarvis_user") ||
-    localStorage.getItem("user_id") ||
-    DEFAULT_USER_ID;
-
-  const dateVal = fd.get('date') || '';
-  const pair = (fd.get('pair') || '').trim();
-  const session = fd.get('session') || '';
-  const outcome = fd.get('outcome') || '';
-  const rrRaw = fd.get('rr');
-  const rr = rrRaw !== '' && rrRaw !== null ? Number(rrRaw) : null;
-  const account = (fd.get('account') || '').trim();
-
-  if (!dateVal || !session || !outcome) {
-    showTradeToast('Date, Session and Outcome are required.', true);
-    return;
-  }
-
-  const custom_data = {};
-  for (const f of customFields) {
-    const val = fd.get(f.field_name);
-    if (val !== null && String(val).trim() !== '') custom_data[f.field_name] = val;
-  }
-
-  const submitBtn = form.querySelector('.trade-submit-btn');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
-
-  try {
-    const res = await fetch('/api/log-trade', {
-      method: 'POST',
-      cache: 'no-store',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: userId,
-        traded_at: dateVal + 'T00:00:00.000Z',
-        pair: pair || null,
-        outcome,
-        rr: rr !== null && !isNaN(rr) ? rr : null,
-        session,
-        account: account || null,
-        custom_data,
-      }),
-    });
-
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(readApiErrorMessage(d) || `Save failed (${res.status})`);
-    }
-
-    closeForm();
-    showTradeToast('Trade logged.');
-
-    const rrStr = rr !== null && !isNaN(rr) ? ` ${rr}R` : '';
-    const pairStr = pair ? ` ${pair}` : '';
-    const autoMsg = `Just logged a trade - ${outcome}${pairStr} ${session}${rrStr}`;
-    void loadTrades();
-    sendChatMessage(autoMsg);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Save failed.';
-    showTradeToast(msg, true);
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'SAVE TRADE'; }
-  }
 }
 
 function showTradeToast(message, isError = false) {
