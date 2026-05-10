@@ -724,6 +724,119 @@ const NOTION_EXTRAS_TRIGGER_WORDS = [
   "story",
   "narrative",
 ];
+/** Substrings to match `notion_extras` keys for coaching-relevant fields (vague questions + aggregate summaries). */
+const HIGH_SIGNAL_NOTION_KEY_FRAGMENTS = [
+  "psychology",
+  "mindset",
+  "emotion",
+  "tilt",
+  "htf",
+  "ltf",
+  "mtf",
+  "bias",
+  "timeframe",
+  "volume",
+  "profile",
+  "vp",
+  "confluence",
+  "liquidity",
+  "narrative",
+  "mistake",
+  "premarket",
+  "plan",
+  "execution",
+  "grade",
+  "checklist",
+  "tag",
+  "entry",
+];
+const MAX_NOTION_AGGREGATE_JSON_CHARS = 1400;
+const NOTION_AGGREGATE_SCAN_TRADES = 48;
+
+function notionKeyMatchesHighSignal(key) {
+  const kl = String(key || "").toLowerCase();
+  return HIGH_SIGNAL_NOTION_KEY_FRAGMENTS.some((frag) => kl.includes(frag));
+}
+
+function notionExtrasAggregateParts(value) {
+  if (value == null) return [];
+  if (typeof value === "boolean") return [value ? "Yes" : "No"];
+  if (typeof value === "number" && !Number.isNaN(value)) return [String(value)];
+  if (typeof value === "string") {
+    const t = value.trim();
+    return t ? [t.length > 80 ? `${t.slice(0, 77)}…` : t] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((x) => notionExtrasAggregateParts(x));
+  }
+  return [];
+}
+
+function buildNotionExtrasAggregateSummary(tradesForChat) {
+  const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
+  const scan = Math.min(arr.length, NOTION_AGGREGATE_SCAN_TRADES);
+  const nested = {};
+  let tradesWithExtras = 0;
+
+  for (let i = 0; i < scan; i++) {
+    const ex = parseNotionExtras(arr[i]?.notion_extras);
+    if (!ex || typeof ex !== "object") continue;
+    const keys = Object.keys(ex);
+    if (keys.length === 0) continue;
+    tradesWithExtras += 1;
+    for (const k of keys) {
+      if (!notionKeyMatchesHighSignal(k)) continue;
+      const parts = notionExtrasAggregateParts(ex[k]);
+      if (parts.length === 0) continue;
+      if (!nested[k]) nested[k] = {};
+      const bucket = nested[k];
+      for (const p of parts) {
+        bucket[p] = (bucket[p] || 0) + 1;
+      }
+    }
+  }
+
+  if (tradesWithExtras === 0 || Object.keys(nested).length === 0) return null;
+
+  const outObj = {};
+  const outerKeys = Object.keys(nested).slice(0, 12);
+  for (const ok of outerKeys) {
+    const counts = nested[ok];
+    const ranked = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8);
+    outObj[ok] = Object.fromEntries(ranked);
+  }
+
+  let json = JSON.stringify(outObj);
+  if (json.length > MAX_NOTION_AGGREGATE_JSON_CHARS) {
+    json = `${json.slice(0, MAX_NOTION_AGGREGATE_JSON_CHARS)}…`;
+  }
+
+  const sentence = `Aggregates below summarize high-signal Notion fields across ${tradesWithExtras} recent synced trades (newest-first scan, capped keys). Use for broad patterns; confirm specifics against scoped trade rows when provided.`;
+
+  return { sentence, json };
+}
+
+function messageRequestsNotionAggregates(messageSource) {
+  const s = String(messageSource || "").toLowerCase();
+  if (
+    /\b(all|every|each|across|patterns?|distribution|stats|trends?|overall|usually|typically|often)\b/.test(
+      s
+    )
+  ) {
+    return true;
+  }
+  if (
+    /\b(how\s+am\s+i|how\s+have\s+i\s+been|what\s+should\s+i\s+focus|my\s+leaks|overall\s+psych|coaching)\b/.test(
+      s
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * PostgREST resource name (case-sensitive).
  * Override with env `SUPABASE_TABLE` if your table name differs.
@@ -1164,7 +1277,9 @@ function messageMatchesExtrasKeys(tradesForChat, messageSource) {
 
 /**
  * Which rows should include a selective `notion_extras` slice (newest-first indices).
- * Reuses journal photo targeting for “last win / loss / trade” + keyword/property-name matches.
+ * Scoped by explicit trade references (last win/loss/trade/BE/weekday), broad “all trades”
+ * analytics, property-name matches — not photo-link heuristics (avoids attaching extras on
+ * every vague chart request).
  */
 function tradeNotionExtrasIndices(tradesForChat, messageSource) {
   const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
@@ -1175,10 +1290,65 @@ function tradeNotionExtrasIndices(tradesForChat, messageSource) {
     if (typeof i === "number" && i >= 0 && i < arr.length) indices.add(i);
   };
 
-  for (const i of tradePhotoLinkIndices(tradesForChat, messageSource)) add(i);
+  const idxWin = arr.findIndex((t) =>
+    String(t.outcome || "").toLowerCase().includes("win")
+  );
+  const idxLoss = arr.findIndex((t) =>
+    String(t.outcome || "").toLowerCase().includes("loss")
+  );
+  const idxBe = arr.findIndex(
+    (t) =>
+      String(t.outcome || "").toLowerCase().includes("be") ||
+      String(t.outcome || "").toLowerCase().includes("break")
+  );
+
+  if (
+    /\blast\s+win\b|\bmost\s+recent\s+win\b|\bmy\s+last\s+win\b/.test(s)
+  ) {
+    add(idxWin);
+  }
+
+  if (
+    /\blast\s+loss\b|\bmost\s+recent\s+loss\b|\bmy\s+last\s+loss\b/.test(s)
+  ) {
+    add(idxLoss);
+  }
+
+  if (
+    /\blast\s+(be|breakeven|break\s*even)\b|\bmost\s+recent\s+(be|breakeven|break)/.test(
+      s
+    )
+  ) {
+    add(idxBe);
+  }
+
+  if (
+    /\blast\s+trade\b|\bmost\s+recent\s+trade\b|\bmy\s+last\s+trade\b/.test(s)
+  ) {
+    add(0);
+  }
+
+  const dayNames = [
+    "wednesday",
+    "tuesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "monday",
+  ];
+  for (const d of dayNames) {
+    if (
+      new RegExp(`\\blast\\s+${d}\\b|\\b${d}'?s\\s+(trade|trades|setup)\\b`).test(s)
+    ) {
+      const ix = arr.findIndex((t) => String(t.weekday || "").toLowerCase() === d);
+      add(ix);
+      break;
+    }
+  }
 
   const broad =
-    /\b(all|every|each|across|patterns?|distribution|usually|typically|often|stats)\b/i.test(
+    /\b(all|every|each|across|patterns?|distribution|usually|typically|often|stats|trends?|overall)\b/i.test(
       s
     );
   if (broad && arr.length > 0) {
@@ -1210,7 +1380,14 @@ function tradeNotionExtrasIndices(tradesForChat, messageSource) {
     }
   }
 
-  if (indices.size === 0 && arr.length > 0) add(0);
+  if (indices.size === 0 && arr.length > 0) {
+    if (
+      userRequestsNotionExtrasDepth(messageSource) ||
+      messageMatchesExtrasKeys(tradesForChat, messageSource)
+    ) {
+      add(0);
+    }
+  }
 
   return new Set(
     [...indices]
@@ -1242,7 +1419,13 @@ function pickNotionExtrasSlice(raw, messageSource) {
     Object.keys(picked).length > 0
       ? picked
       : userRequestsNotionExtrasDepth(messageSource)
-        ? Object.fromEntries(keys.slice(0, 16).map((k) => [k, extras[k]]))
+        ? (() => {
+            const hs = keys.filter((k) => notionKeyMatchesHighSignal(k));
+            const pickKeys = hs.length > 0 ? hs : keys;
+            return Object.fromEntries(
+              pickKeys.slice(0, 14).map((k) => [k, extras[k]])
+            );
+          })()
         : null;
 
   if (!result || Object.keys(result).length === 0) return null;
@@ -1873,6 +2056,11 @@ async function handleChat(req, res) {
     ? tradeNotionExtrasIndices(tradesForChat, messageSource)
     : new Set();
 
+  const includeNotionAggregates = messageRequestsNotionAggregates(messageSource);
+  const notionAggregateSummary = includeNotionAggregates
+    ? buildNotionExtrasAggregateSummary(tradesForChat)
+    : null;
+
   const mostRecentTrade = tradesForChat[0];
 
   const mostRecentLoss = tradesForChat.find((t) =>
@@ -2022,6 +2210,9 @@ async function handleChat(req, res) {
       : "") +
     (wantsNotionExtras
       ? "\n\nNOTION EXTRAS — Some trades may include a selective \"notion_extras\" object (extra Notion fields). It appears only when the user asked about dimensions beyond core stats (psychology, timeframes, volume, tags, etc.). Use these values when present; do not invent fields."
+      : "") +
+    (notionAggregateSummary
+      ? `\n\nNOTION FIELD AGGREGATES (high-signal keys only; broad coaching / stats questions):\n${notionAggregateSummary.sentence}\n${notionAggregateSummary.json}`
       : "");
 
   const anthropicBody = {

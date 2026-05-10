@@ -153,9 +153,9 @@ Token budgets:
 - `MAX_CHAT_MESSAGES`: 5 (conversation history sent to API)
 - `MAX_BRIEFING_TRADES`: 30 (trades sent for briefing analysis)
 
-**Chat trade payload:** Default prompts use slim rows — core fields plus truncated `notes` only. Full `notion_extras` is **not** sent on every turn. When the user asks about extra Notion dimensions (psychology, HTF/LTF, volume, tags, etc.) or when their wording matches a property name in `notion_extras`, `handleChat` attaches a **character-capped slice** of `notion_extras` for the scoped trade rows only (`server.mjs`).
+**Chat trade payload:** Default prompts use slim rows — core fields plus truncated `notes` only. Full `notion_extras` is **not** sent on every turn. When the user asks about extra Notion dimensions (psychology, HTF/LTF, volume, tags, etc.) or when their wording matches a property name in `notion_extras`, `handleChat` attaches a **character-capped slice** of `notion_extras` for **scoped** trade rows only (explicit last win/loss/trade/weekday, broad “all trades” analytics, property-name matches, or a single fallback row when triggers fire — **not** tied to photo-link heuristics). Fallback slices prefer **high-signal** keys (psychology, HTF/LTF, bias, volume, confluence, etc.). Broad coaching/stats questions may also receive a tiny **aggregate JSON** (counts over recent trades, same high-signal keys only, hard character cap) — still no full dump per row on generic turns.
 
-**Journal:** `journal.html` shows **Notion fields** (modal + compact card preview) for keys in `notion_extras` that are not already duplicate core columns — read-only display; chat token behavior above is unchanged.
+**Journal:** `journal.html` shows **Notion fields** (modal + compact card preview) for keys in `notion_extras` that are not already duplicate core columns — grouped sections and chips where appropriate; chat rules above are unchanged.
 
 ---
 

@@ -409,18 +409,6 @@
       .jn-card__chevron {
         font-size: 10px; color: rgba(255,255,255,0.18); flex-shrink: 0;
       }
-      .jn-card__extras-preview {
-        grid-column: 1 / -1;
-        margin-top: 6px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(0, 212, 255, 0.12);
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px;
-        letter-spacing: 0.05em;
-        color: rgba(192, 192, 192, 0.72);
-        line-height: 1.45;
-        word-break: break-word;
-      }
 
       /* ── Badges ── */
       .jn-badge {
@@ -504,6 +492,94 @@
         word-break: break-word;
         max-height: 200px;
         overflow-y: auto;
+      }
+      .jn-notion-section {
+        margin-bottom: 14px;
+      }
+      .jn-notion-section:last-child { margin-bottom: 0; }
+      .jn-notion-section__title {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.55);
+        margin: 0 0 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+      }
+      .jn-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        margin: 0 6px 4px 0;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.28);
+        background: rgba(0, 0, 0, 0.35);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.82);
+        max-width: 100%;
+        word-break: break-word;
+      }
+      .jn-notion-long {
+        margin: 0;
+        width: 100%;
+      }
+      .jn-notion-long__sum {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.72);
+        cursor: pointer;
+        list-style: none;
+      }
+      .jn-notion-long__sum::-webkit-details-marker { display: none; }
+      .jn-notion-long__full {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 212, 255, 0.15);
+        background: rgba(0, 0, 0, 0.4);
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.78);
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 240px;
+        overflow-y: auto;
+      }
+      .jn-notion-row__v-chips { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0; max-width: 100%; }
+      .jn-card__extras-preview {
+        grid-column: 1 / -1;
+        margin-top: 6px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(0, 212, 255, 0.12);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .jn-card__extras-line {
+        display: grid;
+        grid-template-columns: minmax(52px, 32%) 1fr;
+        gap: 6px 10px;
+        align-items: baseline;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        line-height: 1.35;
+      }
+      .jn-card__extras-k {
+        color: rgba(0, 212, 255, 0.65);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+      .jn-card__extras-v {
+        color: rgba(192, 192, 192, 0.85);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
       }
       .jn-trade-photos {
         display: flex;
@@ -1216,48 +1292,147 @@
         }
         return String(v);
       }
+
+      function notionExtraSectionBucket(key) {
+        var k = normalizeExtraKeyName(key);
+        if (/psychology|mindset|emotion|tilt|narrative/.test(k)) return 'psych';
+        if (/htf|ltf|mtf|bias|timeframe|confluence|volume|liquidity|premarket|vp\b/.test(k)) return 'context';
+        if (/execution|mistake|plan|checklist|grade/.test(k)) return 'execution';
+        return 'other';
+      }
+
+      function compareExtraKeysNotion(a, b) {
+        function score(k) {
+          var n = normalizeExtraKeyName(k);
+          if (n.indexOf('session') >= 0) return 0;
+          if (n.indexOf('model') >= 0 || n.indexOf('entry') >= 0) return 1;
+          if (n.indexOf('psych') >= 0 || n.indexOf('mindset') >= 0) return 2;
+          if (n.indexOf('htf') >= 0 || n.indexOf('ltf') >= 0 || n.indexOf('bias') >= 0) return 3;
+          return 40;
+        }
+        var sa = score(a);
+        var sb = score(b);
+        if (sa !== sb) return sa - sb;
+        return String(a).localeCompare(String(b));
+      }
+
+      function renderNotionExtraValueCells(val) {
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'boolean') {
+          return '<span class="jn-chip">' + esc(val ? 'Yes' : 'No') + '</span>';
+        }
+        if (typeof val === 'number' && !isNaN(val)) {
+          return '<span class="jn-chip">' + esc(String(val)) + '</span>';
+        }
+        if (typeof val === 'string') {
+          var t = val.trim();
+          if (!t) return '';
+          if (t.length <= 56 && t.indexOf('\n') < 0) {
+            return '<div class="jn-notion-row__v-chips"><span class="jn-chip">' + esc(t) + '</span></div>';
+          }
+          var prev = esc(truncate(t, 200));
+          var full = esc(t);
+          return '<details class="jn-notion-long"><summary class="jn-notion-long__sum">' + prev + '</summary><div class="jn-notion-long__full">' + full + '</div></details>';
+        }
+        if (Array.isArray(val)) {
+          var chips = [];
+          for (var i = 0; i < val.length; i++) {
+            var x = val[i];
+            var s = x !== null && typeof x === 'object' ? JSON.stringify(x) : String(x);
+            if (s.trim()) chips.push('<span class="jn-chip">' + esc(truncate(s, 64)) + '</span>');
+          }
+          return chips.length ? '<div class="jn-notion-row__v-chips">' + chips.join('') + '</div>' : '';
+        }
+        if (typeof val === 'object') {
+          try {
+            var json = JSON.stringify(val);
+            var shortJ = truncate(json, 180);
+            return '<details class="jn-notion-long"><summary class="jn-notion-long__sum">' + esc(shortJ) + '</summary><div class="jn-notion-long__full">' + esc(json) + '</div></details>';
+          } catch (e3) {
+            return '';
+          }
+        }
+        return '';
+      }
+
       function notionExtrasSectionHtml(trade) {
         var extras = parseNotionExtrasFromTrade(trade);
         if (!extras) return '';
         var keys = Object.keys(extras).filter(function (k) {
           return !isDuplicateExtraKey(k);
-        }).sort();
-        var rows = [];
-        for (var i = 0; i < keys.length; i++) {
-          var key = keys[i];
-          var full = formatNotionExtraValue(extras[key]);
-          if (!full) continue;
-          var shown = truncate(full, 1400);
-          rows.push(
-            '<div class="jn-notion-row">' +
-              '<span class="jn-notion-row__k">' + esc(key) + '</span>' +
-              '<span class="jn-notion-row__v">' + esc(shown) + '</span>' +
+        }).sort(compareExtraKeysNotion);
+        if (!keys.length) return '';
+
+        var buckets = { context: [], psych: [], execution: [], other: [] };
+        for (var ki = 0; ki < keys.length; ki++) {
+          var kk = keys[ki];
+          buckets[notionExtraSectionBucket(kk)].push(kk);
+        }
+
+        var titles = {
+          context: 'Setup & context',
+          psych: 'Psychology',
+          execution: 'Execution & risk',
+          other: 'Other fields'
+        };
+        var order = ['context', 'psych', 'execution', 'other'];
+
+        var sectionsOut = [];
+        for (var si = 0; si < order.length; si++) {
+          var bid = order[si];
+          var klist = buckets[bid];
+          if (!klist.length) continue;
+          var rows = [];
+          for (var ri = 0; ri < klist.length; ri++) {
+            var key = klist[ri];
+            var cells = renderNotionExtraValueCells(extras[key]);
+            if (!cells) continue;
+            rows.push(
+              '<div class="jn-notion-row">' +
+                '<span class="jn-notion-row__k">' + esc(key) + '</span>' +
+                '<span class="jn-notion-row__v">' + cells + '</span>' +
+              '</div>'
+            );
+          }
+          if (!rows.length) continue;
+          sectionsOut.push(
+            '<div class="jn-notion-section">' +
+              '<h4 class="jn-notion-section__title">' + esc(titles[bid]) + '</h4>' +
+              '<div class="jn-notion-extras__grid">' + rows.join('') + '</div>' +
             '</div>'
           );
         }
-        if (!rows.length) return '';
+
+        if (!sectionsOut.length) return '';
         return (
           '<section class="jn-notion-extras" aria-label="Notion fields">' +
             '<div class="jn-notion-extras__head">Notion fields</div>' +
-            '<div class="jn-notion-extras__grid">' + rows.join('') + '</div>' +
+            sectionsOut.join('') +
           '</section>'
         );
       }
+
       function notionExtrasCardPreviewHtml(trade) {
         var extras = parseNotionExtrasFromTrade(trade);
         if (!extras) return '';
         var keys = Object.keys(extras).filter(function (k) {
           return !isDuplicateExtraKey(k);
-        }).sort();
+        }).sort(compareExtraKeysNotion);
         if (!keys.length) return '';
-        var bits = [];
+        var lines = [];
         for (var j = 0; j < Math.min(3, keys.length); j++) {
           var kk = keys[j];
-          var vv = truncate(formatNotionExtraValue(extras[kk]), 44);
-          if (vv) bits.push(esc(truncate(kk, 22)) + ': ' + esc(vv));
+          var vv = truncate(formatNotionExtraValue(extras[kk]), 52);
+          if (!vv) continue;
+          lines.push(
+            '<div class="jn-card__extras-line">' +
+              '<span class="jn-card__extras-k">' + esc(truncate(kk, 18)) + '</span>' +
+              '<span class="jn-card__extras-v">' + esc(vv) + '</span>' +
+            '</div>'
+          );
         }
-        if (!bits.length) return '';
-        return '<div class="jn-card__extras-preview">' + bits.join(' · ') + '</div>';
+        if (!lines.length) return '';
+        return '<div class="jn-card__extras-preview">' + lines.join('') + '</div>';
       }
 
       function readApiError(data) {
