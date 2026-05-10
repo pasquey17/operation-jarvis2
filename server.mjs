@@ -832,6 +832,35 @@ function normalizeTradeImagesForPrompt(raw) {
 }
 
 /**
+ * Appends raw https URLs from scoped trades when the model forgets to paste them —
+ * the home chat UI only renders thumbnails when URLs appear in the reply string.
+ */
+function mergeReplyWithTradeImageUrls(reply, tradesForChat, photoIdxSet, includePhotoLinks) {
+  if (!includePhotoLinks) return reply;
+  const base = typeof reply === "string" ? reply : "";
+  const indices =
+    photoIdxSet && photoIdxSet.size ? [...photoIdxSet].sort((a, b) => a - b) : [];
+  const toAdd = [];
+  const seen = new Set();
+  for (const i of indices) {
+    const t = tradesForChat[i];
+    if (!t || typeof t !== "object") continue;
+    const imgs = normalizeTradeImagesForPrompt(t.trade_images ?? t.Trade_images);
+    for (const row of imgs) {
+      const url = row.url;
+      if (!url || seen.has(url)) continue;
+      if (base.includes(url)) continue;
+      seen.add(url);
+      toAdd.push(url);
+    }
+  }
+  if (toAdd.length === 0) return base;
+  const trimmed = base.trimEnd();
+  const sep = trimmed.length ? "\n\n" : "";
+  return `${trimmed}${sep}${toAdd.join("\n")}`;
+}
+
+/**
  * True when the user explicitly asks to include/show/link journal photos or charts.
  * Only then do we add `trade_images` to the slim trade JSON (text URLs — not vision).
  */
@@ -1739,7 +1768,8 @@ async function handleChat(req, res) {
     return;
   }
 
-  const reply = extractAssistantText(data);
+  let reply = extractAssistantText(data);
+  reply = mergeReplyWithTradeImageUrls(reply, tradesForChat, photoIdxSet, includePhotoLinks);
   json(res, 200, { reply });
 
   // Background profile update — fire-and-forget, never blocks the response

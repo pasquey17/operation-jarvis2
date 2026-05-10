@@ -447,6 +447,12 @@ function fillJarvisMessageElement(el, rawText) {
       img.loading = "lazy";
       img.decoding = "async";
       img.draggable = false;
+      img.dataset.directSrc = url;
+      img.addEventListener("error", function onImgErr() {
+        if (!img.dataset.directSrc || img.src.indexOf("/api/proxy-image") === -1) return;
+        img.removeEventListener("error", onImgErr);
+        img.src = img.dataset.directSrc;
+      });
       btn.appendChild(img);
       wrap.appendChild(btn);
       el.appendChild(wrap);
