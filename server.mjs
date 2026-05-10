@@ -668,6 +668,8 @@ const CHAT_TRADE_FETCH_LIMIT = Math.min(MAX_SUPABASE_ROWS, 5000);
 const MAX_TRADES_IN_CHAT_PROMPT = 100;
 /** Truncate long `notes` when building the chat payload. */
 const MAX_PROMPT_TRADE_NOTES_CHARS = 400;
+/** Cap screenshot URLs per trade when the user asks for photo links (token budget). */
+const MAX_TRADE_IMAGES_IN_CHAT_PROMPT = 12;
 /**
  * PostgREST resource name (case-sensitive).
  * Override with env `SUPABASE_TABLE` if your table name differs.
@@ -769,9 +771,89 @@ function formatDateAdelaide(dateValue) {
   });
 }
 
+/**
+ * Normalizes `trade_images` from Supabase/jsonb for the chat prompt (https URLs only).
+ * @param {unknown} raw
+ * @returns {{ url: string, label: string }[]}
+ */
+function normalizeTradeImagesForPrompt(raw) {
+  let arr = raw;
+  if (arr == null) return [];
+  if (typeof arr === "string") {
+    try {
+      arr = JSON.parse(arr);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  const max = Math.max(1, MAX_TRADE_IMAGES_IN_CHAT_PROMPT);
+  for (const item of arr) {
+    if (out.length >= max) break;
+    if (typeof item === "string") {
+      const u = item.trim();
+      if (/^https?:\/\//i.test(u)) out.push({ url: u, label: "" });
+    } else if (item && typeof item === "object" && typeof item.url === "string") {
+      const u = item.url.trim();
+      if (/^https?:\/\//i.test(u)) {
+        out.push({
+          url: u,
+          label: typeof item.label === "string" ? item.label.trim() : "",
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * True when the user explicitly asks to include/show/link journal photos or charts.
+ * Only then do we add `trade_images` to the slim trade JSON (text URLs — not vision).
+ */
+function userWantsTradePhotoLinks(message) {
+  const s = String(message || "").trim().toLowerCase();
+  if (s.length < 6) return false;
+
+  if (
+    /\b(don't|do not|never)\s+(include|show|send|give|add)\b[\s\S]{0,80}\b(photo|photos|chart|charts|screenshot|screenshots|picture|pictures|image|images)\b/i.test(
+      s
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    /\b(include|show|give|send|add|attach|share|link|paste)\b[\s\S]{0,120}\b(photo|photos|picture|pictures|screenshot|screenshots|chart|charts|image|images)\b/i.test(
+      s
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /\b(photo|photos|chart|charts|screenshot|screenshots|picture|pictures|image|images)\b[\s\S]{0,50}\b(url|link)\b/i.test(
+      s
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /\b(can you|could you|please)\b/i.test(s) &&
+    /\b(include|show|add|link|send|give|attach)\b/i.test(s) &&
+    /\b(photo|photos|chart|charts|screenshot|screenshots|picture|pictures|image|images)\b/i.test(s)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 /** Small allowlist for chat system JSON — avoids huge Supabase payloads. */
-function slimTradeRowForPrompt(t) {
+function slimTradeRowForPrompt(t, options = {}) {
   if (!t || typeof t !== "object") return t;
+  const includeTradeImages = !!options.includeTradeImages;
   const readField = (obj, keys) => {
     for (const k of keys) {
       if (obj?.[k] !== undefined) return obj[k];
@@ -783,7 +865,7 @@ function slimTradeRowForPrompt(t) {
     notes = `${notes.slice(0, MAX_PROMPT_TRADE_NOTES_CHARS)}…`;
   }
   const rawDate = readField(t, ["date", "Date"]);
-  return {
+  const row = {
     date: rawDate,
     date_local: formatDateAdelaide(rawDate),
     weekday: readField(t, ["weekday", "Weekday"]),
@@ -795,6 +877,11 @@ function slimTradeRowForPrompt(t) {
     account: readField(t, ["account", "Account", "ACCOUNT"]) ?? "",
     notes,
   };
+  if (includeTradeImages) {
+    const imgs = normalizeTradeImagesForPrompt(readField(t, ["trade_images", "Trade_images"]));
+    if (imgs.length > 0) row.trade_images = imgs;
+  }
+  return row;
 }
 
 function buildProfileEvidenceBundle(allTradesSlimmed, maxExamples = 30) {
@@ -1295,6 +1382,12 @@ async function handleChat(req, res) {
         : "";
   const message = messageSource.toLowerCase();
 
+  const includePhotoLinks = userWantsTradePhotoLinks(messageSource);
+  const slimChatOpts = includePhotoLinks ? { includeTradeImages: true } : {};
+  if (includePhotoLinks) {
+    console.log("[chat] trade photo links requested — attaching trade_images where present");
+  }
+
   const sessions = ["asia", "london", "new york"];
   const requestedSession = sessions.find((s) => message.includes(s));
 
@@ -1395,15 +1488,15 @@ async function handleChat(req, res) {
   }
 
   const slimRecent = mostRecentTrade
-    ? slimTradeRowForPrompt(mostRecentTrade)
+    ? slimTradeRowForPrompt(mostRecentTrade, slimChatOpts)
     : null;
   const slimLoss = mostRecentLoss
-    ? slimTradeRowForPrompt(mostRecentLoss)
+    ? slimTradeRowForPrompt(mostRecentLoss, slimChatOpts)
     : null;
   const slimWin = mostRecentWin
-    ? slimTradeRowForPrompt(mostRecentWin)
+    ? slimTradeRowForPrompt(mostRecentWin, slimChatOpts)
     : null;
-  const slimBE = mostRecentBE ? slimTradeRowForPrompt(mostRecentBE) : null;
+  const slimBE = mostRecentBE ? slimTradeRowForPrompt(mostRecentBE, slimChatOpts) : null;
 
   const tradeOutcomeAppend =
     "\n\n" +
@@ -1420,7 +1513,9 @@ async function handleChat(req, res) {
     JSON.stringify(slimBE);
 
   // All trades slimmed for stats — covers the full dataset regardless of context cap.
-  const allTradesSlimmed = tradesForChat.map(slimTradeRowForPrompt);
+  const allTradesSlimmed = tradesForChat.map((t) =>
+    slimTradeRowForPrompt(t, slimChatOpts)
+  );
 
   // Recent trades for prompt context — capped at MAX_TRADES_IN_CHAT_PROMPT for token budget.
   const tradesForPrompt = allTradesSlimmed.slice(0, MAX_TRADES_IN_CHAT_PROMPT);
@@ -1442,7 +1537,7 @@ async function handleChat(req, res) {
     return;
   }
 
-  const columnKeys =
+  let columnKeys =
     tradesForPrompt.length > 0
       ? Object.keys(tradesForPrompt[0])
       : [
@@ -1454,6 +1549,9 @@ async function handleChat(req, res) {
           "model",
           "notes",
         ];
+  if (includePhotoLinks && !columnKeys.includes("trade_images")) {
+    columnKeys = [...columnKeys, "trade_images"];
+  }
   const useWebSearch = needsWebSearch(messageSource);
   console.log(
     `[web-search] ${useWebSearch ? "TRIGGERED" : "not triggered"} — query: "${messageSource.slice(0, 120)}"`
@@ -1467,6 +1565,9 @@ async function handleChat(req, res) {
     tradeOutcomeAppend +
     (useWebSearch
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
+      : "") +
+    (includePhotoLinks
+      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Some trade rows include \"trade_images\": an array of { \"url\", \"label\" } with HTTPS links from their Notion sync. For any trade you discuss that has this field, paste the relevant URL(s) in your reply so they can open the image. Do not claim to see or analyse the image contents—links only. If they ask for a photo of a trade that has no trade_images, say no screenshot is stored for that trade."
       : "");
 
   const anthropicBody = {
@@ -1524,8 +1625,16 @@ async function handleChat(req, res) {
   json(res, 200, { reply });
 
   // Background profile update — fire-and-forget, never blocks the response
-  void generateAndUpdateProfile(userId, messages, reply, userProfile, allTradesSlimmed, apiKey)
-    .catch((e) => console.warn("[profile-update] Background update failed:", e instanceof Error ? e.message : e));
+  void generateAndUpdateProfile(
+    userId,
+    messages,
+    reply,
+    userProfile,
+    tradesForChat.map((t) => slimTradeRowForPrompt(t)),
+    apiKey
+  ).catch((e) =>
+    console.warn("[profile-update] Background update failed:", e instanceof Error ? e.message : e)
+  );
 }
 
 /**
