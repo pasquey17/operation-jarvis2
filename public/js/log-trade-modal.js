@@ -17,6 +17,13 @@ function escHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function escAttr(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
 function getField(obj) {
   for (let i = 1; i < arguments.length; i++) {
     const v = obj[arguments[i]];
@@ -58,6 +65,18 @@ function loadLogDefaultsFromStorage() {
   }
 }
 
+function customFieldValueFromFormData(fd, f) {
+  if (f.field_type === "multiselect") {
+    return fd
+      .getAll(f.field_name)
+      .map((x) => String(x).trim())
+      .filter(Boolean)
+      .join(", ");
+  }
+  const v = fd.get(f.field_name);
+  return v != null ? String(v).trim() : "";
+}
+
 function persistLogDefaultsFromStorage(fd, customFields) {
   try {
     const payload = {
@@ -69,11 +88,11 @@ function persistLogDefaultsFromStorage(fd, customFields) {
     };
     for (const f of customFields) {
       const nm = f.field_name;
-      const v = fd.get(nm);
-      if (v == null || String(v).trim() === "") continue;
+      const v = customFieldValueFromFormData(fd, f);
+      if (v === "") continue;
       const role = classifyAuxFieldRole(nm);
-      if (role === "model") payload.entry_model = String(v).trim();
-      payload.custom[nm] = String(v).trim();
+      if (role === "model") payload.entry_model = v;
+      payload.custom[nm] = v;
     }
     localStorage.setItem(LOG_DEFAULTS_STORAGE_KEY, JSON.stringify(payload));
   } catch {}
@@ -170,8 +189,8 @@ function applyLogTradePrefills(allTrades, customFields) {
   for (const f of customFields) {
     const name = f.field_name;
     if (!name || !formEl?.elements) continue;
+    const fdDef = customFields.find((x) => x.field_name === name);
     const el = formEl.elements.namedItem(name);
-    if (!el || !("value" in el)) continue;
     let valStr = "";
     if (extras) {
       const nk = Object.keys(extras).find((k) => k.toLowerCase() === name.toLowerCase());
@@ -189,6 +208,23 @@ function applyLogTradePrefills(allTrades, customFields) {
       }
     }
     if (!String(valStr).trim()) continue;
+
+    if (fdDef?.field_type === "multiselect") {
+      const parts = String(valStr)
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      const group = formEl.elements[name];
+      const boxes = group?.length != null ? Array.from(group) : group ? [group] : [];
+      boxes.forEach((node) => {
+        if (node && node.type === "checkbox") {
+          node.checked = parts.indexOf(node.value) !== -1;
+        }
+      });
+      continue;
+    }
+
+    if (!el || !("value" in el)) continue;
     if (el.tagName === "SELECT" && el.multiple) {
       const parts = String(valStr)
         .split(",")
@@ -226,14 +262,31 @@ function renderCustomField(f) {
       .join("")}</div>`;
   }
 
-  if (f.field_type === "dropdown" || f.field_type === "multiselect") {
+  if (f.field_type === "dropdown") {
     let opts = [];
     try {
       opts = JSON.parse(f.field_options || "[]");
     } catch {}
-    const multiple = f.field_type === "multiselect" ? "multiple" : "";
     const optsHtml = opts.map((o) => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join("");
-    return `<div class="trade-field trade-field--full"><label class="trade-label" for="${id}">${label}</label><select id="${id}" name="${name}" class="trade-input" data-custom="1" ${multiple} ${req}><option value="">— select —</option>${optsHtml}</select></div>`;
+    return `<div class="trade-field trade-field--full"><label class="trade-label" for="${id}">${label}</label><select id="${id}" name="${name}" class="trade-input trade-select" data-custom="1" ${req}><option value="">— select —</option>${optsHtml}</select></div>`;
+  }
+  if (f.field_type === "multiselect") {
+    let opts = [];
+    try {
+      opts = JSON.parse(f.field_options || "[]");
+    } catch {}
+    const hint = '<p class="trade-multiselect-hint">Select any that apply</p>';
+    const optsHtml = opts
+      .map(
+        (o) =>
+          `<label class="trade-multi-option"><input type="checkbox" name="${escAttr(
+            f.field_name
+          )}" value="${escAttr(o)}" class="trade-multi-option__input" /><span class="trade-multi-option__text">${escHtml(
+            o
+          )}</span></label>`
+      )
+      .join("");
+    return `<div class="trade-field trade-field--full" data-multiselect-field="1"><label class="trade-label" id="${id}-legend">${label}</label>${hint}<div class="trade-multiselect-panel trade-input" role="group" aria-labelledby="${id}-legend">${optsHtml}</div></div>`;
   }
   if (f.field_type === "number") {
     return `<div class="trade-field"><label class="trade-label" for="${id}">${label}</label><input id="${id}" type="number" name="${name}" class="trade-input" data-custom="1" step="0.01" ${req}></div>`;
@@ -271,7 +324,7 @@ function buildOverlayHtml(today, customHtml) {
             </div>
             <div class="trade-field">
               <label class="trade-label" for="tf-session">Session</label>
-              <select id="tf-session" name="session" class="trade-input" required>
+              <select id="tf-session" name="session" class="trade-input trade-select" required>
                 <option value="">— select —</option>
                 <option value="Asia">Asia</option>
                 <option value="London">London</option>
@@ -281,7 +334,7 @@ function buildOverlayHtml(today, customHtml) {
             </div>
             <div class="trade-field">
               <label class="trade-label" for="tf-outcome">Outcome</label>
-              <select id="tf-outcome" name="outcome" class="trade-input" required>
+              <select id="tf-outcome" name="outcome" class="trade-input trade-select" required>
                 <option value="">— select —</option>
                 <option value="Win">Win</option>
                 <option value="Loss">Loss</option>
@@ -296,6 +349,7 @@ function buildOverlayHtml(today, customHtml) {
               <label class="trade-label" for="tf-account">Account</label>
               <input id="tf-account" type="text" name="account" class="trade-input" placeholder="e.g. Main">
             </div>
+            <div class="trade-field trade-field--full trade-form-core-end" aria-hidden="true"></div>
             ${customHtml}
           </div>
           <div class="trade-form-actions">
@@ -435,10 +489,19 @@ export async function openLogTradeModal(options) {
       return;
     }
 
+    for (const f of customFields) {
+      if (f.field_type !== "multiselect" || !f.is_required) continue;
+      const picks = fd.getAll(f.field_name).filter((x) => x != null && String(x).trim());
+      if (picks.length === 0) {
+        showToast(`Please select at least one option for ${f.field_name}.`, true);
+        return;
+      }
+    }
+
     const custom_data = {};
     for (const f of customFields) {
-      const val = fd.get(f.field_name);
-      if (val !== null && String(val).trim() !== "") custom_data[f.field_name] = val;
+      const val = customFieldValueFromFormData(fd, f);
+      if (val !== "") custom_data[f.field_name] = val;
     }
 
     const submitBtn = form.querySelector(".trade-submit-btn");

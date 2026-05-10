@@ -1322,9 +1322,106 @@ select.trade-input {
   cursor: pointer;
 }
 
+select.trade-input.trade-select {
+  min-height: 44px;
+  line-height: 1.25;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
 select.trade-input option {
   background: #000d1f;
   color: #ffffff;
+  padding: 8px 10px;
+}
+
+/* LOG TRADE — divider between core row and Notion-synced custom fields */
+.trade-form-core-end {
+  grid-column: 1 / -1;
+  height: 0;
+  min-height: 0;
+  margin: 6px 0 10px;
+  padding: 0 !important;
+  border: none;
+  border-top: 1px solid rgba(0, 191, 255, 0.14);
+  pointer-events: none;
+}
+
+/* Multiselect (checkbox list) — matches select.trade-input chrome */
+.trade-multiselect-hint {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.trade-multiselect-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 4px 8px 8px;
+  max-height: min(220px, 38vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 191, 255, 0.25) transparent;
+  cursor: default;
+  background-image: none !important;
+  padding-right: 10px;
+}
+
+.trade-multiselect-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.trade-multiselect-panel::-webkit-scrollbar-thumb {
+  background: rgba(0, 191, 255, 0.22);
+  border-radius: 99px;
+}
+
+.trade-multi-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  margin: 2px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out);
+  border: 1px solid transparent;
+}
+
+.trade-multi-option:hover {
+  background: rgba(0, 191, 255, 0.06);
+  border-color: rgba(0, 191, 255, 0.12);
+}
+
+.trade-multi-option:has(.trade-multi-option__input:checked) {
+  background: rgba(0, 191, 255, 0.1);
+  border-color: rgba(0, 191, 255, 0.22);
+}
+
+.trade-multi-option__input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: #00bfff;
+  cursor: pointer;
+}
+
+.trade-multi-option__text {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.35;
 }
 
 input[type="date"].trade-input::-webkit-calendar-picker-indicator {
