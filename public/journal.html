@@ -222,7 +222,8 @@
       .jn-filter-row {
         display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
       }
-      /* Model pills span full width so long names don't force single-column stacking */
+      /* Period + model span full width so pills wrap cleanly */
+      #filter-period,
       #filter-model { grid-column: 1 / -1; }
       #filter-model .jn-filter-pill { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .jn-filter-label {
@@ -853,6 +854,16 @@
       <div class="jn-filter-panel" id="jn-filter-panel" aria-hidden="true">
         <div class="jn-filter-panel-inner">
           <div class="jn-filter-grid" id="jn-filters">
+            <div class="jn-filter-row" id="filter-period">
+              <span class="jn-filter-label">Period</span>
+              <div class="jn-filter-pills">
+                <button class="jn-filter-pill active" data-group="period" data-value="all">All time</button>
+                <button class="jn-filter-pill" data-group="period" data-value="today">Today</button>
+                <button class="jn-filter-pill" data-group="period" data-value="week">This week</button>
+                <button class="jn-filter-pill" data-group="period" data-value="month">This month</button>
+                <button class="jn-filter-pill" data-group="period" data-value="year">This year</button>
+              </div>
+            </div>
             <div class="jn-filter-row" id="filter-outcome">
               <span class="jn-filter-label">Outcome</span>
               <div class="jn-filter-pills">
@@ -950,7 +961,15 @@
       let allTrades      = [];
       let filteredTrades = [];
       let displayedCount = 0;
-      let activeFilters  = { outcome: 'all', direction: 'all', pair: 'all', model: 'all', account: 'all', sort: 'newest' };
+      let activeFilters  = {
+        period: 'all',
+        outcome: 'all',
+        direction: 'all',
+        pair: 'all',
+        model: 'all',
+        account: 'all',
+        sort: 'newest'
+      };
 
       /* ── Helpers ── */
       function getField(obj) {
@@ -989,6 +1008,71 @@
 
       function tradeDate(t) {
         return new Date(getField(t, 'date', 'traded_at', 'Date') || '');
+      }
+
+      /** YYYY-MM-DD in Australia/Adelaide (matches journal date display). */
+      function dateKeyAdelaide(d) {
+        if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+        try {
+          return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Adelaide' });
+        } catch (e) {
+          return '';
+        }
+      }
+
+      function addDaysToDateKey(dateKey, delta) {
+        var p = dateKey.split('-').map(Number);
+        if (p.length !== 3 || p.some(isNaN)) return '';
+        var t = new Date(Date.UTC(p[0], p[1] - 1, p[2] + delta));
+        return dateKeyAdelaide(t);
+      }
+
+      function weekdayLongAdelaide(dateKey) {
+        var p = dateKey.split('-').map(Number);
+        if (p.length !== 3 || p.some(isNaN)) return '';
+        var t = new Date(Date.UTC(p[0], p[1] - 1, p[2], 14, 0, 0));
+        try {
+          return new Intl.DateTimeFormat('en-AU', {
+            timeZone: 'Australia/Adelaide',
+            weekday: 'long'
+          }).format(t);
+        } catch (e2) {
+          return '';
+        }
+      }
+
+      /** Monday-start week (Adelaide calendar). */
+      function mondayKeyOfWeekContaining(dateKey) {
+        var cur = dateKey;
+        for (var i = 0; i < 7; i++) {
+          if (weekdayLongAdelaide(cur) === 'Monday') return cur;
+          cur = addDaysToDateKey(cur, -1);
+          if (!cur) break;
+        }
+        return dateKey;
+      }
+
+      function tradeMatchesPeriod(t, period) {
+        if (!period || period === 'all') return true;
+        var d = tradeDate(t);
+        var tk = dateKeyAdelaide(d);
+        if (!tk) return false;
+        var today = dateKeyAdelaide(new Date());
+        if (!today) return true;
+
+        if (period === 'today') return tk === today;
+
+        if (period === 'week') {
+          var mon = mondayKeyOfWeekContaining(today);
+          var sun = addDaysToDateKey(mon, 6);
+          return tk >= mon && tk <= sun;
+        }
+
+        if (period === 'month') return tk.slice(0, 7) === today.slice(0, 7);
+
+        if (period === 'year') return tk.slice(0, 4) === today.slice(0, 4);
+
+        return true;
       }
 
       function formatDateShort(t) {
@@ -1261,6 +1345,7 @@
           var modelRaw = (getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '').toLowerCase();
           var acctRaw  = (getField(t, 'account', 'Account', 'ACCOUNT') || '').toLowerCase();
 
+          if (!tradeMatchesPeriod(t, activeFilters.period)) return false;
           if (activeFilters.outcome !== 'all' && outcome !== activeFilters.outcome) return false;
           if (activeFilters.direction !== 'all' && dir !== activeFilters.direction) return false;
           if (activeFilters.pair    !== 'all' && pairRaw  !== activeFilters.pair.toUpperCase())   return false;
@@ -1723,7 +1808,8 @@
 
       /* ── Filter panel toggle ── */
       function updateFilterDot() {
-        var hasActive = activeFilters.outcome   !== 'all'    ||
+        var hasActive = activeFilters.period    !== 'all'    ||
+                        activeFilters.outcome   !== 'all'    ||
                         activeFilters.direction !== 'all'    ||
                         activeFilters.pair      !== 'all'    ||
                         activeFilters.model     !== 'all'    ||
@@ -1748,7 +1834,15 @@
         });
 
         document.getElementById('jn-filter-clear').addEventListener('click', function () {
-          activeFilters = { outcome: 'all', direction: 'all', pair: 'all', model: 'all', account: 'all', sort: 'newest' };
+          activeFilters = {
+            period: 'all',
+            outcome: 'all',
+            direction: 'all',
+            pair: 'all',
+            model: 'all',
+            account: 'all',
+            sort: 'newest'
+          };
           document.querySelectorAll('#jn-filters .jn-filter-pill').forEach(function (p) {
             var isDefault = p.dataset.value === 'all' ||
                             (p.dataset.group === 'sort' && p.dataset.value === 'newest');
