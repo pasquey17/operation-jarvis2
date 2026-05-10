@@ -773,6 +773,28 @@ function formatDateAdelaide(dateValue) {
   });
 }
 
+/** Same notion as journal UI: primary cover = "Trade Photo" heading from Notion. */
+function isTradePhotoCoverLabelServer(label) {
+  const k = String(label || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\*/g, "");
+  if (k === "trade photo") return true;
+  if (!k.startsWith("trade photo")) return false;
+  const rest = k.slice("trade photo".length);
+  return /^[\s:]*[-–—]?\s*$/.test(rest) || /^\s*\d+\s*$/.test(rest);
+}
+
+/** Put Trade Photo first so chat + model order matches the journal. */
+function sortTradeImagesPrimaryFirst(items) {
+  if (!Array.isArray(items) || items.length <= 1) return items;
+  const primaryIdx = items.findIndex((x) => isTradePhotoCoverLabelServer(x.label));
+  if (primaryIdx <= 0) return items;
+  const copy = [...items];
+  const [pri] = copy.splice(primaryIdx, 1);
+  return [pri, ...copy];
+}
+
 /**
  * Normalizes `trade_images` from Supabase/jsonb for the chat prompt (https URLs only).
  * @param {unknown} raw
@@ -806,7 +828,7 @@ function normalizeTradeImagesForPrompt(raw) {
       }
     }
   }
-  return out;
+  return sortTradeImagesPrimaryFirst(out);
 }
 
 /**
@@ -1663,7 +1685,7 @@ async function handleChat(req, res) {
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
     (includePhotoLinks
-      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Only the trades relevant to their request include a \"trade_images\" field in the data below (long URLs omitted elsewhere to save context). Each \"trade_images\" value is an array of { \"url\", \"label\" } HTTPS links from Notion sync—paste the relevant URL(s) in your reply. Do not claim to see or analyse the image contents—links only. If the trade they asked about has no trade_images, say no screenshot is stored for that trade."
+      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Only the trades relevant to their request include a \"trade_images\" field below (long URLs omitted elsewhere to save context). Each array is ordered with the Notion \"Trade Photo\" (or TRADE PHOTO caption) first when present; otherwise the first image is the fallback (e.g. chart 1). When they ask for one photo of a trade, paste the primary URL first (Trade Photo if labelled, else first in the array). For \"all screenshots\", list in that order. Paste full HTTPS URLs so the app can render thumbnails—do not claim to see pixels. If there are no trade_images for that trade, say no screenshot is stored."
       : "");
 
   const anthropicBody = {
@@ -1852,6 +1874,110 @@ async function handleLogTrade(req, res) {
   }
 }
 
+const MAX_PROXY_IMAGE_BYTES = 12 * 1024 * 1024;
+
+/**
+ * Same-origin fetch of Notion/S3 chart URLs so <img> works without browser referrer quirks.
+ * GET /api/proxy-image?u=https%3A%2F%2F...
+ */
+async function handleImageProxy(req, res) {
+  let rawUrl = "";
+  try {
+    const u = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    rawUrl = u.searchParams.get("u") || u.searchParams.get("url") || "";
+  } catch {
+    json(res, 400, { error: "Bad request" });
+    return;
+  }
+  if (!rawUrl.trim()) {
+    json(res, 400, { error: "Missing u query parameter" });
+    return;
+  }
+
+  let target;
+  try {
+    target = new URL(rawUrl);
+  } catch {
+    json(res, 400, { error: "Invalid URL" });
+    return;
+  }
+
+  if (target.protocol !== "https:") {
+    json(res, 400, { error: "HTTPS only" });
+    return;
+  }
+
+  const host = target.hostname.toLowerCase();
+  const allowed =
+    host.endsWith(".amazonaws.com") ||
+    host.endsWith(".notion.so") ||
+    host.endsWith(".notion.site") ||
+    host.endsWith(".supabase.co");
+  if (!allowed) {
+    json(res, 403, { error: "Host not allowed" });
+    return;
+  }
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const upstream = await fetch(target.href, {
+      redirect: "follow",
+      signal: ctrl.signal,
+      headers: { Accept: "image/*,*/*" },
+    });
+    clearTimeout(timer);
+    if (!upstream.ok) {
+      json(res, upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502, {
+        error: "Image fetch failed",
+      });
+      return;
+    }
+
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    if (buf.length > MAX_PROXY_IMAGE_BYTES) {
+      json(res, 413, { error: "Image too large" });
+      return;
+    }
+
+    let ct = upstream.headers.get("content-type") || "";
+    ct = ct.split(";")[0].trim().toLowerCase();
+    const pathQs = target.pathname + target.search;
+    const sniffed =
+      buf[0] === 0xff && buf[1] === 0xd8
+        ? "image/jpeg"
+        : buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47
+          ? "image/png"
+          : buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46
+            ? "image/gif"
+            : buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+              ? "image/webp"
+              : null;
+    const looksLikeImage =
+      /^image\//i.test(ct) ||
+      /\.(png|jpe?g|gif|webp)(\?|$)/i.test(pathQs) ||
+      (ct === "application/octet-stream" && /\.(png|jpe?g|gif|webp)(\?|$)/i.test(pathQs));
+
+    if (!sniffed && !looksLikeImage && !/^image\//i.test(ct)) {
+      json(res, 415, { error: "Not an image" });
+      return;
+    }
+
+    let outType = sniffed || (/^image\//i.test(ct) ? ct : null);
+    if (!outType) outType = "image/png";
+
+    res.writeHead(200, {
+      "Content-Type": outType,
+      "Cache-Control": "private, max-age=120",
+      "Access-Control-Allow-Origin": "*",
+    });
+    res.end(buf);
+  } catch (e) {
+    clearTimeout(timer);
+    json(res, 502, { error: e instanceof Error ? e.message : "Fetch failed" });
+  }
+}
+
 async function handleInitProfiles(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) {
@@ -1909,6 +2035,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/chat")) {
     await handleChat(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/proxy-image")) {
+    await handleImageProxy(req, res);
     return;
   }
 

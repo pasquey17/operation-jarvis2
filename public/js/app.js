@@ -394,8 +394,28 @@ function chatHttpsUrlIsInlineImage(url) {
   }
 }
 
+/** Same-origin proxy avoids broken thumbnails when S3 blocks foreign Referer (journal loads direct; chat needs this). */
+function chatImageDisplayUrl(absUrl) {
+  try {
+    const parsed = new URL(absUrl);
+    if (parsed.protocol !== "https:") return absUrl;
+    const h = parsed.hostname.toLowerCase();
+    if (
+      h.endsWith(".amazonaws.com") ||
+      h.endsWith(".notion.so") ||
+      h.endsWith(".notion.site")
+    ) {
+      return `/api/proxy-image?u=${encodeURIComponent(absUrl)}`;
+    }
+  } catch {
+    /* ignore */
+  }
+  return absUrl;
+}
+
 /**
  * Renders Jarvis text with trade screenshot HTTPS URLs shown as inline images (not raw links).
+ * Thumbnails use /api/proxy-image on AWS/Notion; click opens the journal-style lightbox (no new tab).
  */
 function fillJarvisMessageElement(el, rawText) {
   el.textContent = "";
@@ -411,16 +431,24 @@ function fillJarvisMessageElement(el, rawText) {
     }
     const url = normalizeChatUrl(match[0]);
     if (chatHttpsUrlIsInlineImage(url)) {
+      const displaySrc = chatImageDisplayUrl(url);
       const wrap = document.createElement("div");
       wrap.className = "msg-inline-img-wrap";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "msg-inline-img-open";
+      btn.setAttribute("data-src", displaySrc);
+      btn.setAttribute("data-caption", "");
+      btn.setAttribute("aria-label", "Expand chart");
       const img = document.createElement("img");
-      img.src = url;
-      img.alt = "Trade screenshot";
+      img.src = displaySrc;
+      img.alt = "";
       img.className = "msg-inline-img";
       img.loading = "lazy";
       img.decoding = "async";
-      img.referrerPolicy = "no-referrer";
-      wrap.appendChild(img);
+      img.draggable = false;
+      btn.appendChild(img);
+      wrap.appendChild(btn);
       el.appendChild(wrap);
     } else {
       const link = document.createElement("a");
@@ -436,6 +464,65 @@ function fillJarvisMessageElement(el, rawText) {
   if (idx < text.length) {
     el.appendChild(document.createTextNode(text.slice(idx)));
   }
+}
+
+function initChatImageLightbox() {
+  const lb = document.getElementById("jn-lightbox");
+  const imgEl = lb?.querySelector(".jn-lightbox__img");
+  const capEl = document.getElementById("jn-lightbox-caption");
+  const closeBtn = document.getElementById("jn-lightbox-close");
+  const backdrop = document.getElementById("jn-lightbox-backdrop");
+  if (!lb || !imgEl) return;
+
+  function openChatLightbox(src, caption) {
+    imgEl.src = src || "";
+    imgEl.alt = caption ? caption : "Chart";
+    if (capEl) {
+      const c = caption ? String(caption).trim() : "";
+      if (c) {
+        capEl.textContent = c;
+        capEl.removeAttribute("hidden");
+      } else {
+        capEl.textContent = "";
+        capEl.setAttribute("hidden", "");
+      }
+    }
+    lb.removeAttribute("hidden");
+    lb.setAttribute("aria-hidden", "false");
+    try {
+      document.body.style.overflow = "hidden";
+    } catch {
+      /* ignore */
+    }
+    closeBtn?.focus();
+  }
+
+  function closeChatLightbox() {
+    lb.setAttribute("hidden", "");
+    lb.setAttribute("aria-hidden", "true");
+    imgEl.src = "";
+    try {
+      document.body.style.overflow = "";
+    } catch {
+      /* ignore */
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".msg-inline-img-open");
+    if (!btn) return;
+    e.preventDefault();
+    openChatLightbox(btn.getAttribute("data-src") || "", btn.getAttribute("data-caption") || "");
+  });
+
+  closeBtn?.addEventListener("click", closeChatLightbox);
+  backdrop?.addEventListener("click", closeChatLightbox);
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape") return;
+    if (lb.hasAttribute("hidden")) return;
+    closeChatLightbox();
+  });
 }
 
 function jarvisReplyProbablyHasDisplayableUrl(txt) {
@@ -1917,6 +2004,7 @@ async function boot() {
   initMic();
   initLogTradeBtn();
   initLogoutButton();
+  initChatImageLightbox();
   setOrbMode("active");
   void loadTrades()
     .then(async () => {
