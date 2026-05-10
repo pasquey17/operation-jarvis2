@@ -69,8 +69,16 @@ const MAX_CHAT_MESSAGES = 5;
 /** Per-turn content cap (characters) before API send. */
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
-/** Auto-sync: re-pull from Notion if last sync was more than this many ms ago. */
-const NOTION_SYNC_INTERVAL_MS = 30 * 60 * 1000;
+/**
+ * Auto-sync throttle: re-pull from Notion if last sync was longer ago than this.
+ * Default 60s so new Notion rows appear quickly (was 30m — felt “stuck”).
+ * Set NOTION_SYNC_INTERVAL_MS in env (minimum 10000) to override.
+ */
+const NOTION_SYNC_INTERVAL_MS = (() => {
+  const raw = Number(process.env.NOTION_SYNC_INTERVAL_MS);
+  if (Number.isFinite(raw) && raw >= 10_000) return raw;
+  return 60_000;
+})();
 
 /**
  * Jarvis chat personality — exact copy as requested; dynamic date and trade JSON appended below.
@@ -596,8 +604,17 @@ Respond with ONLY a valid JSON object and no other text:
 
 // === AUTO NOTION SYNC ===
 
+/** sync_state reads/writes use service role when set so RLS cannot block server sync bookkeeping. */
+function getSupabaseUrlAndServerKey() {
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.SUPABASE_ANON_KEY?.trim();
+  return { url, key };
+}
+
 async function getSyncState(syncKey) {
-  const { url, key } = getSupabaseConfig();
+  const { url, key } = getSupabaseUrlAndServerKey();
   if (!url || !key) return null;
   try {
     const res = await fetch(
@@ -620,9 +637,9 @@ async function getSyncState(syncKey) {
 }
 
 async function setSyncState(syncKey) {
-  const { url, key } = getSupabaseConfig();
+  const { url, key } = getSupabaseUrlAndServerKey();
   if (!url || !key) return;
-  await fetch(`${url}/rest/v1/sync_state`, {
+  const res = await fetch(`${url}/rest/v1/sync_state`, {
     method: "POST",
     headers: {
       apikey: key,
@@ -632,6 +649,10 @@ async function setSyncState(syncKey) {
     },
     body: JSON.stringify({ key: syncKey, last_synced: new Date().toISOString() }),
   });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    console.warn("[sync_state] write failed:", res.status, t.slice(0, 200));
+  }
 }
 
 async function maybeSyncNotion(userId) {
@@ -1357,6 +1378,8 @@ async function handleSnapshot(req, res) {
       new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+
+    await maybeSyncNotion(userId);
 
     const trades = await getRecentTrades(userId, { limit: MAX_SUPABASE_ROWS });
     const tradesForPrompt = trades.map(slimTradeRowForPrompt);

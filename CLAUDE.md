@@ -88,8 +88,8 @@ The nav bar is duplicated inline in `index.html` and `journal.html` — it is no
 
 | Method | Path | Handler | Description |
 |---|---|---|---|
-| `GET` | `/api/trades?user_id=eq.{userId}` | `handleTrades` | Fetch all trades. Triggers Notion sync if stale (>30 min). Returns `{ payload: { trades, snapshot, ... } }` |
-| `GET` | `/api/snapshot` | `handleSnapshot` | Snapshot stats — same data as `payload.snapshot` inside `/api/trades`. Not a separate data source. |
+| `GET` | `/api/trades?user_id=eq.{userId}` | `handleTrades` | Fetch all trades. Triggers Notion sync if stale (default: last sync &gt;60s; override with `NOTION_SYNC_INTERVAL_MS`, min 10000). |
+| `GET` | `/api/snapshot` | `handleSnapshot` | Snapshot stats — same data as `payload.snapshot` inside `/api/trades`. Runs the same stale Notion sync as `/api/trades`. |
 | `POST` | `/api/chat` | `handleChat` | Jarvis chat. Body: `{ message, history, userId }` |
 | `POST` | `/api/briefing` | `handleBriefing` | Generate morning briefing from recent trades. |
 | `GET` | `/api/sync-notion` | `handleSyncNotion` | Manually trigger Notion → Supabase sync for Aiden. |
