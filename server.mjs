@@ -693,6 +693,37 @@ const MAX_PROMPT_TRADE_NOTES_CHARS = 400;
 const MAX_TRADE_IMAGES_IN_CHAT_PROMPT = 12;
 /** Max trades that may carry trade_images in one chat prompt (each URL can be huge). */
 const MAX_TRADES_WITH_PHOTO_LINKS_IN_CHAT = 12;
+/** Serialized Notion properties attached only when the user asks about extra dimensions (token budget). */
+const MAX_NOTION_EXTRAS_CHARS_PER_TRADE = 2500;
+const MAX_TRADES_WITH_NOTION_EXTRAS_IN_CHAT = 12;
+/** Heuristic triggers for attaching selective notion_extras slices (see handleChat). */
+const NOTION_EXTRAS_TRIGGER_WORDS = [
+  "psychology",
+  "mindset",
+  "emotion",
+  "tilt",
+  "htf",
+  "ltf",
+  "mtf",
+  "timeframe",
+  "higher timeframe",
+  "lower timeframe",
+  "volume",
+  "profile",
+  "vpvr",
+  "confluence",
+  "bias",
+  "confluences",
+  "extra field",
+  "custom field",
+  "notion field",
+  "tag",
+  "tags",
+  "checklist",
+  "premarket",
+  "story",
+  "narrative",
+];
 /**
  * PostgREST resource name (case-sensitive).
  * Override with env `SUPABASE_TABLE` if your table name differs.
@@ -1075,6 +1106,151 @@ function tradePhotoLinkIndices(tradesForChat, messageSource) {
   return new Set(sorted);
 }
 
+function parseNotionExtras(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "object" && raw !== null && !Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const v = JSON.parse(raw);
+      return typeof v === "object" && v !== null && !Array.isArray(v) ? v : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function truncateExtrasObject(obj, maxChars) {
+  const keys = Object.keys(obj);
+  const out = {};
+  for (const k of keys) {
+    const trial = { ...out, [k]: obj[k] };
+    if (JSON.stringify(trial).length <= maxChars) out[k] = obj[k];
+    else break;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function userRequestsNotionExtrasDepth(messageSource) {
+  const s = String(messageSource || "").toLowerCase();
+  return NOTION_EXTRAS_TRIGGER_WORDS.some((w) => s.includes(w));
+}
+
+function messageMatchesExtrasKeys(tradesForChat, messageSource) {
+  const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
+  const s = String(messageSource || "").toLowerCase();
+  const words = s.split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+  if (words.length === 0) return false;
+  const scan = Math.min(arr.length, 20);
+  for (let i = 0; i < scan; i++) {
+    const ex = parseNotionExtras(arr[i]?.notion_extras);
+    if (!ex) continue;
+    for (const k of Object.keys(ex)) {
+      const kl = k.toLowerCase();
+      const slug = kl.replace(/[^a-z0-9]+/g, "");
+      if (
+        words.some(
+          (w) =>
+            (w.length >= 4 && kl.includes(w)) ||
+            (slug.length >= 5 && (slug.includes(w) || w.includes(slug)))
+        )
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
+ * Which rows should include a selective `notion_extras` slice (newest-first indices).
+ * Reuses journal photo targeting for “last win / loss / trade” + keyword/property-name matches.
+ */
+function tradeNotionExtrasIndices(tradesForChat, messageSource) {
+  const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
+  const s = String(messageSource || "").trim().toLowerCase();
+  const indices = new Set();
+
+  const add = (i) => {
+    if (typeof i === "number" && i >= 0 && i < arr.length) indices.add(i);
+  };
+
+  for (const i of tradePhotoLinkIndices(tradesForChat, messageSource)) add(i);
+
+  const broad =
+    /\b(all|every|each|across|patterns?|distribution|usually|typically|often|stats)\b/i.test(
+      s
+    );
+  if (broad && arr.length > 0) {
+    const cap = Math.min(arr.length, MAX_TRADES_WITH_NOTION_EXTRAS_IN_CHAT);
+    for (let i = 0; i < cap; i++) add(i);
+  }
+
+  const words = s.split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+  for (
+    let i = 0;
+    i < Math.min(arr.length, MAX_TRADES_WITH_NOTION_EXTRAS_IN_CHAT);
+    i++
+  ) {
+    const ex = parseNotionExtras(arr[i]?.notion_extras);
+    if (!ex) continue;
+    for (const k of Object.keys(ex)) {
+      const kl = k.toLowerCase();
+      const slug = kl.replace(/[^a-z0-9]+/g, "");
+      if (
+        words.some(
+          (w) =>
+            (w.length >= 4 && kl.includes(w)) ||
+            (slug.length >= 5 && (slug.includes(w) || w.includes(slug)))
+        )
+      ) {
+        add(i);
+        break;
+      }
+    }
+  }
+
+  if (indices.size === 0 && arr.length > 0) add(0);
+
+  return new Set(
+    [...indices]
+      .sort((a, b) => a - b)
+      .slice(0, MAX_TRADES_WITH_NOTION_EXTRAS_IN_CHAT)
+  );
+}
+
+function pickNotionExtrasSlice(raw, messageSource) {
+  const extras = parseNotionExtras(raw);
+  if (!extras || typeof extras !== "object") return null;
+  const s = String(messageSource || "").toLowerCase();
+  const words = s.split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+  const keys = Object.keys(extras).sort();
+  const picked = {};
+
+  for (const k of keys) {
+    const kl = k.toLowerCase();
+    const slug = kl.replace(/[^a-z0-9]+/g, "");
+    const nameMatch = words.some(
+      (w) =>
+        (w.length >= 4 && kl.includes(w)) ||
+        (slug.length >= 5 && (slug.includes(w) || w.includes(slug)))
+    );
+    if (nameMatch) picked[k] = extras[k];
+  }
+
+  let result =
+    Object.keys(picked).length > 0
+      ? picked
+      : userRequestsNotionExtrasDepth(messageSource)
+        ? Object.fromEntries(keys.slice(0, 16).map((k) => [k, extras[k]]))
+        : null;
+
+  if (!result || Object.keys(result).length === 0) return null;
+
+  result = truncateExtrasObject(result, MAX_NOTION_EXTRAS_CHARS_PER_TRADE);
+  return result && Object.keys(result).length > 0 ? result : null;
+}
+
 /** Small allowlist for chat system JSON — avoids huge Supabase payloads. */
 function slimTradeRowForPrompt(t, options = {}) {
   if (!t || typeof t !== "object") return t;
@@ -1105,6 +1281,10 @@ function slimTradeRowForPrompt(t, options = {}) {
   if (includeTradeImages) {
     const imgs = normalizeTradeImagesForPrompt(readField(t, ["trade_images", "Trade_images"]));
     if (imgs.length > 0) row.trade_images = imgs;
+  }
+  const slice = options.notionExtrasSlice;
+  if (slice && typeof slice === "object" && Object.keys(slice).length > 0) {
+    row.notion_extras = slice;
   }
   return row;
 }
@@ -1686,6 +1866,13 @@ async function handleChat(req, res) {
 
   const tradesForChat = filtersApplied ? filteredTrades : trades;
 
+  const wantsNotionExtras =
+    userRequestsNotionExtrasDepth(messageSource) ||
+    messageMatchesExtrasKeys(tradesForChat, messageSource);
+  const extrasIdxSet = wantsNotionExtras
+    ? tradeNotionExtrasIndices(tradesForChat, messageSource)
+    : new Set();
+
   const mostRecentTrade = tradesForChat[0];
 
   const mostRecentLoss = tradesForChat.find((t) =>
@@ -1705,12 +1892,28 @@ async function handleChat(req, res) {
   const photoIdxSet = includePhotoLinks
     ? tradePhotoLinkIndices(tradesForChat, messageSource)
     : new Set();
-  const slimOptsAt = (i) =>
-    includePhotoLinks && photoIdxSet.has(i) ? { includeTradeImages: true } : {};
+
+  const slimOptsAt = (i) => {
+    const o = {};
+    if (includePhotoLinks && photoIdxSet.has(i)) o.includeTradeImages = true;
+    if (wantsNotionExtras && extrasIdxSet.has(i)) {
+      const slice = pickNotionExtrasSlice(
+        tradesForChat[i]?.notion_extras,
+        messageSource
+      );
+      if (slice && Object.keys(slice).length > 0) o.notionExtrasSlice = slice;
+    }
+    return o;
+  };
 
   if (includePhotoLinks) {
     console.log(
       `[chat] trade photo links — rows with image URLs (0=newest): ${[...photoIdxSet].sort((a, b) => a - b).join(",")}`
+    );
+  }
+  if (wantsNotionExtras) {
+    console.log(
+      `[chat] notion_extras slices — rows (0=newest): ${[...extrasIdxSet].sort((a, b) => a - b).join(",")}`
     );
   }
 
@@ -1791,6 +1994,15 @@ async function handleChat(req, res) {
   if (includePhotoLinks && !columnKeys.includes("trade_images")) {
     columnKeys = [...columnKeys, "trade_images"];
   }
+  if (
+    wantsNotionExtras &&
+    tradesForPrompt.some(
+      (t) => t?.notion_extras && typeof t.notion_extras === "object"
+    ) &&
+    !columnKeys.includes("notion_extras")
+  ) {
+    columnKeys = [...columnKeys, "notion_extras"];
+  }
   const useWebSearch = needsWebSearch(messageSource);
   console.log(
     `[web-search] ${useWebSearch ? "TRIGGERED" : "not triggered"} — query: "${messageSource.slice(0, 120)}"`
@@ -1807,6 +2019,9 @@ async function handleChat(req, res) {
       : "") +
     (includePhotoLinks
       ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Only relevant trades have a \"trade_images\" array below (ordered: \"Trade Photo\" first when labelled; else first image / chart 1). If they ask for a single photo of a trade, paste only one HTTPS URL (that primary chart), not every screenshot. Only if they explicitly ask for all photos, all screenshots, or all charts should you paste multiple URLs. Paste full URLs so the app can render thumbnails—do not claim to see pixels. If there are no trade_images, say no screenshot is stored."
+      : "") +
+    (wantsNotionExtras
+      ? "\n\nNOTION EXTRAS — Some trades may include a selective \"notion_extras\" object (extra Notion fields). It appears only when the user asked about dimensions beyond core stats (psychology, timeframes, volume, tags, etc.). Use these values when present; do not invent fields."
       : "");
 
   const anthropicBody = {

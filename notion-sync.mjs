@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { pathToFileURL } from "node:url";
 import { fetchTradeImagesFromNotionPageBlocks } from "./notion-page-images.mjs";
+import { serializeNotionProperties } from "./notion-serialize-props.mjs";
 
 /**
  * Notion → Supabase sync for `public.trades`.
@@ -115,6 +116,7 @@ function notionPageToTrade(page) {
     notes,
     pair,
     direction,
+    notion_extras: serializeNotionProperties(p),
     trade_images,
     updated_at: new Date().toISOString(),
   };
@@ -245,7 +247,7 @@ async function upsertTradeBatch(supabaseUrl, supabaseKey, rows) {
 
   // Explicit column list ensures ON CONFLICT DO UPDATE overwrites every field.
   const columns =
-    "notion_id,date,user_id,session,outcome,rr,model,notes,pair,direction,trade_images,updated_at";
+    "notion_id,date,user_id,session,outcome,rr,model,notes,pair,direction,trade_images,notion_extras,updated_at";
   const res = await fetch(
     `${supabaseUrl}/rest/v1/trades?on_conflict=notion_id&columns=${columns}`,
     {

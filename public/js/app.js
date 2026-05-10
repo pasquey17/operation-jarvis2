@@ -1754,6 +1754,78 @@ function escHtml(s) {
 const CORE_FIELD_NAMES = new Set(['date', 'session', 'outcome', 'rr', 'pair', 'account']);
 let tradeFormOpen = false;
 
+function parseMaybeJsonCell(val) {
+  if (val == null || String(val).trim() === '') return null;
+  const s = String(val).trim();
+  if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function formatExtrasValue(v) {
+  if (v == null) return '';
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (Array.isArray(v)) return v.map(String).join(', ');
+  return '';
+}
+
+/** Prefill LOG TRADE from the newest synced trade row / matching notion_extras keys — non-blocking. */
+function fillLogTradeFormDefaults(customFields) {
+  const rows = tradeData?.records;
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  const last = rows[0];
+  const get = (key) => {
+    const v = last[key];
+    if (v != null && String(v).trim() !== '') return String(v).trim();
+    return '';
+  };
+
+  const pairEl = document.getElementById('tf-pair');
+  if (pairEl && get('pair')) pairEl.value = get('pair');
+
+  const sessionEl = document.getElementById('tf-session');
+  if (sessionEl && get('session')) sessionEl.value = get('session');
+
+  const outcomeEl = document.getElementById('tf-outcome');
+  if (outcomeEl && get('outcome')) outcomeEl.value = get('outcome');
+
+  const rrEl = document.getElementById('tf-rr');
+  if (rrEl && get('rr')) rrEl.value = get('rr');
+
+  const accountEl = document.getElementById('tf-account');
+  if (accountEl && get('account')) accountEl.value = get('account');
+
+  let extras = parseMaybeJsonCell(last.notion_extras);
+  if (!extras || typeof extras !== 'object') extras = null;
+
+  const form = document.getElementById('trade-log-form');
+  for (const f of customFields || []) {
+    const name = f.field_name;
+    if (!name) continue;
+    const nk =
+      extras &&
+      Object.keys(extras).find((k) => k.toLowerCase() === name.toLowerCase());
+    if (!nk) continue;
+    const val = formatExtrasValue(extras[nk]);
+    if (!val) continue;
+    const el = form?.elements?.namedItem(name);
+    if (!el || !('value' in el)) continue;
+    if (el.tagName === 'SELECT' && el.multiple) {
+      const parts = val.split(',').map((x) => x.trim()).filter(Boolean);
+      for (const opt of el.options) {
+        opt.selected = parts.includes(opt.value);
+      }
+    } else {
+      el.value = val;
+    }
+  }
+}
+
 function renderCustomField(f) {
   const id = `tf-${f.field_name.toLowerCase().replace(/\s+/g, '-')}`;
   const label = escHtml(f.field_name);
@@ -1865,6 +1937,12 @@ async function openTradeForm() {
     </div>`;
 
   document.body.appendChild(overlay);
+
+  try {
+    fillLogTradeFormDefaults(customFields);
+  } catch (e) {
+    console.warn('[log-trade] defaults', e);
+  }
 
   requestAnimationFrame(() => {
     overlay.classList.add('trade-form-overlay--visible');

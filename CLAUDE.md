@@ -40,7 +40,7 @@ Jarvis is a personal AI trading intelligence OS. It ingests trades logged in Not
 
 | Table | Has `user_id`? | Purpose |
 |---|---|---|
-| `trades` | YES | Notion-synced trade history. Conflict key: `notion_id`. Optional `trade_images` (jsonb array of URLs) for journal charts — add via `schema/trade_images.sql`. |
+| `trades` | YES | Notion-synced trade history. Conflict key: `notion_id`. Optional `trade_images` (jsonb array of URLs) for journal charts — `schema/trade_images.sql`. **`notion_extras`** (jsonb) stores a full serialized snapshot of every Notion page property — `schema/notion_extras.sql`. Core columns (`date`, `session`, `outcome`, etc.) remain the source for queries and UI. |
 | `journal_trades` | YES | Manually logged trades from the LOG TRADE form. |
 | `journal_fields` | YES | Per-user journal field configuration. |
 | `user_profiles` | YES | AI-generated trader profiles stored as text blobs. |
@@ -151,6 +151,8 @@ Token budgets:
 - `MAX_CHAT_OUTPUT_TOKENS`: 768 (chat)
 - `MAX_CHAT_MESSAGES`: 5 (conversation history sent to API)
 - `MAX_BRIEFING_TRADES`: 30 (trades sent for briefing analysis)
+
+**Chat trade payload:** Default prompts use slim rows — core fields plus truncated `notes` only. Full `notion_extras` is **not** sent on every turn. When the user asks about extra Notion dimensions (psychology, HTF/LTF, volume, tags, etc.) or when their wording matches a property name in `notion_extras`, `handleChat` attaches a **character-capped slice** of `notion_extras` for the scoped trade rows only (`server.mjs`).
 
 ---
 

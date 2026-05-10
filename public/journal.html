@@ -1914,6 +1914,57 @@
           '</div>'
         ].join('');
         document.body.appendChild(overlay);
+        try {
+          if (allTrades && allTrades.length > 0) {
+            var last = allTrades[0];
+            function getDef(k) {
+              var v = last[k];
+              if (v != null && String(v).trim() !== '') return String(v).trim();
+              return '';
+            }
+            var pe = document.getElementById('tf-pair');
+            if (pe && getDef('pair')) pe.value = getDef('pair');
+            var se = document.getElementById('tf-session');
+            if (se && getDef('session')) se.value = getDef('session');
+            var oe = document.getElementById('tf-outcome');
+            if (oe && getDef('outcome')) oe.value = getDef('outcome');
+            var re = document.getElementById('tf-rr');
+            if (re && getDef('rr')) re.value = getDef('rr');
+            var ae = document.getElementById('tf-account');
+            if (ae && getDef('account')) ae.value = getDef('account');
+            var extrasRaw = last.notion_extras;
+            var extras = null;
+            if (extrasRaw && typeof extrasRaw === 'object') extras = extrasRaw;
+            else if (typeof extrasRaw === 'string' && extrasRaw.trim().charAt(0) === '{') {
+              try { extras = JSON.parse(extrasRaw); } catch (e1) {}
+            }
+            if (extras && typeof extras === 'object') {
+              var formEl = document.getElementById('trade-log-form');
+              customFields.forEach(function (f) {
+                var name = f.field_name;
+                if (!name) return;
+                var nk = Object.keys(extras).find(function (k) { return k.toLowerCase() === name.toLowerCase(); });
+                if (!nk) return;
+                var val = extras[nk];
+                if (val == null) return;
+                var valStr = Array.isArray(val) ? val.map(String).join(', ') : String(val);
+                if (!valStr.trim()) return;
+                var el = formEl && formEl.elements ? formEl.elements.namedItem(name) : null;
+                if (!el || !('value' in el)) return;
+                if (el.tagName === 'SELECT' && el.multiple) {
+                  var parts = valStr.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+                  for (var oi = 0; oi < el.options.length; oi++) {
+                    el.options[oi].selected = parts.indexOf(el.options[oi].value) !== -1;
+                  }
+                } else {
+                  el.value = valStr;
+                }
+              });
+            }
+          }
+        } catch (eDef) {
+          console.warn('[journal log-trade] defaults', eDef);
+        }
         requestAnimationFrame(function () {
           overlay.classList.add('trade-form-overlay--visible');
           var panel = document.getElementById('trade-form-panel');
