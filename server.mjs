@@ -643,11 +643,11 @@ async function maybeSyncNotion(userId) {
     }
     const syncFn = userId === "spasque70@gmail.com" ? syncNotionToSupabaseMum : syncNotionToSupabase;
     const result = await syncFn();
-    if (result.ok || result.skipped) {
+    // Only stamp sync_state after a real successful upsert — never on skipped/failed runs,
+    // or the site thinks it is "fresh" while trades never updated.
+    if (result.ok) {
       await setSyncState(syncKey);
-      if (result.ok) {
-        console.log(`[auto-sync] ${userId}: fetched ${result.fetched}, upserted ${result.upserted}`);
-      }
+      console.log(`[auto-sync] ${userId}: fetched ${result.fetched}, upserted ${result.upserted}`);
     }
   } catch (e) {
     console.warn("[auto-sync] Failed:", e instanceof Error ? e.message : e);

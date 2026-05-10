@@ -19,6 +19,47 @@ function normalizeDate(iso) {
   return d.toISOString();
 }
 
+/**
+ * Trade row requires a date: use explicit "Date" if set, else any date-type property,
+ * else page created_time so new Notion rows still upsert when Date is blank or renamed.
+ */
+function extractTradeDateIso(page) {
+  const p = page?.properties;
+  if (!p || typeof p !== "object") {
+    if (page?.created_time) return normalizeDate(page.created_time);
+    return null;
+  }
+
+  const namedCandidates = [
+    p.Date?.date?.start,
+    p.date?.date?.start,
+    p["Trade Date"]?.date?.start,
+    p["trade date"]?.date?.start,
+    p["DATE"]?.date?.start,
+  ];
+  for (const raw of namedCandidates) {
+    if (raw != null && String(raw).trim()) {
+      const iso = normalizeDate(raw);
+      if (iso) return iso;
+    }
+  }
+
+  for (const prop of Object.values(p)) {
+    if (!prop || prop.type !== "date") continue;
+    const start = prop.date?.start;
+    if (start != null && String(start).trim()) {
+      const iso = normalizeDate(start);
+      if (iso) return iso;
+    }
+  }
+
+  if (page.created_time) {
+    const iso = normalizeDate(page.created_time);
+    if (iso) return iso;
+  }
+  return null;
+}
+
 function plainFromRichText(rich) {
   if (!Array.isArray(rich)) return "";
   return rich.map((b) => (typeof b?.plain_text === "string" ? b.plain_text : "")).join("").trim();
@@ -49,9 +90,7 @@ function notionPageToTrade(page) {
   const p = page.properties;
   if (!p || typeof p !== "object") return null;
 
-  const dateRaw = p.Date?.date?.start;
-  if (dateRaw == null || String(dateRaw).trim() === "") return null;
-  const dateIso = normalizeDate(dateRaw);
+  const dateIso = extractTradeDateIso(page);
   if (!dateIso) return null;
 
   const session = p.SESSION?.select?.name ?? null;
