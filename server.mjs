@@ -831,27 +831,96 @@ function normalizeTradeImagesForPrompt(raw) {
   return sortTradeImagesPrimaryFirst(out);
 }
 
+/** User asked for every screenshot vs the normal single primary chart. */
+function userWantsAllTradePhotos(messageSource) {
+  const s = String(messageSource || "").trim().toLowerCase();
+  return (
+    /\ball\s+(the\s+)?(photos|screenshots|charts|images)\b/.test(s) ||
+    /\b(every|each)\s+(photo|screenshot|chart|image)\b/.test(s) ||
+    /\b(show|give|send|include)\s+me\s+all\b/.test(s) ||
+    /\b(all|every)\s+of\s+(them|the charts)\b/.test(s) ||
+    /\bthree\s+(photos|screenshots|charts)\b/.test(s)
+  );
+}
+
+function isTradeImageHttpsUrl(raw) {
+  const s = String(raw || "")
+    .trim()
+    .replace(/[)\].,;!?]+$/g, "");
+  try {
+    const u = new URL(s);
+    if (u.protocol !== "https:") return false;
+    const blob = u.pathname + u.search;
+    if (/\.(png|jpe?g|gif|webp)(\?|$)/i.test(blob)) return true;
+    if (/\.amazonaws\.com$/i.test(u.hostname)) return true;
+    if (/\.(notion\.so|notion\.site)$/i.test(u.hostname)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/** When asking for "a photo", strip extra chart URLs the model pasted (keep first trade image only). */
+function keepOnlyFirstTradeImageUrlInReply(reply, messageSource, includePhotoLinks) {
+  if (!includePhotoLinks || userWantsAllTradePhotos(messageSource)) return reply;
+  const text = typeof reply === "string" ? reply : "";
+  const re = /https?:\/\/\S+/gi;
+  let keptFirstImageUrl = false;
+  const out = text.replace(re, (full) => {
+    const clean = full.replace(/[)\].,;!?]+$/g, "");
+    if (!isTradeImageHttpsUrl(clean)) return full;
+    if (!keptFirstImageUrl) {
+      keptFirstImageUrl = true;
+      return full;
+    }
+    return "";
+  });
+  return out
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .trimEnd();
+}
+
 /**
  * Appends raw https URLs from scoped trades when the model forgets to paste them —
  * the home chat UI only renders thumbnails when URLs appear in the reply string.
+ * For a single-photo ask, only the primary URL (first after Trade Photo sort) is appended.
  */
-function mergeReplyWithTradeImageUrls(reply, tradesForChat, photoIdxSet, includePhotoLinks) {
+function mergeReplyWithTradeImageUrls(
+  reply,
+  tradesForChat,
+  photoIdxSet,
+  includePhotoLinks,
+  messageSource
+) {
   if (!includePhotoLinks) return reply;
   const base = typeof reply === "string" ? reply : "";
   const indices =
     photoIdxSet && photoIdxSet.size ? [...photoIdxSet].sort((a, b) => a - b) : [];
+  const wantsAll = userWantsAllTradePhotos(messageSource);
   const toAdd = [];
   const seen = new Set();
+
   for (const i of indices) {
     const t = tradesForChat[i];
     if (!t || typeof t !== "object") continue;
     const imgs = normalizeTradeImagesForPrompt(t.trade_images ?? t.Trade_images);
-    for (const row of imgs) {
-      const url = row.url;
-      if (!url || seen.has(url)) continue;
-      if (base.includes(url)) continue;
-      seen.add(url);
-      toAdd.push(url);
+    if (wantsAll) {
+      for (const row of imgs) {
+        const url = row.url;
+        if (!url || seen.has(url)) continue;
+        if (base.includes(url)) continue;
+        seen.add(url);
+        toAdd.push(url);
+      }
+    } else {
+      const first = imgs[0];
+      const url = first?.url;
+      if (url && !seen.has(url) && !base.includes(url)) {
+        seen.add(url);
+        toAdd.push(url);
+      }
+      break;
     }
   }
   if (toAdd.length === 0) return base;
@@ -1714,7 +1783,7 @@ async function handleChat(req, res) {
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
     (includePhotoLinks
-      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Only the trades relevant to their request include a \"trade_images\" field below (long URLs omitted elsewhere to save context). Each array is ordered with the Notion \"Trade Photo\" (or TRADE PHOTO caption) first when present; otherwise the first image is the fallback (e.g. chart 1). When they ask for one photo of a trade, paste the primary URL first (Trade Photo if labelled, else first in the array). For \"all screenshots\", list in that order. Paste full HTTPS URLs so the app can render thumbnails—do not claim to see pixels. If there are no trade_images for that trade, say no screenshot is stored."
+      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Only relevant trades have a \"trade_images\" array below (ordered: \"Trade Photo\" first when labelled; else first image / chart 1). If they ask for a single photo of a trade, paste only one HTTPS URL (that primary chart), not every screenshot. Only if they explicitly ask for all photos, all screenshots, or all charts should you paste multiple URLs. Paste full URLs so the app can render thumbnails—do not claim to see pixels. If there are no trade_images, say no screenshot is stored."
       : "");
 
   const anthropicBody = {
@@ -1769,7 +1838,14 @@ async function handleChat(req, res) {
   }
 
   let reply = extractAssistantText(data);
-  reply = mergeReplyWithTradeImageUrls(reply, tradesForChat, photoIdxSet, includePhotoLinks);
+  reply = keepOnlyFirstTradeImageUrlInReply(reply, messageSource, includePhotoLinks);
+  reply = mergeReplyWithTradeImageUrls(
+    reply,
+    tradesForChat,
+    photoIdxSet,
+    includePhotoLinks,
+    messageSource
+  );
   json(res, 200, { reply });
 
   // Background profile update — fire-and-forget, never blocks the response
