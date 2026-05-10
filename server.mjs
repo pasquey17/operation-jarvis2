@@ -670,6 +670,8 @@ const MAX_TRADES_IN_CHAT_PROMPT = 100;
 const MAX_PROMPT_TRADE_NOTES_CHARS = 400;
 /** Cap screenshot URLs per trade when the user asks for photo links (token budget). */
 const MAX_TRADE_IMAGES_IN_CHAT_PROMPT = 12;
+/** Max trades that may carry trade_images in one chat prompt (each URL can be huge). */
+const MAX_TRADES_WITH_PHOTO_LINKS_IN_CHAT = 12;
 /**
  * PostgREST resource name (case-sensitive).
  * Override with env `SUPABASE_TABLE` if your table name differs.
@@ -848,6 +850,88 @@ function userWantsTradePhotoLinks(message) {
   }
 
   return false;
+}
+
+/**
+ * Which rows in `tradesForChat` (newest first) should include `trade_images` URLs.
+ * Notion signed URLs are massive — attaching them to every row exceeds model context limits.
+ */
+function tradePhotoLinkIndices(tradesForChat, messageSource) {
+  const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
+  const s = String(messageSource || "").trim().toLowerCase();
+  const indices = new Set();
+
+  const add = (i) => {
+    if (typeof i === "number" && i >= 0 && i < arr.length) indices.add(i);
+  };
+
+  const idxWin = arr.findIndex((t) =>
+    String(t.outcome || "").toLowerCase().includes("win")
+  );
+  const idxLoss = arr.findIndex((t) =>
+    String(t.outcome || "").toLowerCase().includes("loss")
+  );
+  const idxBe = arr.findIndex(
+    (t) =>
+      String(t.outcome || "").toLowerCase().includes("be") ||
+      String(t.outcome || "").toLowerCase().includes("break")
+  );
+
+  if (
+    /\blast\s+win\b|\bmost\s+recent\s+win\b|\bmy\s+last\s+win\b/.test(s) ||
+    /\bphoto\b[\s\S]{0,120}\blast\s+win\b|\blast\s+win\b[\s\S]{0,120}\bphoto\b/.test(s)
+  ) {
+    add(idxWin);
+  }
+
+  if (
+    /\blast\s+loss\b|\bmost\s+recent\s+loss\b|\bmy\s+last\s+loss\b/.test(s) ||
+    /\bphoto\b[\s\S]{0,120}\blast\s+loss\b|\blast\s+loss\b[\s\S]{0,120}\bphoto\b/.test(s)
+  ) {
+    add(idxLoss);
+  }
+
+  if (
+    /\blast\s+(be|breakeven|break\s*even)\b|\bmost\s+recent\s+(be|breakeven|break)/.test(s)
+  ) {
+    add(idxBe);
+  }
+
+  if (
+    /\blast\s+trade\b|\bmost\s+recent\s+trade\b|\bmy\s+last\s+trade\b/.test(s) ||
+    /\bphoto\b[\s\S]{0,120}\blast\s+trade\b|\blast\s+trade\b[\s\S]{0,120}\bphoto\b/.test(s) ||
+    /\bchart\b[\s\S]{0,120}\blast\s+trade\b|\blast\s+trade\b[\s\S]{0,120}\bchart\b/.test(s)
+  ) {
+    add(0);
+  }
+
+  const dayNames = [
+    "wednesday",
+    "tuesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "monday",
+  ];
+  for (const d of dayNames) {
+    if (
+      new RegExp(`\\blast\\s+${d}\\b|\\b${d}'?s\\s+(trade|trades|setup)\\b`).test(s)
+    ) {
+      const ix = arr.findIndex((t) => String(t.weekday || "").toLowerCase() === d);
+      add(ix);
+      break;
+    }
+  }
+
+  if (indices.size === 0 && arr.length > 0) {
+    add(0);
+  }
+
+  const sorted = [...indices]
+    .sort((a, b) => a - b)
+    .slice(0, MAX_TRADES_WITH_PHOTO_LINKS_IN_CHAT);
+  return new Set(sorted);
 }
 
 /** Small allowlist for chat system JSON — avoids huge Supabase payloads. */
@@ -1383,10 +1467,6 @@ async function handleChat(req, res) {
   const message = messageSource.toLowerCase();
 
   const includePhotoLinks = userWantsTradePhotoLinks(messageSource);
-  const slimChatOpts = includePhotoLinks ? { includeTradeImages: true } : {};
-  if (includePhotoLinks) {
-    console.log("[chat] trade photo links requested — attaching trade_images where present");
-  }
 
   const sessions = ["asia", "london", "new york"];
   const requestedSession = sessions.find((s) => message.includes(s));
@@ -1479,6 +1559,18 @@ async function handleChat(req, res) {
       String(t.outcome || "").toLowerCase().includes("break")
   );
 
+  const photoIdxSet = includePhotoLinks
+    ? tradePhotoLinkIndices(tradesForChat, messageSource)
+    : new Set();
+  const slimOptsAt = (i) =>
+    includePhotoLinks && photoIdxSet.has(i) ? { includeTradeImages: true } : {};
+
+  if (includePhotoLinks) {
+    console.log(
+      `[chat] trade photo links — rows with image URLs (0=newest): ${[...photoIdxSet].sort((a, b) => a - b).join(",")}`
+    );
+  }
+
   let briefingMemory =
     typeof payload.briefingMemory === "string" ? payload.briefingMemory : "";
   if (briefingMemory.length > MAX_BRIEFING_MEMORY_CHARS) {
@@ -1487,16 +1579,20 @@ async function handleChat(req, res) {
       "\n\n[Briefing memory truncated for token limits.]";
   }
 
+  const ixLoss = mostRecentLoss ? tradesForChat.indexOf(mostRecentLoss) : -1;
+  const ixWin = mostRecentWin ? tradesForChat.indexOf(mostRecentWin) : -1;
+  const ixBE = mostRecentBE ? tradesForChat.indexOf(mostRecentBE) : -1;
+
   const slimRecent = mostRecentTrade
-    ? slimTradeRowForPrompt(mostRecentTrade, slimChatOpts)
+    ? slimTradeRowForPrompt(mostRecentTrade, slimOptsAt(0))
     : null;
   const slimLoss = mostRecentLoss
-    ? slimTradeRowForPrompt(mostRecentLoss, slimChatOpts)
+    ? slimTradeRowForPrompt(mostRecentLoss, slimOptsAt(ixLoss))
     : null;
   const slimWin = mostRecentWin
-    ? slimTradeRowForPrompt(mostRecentWin, slimChatOpts)
+    ? slimTradeRowForPrompt(mostRecentWin, slimOptsAt(ixWin))
     : null;
-  const slimBE = mostRecentBE ? slimTradeRowForPrompt(mostRecentBE, slimChatOpts) : null;
+  const slimBE = mostRecentBE ? slimTradeRowForPrompt(mostRecentBE, slimOptsAt(ixBE)) : null;
 
   const tradeOutcomeAppend =
     "\n\n" +
@@ -1513,8 +1609,8 @@ async function handleChat(req, res) {
     JSON.stringify(slimBE);
 
   // All trades slimmed for stats — covers the full dataset regardless of context cap.
-  const allTradesSlimmed = tradesForChat.map((t) =>
-    slimTradeRowForPrompt(t, slimChatOpts)
+  const allTradesSlimmed = tradesForChat.map((t, i) =>
+    slimTradeRowForPrompt(t, slimOptsAt(i))
   );
 
   // Recent trades for prompt context — capped at MAX_TRADES_IN_CHAT_PROMPT for token budget.
@@ -1567,7 +1663,7 @@ async function handleChat(req, res) {
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
     (includePhotoLinks
-      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Some trade rows include \"trade_images\": an array of { \"url\", \"label\" } with HTTPS links from their Notion sync. For any trade you discuss that has this field, paste the relevant URL(s) in your reply so they can open the image. Do not claim to see or analyse the image contents—links only. If they ask for a photo of a trade that has no trade_images, say no screenshot is stored for that trade."
+      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Only the trades relevant to their request include a \"trade_images\" field in the data below (long URLs omitted elsewhere to save context). Each \"trade_images\" value is an array of { \"url\", \"label\" } HTTPS links from Notion sync—paste the relevant URL(s) in your reply. Do not claim to see or analyse the image contents—links only. If the trade they asked about has no trade_images, say no screenshot is stored for that trade."
       : "");
 
   const anthropicBody = {
