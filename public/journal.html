@@ -888,6 +888,79 @@
           transform: none;
         }
       }
+
+      /* LOG TRADE — guided coach prompts (journal modal only) */
+      .tf-guided-bar {
+        grid-column: 1 / -1;
+        padding-bottom: 12px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+      }
+      .tf-guided-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+        user-select: none;
+      }
+      .tf-guided-toggle input {
+        width: 16px;
+        height: 16px;
+        accent-color: #00bfff;
+        cursor: pointer;
+      }
+      .tf-guided-microcopy {
+        margin: 10px 0 0;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.36);
+      }
+      .tf-guided-line {
+        margin: 0 0 6px;
+        font-size: 11px;
+        line-height: 1.45;
+        letter-spacing: 0.03em;
+        color: rgba(0, 212, 255, 0.55);
+      }
+      .tf-guided-line:last-child {
+        margin-bottom: 10px;
+      }
+      .tf-guided-only {
+        display: none !important;
+      }
+      .trade-form-panel--guided .tf-guided-only:not(.tf-psych-chips) {
+        display: block !important;
+      }
+      .trade-form-panel--guided .tf-psych-chips.tf-guided-only {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .tf-psych-chip {
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.28);
+        background: rgba(0, 212, 255, 0.06);
+        color: rgba(255, 255, 255, 0.78);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s, color 0.2s;
+      }
+      .tf-psych-chip:hover {
+        border-color: rgba(0, 212, 255, 0.55);
+        background: rgba(0, 212, 255, 0.12);
+        color: #00d4ff;
+      }
     </style>
   </head>
   <body>
@@ -1086,6 +1159,9 @@
       /* ── Constants ── */
       const PAGE_SIZE   = 20;
       const CORE_FIELDS = new Set(['date','session','outcome','rr','pair','account']);
+      /** Sticky defaults after successful manual trade save — pair / session / account / entry model. */
+      const LOG_DEFAULTS_STORAGE_KEY = 'jarvis_log_defaults_v1';
+      const LOG_FALLBACK_SAMPLE = 50;
 
       /* ── State ── */
       let currentUserId  = 'aidenpasque11@gmail.com';
@@ -1109,6 +1185,195 @@
           if (v !== undefined && v !== null && v !== '') return v;
         }
         return '';
+      }
+
+      function parseNotionExtrasRow(trade) {
+        if (!trade) return null;
+        var raw = trade.notion_extras;
+        if (raw && typeof raw === 'object') return raw;
+        if (typeof raw === 'string' && raw.trim().charAt(0) === '{') {
+          try {
+            return JSON.parse(raw);
+          } catch (e) {
+            return null;
+          }
+        }
+        return null;
+      }
+
+      function classifyAuxFieldRole(fieldName) {
+        var n = String(fieldName || '').toLowerCase();
+        if (n.indexOf('psych') !== -1) return 'psychology';
+        if (n.indexOf('summary') !== -1) return 'summary';
+        if ((n.indexOf('entry') !== -1 && n.indexOf('model') !== -1) || n === 'model') return 'model';
+        return '';
+      }
+
+      function loadLogDefaultsFromStorage() {
+        try {
+          var raw = localStorage.getItem(LOG_DEFAULTS_STORAGE_KEY);
+          if (!raw) return null;
+          var j = JSON.parse(raw);
+          return j && typeof j === 'object' ? j : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function persistLogDefaultsFromStorage(fd, customFields) {
+        try {
+          var payload = {
+            pair: (fd.get('pair') || '').trim(),
+            session: fd.get('session') || '',
+            account: (fd.get('account') || '').trim(),
+            entry_model: '',
+            custom: {},
+          };
+          customFields.forEach(function (f) {
+            var nm = f.field_name;
+            var v = fd.get(nm);
+            if (v == null || String(v).trim() === '') return;
+            var role = classifyAuxFieldRole(nm);
+            if (role === 'model') payload.entry_model = String(v).trim();
+            payload.custom[nm] = String(v).trim();
+          });
+          localStorage.setItem(LOG_DEFAULTS_STORAGE_KEY, JSON.stringify(payload));
+        } catch (e2) {}
+      }
+
+      function mostCommonAmong(trades, getter) {
+        var counts = {};
+        trades.forEach(function (t) {
+          var v = getter(t);
+          if (!v || !String(v).trim()) return;
+          var k = String(v).trim();
+          counts[k] = (counts[k] || 0) + 1;
+        });
+        var best = '';
+        var bestN = 0;
+        Object.keys(counts).forEach(function (k) {
+          if (counts[k] > bestN) {
+            bestN = counts[k];
+            best = k;
+          }
+        });
+        return best;
+      }
+
+      function normalizeSessionForSelect(raw) {
+        if (!raw) return '';
+        var s = String(raw).trim();
+        var opts = ['Asia', 'London', 'New York', 'London/New York'];
+        var lower = s.toLowerCase();
+        var i;
+        for (i = 0; i < opts.length; i++) {
+          if (opts[i].toLowerCase() === lower) return opts[i];
+        }
+        if (lower.indexOf('london') !== -1 && lower.indexOf('new york') !== -1) return 'London/New York';
+        if (lower.indexOf('asia') !== -1) return 'Asia';
+        if (lower.indexOf('london') !== -1) return 'London';
+        if (lower.indexOf('new york') !== -1 || /\bny\b/.test(lower)) return 'New York';
+        return '';
+      }
+
+      /**
+       * Prefill: last trade via getField → sticky localStorage → modal over recent N trades.
+       * New trade: do NOT copy prior outcome or RR (user chooses Win/Loss/BE and RR for this trade).
+       */
+      function applyLogTradePrefills(customFields) {
+        var sticky = loadLogDefaultsFromStorage();
+        var slice =
+          allTrades && allTrades.length
+            ? allTrades.slice(0, Math.min(LOG_FALLBACK_SAMPLE, allTrades.length))
+            : [];
+        var last = slice.length ? slice[0] : null;
+
+        function fillPair() {
+          var el = document.getElementById('tf-pair');
+          if (!el) return;
+          var v =
+            (last && String(getField(last, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol')).trim()) ||
+            (sticky && sticky.pair) ||
+            mostCommonAmong(slice, function (t) {
+              return getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol');
+            });
+          if (v) el.value = v;
+        }
+
+        function fillSession() {
+          var el = document.getElementById('tf-session');
+          if (!el) return;
+          var raw =
+            (last && String(getField(last, 'session', 'Session', 'SESSION')).trim()) ||
+            (sticky && sticky.session) ||
+            mostCommonAmong(slice, function (t) {
+              return getField(t, 'session', 'Session', 'SESSION');
+            });
+          var norm = normalizeSessionForSelect(raw);
+          if (norm) el.value = norm;
+        }
+
+        function fillAccount() {
+          var el = document.getElementById('tf-account');
+          if (!el) return;
+          var v =
+            (last && String(getField(last, 'account', 'Account', 'ACCOUNT')).trim()) ||
+            (sticky && sticky.account) ||
+            mostCommonAmong(slice, function (t) {
+              return getField(t, 'account', 'Account', 'ACCOUNT');
+            });
+          if (v) el.value = v;
+        }
+
+        fillPair();
+        fillSession();
+        fillAccount();
+
+        var oe = document.getElementById('tf-outcome');
+        if (oe) oe.value = '';
+        var re = document.getElementById('tf-rr');
+        if (re) re.value = '';
+
+        var extras = last ? parseNotionExtrasRow(last) : null;
+        var formEl = document.getElementById('trade-log-form');
+        customFields.forEach(function (f) {
+          var name = f.field_name;
+          if (!name || !formEl || !formEl.elements) return;
+          var el = formEl.elements.namedItem(name);
+          if (!el || !('value' in el)) return;
+          var valStr = '';
+          if (extras) {
+            var nk = Object.keys(extras).find(function (k) {
+              return k.toLowerCase() === name.toLowerCase();
+            });
+            if (nk && extras[nk] != null) {
+              valStr = Array.isArray(extras[nk]) ? extras[nk].map(String).join(', ') : String(extras[nk]);
+            }
+          }
+          if (!String(valStr).trim()) {
+            if (sticky && sticky.custom && sticky.custom[name]) valStr = sticky.custom[name];
+            else if (classifyAuxFieldRole(name) === 'model' && sticky && sticky.entry_model) {
+              valStr = sticky.entry_model;
+            } else if (last && classifyAuxFieldRole(name) === 'model') {
+              var mv = getField(last, 'model', 'Model', 'MODEL', 'ENTRY MODEL');
+              if (mv) valStr = mv;
+            }
+          }
+          if (!String(valStr).trim()) return;
+          if (el.tagName === 'SELECT' && el.multiple) {
+            var parts = String(valStr)
+              .split(',')
+              .map(function (x) {
+                return x.trim();
+              })
+              .filter(Boolean);
+            for (var oi = 0; oi < el.options.length; oi++) {
+              el.options[oi].selected = parts.indexOf(el.options[oi].value) !== -1;
+            }
+          } else {
+            el.value = valStr;
+          }
+        });
       }
 
       function normalizeOutcome(raw) {
@@ -2201,6 +2466,29 @@
         var label = escHtml(f.field_name);
         var req   = f.is_required ? 'required' : '';
         var name  = escHtml(f.field_name);
+        var role  = classifyAuxFieldRole(f.field_name);
+        var guidedSummary =
+          role === 'summary'
+            ? '<div class="tf-guided-only" aria-hidden="true">' +
+              '<p class="tf-guided-line">What was the actual trigger vs what you hoped would happen?</p>' +
+              '<p class="tf-guided-line">What would invalidate first — one sentence.</p>' +
+              '</div>'
+            : '';
+        var psychChips = '';
+        if (role === 'psychology') {
+          psychChips =
+            '<div class="tf-psych-chips tf-guided-only" aria-hidden="true">' +
+            ['Frustrated','Focused','Chasing','Patient','Doubt'].map(function (lab) {
+              return (
+                '<button type="button" class="tf-psych-chip" data-tf-chip="' +
+                escHtml(lab) +
+                '">' +
+                escHtml(lab) +
+                '</button>'
+              );
+            }).join('') +
+            '</div>';
+        }
         if (f.field_type === 'dropdown' || f.field_type === 'multiselect') {
           var opts = []; try { opts = JSON.parse(f.field_options || '[]'); } catch(e){}
           var multiple = f.field_type === 'multiselect' ? 'multiple' : '';
@@ -2210,7 +2498,23 @@
         if (f.field_type === 'number') {
           return '<div class="trade-field"><label class="trade-label" for="'+id+'">'+label+'</label><input id="'+id+'" type="number" name="'+name+'" class="trade-input" data-custom="1" step="0.01" '+req+'></div>';
         }
-        return '<div class="trade-field trade-field--full"><label class="trade-label" for="'+id+'">'+label+'</label><textarea id="'+id+'" name="'+name+'" class="trade-input" data-custom="1" rows="3" '+req+'></textarea></div>';
+        return (
+          '<div class="trade-field trade-field--full">' +
+          '<label class="trade-label" for="' +
+          id +
+          '">' +
+          label +
+          '</label>' +
+          guidedSummary +
+          psychChips +
+          '<textarea id="' +
+          id +
+          '" name="' +
+          name +
+          '" class="trade-input" data-custom="1" rows="3" ' +
+          req +
+          '></textarea></div>'
+        );
       }
 
       async function openTradeForm() {
@@ -2233,6 +2537,11 @@
           '<div class="trade-form-panel" id="trade-form-panel">',
           '<div class="trade-form-header"><span class="trade-form-title">LOG TRADE</span><button type="button" class="trade-form-close" aria-label="Close">&#x2715;</button></div>',
           '<div class="trade-form-body"><form id="trade-log-form" autocomplete="off" novalidate><div class="trade-form-grid">',
+          '<div class="trade-field trade-field--full tf-guided-bar">',
+          '<label class="tf-guided-toggle"><input type="checkbox" id="tf-guided-toggle" autocomplete="off" />',
+          '<span>Coach prompts</span></label>',
+          '<p class="tf-guided-microcopy tf-guided-only">This trains Jarvis for your next session — not grading you.</p>',
+          '</div>',
           '<div class="trade-field"><label class="trade-label" for="tf-date">Date</label><input id="tf-date" type="date" name="date" class="trade-input" value="'+escHtml(today)+'" required></div>',
           '<div class="trade-field"><label class="trade-label" for="tf-pair">Pair</label><input id="tf-pair" type="text" name="pair" class="trade-input" placeholder="e.g. XAUUSD"></div>',
           '<div class="trade-field"><label class="trade-label" for="tf-session">Session</label><select id="tf-session" name="session" class="trade-input" required><option value="">— select —</option><option value="Asia">Asia</option><option value="London">London</option><option value="New York">New York</option><option value="London/New York">London/New York</option></select></div>',
@@ -2245,56 +2554,33 @@
         ].join('');
         document.body.appendChild(overlay);
         try {
-          if (allTrades && allTrades.length > 0) {
-            var last = allTrades[0];
-            function getDef(k) {
-              var v = last[k];
-              if (v != null && String(v).trim() !== '') return String(v).trim();
-              return '';
-            }
-            var pe = document.getElementById('tf-pair');
-            if (pe && getDef('pair')) pe.value = getDef('pair');
-            var se = document.getElementById('tf-session');
-            if (se && getDef('session')) se.value = getDef('session');
-            var oe = document.getElementById('tf-outcome');
-            if (oe && getDef('outcome')) oe.value = getDef('outcome');
-            var re = document.getElementById('tf-rr');
-            if (re && getDef('rr')) re.value = getDef('rr');
-            var ae = document.getElementById('tf-account');
-            if (ae && getDef('account')) ae.value = getDef('account');
-            var extrasRaw = last.notion_extras;
-            var extras = null;
-            if (extrasRaw && typeof extrasRaw === 'object') extras = extrasRaw;
-            else if (typeof extrasRaw === 'string' && extrasRaw.trim().charAt(0) === '{') {
-              try { extras = JSON.parse(extrasRaw); } catch (e1) {}
-            }
-            if (extras && typeof extras === 'object') {
-              var formEl = document.getElementById('trade-log-form');
-              customFields.forEach(function (f) {
-                var name = f.field_name;
-                if (!name) return;
-                var nk = Object.keys(extras).find(function (k) { return k.toLowerCase() === name.toLowerCase(); });
-                if (!nk) return;
-                var val = extras[nk];
-                if (val == null) return;
-                var valStr = Array.isArray(val) ? val.map(String).join(', ') : String(val);
-                if (!valStr.trim()) return;
-                var el = formEl && formEl.elements ? formEl.elements.namedItem(name) : null;
-                if (!el || !('value' in el)) return;
-                if (el.tagName === 'SELECT' && el.multiple) {
-                  var parts = valStr.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
-                  for (var oi = 0; oi < el.options.length; oi++) {
-                    el.options[oi].selected = parts.indexOf(el.options[oi].value) !== -1;
-                  }
-                } else {
-                  el.value = valStr;
-                }
-              });
-            }
-          }
+          applyLogTradePrefills(customFields);
         } catch (eDef) {
           console.warn('[journal log-trade] defaults', eDef);
         }
+        var panelEl = document.getElementById('trade-form-panel');
+        var guidedCb = document.getElementById('tf-guided-toggle');
+        function syncGuidedCoachUi() {
+          var on = guidedCb && guidedCb.checked;
+          if (panelEl) panelEl.classList.toggle('trade-form-panel--guided', !!on);
+          overlay.querySelectorAll('.tf-guided-only').forEach(function (node) {
+            node.setAttribute('aria-hidden', on ? 'false' : 'true');
+          });
+        }
+        if (guidedCb) guidedCb.addEventListener('change', syncGuidedCoachUi);
+        syncGuidedCoachUi();
+        overlay.addEventListener('click', function (e) {
+          var chip = e.target.closest('.tf-psych-chip');
+          if (!chip) return;
+          var lab = chip.getAttribute('data-tf-chip');
+          if (!lab) return;
+          var row = chip.closest('.trade-field');
+          if (!row) return;
+          var ta = row.querySelector('textarea.trade-input[data-custom="1"]');
+          if (!ta) return;
+          var cur = (ta.value || '').trim();
+          ta.value = cur ? cur + ', ' + lab : lab;
+        });
         requestAnimationFrame(function () {
           overlay.classList.add('trade-form-overlay--visible');
           var panel = document.getElementById('trade-form-panel');
@@ -2310,6 +2596,9 @@
         overlay.querySelector('.trade-form-close').addEventListener('click', closeForm);
         var outcomeSelect = document.getElementById('tf-outcome');
         var rrField       = document.getElementById('tf-rr-field');
+        if (outcomeSelect && rrField) {
+          rrField.style.display = outcomeSelect.value === 'BE' ? 'none' : '';
+        }
         outcomeSelect && outcomeSelect.addEventListener('change', function () {
           if (rrField) rrField.style.display = outcomeSelect.value === 'BE' ? 'none' : '';
         });
@@ -2348,6 +2637,7 @@
             var d = await res.json().catch(function(){ return {}; });
             throw new Error(readApiError(d) || 'Save failed (' + res.status + ')');
           }
+          persistLogDefaultsFromStorage(fd, customFields);
           closeForm(); showToast('Trade logged.'); refreshJournalData();
         } catch(e) {
           var msg = e instanceof Error ? e.message : 'Save failed.';
