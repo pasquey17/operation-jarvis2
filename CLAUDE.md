@@ -52,6 +52,7 @@ All queries against every table must filter by `user_id`. The `trades` table was
 - `notion-sync.mjs` → `notionPageToTrade()` returns `user_id: "aidenpasque11@gmail.com"`
 - `notion-sync-mum.mjs` → `notionPageToTrade()` returns `user_id: "spasque70@gmail.com"`
 - Both files include `user_id` in the explicit upsert column list sent to Supabase.
+- `notion-resolve-page.mjs` — when Notion’s `data_sources/query` returns pages **without** `properties` (partial page), the sync **GETs** `https://api.notion.com/v1/pages/{id}` in parallel batches (concurrency 10) so `notion_extras` can be populated.
 
 ---
 
@@ -153,6 +154,8 @@ Token budgets:
 - `MAX_BRIEFING_TRADES`: 30 (trades sent for briefing analysis)
 
 **Chat trade payload:** Default prompts use slim rows — core fields plus truncated `notes` only. Full `notion_extras` is **not** sent on every turn. When the user asks about extra Notion dimensions (psychology, HTF/LTF, volume, tags, etc.) or when their wording matches a property name in `notion_extras`, `handleChat` attaches a **character-capped slice** of `notion_extras` for the scoped trade rows only (`server.mjs`).
+
+**Journal:** `journal.html` shows **Notion fields** (modal + compact card preview) for keys in `notion_extras` that are not already duplicate core columns — read-only display; chat token behavior above is unchanged.
 
 ---
 

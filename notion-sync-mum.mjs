@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { pathToFileURL } from "node:url";
 import { fetchTradeImagesFromNotionPageBlocks } from "./notion-page-images.mjs";
 import { serializeNotionProperties } from "./notion-serialize-props.mjs";
+import { resolvePagesWithProperties } from "./notion-resolve-page.mjs";
 
 /**
  * Notion → Supabase sync for `public.trades` (mum).
@@ -303,7 +304,12 @@ export async function syncNotionToSupabaseMum() {
     return { ok: false, skipped: true, reason: "Supabase config missing" };
   }
 
-  const pages = await fetchAllNotionPages(notionKey, dataSourceId);
+  const pagesRaw = await fetchAllNotionPages(notionKey, dataSourceId);
+  const pages = await resolvePagesWithProperties(notionKey, pagesRaw, {
+    notionApi: NOTION_API,
+    notionVersion: NOTION_VERSION,
+    concurrency: 10,
+  });
   const fetched = pages.length;
 
   const rows = await enrichTradeRowsWithPageBodyImages(notionKey, pages);

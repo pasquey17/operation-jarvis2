@@ -409,6 +409,18 @@
       .jn-card__chevron {
         font-size: 10px; color: rgba(255,255,255,0.18); flex-shrink: 0;
       }
+      .jn-card__extras-preview {
+        grid-column: 1 / -1;
+        margin-top: 6px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(0, 212, 255, 0.12);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.05em;
+        color: rgba(192, 192, 192, 0.72);
+        line-height: 1.45;
+        word-break: break-word;
+      }
 
       /* ── Badges ── */
       .jn-badge {
@@ -449,6 +461,49 @@
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 13px;
         color: rgba(255,255,255,0.5); line-height: 1.65; white-space: pre-wrap;
         word-break: break-word; margin: 0;
+      }
+      .jn-notion-extras {
+        border: 1px solid rgba(0, 212, 255, 0.18);
+        border-radius: 12px;
+        padding: 12px 12px 10px;
+        background: rgba(0, 191, 255, 0.05);
+      }
+      .jn-notion-extras__head {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #00d4ff;
+        margin-bottom: 10px;
+      }
+      .jn-notion-extras__grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .jn-notion-row {
+        display: grid;
+        grid-template-columns: minmax(72px, 34%) 1fr;
+        gap: 8px 12px;
+        align-items: start;
+      }
+      .jn-notion-row__k {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(192, 192, 192, 0.85);
+        word-break: break-word;
+      }
+      .jn-notion-row__v {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 200px;
+        overflow-y: auto;
       }
       .jn-trade-photos {
         display: flex;
@@ -1107,6 +1162,104 @@
         return str.length > n ? str.slice(0, n) + '…' : str;
       }
 
+      /** Keys already shown as core columns — hide from Notion extras (case-insensitive). */
+      var EXTRAS_CORE_NAMES = {
+        date: 1, session: 1, outcome: 1, rr: 1, model: 1, notes: 1, pair: 1, direction: 1, trade_images: 1,
+        'entry model': 1, 'trade summary': 1, 'position type': 1
+      };
+      function normalizeExtraKeyName(k) {
+        return String(k).toLowerCase().replace(/\s+/g, ' ').trim();
+      }
+      function isDuplicateExtraKey(k) {
+        return !!EXTRAS_CORE_NAMES[normalizeExtraKeyName(k)];
+      }
+      function parseNotionExtrasFromTrade(trade) {
+        if (!trade || typeof trade !== 'object') return null;
+        var raw = trade.notion_extras;
+        if (raw == null || raw === '') return null;
+        if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+          var s = raw.trim();
+          if (!s || s === '{}') return null;
+          try {
+            var o = JSON.parse(s);
+            return typeof o === 'object' && o !== null && !Array.isArray(o) ? o : null;
+          } catch (e0) {
+            return null;
+          }
+        }
+        return null;
+      }
+      function formatNotionExtraValue(v) {
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+        if (typeof v === 'number' && !isNaN(v)) return String(v);
+        if (typeof v === 'string') return v;
+        if (Array.isArray(v)) {
+          return v.map(function (x) {
+            if (x !== null && typeof x === 'object') {
+              try {
+                return JSON.stringify(x);
+              } catch (e1) {
+                return '';
+              }
+            }
+            return String(x);
+          }).join(', ');
+        }
+        if (typeof v === 'object') {
+          try {
+            return JSON.stringify(v);
+          } catch (e2) {
+            return '';
+          }
+        }
+        return String(v);
+      }
+      function notionExtrasSectionHtml(trade) {
+        var extras = parseNotionExtrasFromTrade(trade);
+        if (!extras) return '';
+        var keys = Object.keys(extras).filter(function (k) {
+          return !isDuplicateExtraKey(k);
+        }).sort();
+        var rows = [];
+        for (var i = 0; i < keys.length; i++) {
+          var key = keys[i];
+          var full = formatNotionExtraValue(extras[key]);
+          if (!full) continue;
+          var shown = truncate(full, 1400);
+          rows.push(
+            '<div class="jn-notion-row">' +
+              '<span class="jn-notion-row__k">' + esc(key) + '</span>' +
+              '<span class="jn-notion-row__v">' + esc(shown) + '</span>' +
+            '</div>'
+          );
+        }
+        if (!rows.length) return '';
+        return (
+          '<section class="jn-notion-extras" aria-label="Notion fields">' +
+            '<div class="jn-notion-extras__head">Notion fields</div>' +
+            '<div class="jn-notion-extras__grid">' + rows.join('') + '</div>' +
+          '</section>'
+        );
+      }
+      function notionExtrasCardPreviewHtml(trade) {
+        var extras = parseNotionExtrasFromTrade(trade);
+        if (!extras) return '';
+        var keys = Object.keys(extras).filter(function (k) {
+          return !isDuplicateExtraKey(k);
+        }).sort();
+        if (!keys.length) return '';
+        var bits = [];
+        for (var j = 0; j < Math.min(3, keys.length); j++) {
+          var kk = keys[j];
+          var vv = truncate(formatNotionExtraValue(extras[kk]), 44);
+          if (vv) bits.push(esc(truncate(kk, 22)) + ': ' + esc(vv));
+        }
+        if (!bits.length) return '';
+        return '<div class="jn-card__extras-preview">' + bits.join(' · ') + '</div>';
+      }
+
       function readApiError(data) {
         if (!data || typeof data !== 'object') return '';
         var e = data.error;
@@ -1517,6 +1670,7 @@
               '</p></div>'
           );
         }
+        parts.push(notionExtrasSectionHtml(trade));
         parts.push(tradePhotosSectionHtml(trade));
         parts.push(
           '<button class="jn-ask-btn" data-idx="' + idx + '" type="button">Ask Jarvis about this trade</button>'
@@ -1623,6 +1777,7 @@
           '      <span class="jn-card__chevron">&#9660;</span>',
           '      </div>',
           '    </div>',
+          notionExtrasCardPreviewHtml(trade),
           '  </div>',
           '</article>'
         ].join('');
