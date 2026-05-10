@@ -15,6 +15,8 @@ import { fileURLToPath } from "node:url";
 import { buildMessagesUserContent } from "./prompts.mjs";
 import { syncNotionToSupabase } from './notion-sync.mjs';
 import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
+import { syncJournalFieldsFromNotion } from "./sync-journal-fields-notion.mjs";
+import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Static assets live under `public/` (Vercel convention + predictable Lambda layout). On Vercel, bundled files sit under `cwd`; locally `__dirname` is the repo root next to `server.mjs`. */
@@ -2338,6 +2340,121 @@ function extractAssistantText(data) {
     .join("");
 }
 
+/**
+ * POST /api/admin/sync-journal-fields
+ * Header: x-admin-sync-secret: <ADMIN_SYNC_SECRET>
+ * Body JSON: { "source": "notion"|"csv_text"|"csv_url", "user_id": "...", ... }
+ * — notion: optional notion_api_key, notion_data_source_id (else NOTION_* env)
+ * — csv_text: csv_text (first row = headers), optional dropdown_map { "Column": ["a","b"] }
+ * — csv_url: csv_url (fetch CSV), optional dropdown_map
+ */
+async function handleAdminSyncJournalFields(req, res) {
+  const secret = process.env.ADMIN_SYNC_SECRET?.trim();
+  if (!secret) {
+    json(res, 503, { error: "ADMIN_SYNC_SECRET not configured" });
+    return;
+  }
+  const hdr = req.headers["x-admin-sync-secret"];
+  if (hdr !== secret) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
+
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+
+  let body;
+  try {
+    body = JSON.parse(raw || "{}");
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const source = body.source || "notion";
+  const userId = typeof body.user_id === "string" ? body.user_id.trim() : "";
+  const supabaseUrl = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  if (!userId) {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+  if (!supabaseUrl || !supabaseKey) {
+    json(res, 503, { error: "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing" });
+    return;
+  }
+
+  const dropdownMap =
+    body.dropdown_map && typeof body.dropdown_map === "object" ? body.dropdown_map : undefined;
+
+  try {
+    if (source === "notion") {
+      const notionApiKey =
+        (typeof body.notion_api_key === "string" && body.notion_api_key.trim()) ||
+        process.env.NOTION_API_KEY?.trim();
+      const dataSourceId =
+        (typeof body.notion_data_source_id === "string" && body.notion_data_source_id.trim()) ||
+        process.env.NOTION_DATA_SOURCE_ID?.trim();
+      const result = await syncJournalFieldsFromNotion({
+        userId,
+        notionApiKey,
+        dataSourceId,
+        supabaseUrl,
+        supabaseKey,
+      });
+      json(res, 200, result);
+      return;
+    }
+
+    if (source === "csv_text") {
+      const csvText = typeof body.csv_text === "string" ? body.csv_text : "";
+      const result = await syncJournalFieldsFromCsvText({
+        userId,
+        csvText,
+        supabaseUrl,
+        supabaseKey,
+        dropdownMap,
+      });
+      json(res, 200, result);
+      return;
+    }
+
+    if (source === "csv_url") {
+      const u = typeof body.csv_url === "string" ? body.csv_url.trim() : "";
+      if (!u) {
+        json(res, 400, { error: "csv_url required" });
+        return;
+      }
+      const fr = await fetch(u, { cache: "no-store" });
+      if (!fr.ok) {
+        json(res, 502, { error: `CSV fetch failed (${fr.status})` });
+        return;
+      }
+      const csvText = await fr.text();
+      const result = await syncJournalFieldsFromCsvText({
+        userId,
+        csvText,
+        supabaseUrl,
+        supabaseKey,
+        dropdownMap,
+      });
+      json(res, 200, result);
+      return;
+    }
+
+    json(res, 400, { error: "source must be notion, csv_text, or csv_url" });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    json(res, 500, { error: msg });
+  }
+}
+
 async function handleJournalFields(req, res) {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
@@ -2603,6 +2720,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/log-trade")) {
     await handleLogTrade(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/admin/sync-journal-fields")) {
+    await handleAdminSyncJournalFields(req, res);
     return;
   }
 
