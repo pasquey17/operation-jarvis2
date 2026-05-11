@@ -2862,9 +2862,9 @@ async function handleNotionCallback(req, res) {
     return;
   }
 
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   let tokenData;
   try {
+    console.log("[notion/callback] exchanging code, redirect_uri:", NOTION_OAUTH_REDIRECT_URI, "client_id:", clientId);
     const tr = await fetch("https://api.notion.com/v1/oauth/token", {
       method: "POST",
       headers: {
