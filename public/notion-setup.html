@@ -128,51 +128,95 @@
       .map-grid {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 0;
+        margin-bottom: 12px;
       }
       .map-row {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
+        display: grid;
+        grid-template-columns: 22px 1fr 18px 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 2px;
+        border-bottom: 1px solid rgba(0,212,255,0.06);
+        border-radius: 6px;
+        transition: background 0.15s;
+        cursor: default;
       }
-      .map-row__label {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.5);
+      .map-row:last-child { border-bottom: none; }
+      .map-row.drag-over {
+        background: rgba(0,212,255,0.07);
+        outline: 1px dashed rgba(0,212,255,0.35);
+        outline-offset: -1px;
+      }
+      .map-row.dragging { opacity: 0.35; }
+      .drag-handle {
+        cursor: grab;
+        color: rgba(0,212,255,0.28);
+        font-size: 15px;
+        user-select: none;
+        text-align: center;
         line-height: 1;
+        transition: color 0.15s;
       }
-      .map-row__label span {
-        color: #00d4ff;
-        margin-left: 3px;
+      .drag-handle:hover { color: rgba(0,212,255,0.7); }
+      .map-notion-col {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: rgba(255,255,255,0.65);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
       }
+      .map-arrow {
+        color: rgba(0,212,255,0.35);
+        font-size: 12px;
+        text-align: center;
+        user-select: none;
+      }
+      .map-key-input {
+        width: 100%;
+        background: rgba(0,0,0,0.55);
+        border: 1px solid rgba(0,212,255,0.16);
+        border-radius: 6px;
+        color: #fff;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        padding: 6px 10px;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+        min-width: 0;
+      }
+      .map-key-input:focus { border-color: rgba(0,212,255,0.55); }
+      .map-key-input::placeholder { color: rgba(255,255,255,0.18); }
+      /* custom-field row: notion column dropdown */
       .map-select-wrap {
         position: relative;
         width: 100%;
+        min-width: 0;
       }
       .map-select-wrap::after {
         content: "";
         position: absolute;
-        right: 12px;
+        right: 9px;
         top: 50%;
         transform: translateY(-50%);
-        width: 0;
-        height: 0;
+        width: 0; height: 0;
         border-left: 4px solid transparent;
         border-right: 4px solid transparent;
-        border-top: 5px solid rgba(0,212,255,0.6);
+        border-top: 5px solid rgba(0,212,255,0.55);
         pointer-events: none;
       }
       .map-select {
         width: 100%;
-        background: rgba(0,0,0,0.6);
-        border: 1px solid rgba(0,212,255,0.18);
-        border-radius: 8px;
+        background: rgba(0,0,0,0.55);
+        border: 1px solid rgba(0,212,255,0.16);
+        border-radius: 6px;
         color: #fff;
         font-family: var(--font-mono);
-        font-size: 12px;
-        padding: 9px 32px 9px 12px;
+        font-size: 11px;
+        padding: 6px 26px 6px 10px;
         outline: none;
         appearance: none;
         -webkit-appearance: none;
@@ -182,6 +226,43 @@
       }
       .map-select:focus { border-color: rgba(0,212,255,0.55); }
       .map-select option { background: #0a0a10; color: #fff; }
+      /* add-field button */
+      .add-field-btn {
+        width: 100%;
+        margin-bottom: 12px;
+        padding: 9px;
+        border-radius: 8px;
+        border: 1px dashed rgba(0,212,255,0.25);
+        background: transparent;
+        color: rgba(0,212,255,0.55);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        cursor: pointer;
+        transition: border-color 0.2s, color 0.2s, background 0.2s;
+      }
+      .add-field-btn:hover {
+        border-color: rgba(0,212,255,0.5);
+        color: #00d4ff;
+        background: rgba(0,212,255,0.05);
+      }
+      /* column header labels */
+      .map-header {
+        display: grid;
+        grid-template-columns: 22px 1fr 18px 1fr;
+        gap: 8px;
+        padding: 0 2px 6px;
+        margin-bottom: 2px;
+        border-bottom: 1px solid rgba(0,212,255,0.1);
+      }
+      .map-header span {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.4);
+      }
+      .map-header span:first-child { text-align: center; }
 
       /* ── buttons ── */
       .setup-btn {
@@ -314,8 +395,21 @@
       <div class="setup-panel" id="step-map" style="display:none">
         <div class="setup-panel__eyebrow">Step 2 of 3</div>
         <h1 class="setup-panel__title">Map your columns</h1>
-        <p class="setup-panel__sub">Match each Jarvis field to the column name in your Notion database. Date and Outcome are required.</p>
+        <p class="setup-panel__sub">Every Notion column appears below. Type the Jarvis field name to map it (e.g. <em style="color:rgba(0,212,255,0.7)">date</em>, <em style="color:rgba(0,212,255,0.7)">outcome</em>) — or leave blank to skip. Drag rows to reorder.</p>
+        <datalist id="jarvis-keys-list">
+          <option value="date"><option value="outcome"><option value="rr">
+          <option value="session"><option value="pair"><option value="direction">
+          <option value="notes"><option value="account"><option value="model">
+          <option value="photos">
+        </datalist>
+        <div class="map-header">
+          <span></span>
+          <span>Notion column</span>
+          <span></span>
+          <span>Jarvis field key</span>
+        </div>
         <div class="map-grid" id="map-grid"></div>
+        <button class="add-field-btn" id="add-field-btn">+ Add custom field</button>
         <button class="setup-btn primary" id="save-mapping-btn">Save Mapping</button>
         <div class="status-msg" id="map-status"></div>
       </div>
@@ -353,18 +447,27 @@
         let notionColumns = [];
         let notionDataSourceId = null;
 
-        const JARVIS_FIELDS = [
-          { key: "date",      label: "Date",         required: true },
-          { key: "outcome",   label: "Outcome",      required: true },
-          { key: "rr",        label: "RR",           required: false },
-          { key: "session",   label: "Session",      required: false },
-          { key: "pair",      label: "Pair",         required: false },
-          { key: "direction", label: "Direction",    required: false },
-          { key: "notes",     label: "Notes",        required: false },
-          { key: "account",   label: "Account",      required: false },
-          { key: "model",     label: "Entry Model",  required: false },
-          { key: "photos",    label: "Photos",       required: false },
-        ];
+        // Auto-match hints: jarvis key → substrings to look for in Notion column names
+        const KEY_HINTS = {
+          date:      ["date", "day", "traded", "time"],
+          outcome:   ["outcome", "result", "win", "loss", "pnl", "p&l", "profitloss"],
+          rr:        ["rr", "r:r", "risk", "reward", "ratio"],
+          session:   ["session", "window"],
+          pair:      ["pair", "symbol", "instrument", "market", "currency"],
+          direction: ["direction", "side", "long", "short", "bias"],
+          notes:     ["notes", "note", "comment", "journal", "thought", "review"],
+          account:   ["account", "acct", "broker"],
+          model:     ["model", "setup", "strategy", "pattern", "entry"],
+          photos:    ["photo", "image", "screenshot", "chart", "attachment"],
+        };
+
+        function autoMatchKey(notionColName) {
+          const lc = notionColName.toLowerCase().replace(/[\s_\-]/g, "");
+          for (const [key, hints] of Object.entries(KEY_HINTS)) {
+            if (hints.some(h => lc.includes(h.replace(/[\s_\-]/g, "")))) return key;
+          }
+          return "";
+        }
 
         // ── progress ──
         function setStep(step) {
@@ -444,63 +547,137 @@
           }
         }
 
-        function buildMappingForm() {
-          const grid = document.getElementById("map-grid");
-          grid.innerHTML = "";
-          JARVIS_FIELDS.forEach(({ key, label, required }) => {
-            const row = document.createElement("div");
-            row.className = "map-row";
+        function makeRow(notionColName, jarvisKey, isCustom) {
+          const row = document.createElement("div");
+          row.className = "map-row";
+          row.draggable = true;
 
-            const lbl = document.createElement("div");
-            lbl.className = "map-row__label";
-            lbl.innerHTML = label + (required ? '<span>*</span>' : '');
+          // Drag handle
+          const handle = document.createElement("span");
+          handle.className = "drag-handle";
+          handle.textContent = "⠿";
 
+          // Notion column side
+          let notionEl;
+          if (isCustom) {
             const wrap = document.createElement("div");
             wrap.className = "map-select-wrap";
-
             const sel = document.createElement("select");
-            sel.className = "map-select";
-            sel.id = `map-${key}`;
-
+            sel.className = "map-select map-custom-col";
             const blank = document.createElement("option");
             blank.value = "";
-            blank.textContent = required ? "— select column —" : "— skip —";
+            blank.textContent = "— notion column —";
             sel.appendChild(blank);
-
-            let autoMatched = false;
             notionColumns.forEach(({ name }) => {
               const opt = document.createElement("option");
               opt.value = name;
               opt.textContent = name;
-              const nameLc = name.toLowerCase().replace(/\s/g, "");
-              const keyLc  = key.toLowerCase();
-              if (!autoMatched && (nameLc.includes(keyLc) || keyLc.includes(nameLc))) {
-                opt.selected = true;
-                autoMatched = true;
-              }
               sel.appendChild(opt);
             });
-
             wrap.appendChild(sel);
-            row.appendChild(lbl);
-            row.appendChild(wrap);
-            grid.appendChild(row);
-          });
+            notionEl = wrap;
+          } else {
+            row.dataset.notionCol = notionColName;
+            const lbl = document.createElement("span");
+            lbl.className = "map-notion-col";
+            lbl.title = notionColName;
+            lbl.textContent = notionColName;
+            notionEl = lbl;
+          }
+
+          const arrow = document.createElement("span");
+          arrow.className = "map-arrow";
+          arrow.textContent = "→";
+
+          const inp = document.createElement("input");
+          inp.className = "map-key-input";
+          inp.type = "text";
+          inp.placeholder = "skip";
+          inp.value = jarvisKey;
+          inp.setAttribute("list", "jarvis-keys-list");
+
+          row.appendChild(handle);
+          row.appendChild(notionEl);
+          row.appendChild(arrow);
+          row.appendChild(inp);
+          return row;
         }
+
+        function buildMappingForm() {
+          const grid = document.getElementById("map-grid");
+          grid.innerHTML = "";
+          notionColumns.forEach(({ name }) => {
+            grid.appendChild(makeRow(name, autoMatchKey(name), false));
+          });
+          initDragDrop(grid);
+        }
+
+        let dragEl = null;
+        function initDragDrop(grid) {
+          grid.addEventListener("dragstart", (e) => {
+            dragEl = e.target.closest(".map-row");
+            if (dragEl) {
+              e.dataTransfer.effectAllowed = "move";
+              setTimeout(() => dragEl && dragEl.classList.add("dragging"), 0);
+            }
+          });
+          grid.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            const over = e.target.closest(".map-row");
+            grid.querySelectorAll(".map-row.drag-over").forEach(r => r.classList.remove("drag-over"));
+            if (over && over !== dragEl) over.classList.add("drag-over");
+          });
+          grid.addEventListener("dragleave", (e) => {
+            if (!grid.contains(e.relatedTarget)) {
+              grid.querySelectorAll(".map-row.drag-over").forEach(r => r.classList.remove("drag-over"));
+            }
+          });
+          grid.addEventListener("drop", (e) => {
+            e.preventDefault();
+            const over = e.target.closest(".map-row");
+            if (over && dragEl && over !== dragEl) {
+              const rows = [...grid.querySelectorAll(".map-row")];
+              const dragIdx = rows.indexOf(dragEl);
+              const overIdx = rows.indexOf(over);
+              grid.insertBefore(dragEl, dragIdx < overIdx ? over.nextSibling : over);
+            }
+            cleanup();
+          });
+          grid.addEventListener("dragend", cleanup);
+          function cleanup() {
+            grid.querySelectorAll(".map-row").forEach(r => r.classList.remove("drag-over", "dragging"));
+            dragEl = null;
+          }
+        }
+
+        document.getElementById("add-field-btn").addEventListener("click", () => {
+          const grid = document.getElementById("map-grid");
+          grid.appendChild(makeRow("", "", true));
+        });
 
         document.getElementById("save-mapping-btn").addEventListener("click", async () => {
           const statusEl = document.getElementById("map-status");
           const btn = document.getElementById("save-mapping-btn");
 
           const mapping = {};
-          for (const { key, required } of JARVIS_FIELDS) {
-            const val = document.getElementById(`map-${key}`)?.value;
-            if (required && !val) {
-              statusEl.textContent = `${key} is required — please select a column.`;
-              statusEl.className = "status-msg error";
-              return;
-            }
-            if (val) mapping[key] = val;
+          document.querySelectorAll("#map-grid .map-row").forEach(row => {
+            const notionCol = row.dataset.notionCol !== undefined
+              ? row.dataset.notionCol
+              : (row.querySelector(".map-custom-col")?.value || "");
+            const jarvisKey = (row.querySelector(".map-key-input")?.value || "").trim().toLowerCase().replace(/\s+/g, "_");
+            if (notionCol && jarvisKey) mapping[jarvisKey] = notionCol;
+          });
+
+          if (!mapping.date) {
+            statusEl.textContent = "date field is required — type 'date' next to your date column.";
+            statusEl.className = "status-msg error";
+            return;
+          }
+          if (!mapping.outcome) {
+            statusEl.textContent = "outcome field is required — type 'outcome' next to your outcome column.";
+            statusEl.className = "status-msg error";
+            return;
           }
 
           btn.disabled = true;
