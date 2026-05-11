@@ -3058,7 +3058,7 @@ async function handleNotionColumns(req, res) {
       json(res, 502, { error: `Notion database fetch failed: ${err}` }); return;
     }
     const data = await dr.json();
-    console.log("[notion/columns] raw response:", JSON.stringify(data).slice(0, 500));
+    console.log("[notion/columns] properties keys:", Object.keys(data.properties || data.parent?.properties || {}));
     const props = data.properties ?? data.parent?.properties ?? {};
     const columns = Object.entries(props).map(([name, prop]) => ({
       name,
