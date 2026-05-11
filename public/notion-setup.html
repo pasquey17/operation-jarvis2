@@ -106,6 +106,24 @@
 
       /* ── database cards ── */
 
+      /* ── database cards ── */
+      #db-list { display: flex; flex-direction: column; gap: 10px; }
+      .db-card {
+        padding: 16px 20px;
+        border: 1px solid rgba(0,212,255,0.12);
+        border-radius: var(--radius-soft);
+        background: rgba(0,212,255,0.04);
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .db-card:hover { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.09); }
+      .db-card.selected { border-color: #00d4ff; background: rgba(0,212,255,0.12); }
+      .db-card__name { font-family: var(--font-display); font-size: 15px; font-weight: 400; color: #fff; }
+      .db-card__arrow { color: rgba(0,212,255,0.5); font-size: 16px; }
+
       /* ── mapping form ── */
       .map-grid {
         display: flex;
@@ -270,17 +288,9 @@
       <!-- Step 1: Select Database -->
       <div class="setup-panel" id="step-db">
         <div class="setup-panel__eyebrow">Step 1 of 3</div>
-        <h1 class="setup-panel__title">Paste your database URL</h1>
-        <p class="setup-panel__sub">Open your trade journal in Notion, copy the URL from your browser, and paste it here.</p>
-        <input
-          id="db-url-input"
-          type="text"
-          placeholder="https://www.notion.so/your-workspace/database-id?v=..."
-          style="width:100%;background:rgba(0,0,0,0.6);border:1px solid rgba(0,212,255,0.18);border-radius:8px;color:#fff;font-family:var(--font-mono);font-size:12px;padding:11px 14px;outline:none;box-sizing:border-box;transition:border-color 0.2s;"
-          onfocus="this.style.borderColor='rgba(0,212,255,0.55)'"
-          onblur="this.style.borderColor='rgba(0,212,255,0.18)'"
-        />
-        <button class="setup-btn primary" id="db-continue-btn" style="margin-top:16px">Continue →</button>
+        <h1 class="setup-panel__title">Select your trade journal</h1>
+        <p class="setup-panel__sub">Choose the Notion database that contains your trades. Only databases shared with Jarvis will appear.</p>
+        <div id="db-list"><div class="status-msg" id="db-loading">Loading databases...</div></div>
         <div class="status-msg error" id="db-error"></div>
       </div>
 
@@ -358,32 +368,37 @@
           pl2.className    = "progress-line" + (step > 2 ? " done" : "");
         }
 
-        // ── step 1: extract database ID from Notion URL ──
-        function extractDatabaseId(url) {
-          // Match 32-char hex string (with or without dashes)
-          const match = url.replace(/-/g, "").match(/([0-9a-f]{32})/i);
-          if (!match) return null;
-          const hex = match[1].toLowerCase();
-          // Format as UUID: 8-4-4-4-12
-          return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
-        }
-
-        document.getElementById("db-continue-btn").addEventListener("click", async () => {
-          const input  = document.getElementById("db-url-input");
+        // ── step 1: load databases ──
+        async function loadDatabases() {
+          const listEl = document.getElementById("db-list");
           const errEl  = document.getElementById("db-error");
-          errEl.textContent = "";
-          const dbId = extractDatabaseId(input.value.trim());
-          if (!dbId) {
-            errEl.textContent = "Could not find a database ID in that URL. Make sure you copied the full URL from your browser.";
-            return;
+          try {
+            const r = await fetch(`/api/notion/databases?user_id=${encodeURIComponent(userId)}`, { cache: "no-store" });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Failed to load databases");
+            const { databases } = data;
+            listEl.innerHTML = "";
+            if (!databases || databases.length === 0) {
+              listEl.innerHTML = '<div class="status-msg">No databases found. Make sure you\'ve shared your database with the Jarvis integration in Notion.</div>';
+              return;
+            }
+            databases.forEach((db) => {
+              const card = document.createElement("div");
+              card.className = "db-card";
+              card.innerHTML = `<span class="db-card__name">${db.name}</span><span class="db-card__arrow">→</span>`;
+              card.addEventListener("click", () => {
+                document.querySelectorAll(".db-card").forEach(c => c.classList.remove("selected"));
+                card.classList.add("selected");
+                selectedDbId = db.id;
+                loadColumns(db.id);
+              });
+              listEl.appendChild(card);
+            });
+          } catch (e) {
+            listEl.innerHTML = "";
+            errEl.textContent = e.message;
           }
-          selectedDbId = dbId;
-          await loadColumns(dbId);
-        });
-
-        document.getElementById("db-url-input").addEventListener("keydown", (e) => {
-          if (e.key === "Enter") document.getElementById("db-continue-btn").click();
-        });
+        }
 
         // ── step 2: load columns ──
         async function loadColumns(dbId) {
@@ -561,8 +576,8 @@
           requestAnimationFrame(loop);
         })();
 
-        // Boot — focus URL input
-        document.getElementById("db-url-input")?.focus();
+        // Boot
+        loadDatabases();
       })();
     </script>
   </body>
