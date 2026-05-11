@@ -2868,8 +2868,9 @@ async function handleNotionCallback(req, res) {
     const tr = await fetch("https://api.notion.com/v1/oauth/token", {
       method: "POST",
       headers: {
-        Authorization: `Basic ${credentials}`,
+        Authorization: "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
         "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
       },
       body: JSON.stringify({
         grant_type: "authorization_code",
