@@ -3058,21 +3058,42 @@ async function handleNotionColumns(req, res) {
       json(res, 502, { error: `Notion database fetch failed: ${err}` }); return;
     }
     const data = await dr.json();
-
-    // Detailed diagnostics
     console.log("[notion/columns] top-level keys:", Object.keys(data));
-    console.log("[notion/columns] object type:", data.object);
-    console.log("[notion/columns] properties keys:", Object.keys(data.properties ?? {}));
-    console.log("[notion/columns] parent:", JSON.stringify(data.parent));
-    if (data.child_data_source_ids) {
-      console.log("[notion/columns] child_data_source_ids:", data.child_data_source_ids);
+    console.log("[notion/columns] data_sources:", JSON.stringify(data.data_sources ?? null));
+
+    let mergedProps = {};
+
+    // Standard database — has properties directly
+    if (data.properties && Object.keys(data.properties).length > 0) {
+      mergedProps = data.properties;
+      console.log("[notion/columns] using direct properties:", Object.keys(mergedProps));
     }
 
-    let props = data.properties ?? {};
+    // Linked database — has data_sources array of { id } objects
+    if (Object.keys(mergedProps).length === 0 && Array.isArray(data.data_sources) && data.data_sources.length > 0) {
+      console.log("[notion/columns] linked DB — fetching", data.data_sources.length, "source(s)");
+      const sourceResults = await Promise.all(
+        data.data_sources.map(async (src) => {
+          const sourceId = src.id ?? src;
+          console.log("[notion/columns] fetching source:", sourceId);
+          const sr = await fetch(`https://api.notion.com/v1/databases/${sourceId}`, { headers: notionHeaders });
+          if (!sr.ok) {
+            console.log("[notion/columns] source fetch failed:", sourceId, sr.status);
+            return {};
+          }
+          const sdata = await sr.json();
+          console.log("[notion/columns] source", sourceId, "property keys:", Object.keys(sdata.properties ?? {}));
+          return sdata.properties ?? {};
+        })
+      );
+      for (const sourceProps of sourceResults) {
+        Object.assign(mergedProps, sourceProps);
+      }
+    }
 
-    // Linked databases: properties may be empty — fall back to querying a page and reading its property keys
-    if (Object.keys(props).length === 0) {
-      console.log("[notion/columns] properties empty — querying pages to infer schema");
+    // Final fallback — query a real page and infer schema from its property types
+    if (Object.keys(mergedProps).length === 0) {
+      console.log("[notion/columns] still empty — querying one page to infer schema");
       const qr = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
         method: "POST",
         headers: { ...notionHeaders, "Content-Type": "application/json" },
@@ -3082,24 +3103,19 @@ async function handleNotionColumns(req, res) {
         const qdata = await qr.json();
         const firstPage = qdata.results?.[0];
         if (firstPage?.properties) {
-          console.log("[notion/columns] inferred from page properties:", Object.keys(firstPage.properties));
-          props = Object.fromEntries(
+          console.log("[notion/columns] inferred from page:", Object.keys(firstPage.properties));
+          mergedProps = Object.fromEntries(
             Object.entries(firstPage.properties).map(([name, prop]) => [name, { type: prop.type }])
           );
-        } else {
-          console.log("[notion/columns] page query returned no pages or no properties");
         }
-      } else {
-        const qErr = await qr.text().catch(() => "unknown");
-        console.log("[notion/columns] page query failed:", qr.status, qErr);
       }
     }
 
-    const columns = Object.entries(props).map(([name, prop]) => ({
+    const columns = Object.entries(mergedProps).map(([name, prop]) => ({
       name,
       type: prop.type ?? "unknown",
     }));
-    console.log("[notion/columns] returning", columns.length, "columns");
+    console.log("[notion/columns] returning", columns.length, "columns:", columns.map(c => c.name));
     json(res, 200, { columns });
   } catch (e) {
     json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
