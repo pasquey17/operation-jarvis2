@@ -250,11 +250,13 @@
         display: grid;
         grid-template-columns: 1.45fr 1fr;
         gap: 18px;
+        margin-bottom: 18px;
       }
       .an-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 18px;
+        margin-bottom: 18px;
       }
 
       /* Reusable chart card styling */
@@ -473,6 +475,7 @@
             </div>
           </header>
 
+          <!-- Row 1: flagship charts -->
           <section class="an-grid" aria-label="Analytics charts">
             <article class="an-card" aria-label="Equity curve">
               <div class="an-card__top">
@@ -484,10 +487,10 @@
               </div>
             </article>
 
-            <article class="an-card" aria-label="Win rate trend">
+            <article class="an-card" aria-label="Rolling win rate (20-trade window)">
               <div class="an-card__top">
-                <div class="an-card__eyebrow">Win-rate trend</div>
-                <div class="an-card__meta" id="meta-winrate">—</div>
+                <div class="an-card__eyebrow">Rolling win rate</div>
+                <div class="an-card__meta" id="meta-winrate">20-trade window</div>
               </div>
               <div class="an-card__body">
                 <canvas class="an-canvas an-canvas--tall" id="chart-winrate"></canvas>
@@ -495,6 +498,30 @@
             </article>
           </section>
 
+          <!-- Row 2: histogram + drawdown -->
+          <section class="an-row" aria-label="Distribution charts">
+            <article class="an-card" aria-label="R distribution histogram">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">R distribution</div>
+                <div class="an-card__meta" id="meta-histogram">—</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas" id="chart-histogram"></canvas>
+              </div>
+            </article>
+
+            <article class="an-card" aria-label="Drawdown">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">Drawdown</div>
+                <div class="an-card__meta" id="meta-drawdown">—</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas" id="chart-drawdown"></canvas>
+              </div>
+            </article>
+          </section>
+
+          <!-- Row 3: session + model -->
           <section class="an-row" aria-label="Breakdowns">
             <article class="an-card" aria-label="Performance by session">
               <div class="an-card__top">
@@ -515,7 +542,10 @@
                 <canvas class="an-canvas" id="chart-model"></canvas>
               </div>
             </article>
+          </section>
 
+          <!-- Row 4: weekday + monte carlo -->
+          <section class="an-row" aria-label="Advanced analysis">
             <article class="an-card" aria-label="Performance by weekday">
               <div class="an-card__top">
                 <div class="an-card__eyebrow">By weekday</div>
@@ -523,6 +553,16 @@
               </div>
               <div class="an-card__body">
                 <canvas class="an-canvas" id="chart-weekday"></canvas>
+              </div>
+            </article>
+
+            <article class="an-card" aria-label="Monte Carlo simulation">
+              <div class="an-card__top">
+                <div class="an-card__eyebrow">Monte Carlo</div>
+                <div class="an-card__meta" id="meta-montecarlo">250 simulations</div>
+              </div>
+              <div class="an-card__body">
+                <canvas class="an-canvas" id="chart-montecarlo"></canvas>
               </div>
             </article>
           </section>
@@ -734,28 +774,97 @@
           return { labels: labels, data: data };
         }
 
-        function buildWeeklyWinRate(tradesAsc) {
-          var buckets = {};
-          tradesAsc.forEach(function (t) {
-            var d = tradeDate(t);
-            if (isNaN(d)) return;
-            var k = weekKey(d);
-            if (!k) return;
-            if (!buckets[k]) buckets[k] = { total: 0, wins: 0 };
-            buckets[k].total++;
-            var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
-            if (o === "win") buckets[k].wins++;
-          });
+        function buildRollingWinRate(tradesAsc, window) {
+          window = window || 20;
+          var labels = [];
+          var data = [];
+          for (var i = window - 1; i < tradesAsc.length; i++) {
+            var slice = tradesAsc.slice(i - window + 1, i + 1);
+            var wins = 0;
+            slice.forEach(function (t) {
+              if (normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME")) === "win") wins++;
+            });
+            labels.push(formatDateShort(tradesAsc[i]));
+            data.push(Number(((wins / window) * 100).toFixed(1)));
+          }
+          return { labels: labels, data: data, count: labels.length };
+        }
 
-          var keys = Object.keys(buckets).sort();
-          var labels = keys.map(function (k) {
-            return k.slice(5); // MM-DD
+        function buildRHistogram(trades) {
+          var bins = [-4, -3, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3, 4];
+          var counts = new Array(bins.length - 1).fill(0);
+          var overflow = 0;
+          trades.forEach(function (t) {
+            var r = rDeltaForTrade(t);
+            var placed = false;
+            for (var i = 0; i < bins.length - 1; i++) {
+              if (r >= bins[i] && r < bins[i + 1]) {
+                counts[i]++;
+                placed = true;
+                break;
+              }
+            }
+            if (!placed) overflow++;
           });
-          var data = keys.map(function (k) {
-            var b = buckets[k];
-            return b.total > 0 ? Number(((b.wins / b.total) * 100).toFixed(1)) : 0;
+          var labels = bins.slice(0, -1).map(function (b, i) {
+            var next = bins[i + 1];
+            return b + "R";
           });
-          return { labels: labels, data: data, points: keys.length };
+          labels.push("4R+");
+          counts.push(overflow);
+          var midpoints = bins.concat([5]).map(function (_, i) { return bins[i] !== undefined ? bins[i] : 4; });
+          return { labels: labels, counts: counts, midpoints: bins };
+        }
+
+        function buildDrawdown(tradesAsc) {
+          var labels = [];
+          var data = [];
+          var cum = 0;
+          var peak = 0;
+          tradesAsc.forEach(function (t) {
+            cum += rDeltaForTrade(t);
+            if (cum > peak) peak = cum;
+            labels.push(formatDateShort(t));
+            data.push(Number((cum - peak).toFixed(2)));
+          });
+          var maxDD = Math.min.apply(null, data.concat([0]));
+          return { labels: labels, data: data, maxDD: maxDD };
+        }
+
+        function buildMonteCarlo(tradesAsc, numSims) {
+          numSims = numSims || 250;
+          var rDeltas = tradesAsc.map(rDeltaForTrade);
+          if (!rDeltas.length) return null;
+          var numSteps = rDeltas.length;
+
+          var paths = [];
+          for (var s = 0; s < numSims; s++) {
+            var cum = 0;
+            var path = [];
+            for (var i = 0; i < numSteps; i++) {
+              var r = rDeltas[Math.floor(Math.random() * rDeltas.length)];
+              cum += r;
+              path.push(Number(cum.toFixed(2)));
+            }
+            paths.push(path);
+          }
+
+          function pctAt(step, pct) {
+            var vals = paths.map(function (p) { return p[step]; }).sort(function (a, b) { return a - b; });
+            return vals[Math.floor(pct * (vals.length - 1))];
+          }
+
+          var p10 = [], p25 = [], p50 = [], p75 = [], p90 = [];
+          for (var i = 0; i < numSteps; i++) {
+            p10.push(pctAt(i, 0.10));
+            p25.push(pctAt(i, 0.25));
+            p50.push(pctAt(i, 0.50));
+            p75.push(pctAt(i, 0.75));
+            p90.push(pctAt(i, 0.90));
+          }
+
+          var labels = Array.from({ length: numSteps }, function (_, i) { return "T" + (i + 1); });
+          return { labels: labels, p10: p10, p25: p25, p50: p50, p75: p75, p90: p90, numSims: numSims };
         }
 
         function groupBreakdown(trades, keyFn) {
@@ -1015,21 +1124,53 @@
             );
           }
 
-          // 2) Win rate trend (weekly)
-          var wrt = buildWeeklyWinRate(tradesAsc);
-          setMeta("meta-winrate", (wrt.points ? wrt.points + " wks" : "—"));
+          // 2) Rolling win rate (20-trade window)
+          var rwr = buildRollingWinRate(tradesAsc, 20);
+          setMeta("meta-winrate", rwr.count ? rwr.count + " pts" : "Need 20+ trades");
           var wc = document.getElementById("chart-winrate");
           if (wc) {
-            charts.push(
-              buildLineChart(wc.getContext("2d"), wrt.labels, wrt.data, {
-                label: "Win-rate %",
-                tooltipCb: {
-                  label: function (ctx) {
-                    return "WR: " + Number(ctx.parsed.y).toFixed(1) + "%";
+            charts.push(new Chart(wc.getContext("2d"), {
+              type: "line",
+              data: {
+                labels: rwr.labels,
+                datasets: [{
+                  label: "Rolling Win Rate %",
+                  data: rwr.data,
+                  borderColor: "rgba(0, 212, 255, 0.95)",
+                  backgroundColor: "rgba(0, 212, 255, 0.12)",
+                  fill: true,
+                  tension: 0.4,
+                  pointRadius: 0,
+                  pointHitRadius: 10,
+                  borderWidth: 2,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 900, easing: "easeOutQuart" },
+                interaction: { mode: "index", intersect: false },
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: "rgba(0,0,0,0.92)",
+                    borderColor: "rgba(0, 212, 255, 0.25)",
+                    borderWidth: 1,
+                    titleColor: "rgba(255,255,255,0.9)",
+                    bodyColor: "rgba(255,255,255,0.75)",
+                    displayColors: false,
+                    callbacks: {
+                      label: function (ctx) { return "WR: " + ctx.parsed.y.toFixed(1) + "%"; }
+                    }
                   },
+                  annotation: {}
                 },
-              })
-            );
+                scales: {
+                  x: axisCommon(),
+                  y: Object.assign({}, axisCommon(), { min: 0, max: 100, ticks: { color: "rgba(255,255,255,0.50)", callback: function (v) { return v + "%"; } } })
+                }
+              }
+            }));
           }
 
           // 3) Performance by session
@@ -1151,6 +1292,198 @@
                 },
               })
             );
+          }
+
+          // 6) R Distribution Histogram
+          var hist = buildRHistogram(trades);
+          setMeta("meta-histogram", trades.length + " trades");
+          var hc = document.getElementById("chart-histogram");
+          if (hc) {
+            var histColors = hist.midpoints.concat([4]).map(function (mid) {
+              return mid < 0
+                ? "rgba(255, 68, 102, 0.65)"
+                : mid === 0
+                ? "rgba(136, 153, 170, 0.55)"
+                : "rgba(0, 255, 136, 0.65)";
+            });
+            charts.push(new Chart(hc.getContext("2d"), {
+              type: "bar",
+              data: {
+                labels: hist.labels,
+                datasets: [{
+                  label: "Trades",
+                  data: hist.counts,
+                  backgroundColor: histColors,
+                  borderColor: histColors.map(function (c) { return c.replace("0.65", "0.9"); }),
+                  borderWidth: 1,
+                  borderRadius: 6,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 900, easing: "easeOutQuart" },
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: "rgba(0,0,0,0.92)",
+                    borderColor: "rgba(0, 212, 255, 0.25)",
+                    borderWidth: 1,
+                    titleColor: "rgba(255,255,255,0.9)",
+                    bodyColor: "rgba(255,255,255,0.75)",
+                    displayColors: false,
+                    callbacks: {
+                      label: function (ctx) { return ctx.parsed.y + " trade" + (ctx.parsed.y !== 1 ? "s" : ""); }
+                    }
+                  }
+                },
+                scales: {
+                  x: Object.assign({}, axisCommon(), { ticks: { color: "rgba(255,255,255,0.45)", maxRotation: 45 } }),
+                  y: Object.assign({}, axisCommon(), { ticks: { color: "rgba(255,255,255,0.50)", stepSize: 1 } })
+                }
+              }
+            }));
+          }
+
+          // 7) Drawdown chart
+          var dd = buildDrawdown(tradesAsc);
+          setMeta("meta-drawdown", dd.maxDD != null ? "Max " + dd.maxDD.toFixed(2) + "R" : "—");
+          var ddc = document.getElementById("chart-drawdown");
+          if (ddc) {
+            charts.push(new Chart(ddc.getContext("2d"), {
+              type: "line",
+              data: {
+                labels: dd.labels,
+                datasets: [{
+                  label: "Drawdown (R)",
+                  data: dd.data,
+                  borderColor: "rgba(255, 68, 102, 0.9)",
+                  backgroundColor: "rgba(255, 68, 102, 0.15)",
+                  fill: true,
+                  tension: 0.2,
+                  pointRadius: 0,
+                  pointHitRadius: 10,
+                  borderWidth: 1.5,
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 900, easing: "easeOutQuart" },
+                interaction: { mode: "index", intersect: false },
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    backgroundColor: "rgba(0,0,0,0.92)",
+                    borderColor: "rgba(255, 68, 102, 0.35)",
+                    borderWidth: 1,
+                    titleColor: "rgba(255,255,255,0.9)",
+                    bodyColor: "rgba(255,255,255,0.75)",
+                    displayColors: false,
+                    callbacks: {
+                      label: function (ctx) { return "DD: " + ctx.parsed.y.toFixed(2) + "R"; }
+                    }
+                  }
+                },
+                scales: {
+                  x: axisCommon(),
+                  y: Object.assign({}, axisCommon(), { max: 0 })
+                }
+              }
+            }));
+          }
+
+          // 8) Monte Carlo simulation
+          var mc_data = buildMonteCarlo(tradesAsc, 250);
+          if (mc_data) {
+            setMeta("meta-montecarlo", mc_data.numSims + " paths");
+            var mcc = document.getElementById("chart-montecarlo");
+            if (mcc) {
+              charts.push(new Chart(mcc.getContext("2d"), {
+                type: "line",
+                data: {
+                  labels: mc_data.labels,
+                  datasets: [
+                    {
+                      label: "90th pct",
+                      data: mc_data.p90,
+                      borderColor: "rgba(0, 212, 255, 0.15)",
+                      backgroundColor: "rgba(0, 212, 255, 0.06)",
+                      fill: "+1",
+                      tension: 0.35,
+                      pointRadius: 0,
+                      borderWidth: 1,
+                    },
+                    {
+                      label: "75th pct",
+                      data: mc_data.p75,
+                      borderColor: "rgba(0, 212, 255, 0.25)",
+                      backgroundColor: "rgba(0, 212, 255, 0.10)",
+                      fill: "+1",
+                      tension: 0.35,
+                      pointRadius: 0,
+                      borderWidth: 1,
+                    },
+                    {
+                      label: "Median",
+                      data: mc_data.p50,
+                      borderColor: "rgba(0, 212, 255, 0.95)",
+                      backgroundColor: "rgba(0, 212, 255, 0.08)",
+                      fill: false,
+                      tension: 0.35,
+                      pointRadius: 0,
+                      borderWidth: 2.5,
+                    },
+                    {
+                      label: "25th pct",
+                      data: mc_data.p25,
+                      borderColor: "rgba(255, 68, 102, 0.25)",
+                      backgroundColor: "rgba(255, 68, 102, 0.10)",
+                      fill: "+1",
+                      tension: 0.35,
+                      pointRadius: 0,
+                      borderWidth: 1,
+                    },
+                    {
+                      label: "10th pct",
+                      data: mc_data.p10,
+                      borderColor: "rgba(255, 68, 102, 0.15)",
+                      backgroundColor: "rgba(255, 68, 102, 0.06)",
+                      fill: false,
+                      tension: 0.35,
+                      pointRadius: 0,
+                      borderWidth: 1,
+                    },
+                  ]
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  animation: { duration: 1100, easing: "easeOutQuart" },
+                  interaction: { mode: "index", intersect: false },
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      backgroundColor: "rgba(0,0,0,0.92)",
+                      borderColor: "rgba(0, 212, 255, 0.25)",
+                      borderWidth: 1,
+                      titleColor: "rgba(255,255,255,0.9)",
+                      bodyColor: "rgba(255,255,255,0.75)",
+                      displayColors: true,
+                      callbacks: {
+                        label: function (ctx) {
+                          return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(2) + "R";
+                        }
+                      }
+                    }
+                  },
+                  scales: {
+                    x: Object.assign({}, axisCommon(), { ticks: { display: false } }),
+                    y: axisCommon()
+                  }
+                }
+              }));
+            }
           }
         }
 

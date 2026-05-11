@@ -351,13 +351,14 @@
         color: rgba(0, 212, 255, 0.8);
       }
       .cal-cell {
-        min-height: 120px;
+        min-height: 140px;
         padding: 10px 10px 12px;
         background: rgba(0, 0, 0, 0.82);
         cursor: pointer;
         transition:
           background 0.25s var(--ease-out),
-          transform 0.25s var(--ease-out);
+          transform 0.25s var(--ease-out),
+          box-shadow 0.25s var(--ease-out);
         position: relative;
         overflow: hidden;
       }
@@ -373,6 +374,63 @@
         outline: 1px solid rgba(0, 212, 255, 0.5);
         box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.12) inset, 0 0 22px rgba(0, 191, 255, 0.12);
       }
+      .cal-cell.cal-cell--today {
+        border: 1px solid rgba(0, 212, 255, 0.55);
+        box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.14) inset, 0 0 28px rgba(0, 212, 255, 0.14);
+      }
+      .cal-cell.cal-cell--today .cal-date__num {
+        color: #00d4ff;
+      }
+      .cal-cell.cal-cell--has-trades {
+        background: rgba(0, 0, 0, 0.82);
+      }
+      .cal-cell.cal-cell--has-trades:not(.cal-cell--muted) {
+        box-shadow: inset 2px 0 0 rgba(0, 212, 255, 0.25);
+      }
+
+      /* Pill badges for WIN/LOSS count */
+      .cal-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 8px;
+      }
+      .cal-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border: 1px solid transparent;
+        white-space: nowrap;
+      }
+      .cal-chip--win {
+        background: rgba(0, 255, 136, 0.1);
+        border-color: rgba(0, 255, 136, 0.3);
+        color: rgba(0, 255, 136, 0.9);
+      }
+      .cal-chip--loss {
+        background: rgba(255, 68, 102, 0.1);
+        border-color: rgba(255, 68, 102, 0.3);
+        color: rgba(255, 68, 102, 0.9);
+      }
+      .cal-chip--be {
+        background: rgba(192, 192, 192, 0.07);
+        border-color: rgba(192, 192, 192, 0.2);
+        color: rgba(192, 192, 192, 0.75);
+      }
+      .cal-chip--netr {
+        background: transparent;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.45);
+        margin-left: auto;
+      }
+      .cal-chip--netr.positive { color: rgba(0, 255, 136, 0.75); border-color: rgba(0, 255, 136, 0.2); }
+      .cal-chip--netr.negative { color: rgba(255, 68, 102, 0.75); border-color: rgba(255, 68, 102, 0.2); }
       .cal-date {
         display: flex;
         align-items: baseline;
@@ -435,6 +493,19 @@
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.05),
           0 18px 60px rgba(0, 0, 0, 0.42);
+        opacity: 0;
+        transform: translateY(14px);
+        transition:
+          opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+          border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .cal-panel.cal-panel--visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .cal-panel.cal-panel--day-loaded {
+        border-color: rgba(0, 212, 255, 0.22);
       }
       .cal-panel__top {
         padding: 14px 14px 12px;
@@ -858,7 +929,11 @@
           justify-content: flex-start;
         }
         .cal-cell {
-          min-height: 92px;
+          min-height: 110px;
+        }
+        .cal-chip {
+          font-size: 8px;
+          padding: 2px 5px;
         }
         .cal-list {
           grid-template-columns: 1fr;
@@ -1291,13 +1366,25 @@
           }
         }
 
+        var todayKey = (function () {
+          try { return dayKey(new Date()); } catch (e) { return ""; }
+        })();
+
         function buildCell(dUtcLike, muted) {
           var p = partsYMD(dUtcLike);
           var key = p.y + "-" + p.m + "-" + p.d;
           var list = byDay[key] || [];
+          var isToday = key === todayKey;
+          var hasTrades = list.length > 0;
+
+          var cls = "cal-cell";
+          if (muted) cls += " cal-cell--muted";
+          if (key === selectedKey) cls += " cal-cell--selected";
+          if (isToday) cls += " cal-cell--today";
+          if (hasTrades && !muted) cls += " cal-cell--has-trades";
 
           var el = document.createElement("div");
-          el.className = "cal-cell" + (muted ? " cal-cell--muted" : "") + (key === selectedKey ? " cal-cell--selected" : "");
+          el.className = cls;
           el.dataset.key = key;
 
           var top = document.createElement("div");
@@ -1307,31 +1394,55 @@
           left.textContent = p.d;
           var right = document.createElement("div");
           right.className = "cal-date__meta";
-          right.textContent = list.length ? list.length + " trades" : "—";
+          right.textContent = isToday ? "TODAY" : (list.length ? list.length + " trades" : "—");
           top.appendChild(left);
           top.appendChild(right);
-
-          var dots = document.createElement("div");
-          dots.className = "cal-dots";
-          var maxDots = 16;
-          for (var i = 0; i < Math.min(maxDots, list.length); i++) {
-            var o = normalizeOutcome(getField(list[i], "outcome", "Outcome", "OUTCOME"));
-            var dot = document.createElement("span");
-            dot.className =
-              "dot " +
-              (o === "win" ? "dot--win" : o === "loss" ? "dot--loss" : o === "be" ? "dot--be" : "dot--unk");
-            dots.appendChild(dot);
-          }
-          if (list.length > maxDots) {
-            var more = document.createElement("span");
-            more.className = "cal-date__meta";
-            more.style.marginTop = "6px";
-            more.textContent = "+" + (list.length - maxDots);
-            dots.appendChild(more);
-          }
-
           el.appendChild(top);
-          el.appendChild(dots);
+
+          if (hasTrades) {
+            var wins = 0, losses = 0, bes = 0, netR = 0;
+            list.forEach(function (t) {
+              var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
+              if (o === "win") wins++;
+              else if (o === "loss") losses++;
+              else if (o === "be") bes++;
+              var rr = parseFloat(getField(t, "rr", "RR"));
+              if (!isNaN(rr)) {
+                if (o === "win") netR += rr;
+                else if (o === "loss") netR -= Math.abs(rr);
+              }
+            });
+
+            var pills = document.createElement("div");
+            pills.className = "cal-pills";
+
+            if (wins > 0) {
+              var wc = document.createElement("span");
+              wc.className = "cal-chip cal-chip--win";
+              wc.textContent = "W " + wins;
+              pills.appendChild(wc);
+            }
+            if (losses > 0) {
+              var lc = document.createElement("span");
+              lc.className = "cal-chip cal-chip--loss";
+              lc.textContent = "L " + losses;
+              pills.appendChild(lc);
+            }
+            if (bes > 0) {
+              var bc = document.createElement("span");
+              bc.className = "cal-chip cal-chip--be";
+              bc.textContent = "BE " + bes;
+              pills.appendChild(bc);
+            }
+            var netChip = document.createElement("span");
+            var sign = netR > 0 ? "+" : "";
+            netChip.className = "cal-chip cal-chip--netr" + (netR > 0 ? " positive" : netR < 0 ? " negative" : "");
+            netChip.textContent = sign + netR.toFixed(1) + "R";
+            pills.appendChild(netChip);
+
+            el.appendChild(pills);
+          }
+
           return el;
         }
 
@@ -1342,7 +1453,15 @@
           var title = document.getElementById("panel-title");
           var hint = document.getElementById("panel-hint");
           var listEl = document.getElementById("panel-list");
+          var panelEl = document.querySelector(".cal-panel");
           if (!title || !hint || !listEl) return;
+
+          // Slide-in animation: reset then re-trigger
+          if (panelEl) {
+            panelEl.classList.remove("cal-panel--visible", "cal-panel--day-loaded");
+            void panelEl.offsetWidth; // reflow
+            panelEl.classList.add("cal-panel--visible");
+          }
 
           if (!selectedKey) {
             title.textContent = "Select a day";
@@ -1366,6 +1485,7 @@
 
           var dayTrades = byDay[selectedKey] || [];
           hint.textContent = dayTrades.length ? dayTrades.length + " trades" : "No trades logged";
+          if (panelEl && dayTrades.length) panelEl.classList.add("cal-panel--day-loaded");
 
           if (!dayTrades.length) {
             listEl.innerHTML =
@@ -2018,8 +2138,16 @@
           }
 
           buildIndex(trades);
+          todayKey = (function () {
+            try { return dayKey(new Date()); } catch (e) { return ""; }
+          })();
           goToday();
           renderGrid();
+          // Reveal panel on initial load
+          var panelEl = document.querySelector(".cal-panel");
+          if (panelEl) {
+            setTimeout(function () { panelEl.classList.add("cal-panel--visible"); }, 80);
+          }
         }
 
         boot();

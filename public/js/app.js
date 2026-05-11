@@ -617,6 +617,26 @@ function hideTypingIndicator() {
   document.getElementById("typing-indicator")?.remove();
 }
 
+/** Animate a numeric value in an element from 0 to target. */
+function countUpEl(el, targetStr, durationMs = 700) {
+  if (!el) return;
+  const numMatch = String(targetStr).match(/^(-?\d+\.?\d*)/);
+  if (!numMatch) { el.textContent = targetStr; return; }
+  const target = parseFloat(numMatch[1]);
+  const suffix = String(targetStr).slice(numMatch[1].length);
+  if (isNaN(target)) { el.textContent = targetStr; return; }
+  const start = performance.now();
+  const decimals = (numMatch[1].includes(".") ? numMatch[1].split(".")[1].length : 0);
+  function step(now) {
+    const t = Math.min((now - start) / durationMs, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = (target * ease).toFixed(decimals) + suffix;
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = targetStr;
+  }
+  requestAnimationFrame(step);
+}
+
 function renderSnapshot() {
   if (tradeData?.loadError) {
     if (els.snapWinrate) els.snapWinrate.textContent = "—";
@@ -637,16 +657,10 @@ function renderSnapshot() {
     return;
   }
 
-  if (els.snapTotal) els.snapTotal.textContent = String(s.total ?? "—");
-  if (els.snapWinrate)
-    els.snapWinrate.textContent =
-      s.winRate == null ? "—" : `${Number(s.winRate).toFixed(1)}%`;
-  if (els.snapAvgRR)
-    els.snapAvgRR.textContent =
-      s.avgRR == null ? "—" : Number(s.avgRR).toFixed(2);
-  if (els.snapExpectancy)
-    els.snapExpectancy.textContent =
-      s.expectancy == null ? "—" : `${Number(s.expectancy).toFixed(2)}R`;
+  countUpEl(els.snapTotal, String(s.total ?? "—"));
+  countUpEl(els.snapWinrate, s.winRate == null ? "—" : `${Number(s.winRate).toFixed(1)}%`);
+  countUpEl(els.snapAvgRR, s.avgRR == null ? "—" : Number(s.avgRR).toFixed(2));
+  countUpEl(els.snapExpectancy, s.expectancy == null ? "—" : `${Number(s.expectancy).toFixed(2)}R`);
   if (els.snapInsight) {
     let line = s.bestSession
       ? `Edge clusters in ${s.bestSession}.`
@@ -1069,6 +1083,11 @@ async function sendChatMessage(text) {
 
   chatSending = true;
   setOrbMode("active");
+  const orbMount = document.querySelector(".orb-mount");
+  if (orbMount) {
+    orbMount.classList.add("orb--flash");
+    orbMount.addEventListener("animationend", () => orbMount.classList.remove("orb--flash"), { once: true });
+  }
   updateSendEnabled();
 
   const userMsg = { role: "user", content: text.trim() };
@@ -1157,7 +1176,7 @@ function startOrb() {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const BLUE = [0, 191, 255];
+  const BLUE = [0, 212, 255];
   const BLUE_DEEP = [0, 75, 165];
   const BLUE_HOT = [215, 252, 255];
   const PI2 = Math.PI * 2;
@@ -1738,7 +1757,57 @@ function startOrb() {
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
 
+    // ── Lightning arcs ──
+    if (!reducedMotion) {
+      drawLightningArcs(ctx, cx, cy, projScale, timeSec, e);
+    }
+
     requestAnimationFrame(frame);
+  }
+
+  /* Lightning arc state */
+  const arcs = [];
+  let nextArcAt = 0;
+
+  function spawnArc() {
+    const a0 = Math.random() * Math.PI * 2;
+    const a1 = a0 + (Math.random() - 0.5) * 1.4 + (Math.random() > 0.5 ? 1 : -1) * 0.6;
+    arcs.push({ a0, a1, life: 0, maxLife: 0.18 + Math.random() * 0.22 });
+  }
+
+  function drawLightningArcs(ctx, cx, cy, ps, t, e) {
+    if (t > nextArcAt) {
+      const interval = 2.8 - e * 1.8;
+      nextArcAt = t + interval * (0.5 + Math.random() * 0.8);
+      spawnArc();
+      if (e > 0.3 && Math.random() > 0.5) spawnArc();
+    }
+
+    for (let i = arcs.length - 1; i >= 0; i--) {
+      const arc = arcs[i];
+      arc.life += 0.016;
+      if (arc.life >= arc.maxLife) { arcs.splice(i, 1); continue; }
+      const progress = arc.life / arc.maxLife;
+      const fadeAlpha = Math.sin(progress * Math.PI);
+      const r = ps * (0.92 + 0.12 * e);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = `rgba(0,212,255,${fadeAlpha * (0.35 + 0.45 * e)})`;
+      ctx.lineWidth = 0.8 + e * 0.7;
+      ctx.shadowColor = "rgba(0,212,255,0.8)";
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      const steps = 7;
+      for (let s = 0; s <= steps; s++) {
+        const angle = arc.a0 + (arc.a1 - arc.a0) * (s / steps);
+        const jitter = s > 0 && s < steps ? (Math.random() - 0.5) * ps * 0.04 : 0;
+        const x = cx + Math.cos(angle) * r + jitter;
+        const y = cy + Math.sin(angle) * r + jitter;
+        s === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   requestAnimationFrame(frame);
