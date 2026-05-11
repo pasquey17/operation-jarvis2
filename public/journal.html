@@ -1137,7 +1137,17 @@
       }
 
       function tradeDate(t) {
-        return new Date(getField(t, 'date', 'traded_at', 'Date') || '');
+        var raw = String(getField(t, 'date', 'traded_at', 'Date') || '').trim();
+        if (!raw) return new Date(NaN);
+        // Normalise PostgreSQL "YYYY-MM-DD HH:MM:SS±ZZ" → ISO 8601 (replace space before digits/sign)
+        raw = raw.replace(/(\d{4}-\d{2}-\d{2})\s+(\d)/, '$1T$2');
+        return new Date(raw);
+      }
+
+      // Returns numeric ms for safe sorting; Invalid Date → -Infinity (sorts to end for "newest")
+      function tradeDateMs(t) {
+        var ms = tradeDate(t).getTime();
+        return isNaN(ms) ? -Infinity : ms;
       }
 
       /** YYYY-MM-DD in Australia/Adelaide (matches journal date display). */
@@ -1544,7 +1554,7 @@
         if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value)) {
           merged = merged.concat(journalRes.value);
         }
-        merged.sort(function (a, b) { return tradeDate(b) - tradeDate(a); });
+        merged.sort(function (a, b) { return tradeDateMs(b) - tradeDateMs(a); });
 
         /* Debug: log first trade from each source so we can see exact field names */
         if (tradesRes.status === 'fulfilled') {
@@ -1560,43 +1570,40 @@
       }
 
       /* ── Weekly stats ── */
-      function getWeekStart() {
-        var now = new Date();
-        var day = now.getUTCDay();
-        var daysToMon = day === 0 ? 6 : day - 1;
-        var mon = new Date(now);
-        mon.setUTCDate(now.getUTCDate() - daysToMon);
-        mon.setUTCHours(0, 0, 0, 0);
-        return mon;
-      }
-
       function computeWeeklyStats(trades) {
-        var weekStart  = getWeekStart();
+        // Use Adelaide dateKey so the week boundary matches what's displayed on screen
+        var today   = dateKeyAdelaide(new Date());
+        var weekMon = mondayKeyOfWeekContaining(today);
+        var weekSun = addDaysToDateKey(weekMon, 6);
+
         var weekTrades = trades.filter(function (t) {
-          var d = tradeDate(t); return !isNaN(d) && d >= weekStart;
+          var tk = dateKeyAdelaide(tradeDate(t));
+          return tk && tk >= weekMon && tk <= weekSun;
         });
-        var total = weekTrades.length, wins = 0, losses = 0, netR = 0, bestRR = null;
+
+        var total = weekTrades.length, wins = 0, netR = 0, bestRR = null;
         weekTrades.forEach(function (t) {
           var outcome = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
           var rr      = parseFloat(getField(t, 'rr', 'RR'));
           if (outcome === 'win') {
             wins++;
-            if (!isNaN(rr)) {
-              netR += rr;
-              if (bestRR === null || rr > bestRR) bestRR = rr;
-            }
-          }
-          if (outcome === 'loss') {
-            losses++;
+            if (!isNaN(rr)) netR += rr;
+          } else if (outcome === 'loss') {
             netR -= (!isNaN(rr) ? rr : 1);
           }
+          // bestRR considers every trade, not just wins
+          if (!isNaN(rr) && (bestRR === null || rr > bestRR)) bestRR = rr;
         });
-        return {
+
+        var stats = {
           total:   total,
           winRate: total > 0 ? Math.round(wins / total * 100) : null,
           netR:    total > 0 ? netR : null,
           bestRR:  bestRR
         };
+        console.log('[Jarvis] weekly stats | week:', weekMon, '→', weekSun,
+                    '| trades:', total, '| wins:', wins, '| netR:', netR, '| bestRR:', bestRR);
+        return stats;
       }
 
       function renderWeeklyStats(stats) {
@@ -1684,7 +1691,7 @@
         /* Sort */
         switch (activeFilters.sort) {
           case 'oldest':
-            filteredTrades.sort(function (a, b) { return tradeDate(a) - tradeDate(b); });
+            filteredTrades.sort(function (a, b) { return tradeDateMs(a) - tradeDateMs(b); });
             break;
           case 'highestrr':
             filteredTrades.sort(function (a, b) {
@@ -1701,7 +1708,11 @@
             });
             break;
           default: /* newest */
-            filteredTrades.sort(function (a, b) { return tradeDate(b) - tradeDate(a); });
+            filteredTrades.sort(function (a, b) { return tradeDateMs(b) - tradeDateMs(a); });
+            console.log('[Jarvis] sorted newest→oldest, first 5 dates:',
+              filteredTrades.slice(0, 5).map(function(t) {
+                return getField(t, 'date', 'traded_at', 'Date');
+              }));
         }
 
         displayedCount = 0;
