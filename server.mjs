@@ -374,7 +374,7 @@ STRENGTHS: ${userProfile.strengths || "Still being established."}
 
 Use it: emotion/frustration → tie to triggers/patterns above; trade/setup/outcome → name pattern if it matches; repeated mistake memory shows → say so plainly; genuine improvement → acknowledge specifically; praise → history-specific only.
 
-MEMORY INSTRUCTION: Before every response, scan the profile above for anything directly relevant to what the trader just said or asked. If their current message matches a known pattern, trigger, or historical behaviour — surface it immediately without being asked. Don't wait for them to ask "am I revenge trading?" — if the pattern is there, name it proactively. Reference specific dates and pairs from memory when they match.`;
+MEMORY INSTRUCTION: Before every response, scan the profile above for relevant patterns. If a pattern matches what the trader just said, surface it as a QUESTION not a directive. Never tell them what to do based on pattern alone. Instead ask: "This looks like [pattern] — does this trade meet your A+ criteria?" You flag. They decide. Always ask about setup quality before making any psychological observation.`;
   }
 
   return `${dateContextBlock}
