@@ -2885,7 +2885,7 @@ async function handleNotionCallback(req, res) {
       headers: {
         "Authorization": "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
         "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28",
+        "Notion-Version": "2025-09-03",
       },
       body: JSON.stringify({
         grant_type: "authorization_code",
@@ -2977,7 +2977,7 @@ async function handleNotionDatabases(req, res) {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Notion-Version": "2022-06-28",
+        "Notion-Version": "2025-09-03",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ filter: { value: "database", property: "object" } }),
@@ -3050,7 +3050,7 @@ async function handleNotionColumns(req, res) {
 
   try {
     const dr = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2022-06-28" },
+      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
     });
     if (!dr.ok) {
       const err = await dr.text().catch(() => "unknown");
@@ -3152,7 +3152,7 @@ async function handleNotionSyncUser(req, res) {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Notion-Version": "2022-06-28",
+          "Notion-Version": "2025-09-03",
           "Content-Type": "application/json",
         },
         body: JSON.stringify(qBody),
