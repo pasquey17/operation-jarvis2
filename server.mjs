@@ -2864,26 +2864,26 @@ async function handleNotionCallback(req, res) {
 
   let tokenData;
   try {
-    console.log("[notion/callback] exchanging code, redirect_uri:", NOTION_OAUTH_REDIRECT_URI, "client_id:", clientId);
-    const tr = await fetch("https://api.notion.com/v1/oauth/token", {
+    console.log("[notion/callback] client_id prefix:", clientId?.slice(0, 8), "secret prefix:", clientSecret?.slice(0, 8), "redirect_uri:", NOTION_OAUTH_REDIRECT_URI);
+    const tokenResponse = await fetch("https://api.notion.com/v1/oauth/token", {
       method: "POST",
       headers: {
-        Authorization: "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
+        "Authorization": "Basic " + Buffer.from(`${clientId}:${clientSecret}`).toString("base64"),
         "Content-Type": "application/json",
         "Notion-Version": "2022-06-28",
       },
       body: JSON.stringify({
         grant_type: "authorization_code",
-        code,
+        code: code,
         redirect_uri: NOTION_OAUTH_REDIRECT_URI,
       }),
     });
-    if (!tr.ok) {
-      const err = await tr.text().catch(() => "unknown");
+    if (!tokenResponse.ok) {
+      const err = await tokenResponse.text().catch(() => "unknown");
       json(res, 502, { error: `Notion token exchange failed: ${err}` });
       return;
     }
-    tokenData = await tr.json();
+    tokenData = await tokenResponse.json();
   } catch (e) {
     json(res, 502, { error: `Notion token exchange error: ${String(e.message ?? e)}` });
     return;
