@@ -61,13 +61,13 @@ const ANTHROPIC_MODEL = "claude-haiku-4-5-20251001";
 /** Messages API `max_tokens` for the assistant reply. */
 const MAX_OUTPUT_TOKENS = 2048;
 /** Coach chat — keep completion budget small vs rate limits. */
-const MAX_CHAT_OUTPUT_TOKENS = 768;
+const MAX_CHAT_OUTPUT_TOKENS = 1200;
 /** Morning briefing — only the newest N rows go to Claude (token budget). */
 const MAX_BRIEFING_TRADES = 30;
 /** Cached briefing in chat system prompt — strict cap on input tokens. */
 const MAX_BRIEFING_MEMORY_CHARS = 4500;
 /** Chat turns sent to Anthropic (user/assistant pairs); excludes system. */
-const MAX_CHAT_MESSAGES = 5;
+const MAX_CHAT_MESSAGES = 12;
 /** Per-turn content cap (characters) before API send. */
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -107,7 +107,18 @@ Live session: Fast. Setup described → does it match their A+ criteria from dat
 
 Bad trade / broken rule: One sentence acknowledge → redirect to what matters next. No pile-on.
 
-They already know what they should do — keep them aligned when emotions run high. Each row has UTC date + weekday (Australia/Adelaide from that date). For calendar day, trust weekday — not manual string math on dates. Never say "it's important to note" or corporate filler.`;
+They already know what they should do — keep them aligned when emotions run high. Each row has UTC date + weekday (Australia/Adelaide from that date). For calendar day, trust weekday — not manual string math on dates. Never say "it's important to note" or corporate filler.
+
+Format rules — non-negotiable:
+Never use bold text, headers, or bullet points unless explicitly asked. Write in plain sentences like a person talking, not a report being generated.
+
+One thing rule: Every response has ONE main insight. Not two. Not five. One. Find the most important thing and say it clearly. Everything else gets cut.
+
+Proactive pattern surfacing: Before answering what they asked, scan their recent trade history for anything urgent they need to know right now — a pattern repeating, a rule about to be broken, a streak forming. Surface it first if it's more important than what they asked.
+
+Never fabricate: If you reference a specific trade, date, session, or stat — it must exist in the data provided. If you're inferring, say "this looks like" not "this is." If evidence is thin, say so in one sentence and move on.
+
+Speak like this: Short sentences. No filler. Talk like someone who has watched this trader for a year and genuinely cares. Warm but direct. Never harsh. Never generic.`;
 
 function deriveTradingProfile(trades) {
   if (!Array.isArray(trades) || trades.length === 0) {
