@@ -128,25 +128,41 @@
       .map-grid {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 16px;
       }
       .map-row {
-        display: grid;
-        grid-template-columns: 140px 1fr;
-        align-items: center;
-        gap: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
       .map-row__label {
         font-family: var(--font-mono);
-        font-size: 11px;
-        letter-spacing: 0.12em;
+        font-size: 10px;
+        letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: rgba(255,255,255,0.55);
+        color: rgba(255,255,255,0.5);
+        line-height: 1;
       }
       .map-row__label span {
         color: #00d4ff;
-        font-size: 9px;
-        margin-left: 4px;
+        margin-left: 3px;
+      }
+      .map-select-wrap {
+        position: relative;
+        width: 100%;
+      }
+      .map-select-wrap::after {
+        content: "";
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid rgba(0,212,255,0.6);
+        pointer-events: none;
       }
       .map-select {
         width: 100%;
@@ -156,15 +172,16 @@
         color: #fff;
         font-family: var(--font-mono);
         font-size: 12px;
-        padding: 9px 12px;
+        padding: 9px 32px 9px 12px;
         outline: none;
         appearance: none;
         -webkit-appearance: none;
         cursor: pointer;
         transition: border-color 0.2s;
+        box-sizing: border-box;
       }
       .map-select:focus { border-color: rgba(0,212,255,0.55); }
-      .map-select option { background: #0a0a10; }
+      .map-select option { background: #0a0a10; color: #fff; }
 
       /* ── buttons ── */
       .setup-btn {
@@ -239,7 +256,6 @@
 
       @media (max-width: 520px) {
         .setup-panel { padding: 24px 18px; }
-        .map-row { grid-template-columns: 110px 1fr; }
       }
     </style>
   </head>
@@ -439,27 +455,35 @@
             lbl.className = "map-row__label";
             lbl.innerHTML = label + (required ? '<span>*</span>' : '');
 
+            const wrap = document.createElement("div");
+            wrap.className = "map-select-wrap";
+
             const sel = document.createElement("select");
             sel.className = "map-select";
             sel.id = `map-${key}`;
+
             const blank = document.createElement("option");
             blank.value = "";
             blank.textContent = required ? "— select column —" : "— skip —";
             sel.appendChild(blank);
+
+            let autoMatched = false;
             notionColumns.forEach(({ name }) => {
               const opt = document.createElement("option");
               opt.value = name;
               opt.textContent = name;
-              // Auto-select by fuzzy match
-              if (name.toLowerCase().includes(key.toLowerCase()) ||
-                  key.toLowerCase().includes(name.toLowerCase().replace(/\s/g, ""))) {
+              const nameLc = name.toLowerCase().replace(/\s/g, "");
+              const keyLc  = key.toLowerCase();
+              if (!autoMatched && (nameLc.includes(keyLc) || keyLc.includes(nameLc))) {
                 opt.selected = true;
+                autoMatched = true;
               }
               sel.appendChild(opt);
             });
 
+            wrap.appendChild(sel);
             row.appendChild(lbl);
-            row.appendChild(sel);
+            row.appendChild(wrap);
             grid.appendChild(row);
           });
         }
