@@ -2972,30 +2972,65 @@ async function handleNotionDatabases(req, res) {
     return;
   }
 
+  const notionHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+  };
+
   try {
-    const dr = await fetch("https://api.notion.com/v1/search", {
+    // Step 1 — search API: top-level databases and pages the integration can access
+    const sr = await fetch("https://api.notion.com/v1/search", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Notion-Version": "2025-09-03",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ filter: { value: "database", property: "object" } }),
+      headers: notionHeaders,
+      body: JSON.stringify({}),
     });
-    if (!dr.ok) {
-      const err = await dr.text().catch(() => "unknown");
-      json(res, 502, { error: `Notion databases fetch failed: ${err}` });
+    if (!sr.ok) {
+      const err = await sr.text().catch(() => "unknown");
+      json(res, 502, { error: `Notion search failed: ${err}` });
       return;
     }
-    const data = await dr.json();
-    const databases = (data.results ?? []).map((db) => ({
-      id: db.id,
-      name:
-        db.title?.[0]?.plain_text ??
-        db.title?.[0]?.text?.content ??
-        "Untitled",
-    }));
-    json(res, 200, { databases });
+    const searchData = await sr.json();
+    const results = searchData.results ?? [];
+
+    // Collect top-level databases directly from search
+    const dbMap = new Map();
+    const pageIds = [];
+    for (const item of results) {
+      if (item.object === "database") {
+        dbMap.set(item.id, {
+          id: item.id,
+          name: item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "Untitled",
+        });
+      } else if (item.object === "page") {
+        pageIds.push(item.id);
+      }
+    }
+
+    // Step 2 — fetch child blocks of each page to find nested child_database blocks
+    await Promise.all(
+      pageIds.map(async (pageId) => {
+        try {
+          const br = await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
+            headers: notionHeaders,
+          });
+          if (!br.ok) return;
+          const bdata = await br.json();
+          for (const block of bdata.results ?? []) {
+            if (block.type === "child_database" && !dbMap.has(block.id)) {
+              dbMap.set(block.id, {
+                id: block.id,
+                name: block.child_database?.title ?? "Untitled",
+              });
+            }
+          }
+        } catch {
+          // skip pages we can't read
+        }
+      })
+    );
+
+    json(res, 200, { databases: Array.from(dbMap.values()) });
   } catch (e) {
     json(res, 502, { error: `Notion databases error: ${String(e.message ?? e)}` });
   }
