@@ -3100,17 +3100,20 @@ async function handleNotionColumns(req, res) {
 
     const schema = JSON.parse(schemaRaw);
 
-    // Determine which database ID to actually query pages from:
-    // - Merged DB: use first data_source ID (a regular DB queryable with 2022-06-28)
-    // - Standard DB: use the ID as-is
-    let queryDbId = databaseId;
-    if (Array.isArray(schema.data_sources) && schema.data_sources.length > 0) {
-      queryDbId = schema.data_sources[0].id ?? schema.data_sources[0];
-      console.log("[notion/columns] merged DB detected — querying source:", queryDbId);
+    // Use schema.properties if present (works for both standard and merged DBs via 2025-09-03)
+    if (schema.properties && Object.keys(schema.properties).length > 0) {
+      const columns = Object.entries(schema.properties).map(([name, prop]) => ({
+        name,
+        type: prop.type ?? "unknown",
+      }));
+      console.log("[notion/columns] schema properties →", columns.length, "columns:", columns.map(c => c.name));
+      json(res, 200, { columns });
+      return;
     }
 
-    // Step 2: query one page from the (source) database with 2022-06-28
-    const queryRes = await fetch(`https://api.notion.com/v1/databases/${queryDbId}/query`, {
+    // Fallback: schema had no properties — query one page to infer columns (standard DBs only)
+    console.log("[notion/columns] no schema properties, falling back to page query");
+    const r = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -3119,11 +3122,11 @@ async function handleNotionColumns(req, res) {
       },
       body: JSON.stringify({ page_size: 1 }),
     });
-    const queryRaw = await queryRes.text();
-    console.log("[notion/columns] query status:", queryRes.status, "body:", queryRaw.slice(0, 400));
+    const queryRaw = await r.text();
+    console.log(`[notion/columns] fallback query → ${r.status}:`, queryRaw.slice(0, 300));
 
-    if (!queryRes.ok) {
-      json(res, 502, { error: `Notion page query failed (${queryRes.status}): ${queryRaw}` }); return;
+    if (!r.ok) {
+      json(res, 502, { error: `Notion page query failed (${r.status}): ${queryRaw}` }); return;
     }
 
     const qdata = JSON.parse(queryRaw);
