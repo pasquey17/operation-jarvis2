@@ -3342,10 +3342,13 @@ async function handleNotionSyncUser(req, res) {
 
     const rrRaw = get("rr");
     const rrNum = rrRaw != null ? Number(String(rrRaw).replace(/[^0-9.\-]/g, "")) : null;
+    // date: mapped column first, fall back to page created_time so NOT NULL is never violated
+    const dateVal = parseDateToIso(get("date")) ?? parseDateToIso(page.created_time);
+    if (!dateVal) continue; // no usable date at all — skip
     const trade = {
       notion_id:    page.id,
       user_id,
-      date:         parseDateToIso(get("date")),
+      date:         dateVal,
       outcome:      get("outcome"),
       rr:           (rrNum != null && !isNaN(rrNum)) ? rrNum : null,
       session:      get("session"),
@@ -3357,9 +3360,6 @@ async function handleNotionSyncUser(req, res) {
       trade_images: get("photos") ?? [],
       updated_at:   new Date().toISOString(),
     };
-
-    // Skip rows with no date or outcome
-    if (!trade.date && !trade.outcome) continue;
     batch.push(trade);
   }
 
