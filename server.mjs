@@ -2730,6 +2730,21 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/notion/columns")) {
+    await handleNotionColumns(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/notion/save-mapping")) {
+    await handleNotionSaveMapping(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/notion/sync-user")) {
+    await handleNotionSyncUser(req, res);
+    return;
+  }
+
   if (req.method === "GET" && req.url.startsWith("/api/ping")) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok" }));
@@ -2984,6 +2999,231 @@ async function handleNotionDatabases(req, res) {
   } catch (e) {
     json(res, 502, { error: `Notion databases error: ${String(e.message ?? e)}` });
   }
+}
+
+// === NOTION COLUMN MAPPING & USER SYNC ===
+
+function getServiceRoleKey() {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+}
+
+function notionPropValue(prop) {
+  if (!prop) return null;
+  switch (prop.type) {
+    case "title":       return prop.title?.[0]?.plain_text ?? null;
+    case "rich_text":   return prop.rich_text?.[0]?.plain_text ?? null;
+    case "number":      return prop.number ?? null;
+    case "select":      return prop.select?.name ?? null;
+    case "multi_select":return prop.multi_select?.map((o) => o.name).join(", ") ?? null;
+    case "date":        return prop.date?.start ?? null;
+    case "checkbox":    return prop.checkbox ?? null;
+    case "url":         return prop.url ?? null;
+    case "email":       return prop.email ?? null;
+    case "phone_number":return prop.phone_number ?? null;
+    case "formula":     return prop.formula?.string ?? prop.formula?.number ?? null;
+    default:            return null;
+  }
+}
+
+async function handleNotionColumns(req, res) {
+  const sp = new URL(req.url, "http://localhost").searchParams;
+  const userIdRaw = sp.get("user_id") || "aidenpasque11@gmail.com";
+  const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+  const databaseId = sp.get("database_id");
+  if (!databaseId) { json(res, 400, { error: "database_id required" }); return; }
+
+  const { url } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) { json(res, 500, { error: "Supabase not configured" }); return; }
+
+  let accessToken;
+  try {
+    const cr = await fetch(
+      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }
+    );
+    const rows = await cr.json().catch(() => null);
+    accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
+  } catch { json(res, 500, { error: "Failed to read Notion connection" }); return; }
+
+  if (!accessToken) { json(res, 404, { error: "No Notion connection found for this user" }); return; }
+
+  try {
+    const dr = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2022-06-28" },
+    });
+    if (!dr.ok) {
+      const err = await dr.text().catch(() => "unknown");
+      json(res, 502, { error: `Notion database fetch failed: ${err}` }); return;
+    }
+    const data = await dr.json();
+    const columns = Object.entries(data.properties ?? {}).map(([name, prop]) => ({
+      name,
+      type: prop.type,
+    }));
+    json(res, 200, { columns });
+  } catch (e) {
+    json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
+  }
+}
+
+async function handleNotionSaveMapping(req, res) {
+  let body;
+  try {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    body = JSON.parse(Buffer.concat(chunks).toString());
+  } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
+
+  const { user_id, database_id, mapping } = body ?? {};
+  if (!user_id || !database_id || !mapping) {
+    json(res, 400, { error: "user_id, database_id, and mapping required" }); return;
+  }
+
+  const { url } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) { json(res, 500, { error: "Supabase not configured" }); return; }
+
+  try {
+    const upsertRes = await fetch(`${url}/rest/v1/notion_mappings`, {
+      method: "POST",
+      headers: {
+        apikey: srKey,
+        Authorization: `Bearer ${srKey}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify({ user_id, database_id, mapping, created_at: new Date().toISOString() }),
+    });
+    if (!upsertRes.ok) {
+      const err = await upsertRes.text().catch(() => "unknown");
+      json(res, 502, { error: `Save mapping failed: ${err}` }); return;
+    }
+    json(res, 200, { success: true });
+  } catch (e) {
+    json(res, 502, { error: `Save mapping error: ${String(e.message ?? e)}` });
+  }
+}
+
+async function handleNotionSyncUser(req, res) {
+  let body;
+  try {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    body = JSON.parse(Buffer.concat(chunks).toString());
+  } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
+
+  const { user_id } = body ?? {};
+  if (!user_id) { json(res, 400, { error: "user_id required" }); return; }
+
+  const { url, tableRaw } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) { json(res, 500, { error: "Supabase not configured" }); return; }
+
+  // Read connection and mapping in parallel
+  let accessToken, databaseId, mapping;
+  try {
+    const [connRes, mapRes] = await Promise.all([
+      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(user_id)}&limit=1`,
+        { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }),
+      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(user_id)}&limit=1`,
+        { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }),
+    ]);
+    const connRows = await connRes.json().catch(() => null);
+    const mapRows = await mapRes.json().catch(() => null);
+    accessToken = Array.isArray(connRows) && connRows.length > 0 ? connRows[0].access_token : null;
+    databaseId  = Array.isArray(mapRows)  && mapRows.length  > 0 ? mapRows[0].database_id  : null;
+    mapping     = Array.isArray(mapRows)  && mapRows.length  > 0 ? mapRows[0].mapping       : null;
+  } catch (e) {
+    json(res, 500, { error: `Failed to read connection/mapping: ${String(e.message ?? e)}` }); return;
+  }
+
+  if (!accessToken) { json(res, 404, { error: "No Notion connection found" }); return; }
+  if (!databaseId || !mapping) { json(res, 404, { error: "No column mapping found — complete setup first" }); return; }
+
+  // Fetch all pages from Notion database (paginate)
+  const allPages = [];
+  let cursor = undefined;
+  try {
+    do {
+      const qBody = { page_size: 100 };
+      if (cursor) qBody.start_cursor = cursor;
+      const qRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(qBody),
+      });
+      if (!qRes.ok) {
+        const err = await qRes.text().catch(() => "unknown");
+        json(res, 502, { error: `Notion query failed: ${err}` }); return;
+      }
+      const data = await qRes.json();
+      allPages.push(...(data.results ?? []));
+      cursor = data.has_more ? data.next_cursor : undefined;
+    } while (cursor);
+  } catch (e) {
+    json(res, 502, { error: `Notion query error: ${String(e.message ?? e)}` }); return;
+  }
+
+  // Map pages → trade rows using the user's column mapping
+  const tableEnc = encodeURIComponent(tableRaw);
+  let synced = 0;
+  const batch = [];
+
+  for (const page of allPages) {
+    const props = page.properties ?? {};
+    const get = (field) => notionPropValue(props[mapping[field]]);
+
+    const trade = {
+      notion_id:   page.id,
+      user_id,
+      date:        get("date"),
+      outcome:     get("outcome"),
+      rr:          get("rr") != null ? Number(get("rr")) : null,
+      session:     get("session"),
+      pair:        get("pair"),
+      direction:   get("direction"),
+      notes:       get("notes"),
+      account:     get("account"),
+      model:       get("model"),
+      notion_url:  page.url ?? null,
+    };
+
+    // Skip rows with no date or outcome
+    if (!trade.date && !trade.outcome) continue;
+    batch.push(trade);
+  }
+
+  if (batch.length > 0) {
+    try {
+      const upsertRes = await fetch(
+        `${url}/rest/v1/${tableEnc}`,
+        {
+          method: "POST",
+          headers: {
+            apikey: srKey,
+            Authorization: `Bearer ${srKey}`,
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates",
+          },
+          body: JSON.stringify(batch),
+        }
+      );
+      if (!upsertRes.ok) {
+        const err = await upsertRes.text().catch(() => "unknown");
+        json(res, 502, { error: `Trades upsert failed: ${err}` }); return;
+      }
+      synced = batch.length;
+    } catch (e) {
+      json(res, 502, { error: `Trades upsert error: ${String(e.message ?? e)}` }); return;
+    }
+  }
+
+  json(res, 200, { synced });
 }
 
 const server = http.createServer(requestListener);

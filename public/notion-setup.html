@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>JARVIS — Notion Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+    <style>
+      body { overflow-y: auto; overflow-x: hidden; height: auto; }
+
+      .setup-wrapper {
+        position: relative;
+        z-index: 10;
+        min-height: 100vh;
+        padding: 80px 24px 60px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      /* ── progress bar ── */
+      .progress-bar {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-bottom: 48px;
+        width: 100%;
+        max-width: 640px;
+      }
+      .progress-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        flex: 1;
+      }
+      .progress-step__dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(0,212,255,0.3);
+        background: transparent;
+        transition: background 0.3s, border-color 0.3s;
+      }
+      .progress-step.active .progress-step__dot,
+      .progress-step.done .progress-step__dot {
+        background: #00d4ff;
+        border-color: #00d4ff;
+      }
+      .progress-step__label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.3);
+        transition: color 0.3s;
+      }
+      .progress-step.active .progress-step__label { color: #00d4ff; }
+      .progress-step.done  .progress-step__label { color: rgba(0,212,255,0.6); }
+      .progress-line {
+        flex: 1;
+        height: 1px;
+        background: rgba(0,212,255,0.15);
+        margin-bottom: 22px;
+      }
+      .progress-line.done { background: rgba(0,212,255,0.5); }
+
+      /* ── panel ── */
+      .setup-panel {
+        width: 100%;
+        max-width: 640px;
+        background: rgba(0,0,0,0.82);
+        border: 1px solid rgba(0,212,255,0.15);
+        border-radius: var(--radius-panel);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 36px;
+        box-shadow: 0 0 40px rgba(0,191,255,0.07);
+      }
+      .setup-panel__eyebrow {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #00d4ff;
+        margin-bottom: 10px;
+      }
+      .setup-panel__title {
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 500;
+        color: #fff;
+        margin: 0 0 8px;
+      }
+      .setup-panel__sub {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: rgba(255,255,255,0.45);
+        margin: 0 0 28px;
+        line-height: 1.6;
+      }
+
+      /* ── database cards ── */
+      .db-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .db-card {
+        padding: 16px 20px;
+        border: 1px solid rgba(0,212,255,0.12);
+        border-radius: var(--radius-soft);
+        background: rgba(0,212,255,0.04);
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .db-card:hover { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.09); }
+      .db-card.selected { border-color: #00d4ff; background: rgba(0,212,255,0.12); }
+      .db-card__name {
+        font-family: var(--font-display);
+        font-size: 15px;
+        font-weight: 400;
+        color: #fff;
+      }
+      .db-card__arrow { color: rgba(0,212,255,0.5); font-size: 16px; }
+
+      /* ── mapping form ── */
+      .map-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .map-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        align-items: center;
+        gap: 16px;
+      }
+      .map-row__label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.55);
+      }
+      .map-row__label span {
+        color: #00d4ff;
+        font-size: 9px;
+        margin-left: 4px;
+      }
+      .map-select {
+        width: 100%;
+        background: rgba(0,0,0,0.6);
+        border: 1px solid rgba(0,212,255,0.18);
+        border-radius: 8px;
+        color: #fff;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        padding: 9px 12px;
+        outline: none;
+        appearance: none;
+        -webkit-appearance: none;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+      .map-select:focus { border-color: rgba(0,212,255,0.55); }
+      .map-select option { background: #0a0a10; }
+
+      /* ── buttons ── */
+      .setup-btn {
+        margin-top: 28px;
+        width: 100%;
+        padding: 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(0,212,255,0.35);
+        background: rgba(0,212,255,0.1);
+        color: #00d4ff;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+      .setup-btn:hover:not(:disabled) {
+        background: rgba(0,212,255,0.18);
+        border-color: #00d4ff;
+        box-shadow: 0 0 16px rgba(0,212,255,0.2);
+      }
+      .setup-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .setup-btn.primary {
+        background: rgba(0,212,255,0.18);
+        border-color: #00d4ff;
+      }
+
+      /* ── status / result ── */
+      .status-msg {
+        margin-top: 18px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: rgba(255,255,255,0.45);
+        text-align: center;
+        min-height: 20px;
+      }
+      .status-msg.error { color: #ff5050; }
+      .status-msg.success { color: #00ff88; }
+
+      .result-count {
+        text-align: center;
+        margin-top: 28px;
+      }
+      .result-count__number {
+        font-family: var(--font-display);
+        font-size: 56px;
+        font-weight: 300;
+        color: #00d4ff;
+        line-height: 1;
+      }
+      .result-count__label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        margin-top: 6px;
+      }
+
+      /* ── loading spinner ── */
+      .spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid rgba(0,212,255,0.15);
+        border-top-color: #00d4ff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 24px auto 0;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      @media (max-width: 520px) {
+        .setup-panel { padding: 24px 18px; }
+        .map-row { grid-template-columns: 110px 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- NAV -->
+    <style>
+      .jv-nav { position:fixed;top:0;left:0;right:0;height:52px;z-index:1000;background:rgba(0,0,0,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,212,255,0.2);display:flex;align-items:center;padding:0 24px;gap:0; }
+      .jv-nav__brand { color:#00d4ff;font-family:"Share Tech Mono","Courier New",monospace;font-size:15px;letter-spacing:0.2em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;text-decoration:none; }
+      .jv-nav__links { display:flex;align-items:center;gap:32px;list-style:none;margin:0 auto;padding:0; }
+      .jv-nav__links a { color:rgba(255,255,255,0.5);text-decoration:none;font-family:"Share Tech Mono","Courier New",monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;padding-bottom:2px;border-bottom:1px solid transparent;transition:color 0.2s,border-color 0.2s; }
+      .jv-nav__links a:hover { color:rgba(255,255,255,0.85); }
+      .jv-nav__user { font-family:"Share Tech Mono","Courier New",monospace;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.06em;white-space:nowrap;flex-shrink:0; }
+      @media(max-width:768px){.jv-nav__links,.jv-nav__user{display:none;}}
+    </style>
+    <nav class="jv-nav" aria-label="Main navigation">
+      <a class="jv-nav__brand" href="/index.html">JARVIS</a>
+      <ul class="jv-nav__links" role="list">
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/journal.html">Journal</a></li>
+      </ul>
+      <span class="jv-nav__user" id="jv-nav-user"></span>
+    </nav>
+
+    <div class="setup-wrapper">
+
+      <!-- Progress -->
+      <div class="progress-bar" id="progress-bar">
+        <div class="progress-step active" id="ps-db">
+          <div class="progress-step__dot"></div>
+          <div class="progress-step__label">Select DB</div>
+        </div>
+        <div class="progress-line" id="pl-1"></div>
+        <div class="progress-step" id="ps-map">
+          <div class="progress-step__dot"></div>
+          <div class="progress-step__label">Map Columns</div>
+        </div>
+        <div class="progress-line" id="pl-2"></div>
+        <div class="progress-step" id="ps-sync">
+          <div class="progress-step__dot"></div>
+          <div class="progress-step__label">Sync</div>
+        </div>
+      </div>
+
+      <!-- Step 1: Select Database -->
+      <div class="setup-panel" id="step-db">
+        <div class="setup-panel__eyebrow">Step 1 of 3</div>
+        <h1 class="setup-panel__title">Select your trade journal</h1>
+        <p class="setup-panel__sub">Choose the Notion database that contains your trades. Only databases you've shared with Jarvis will appear.</p>
+        <div class="db-list" id="db-list">
+          <div class="status-msg" id="db-loading">Loading databases...</div>
+        </div>
+        <div class="status-msg error" id="db-error"></div>
+      </div>
+
+      <!-- Step 2: Map Columns -->
+      <div class="setup-panel" id="step-map" style="display:none">
+        <div class="setup-panel__eyebrow">Step 2 of 3</div>
+        <h1 class="setup-panel__title">Map your columns</h1>
+        <p class="setup-panel__sub">Match each Jarvis field to the column name in your Notion database. Date and Outcome are required.</p>
+        <div class="map-grid" id="map-grid"></div>
+        <button class="setup-btn primary" id="save-mapping-btn">Save Mapping</button>
+        <div class="status-msg" id="map-status"></div>
+      </div>
+
+      <!-- Step 3: Sync -->
+      <div class="setup-panel" id="step-sync" style="display:none">
+        <div class="setup-panel__eyebrow">Step 3 of 3</div>
+        <h1 class="setup-panel__title">Sync your trades</h1>
+        <p class="setup-panel__sub">Pull all your trades from Notion into Jarvis. This may take a moment for large databases.</p>
+        <button class="setup-btn primary" id="sync-btn">Sync Now</button>
+        <div id="sync-spinner" class="spinner" style="display:none"></div>
+        <div class="status-msg" id="sync-status"></div>
+        <div id="sync-result" style="display:none">
+          <div class="result-count">
+            <div class="result-count__number" id="sync-count">0</div>
+            <div class="result-count__label">Trades synced</div>
+          </div>
+          <a href="/journal.html">
+            <button class="setup-btn" style="margin-top:32px">View Journal →</button>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      (function () {
+        // ── user ──
+        const userId = localStorage.getItem("jarvis_user") || localStorage.getItem("user_id") || "aidenpasque11@gmail.com";
+        if (!userId) { location.href = "/index.html"; return; }
+        const navUser = document.getElementById("jv-nav-user");
+        if (navUser) navUser.textContent = userId;
+
+        let selectedDbId = null;
+        let notionColumns = [];
+
+        const JARVIS_FIELDS = [
+          { key: "date",      label: "Date",         required: true },
+          { key: "outcome",   label: "Outcome",      required: true },
+          { key: "rr",        label: "RR",           required: false },
+          { key: "session",   label: "Session",      required: false },
+          { key: "pair",      label: "Pair",         required: false },
+          { key: "direction", label: "Direction",    required: false },
+          { key: "notes",     label: "Notes",        required: false },
+          { key: "account",   label: "Account",      required: false },
+          { key: "model",     label: "Entry Model",  required: false },
+        ];
+
+        // ── progress ──
+        function setStep(step) {
+          document.getElementById("step-db").style.display   = step === 1 ? "" : "none";
+          document.getElementById("step-map").style.display  = step === 2 ? "" : "none";
+          document.getElementById("step-sync").style.display = step === 3 ? "" : "none";
+
+          const psDb   = document.getElementById("ps-db");
+          const psMap  = document.getElementById("ps-map");
+          const psSync = document.getElementById("ps-sync");
+          const pl1    = document.getElementById("pl-1");
+          const pl2    = document.getElementById("pl-2");
+
+          psDb.className   = "progress-step" + (step === 1 ? " active" : step > 1 ? " done" : "");
+          psMap.className  = "progress-step" + (step === 2 ? " active" : step > 2 ? " done" : "");
+          psSync.className = "progress-step" + (step === 3 ? " active" : "");
+          pl1.className    = "progress-line" + (step > 1 ? " done" : "");
+          pl2.className    = "progress-line" + (step > 2 ? " done" : "");
+        }
+
+        // ── step 1: load databases ──
+        async function loadDatabases() {
+          const list = document.getElementById("db-list");
+          const errEl = document.getElementById("db-error");
+          try {
+            const r = await fetch(`/api/notion/databases?user_id=${encodeURIComponent(userId)}`, { cache: "no-store" });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Failed to load databases");
+            const { databases } = data;
+            list.innerHTML = "";
+            if (!databases || databases.length === 0) {
+              list.innerHTML = '<div class="status-msg">No databases found. Make sure you\'ve shared your database with the Jarvis integration in Notion.</div>';
+              return;
+            }
+            databases.forEach((db) => {
+              const card = document.createElement("div");
+              card.className = "db-card";
+              card.innerHTML = `<span class="db-card__name">${db.name}</span><span class="db-card__arrow">→</span>`;
+              card.addEventListener("click", () => selectDatabase(db.id, db.name, card));
+              list.appendChild(card);
+            });
+          } catch (e) {
+            list.innerHTML = "";
+            errEl.textContent = e.message;
+          }
+        }
+
+        async function selectDatabase(dbId, dbName, card) {
+          document.querySelectorAll(".db-card").forEach(c => c.classList.remove("selected"));
+          card.classList.add("selected");
+          selectedDbId = dbId;
+          await loadColumns(dbId);
+        }
+
+        // ── step 2: load columns ──
+        async function loadColumns(dbId) {
+          const statusEl = document.getElementById("map-status");
+          statusEl.textContent = "Loading columns...";
+          statusEl.className = "status-msg";
+          setStep(2);
+
+          try {
+            const r = await fetch(`/api/notion/columns?user_id=${encodeURIComponent(userId)}&database_id=${encodeURIComponent(dbId)}`, { cache: "no-store" });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Failed to load columns");
+            notionColumns = data.columns || [];
+            statusEl.textContent = "";
+            buildMappingForm();
+          } catch (e) {
+            statusEl.textContent = e.message;
+            statusEl.className = "status-msg error";
+          }
+        }
+
+        function buildMappingForm() {
+          const grid = document.getElementById("map-grid");
+          grid.innerHTML = "";
+          JARVIS_FIELDS.forEach(({ key, label, required }) => {
+            const row = document.createElement("div");
+            row.className = "map-row";
+
+            const lbl = document.createElement("div");
+            lbl.className = "map-row__label";
+            lbl.innerHTML = label + (required ? '<span>*</span>' : '');
+
+            const sel = document.createElement("select");
+            sel.className = "map-select";
+            sel.id = `map-${key}`;
+            if (!required) {
+              const blank = document.createElement("option");
+              blank.value = "";
+              blank.textContent = "— skip —";
+              sel.appendChild(blank);
+            }
+            notionColumns.forEach(({ name }) => {
+              const opt = document.createElement("option");
+              opt.value = name;
+              opt.textContent = name;
+              // Auto-select by fuzzy match
+              if (name.toLowerCase().includes(key.toLowerCase()) ||
+                  key.toLowerCase().includes(name.toLowerCase().replace(/\s/g, ""))) {
+                opt.selected = true;
+              }
+              sel.appendChild(opt);
+            });
+
+            row.appendChild(lbl);
+            row.appendChild(sel);
+            grid.appendChild(row);
+          });
+        }
+
+        document.getElementById("save-mapping-btn").addEventListener("click", async () => {
+          const statusEl = document.getElementById("map-status");
+          const btn = document.getElementById("save-mapping-btn");
+
+          const mapping = {};
+          for (const { key, required } of JARVIS_FIELDS) {
+            const val = document.getElementById(`map-${key}`)?.value;
+            if (required && !val) {
+              statusEl.textContent = `${key} is required — please select a column.`;
+              statusEl.className = "status-msg error";
+              return;
+            }
+            if (val) mapping[key] = val;
+          }
+
+          btn.disabled = true;
+          statusEl.textContent = "Saving...";
+          statusEl.className = "status-msg";
+
+          try {
+            const r = await fetch("/api/notion/save-mapping", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: userId, database_id: selectedDbId, mapping }),
+              cache: "no-store",
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Save failed");
+            statusEl.textContent = "";
+            setStep(3);
+          } catch (e) {
+            statusEl.textContent = e.message;
+            statusEl.className = "status-msg error";
+            btn.disabled = false;
+          }
+        });
+
+        // ── step 3: sync ──
+        document.getElementById("sync-btn").addEventListener("click", async () => {
+          const btn      = document.getElementById("sync-btn");
+          const spinner  = document.getElementById("sync-spinner");
+          const statusEl = document.getElementById("sync-status");
+          const resultEl = document.getElementById("sync-result");
+          const countEl  = document.getElementById("sync-count");
+
+          btn.disabled = true;
+          spinner.style.display = "block";
+          statusEl.textContent = "Syncing your trades...";
+          statusEl.className = "status-msg";
+
+          try {
+            const r = await fetch("/api/notion/sync-user", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id: userId }),
+              cache: "no-store",
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Sync failed");
+            spinner.style.display = "none";
+            statusEl.textContent = "";
+            countEl.textContent = data.synced;
+            resultEl.style.display = "block";
+            document.getElementById("ps-sync").className = "progress-step done";
+          } catch (e) {
+            spinner.style.display = "none";
+            statusEl.textContent = e.message;
+            statusEl.className = "status-msg error";
+            btn.disabled = false;
+          }
+        });
+
+        // ── particles ──
+        (function () {
+          const canvas = document.getElementById("particle-canvas");
+          if (!canvas) return;
+          const ctx = canvas.getContext("2d");
+          const particles = [];
+          const COUNT = 55;
+
+          function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+          resize();
+          window.addEventListener("resize", resize);
+
+          class Particle {
+            constructor() { this.reset(); }
+            reset() {
+              this.x = Math.random() * canvas.width;
+              this.y = Math.random() * canvas.height;
+              this.vx = (Math.random() - 0.5) * 0.25;
+              this.vy = (Math.random() - 0.5) * 0.25;
+              this.alpha = Math.random() * 0.35 + 0.05;
+              this.r = Math.random() * 1.2 + 0.3;
+            }
+            update() {
+              this.x += this.vx; this.y += this.vy;
+              if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+            }
+            draw() {
+              ctx.beginPath();
+              ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+              ctx.fillStyle = `rgba(0,191,255,${this.alpha})`;
+              ctx.fill();
+            }
+          }
+          for (let i = 0; i < COUNT; i++) particles.push(new Particle());
+          function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(loop);
+          }
+          requestAnimationFrame(loop);
+        })();
+
+        // Boot
+        loadDatabases();
+      })();
+    </script>
+  </body>
+</html>
