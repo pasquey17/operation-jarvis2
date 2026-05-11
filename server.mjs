@@ -3365,15 +3365,16 @@ async function handleNotionSyncUser(req, res) {
 
   if (batch.length > 0) {
     try {
+      const upsertCols = "notion_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,updated_at";
       const upsertRes = await fetch(
-        `${url}/rest/v1/${tableEnc}`,
+        `${url}/rest/v1/${tableEnc}?on_conflict=notion_id&columns=${upsertCols}`,
         {
           method: "POST",
           headers: {
             apikey: srKey,
             Authorization: `Bearer ${srKey}`,
             "Content-Type": "application/json",
-            Prefer: "resolution=merge-duplicates",
+            Prefer: "resolution=merge-duplicates,return=minimal",
           },
           body: JSON.stringify(batch),
         }
