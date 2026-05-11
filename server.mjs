@@ -3285,20 +3285,21 @@ async function handleNotionSyncUser(req, res) {
     const props = page.properties ?? {};
     const get = (field) => notionPropValue(props[mapping[field]]);
 
+    const rrRaw = get("rr");
     const trade = {
-      notion_id:   page.id,
+      notion_id:    page.id,
       user_id,
-      date:        get("date"),
-      outcome:     get("outcome"),
-      rr:          get("rr") != null ? Number(get("rr")) : null,
-      session:     get("session"),
-      pair:        get("pair"),
-      direction:   get("direction"),
-      notes:       get("notes"),
-      account:     get("account"),
-      model:       get("model"),
-      notion_url:  page.url ?? null,
+      date:         get("date"),
+      outcome:      get("outcome"),
+      rr:           rrRaw != null ? Number(rrRaw) : null,
+      session:      get("session"),
+      pair:         get("pair"),
+      direction:    get("direction"),
+      notes:        get("notes"),
+      model:        get("model"),
+      notion_url:   page.url ?? null,
       trade_images: get("photos") ?? null,
+      updated_at:   new Date().toISOString(),
     };
 
     // Skip rows with no date or outcome
