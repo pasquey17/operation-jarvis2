@@ -3111,19 +3111,49 @@ async function handleNotionColumns(req, res) {
       return;
     }
 
-    // Fallback: schema had no properties — query one page to infer columns (standard DBs only)
-    console.log("[notion/columns] no schema properties, falling back to page query");
+    // Fallback: schema had no properties — try fetching source DB schemas from data_sources,
+    // then fall back to querying the merged DB directly with 2025-09-03.
+    console.log("[notion/columns] no schema properties, trying data_sources fallback");
+
+    // Try to GET each source database's schema (they may expose properties)
+    const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
+    for (const src of dataSources) {
+      const srcId = src.id ?? src;
+      if (!srcId || srcId === databaseId) continue;
+      try {
+        const srcRes = await fetch(`https://api.notion.com/v1/databases/${srcId}`, {
+          headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
+        });
+        const srcRaw = await srcRes.text();
+        console.log(`[notion/columns] source schema ${srcId} → ${srcRes.status}:`, srcRaw.slice(0, 200));
+        if (srcRes.ok) {
+          const srcSchema = JSON.parse(srcRaw);
+          if (srcSchema.properties && Object.keys(srcSchema.properties).length > 0) {
+            const columns = Object.entries(srcSchema.properties).map(([name, prop]) => ({
+              name,
+              type: prop.type ?? "unknown",
+            }));
+            console.log("[notion/columns] source schema columns:", columns.map(c => c.name));
+            json(res, 200, { columns });
+            return;
+          }
+        }
+      } catch { /* try next source */ }
+    }
+
+    // Last resort: query the merged DB with 2025-09-03 (required version for merged DBs)
+    console.log("[notion/columns] falling back to direct query with 2025-09-03");
     const r = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Notion-Version": "2022-06-28",
+        "Notion-Version": "2025-09-03",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ page_size: 1 }),
     });
     const queryRaw = await r.text();
-    console.log(`[notion/columns] fallback query → ${r.status}:`, queryRaw.slice(0, 300));
+    console.log(`[notion/columns] direct query → ${r.status}:`, queryRaw.slice(0, 300));
 
     if (!r.ok) {
       json(res, 502, { error: `Notion page query failed (${r.status}): ${queryRaw}` }); return;
