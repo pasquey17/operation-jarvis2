@@ -3086,6 +3086,7 @@ async function handleNotionColumns(req, res) {
 
   try {
     const queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+    console.log("[notion/columns] databaseId bytes:", Buffer.from(databaseId).toString("hex").slice(0, 20));
     console.log("[notion/columns] POST", queryUrl);
     const qr = await fetch(queryUrl, {
       method: "POST",
