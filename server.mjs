@@ -3049,21 +3049,57 @@ async function handleNotionColumns(req, res) {
 
   if (!accessToken) { json(res, 404, { error: "No Notion connection found for this user" }); return; }
 
+  const notionHeaders = { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" };
+
   try {
-    const dr = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
-    });
+    const dr = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, { headers: notionHeaders });
     if (!dr.ok) {
       const err = await dr.text().catch(() => "unknown");
       json(res, 502, { error: `Notion database fetch failed: ${err}` }); return;
     }
     const data = await dr.json();
-    console.log("[notion/columns] properties keys:", Object.keys(data.properties || data.parent?.properties || {}));
-    const props = data.properties ?? data.parent?.properties ?? {};
+
+    // Detailed diagnostics
+    console.log("[notion/columns] top-level keys:", Object.keys(data));
+    console.log("[notion/columns] object type:", data.object);
+    console.log("[notion/columns] properties keys:", Object.keys(data.properties ?? {}));
+    console.log("[notion/columns] parent:", JSON.stringify(data.parent));
+    if (data.child_data_source_ids) {
+      console.log("[notion/columns] child_data_source_ids:", data.child_data_source_ids);
+    }
+
+    let props = data.properties ?? {};
+
+    // Linked databases: properties may be empty — fall back to querying a page and reading its property keys
+    if (Object.keys(props).length === 0) {
+      console.log("[notion/columns] properties empty — querying pages to infer schema");
+      const qr = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+        method: "POST",
+        headers: { ...notionHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ page_size: 1 }),
+      });
+      if (qr.ok) {
+        const qdata = await qr.json();
+        const firstPage = qdata.results?.[0];
+        if (firstPage?.properties) {
+          console.log("[notion/columns] inferred from page properties:", Object.keys(firstPage.properties));
+          props = Object.fromEntries(
+            Object.entries(firstPage.properties).map(([name, prop]) => [name, { type: prop.type }])
+          );
+        } else {
+          console.log("[notion/columns] page query returned no pages or no properties");
+        }
+      } else {
+        const qErr = await qr.text().catch(() => "unknown");
+        console.log("[notion/columns] page query failed:", qr.status, qErr);
+      }
+    }
+
     const columns = Object.entries(props).map(([name, prop]) => ({
       name,
       type: prop.type ?? "unknown",
     }));
+    console.log("[notion/columns] returning", columns.length, "columns");
     json(res, 200, { columns });
   } catch (e) {
     json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
