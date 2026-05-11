@@ -3049,69 +3049,34 @@ async function handleNotionColumns(req, res) {
 
   if (!accessToken) { json(res, 404, { error: "No Notion connection found for this user" }); return; }
 
-  const notionHeaders = { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" };
-
   try {
-    const dr = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, { headers: notionHeaders });
-    if (!dr.ok) {
-      const err = await dr.text().catch(() => "unknown");
-      json(res, 502, { error: `Notion database fetch failed: ${err}` }); return;
-    }
-    const data = await dr.json();
-    console.log("[notion/columns] top-level keys:", Object.keys(data));
-    console.log("[notion/columns] data_sources:", JSON.stringify(data.data_sources ?? null));
+    console.log("[notion/columns] querying database for one page:", databaseId);
+    const qr = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Notion-Version": "2025-09-03",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ page_size: 1 }),
+    });
 
-    let mergedProps = {};
+    const raw = await qr.text();
+    console.log("[notion/columns] query status:", qr.status, "body:", raw.slice(0, 800));
 
-    // Standard database — has properties directly
-    if (data.properties && Object.keys(data.properties).length > 0) {
-      mergedProps = data.properties;
-      console.log("[notion/columns] using direct properties:", Object.keys(mergedProps));
-    }
-
-    // Linked database — has data_sources array of { id } objects
-    if (Object.keys(mergedProps).length === 0 && Array.isArray(data.data_sources) && data.data_sources.length > 0) {
-      console.log("[notion/columns] linked DB — fetching", data.data_sources.length, "source(s)");
-      const sourceResults = await Promise.all(
-        data.data_sources.map(async (src) => {
-          const sourceId = src.id ?? src;
-          console.log("[notion/columns] fetching source:", sourceId);
-          const sr = await fetch(`https://api.notion.com/v1/databases/${sourceId}`, { headers: notionHeaders });
-          if (!sr.ok) {
-            console.log("[notion/columns] source fetch failed:", sourceId, sr.status);
-            return {};
-          }
-          const sdata = await sr.json();
-          console.log("[notion/columns] source", sourceId, "property keys:", Object.keys(sdata.properties ?? {}));
-          return sdata.properties ?? {};
-        })
-      );
-      for (const sourceProps of sourceResults) {
-        Object.assign(mergedProps, sourceProps);
-      }
+    if (!qr.ok) {
+      json(res, 502, { error: `Notion query failed (${qr.status}): ${raw}` }); return;
     }
 
-    // Final fallback — query a real page and infer schema from its property types
-    if (Object.keys(mergedProps).length === 0) {
-      console.log("[notion/columns] still empty — querying one page to infer schema");
-      const qr = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-        method: "POST",
-        headers: { ...notionHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({ page_size: 1 }),
-      });
-      if (qr.ok) {
-        const qdata = await qr.json();
-        const firstPage = qdata.results?.[0];
-        if (firstPage?.properties) {
-          console.log("[notion/columns] inferred from page:", Object.keys(firstPage.properties));
-          mergedProps = Object.fromEntries(
-            Object.entries(firstPage.properties).map(([name, prop]) => [name, { type: prop.type }])
-          );
-        }
-      }
+    let qdata;
+    try { qdata = JSON.parse(raw); } catch { json(res, 502, { error: "Invalid JSON from Notion" }); return; }
+
+    const firstPage = qdata.results?.[0];
+    if (!firstPage?.properties) {
+      json(res, 200, { columns: [], debug: "Query succeeded but returned no pages or no properties" }); return;
     }
 
-    const columns = Object.entries(mergedProps).map(([name, prop]) => ({
+    const columns = Object.entries(firstPage.properties).map(([name, prop]) => ({
       name,
       type: prop.type ?? "unknown",
     }));
