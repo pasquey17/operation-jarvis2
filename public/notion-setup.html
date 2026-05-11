@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/style.css" />
     <style>
-      body { overflow-y: auto; overflow-x: hidden; height: auto; }
+      html, body { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; }
 
       .setup-wrapper {
         position: relative;
@@ -395,8 +395,14 @@
             const r = await fetch(`/api/notion/columns?user_id=${encodeURIComponent(userId)}&database_id=${encodeURIComponent(dbId)}`, { cache: "no-store" });
             const data = await r.json();
             if (!r.ok) throw new Error(data.error || "Failed to load columns");
-            notionColumns = data.columns || [];
-            statusEl.textContent = "";
+            notionColumns = Array.isArray(data.columns) ? data.columns : [];
+            if (notionColumns.length === 0) {
+              statusEl.textContent = "No columns found in this database. Make sure the database ID is correct and Jarvis has access.";
+              statusEl.className = "status-msg error";
+              return;
+            }
+            statusEl.textContent = `${notionColumns.length} columns found. Map them below.`;
+            statusEl.className = "status-msg success";
             buildMappingForm();
           } catch (e) {
             statusEl.textContent = e.message;
@@ -418,12 +424,10 @@
             const sel = document.createElement("select");
             sel.className = "map-select";
             sel.id = `map-${key}`;
-            if (!required) {
-              const blank = document.createElement("option");
-              blank.value = "";
-              blank.textContent = "— skip —";
-              sel.appendChild(blank);
-            }
+            const blank = document.createElement("option");
+            blank.value = "";
+            blank.textContent = required ? "— select column —" : "— skip —";
+            sel.appendChild(blank);
             notionColumns.forEach(({ name }) => {
               const opt = document.createElement("option");
               opt.value = name;
