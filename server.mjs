@@ -3018,6 +3018,7 @@ function notionPropValue(prop) {
     case "date":        return prop.date?.start ?? null;
     case "checkbox":    return prop.checkbox ?? null;
     case "url":         return prop.url ?? null;
+    case "files":       return prop.files?.map((f) => f.external?.url ?? f.file?.url).filter(Boolean) ?? null;
     case "email":       return prop.email ?? null;
     case "phone_number":return prop.phone_number ?? null;
     case "formula":     return prop.formula?.string ?? prop.formula?.number ?? null;
@@ -3057,9 +3058,11 @@ async function handleNotionColumns(req, res) {
       json(res, 502, { error: `Notion database fetch failed: ${err}` }); return;
     }
     const data = await dr.json();
-    const columns = Object.entries(data.properties ?? {}).map(([name, prop]) => ({
+    console.log("[notion/columns] raw response:", JSON.stringify(data).slice(0, 500));
+    const props = data.properties ?? data.parent?.properties ?? {};
+    const columns = Object.entries(props).map(([name, prop]) => ({
       name,
-      type: prop.type,
+      type: prop.type ?? "unknown",
     }));
     json(res, 200, { columns });
   } catch (e) {
@@ -3191,6 +3194,7 @@ async function handleNotionSyncUser(req, res) {
       account:     get("account"),
       model:       get("model"),
       notion_url:  page.url ?? null,
+      trade_images: get("photos") ?? null,
     };
 
     // Skip rows with no date or outcome
