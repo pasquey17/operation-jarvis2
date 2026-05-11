@@ -3354,7 +3354,7 @@ async function handleNotionSyncUser(req, res) {
       notes:        get("notes"),
       model:        get("model"),
       notion_url:   page.url ?? null,
-      trade_images: get("photos") ?? null,
+      trade_images: get("photos") ?? [],
       updated_at:   new Date().toISOString(),
     };
 
