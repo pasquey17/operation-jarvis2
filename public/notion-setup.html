@@ -573,9 +573,11 @@
           return wrap;
         }
 
-        // isCustom=false: left=Jarvis label, right=Notion dropdown (auto-matched)
-        // isCustom=true:  left=text input for key, right=Notion dropdown (blank)
-        function makeRow(jarvisKey, jarvisLabel, required, hints, isCustom) {
+        // Three row types:
+        //  "jarvis" – left=Jarvis field label, right=full Notion dropdown (auto-matched)
+        //  "extra"  – left=Notion col name label, right=text input for optional Jarvis key
+        //  "custom" – left=text input for key,   right=full Notion dropdown (blank)
+        function makeRow(type, data) {
           const row = document.createElement("div");
           row.className = "map-row";
           row.draggable = true;
@@ -584,42 +586,75 @@
           handle.className = "drag-handle";
           handle.textContent = "⠿";
 
-          let leftEl;
-          if (isCustom) {
+          let leftEl, rightEl;
+
+          if (type === "jarvis") {
+            const { key, label, required, hints } = data;
+            row.dataset.jarvisKey = key;
+            const lbl = document.createElement("span");
+            lbl.className = "map-field-label";
+            lbl.title = label;
+            lbl.innerHTML = label + (required ? '<span class="required-star">*</span>' : '');
+            leftEl = lbl;
+            rightEl = makeNotionSelect(bestNotionMatch(hints));
+
+          } else if (type === "extra") {
+            const { notionColName } = data;
+            row.dataset.notionCol = notionColName;
+            const lbl = document.createElement("span");
+            lbl.className = "map-notion-col";
+            lbl.title = notionColName;
+            lbl.textContent = notionColName;
+            leftEl = lbl;
+            const inp = document.createElement("input");
+            inp.className = "map-key-input";
+            inp.type = "text";
+            inp.placeholder = "skip";
+            rightEl = inp;
+
+          } else { // "custom"
             const inp = document.createElement("input");
             inp.className = "map-key-input";
             inp.type = "text";
             inp.placeholder = "field name";
             leftEl = inp;
-          } else {
-            row.dataset.jarvisKey = jarvisKey;
-            const lbl = document.createElement("span");
-            lbl.className = "map-field-label";
-            lbl.title = jarvisLabel;
-            lbl.innerHTML = jarvisLabel + (required ? '<span class="required-star">*</span>' : '');
-            leftEl = lbl;
+            rightEl = makeNotionSelect("");
           }
 
           const arrow = document.createElement("span");
           arrow.className = "map-arrow";
           arrow.textContent = "→";
 
-          const autoVal = isCustom ? "" : bestNotionMatch(hints);
-          const selectWrap = makeNotionSelect(autoVal);
-
           row.appendChild(handle);
           row.appendChild(leftEl);
           row.appendChild(arrow);
-          row.appendChild(selectWrap);
+          row.appendChild(rightEl);
           return row;
         }
 
         function buildMappingForm() {
           const grid = document.getElementById("map-grid");
           grid.innerHTML = "";
-          JARVIS_FIELDS.forEach(({ key, label, required, hints }) => {
-            grid.appendChild(makeRow(key, label, required, hints, false));
+
+          // Track which Notion columns are claimed by a JARVIS_FIELD auto-match
+          const claimed = new Set();
+          JARVIS_FIELDS.forEach(({ hints }) => {
+            const m = bestNotionMatch(hints);
+            if (m) claimed.add(m);
           });
+
+          // 10 fixed Jarvis field rows
+          JARVIS_FIELDS.forEach(({ key, label, required, hints }) => {
+            grid.appendChild(makeRow("jarvis", { key, label, required, hints }));
+          });
+
+          // Remaining Notion columns not claimed by any Jarvis field
+          notionColumns.forEach(({ name }) => {
+            if (!claimed.has(name)) {
+              grid.appendChild(makeRow("extra", { notionColName: name }));
+            }
+          });
+
           initDragDrop(grid);
         }
 
@@ -664,19 +699,30 @@
 
         document.getElementById("add-field-btn").addEventListener("click", () => {
           const grid = document.getElementById("map-grid");
-          grid.appendChild(makeRow("", "", false, [], true));
+          grid.appendChild(makeRow("custom", {}));
         });
 
         document.getElementById("save-mapping-btn").addEventListener("click", async () => {
           const statusEl = document.getElementById("map-status");
           const btn = document.getElementById("save-mapping-btn");
 
+          const slugify = s => s.trim().toLowerCase().replace(/\s+/g, "_");
           const mapping = {};
           document.querySelectorAll("#map-grid .map-row").forEach(row => {
-            // Fixed rows store the jarvis key in dataset; custom rows use the text input.
-            const jarvisKey = row.dataset.jarvisKey
-              || (row.querySelector(".map-key-input")?.value || "").trim().toLowerCase().replace(/\s+/g, "_");
-            const notionCol = row.querySelector(".map-select")?.value || "";
+            let jarvisKey, notionCol;
+            if (row.dataset.jarvisKey) {
+              // jarvis row: key fixed, notion col from dropdown
+              jarvisKey = row.dataset.jarvisKey;
+              notionCol = row.querySelector(".map-select")?.value || "";
+            } else if ("notionCol" in row.dataset) {
+              // extra row: notion col fixed, jarvis key from text input
+              notionCol = row.dataset.notionCol;
+              jarvisKey = slugify(row.querySelector(".map-key-input")?.value || "");
+            } else {
+              // custom row: both from inputs
+              jarvisKey = slugify(row.querySelector(".map-key-input")?.value || "");
+              notionCol = row.querySelector(".map-select")?.value || "";
+            }
             if (jarvisKey && notionCol) mapping[jarvisKey] = notionCol;
           });
 
