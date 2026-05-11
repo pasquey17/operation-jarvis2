@@ -2904,16 +2904,26 @@ async function handleNotionCallback(req, res) {
     created_at: new Date().toISOString(),
   };
 
-  await fetch(`${url}/rest/v1/notion_connections`, {
-    method: "POST",
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates",
-    },
-    body: JSON.stringify(row),
-  });
+  try {
+    const upsertRes = await fetch(`${url}/rest/v1/notion_connections`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify(row),
+    });
+    if (!upsertRes.ok) {
+      const errText = await upsertRes.text().catch(() => "unknown");
+      console.error("[notion/callback] Supabase upsert failed:", upsertRes.status, errText);
+    } else {
+      console.log("[notion/callback] Supabase upsert success for user:", userId, "workspace:", row.workspace_name);
+    }
+  } catch (e) {
+    console.error("[notion/callback] Supabase upsert error:", String(e.message ?? e));
+  }
 
   send(res, 302, "", { Location: "/app/onboarding/" });
 }
