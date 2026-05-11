@@ -1723,7 +1723,7 @@ async function handleTrades(req, res) {
       new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
-    await maybeSyncNotion(userId);
+    maybeSyncNotion(userId).catch(() => {});
     const payload = await fetchTradesFromSupabase(userId);
     if (!payload.records.length) {
       json(res, 200, {
@@ -2011,9 +2011,9 @@ async function handleChat(req, res) {
     return;
   }
 
-  // Profile fetch and Notion sync run in parallel — both must finish before the trades query
+  // Profile fetch runs in parallel; Notion sync fires in background (fire-and-forget)
   const profilePromise = fetchUserProfile(userId);
-  await maybeSyncNotion(userId);
+  maybeSyncNotion(userId).catch(() => {});
 
   let trades;
   try {
