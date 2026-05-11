@@ -168,6 +168,16 @@
         white-space: nowrap;
         min-width: 0;
       }
+      .map-field-label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: rgba(255,255,255,0.75);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+      }
+      .required-star { color: #00d4ff; margin-left: 2px; font-size: 10px; }
       .map-arrow {
         color: rgba(0,212,255,0.35);
         font-size: 12px;
@@ -395,18 +405,12 @@
       <div class="setup-panel" id="step-map" style="display:none">
         <div class="setup-panel__eyebrow">Step 2 of 3</div>
         <h1 class="setup-panel__title">Map your columns</h1>
-        <p class="setup-panel__sub">Every Notion column appears below. Type the Jarvis field name to map it (e.g. <em style="color:rgba(0,212,255,0.7)">date</em>, <em style="color:rgba(0,212,255,0.7)">outcome</em>) — or leave blank to skip. Drag rows to reorder.</p>
-        <datalist id="jarvis-keys-list">
-          <option value="date"><option value="outcome"><option value="rr">
-          <option value="session"><option value="pair"><option value="direction">
-          <option value="notes"><option value="account"><option value="model">
-          <option value="photos">
-        </datalist>
+        <p class="setup-panel__sub">Select which Notion column maps to each Jarvis field. All columns are available in every dropdown. Date and Outcome are required.</p>
         <div class="map-header">
           <span></span>
-          <span>Notion column</span>
+          <span>Jarvis field</span>
           <span></span>
-          <span>Jarvis field key</span>
+          <span>Notion column</span>
         </div>
         <div class="map-grid" id="map-grid"></div>
         <button class="add-field-btn" id="add-field-btn">+ Add custom field</button>
@@ -447,24 +451,25 @@
         let notionColumns = [];
         let notionDataSourceId = null;
 
-        // Auto-match hints: jarvis key → substrings to look for in Notion column names
-        const KEY_HINTS = {
-          date:      ["date", "day", "traded", "time"],
-          outcome:   ["outcome", "result", "win", "loss", "pnl", "p&l", "profitloss"],
-          rr:        ["rr", "r:r", "risk", "reward", "ratio"],
-          session:   ["session", "window"],
-          pair:      ["pair", "symbol", "instrument", "market", "currency"],
-          direction: ["direction", "side", "long", "short", "bias"],
-          notes:     ["notes", "note", "comment", "journal", "thought", "review"],
-          account:   ["account", "acct", "broker"],
-          model:     ["model", "setup", "strategy", "pattern", "entry"],
-          photos:    ["photo", "image", "screenshot", "chart", "attachment"],
-        };
+        const JARVIS_FIELDS = [
+          { key: "date",      label: "Date",        required: true,  hints: ["date","day","traded"] },
+          { key: "outcome",   label: "Outcome",     required: true,  hints: ["outcome","result","win","loss","pnl","pl","profit"] },
+          { key: "rr",        label: "RR",          required: false, hints: ["rr","r:r","riskreward","risk","reward","ratio"] },
+          { key: "session",   label: "Session",     required: false, hints: ["session","window"] },
+          { key: "pair",      label: "Pair",        required: false, hints: ["pair","symbol","instrument","market","currency"] },
+          { key: "direction", label: "Direction",   required: false, hints: ["direction","side","position","long","short","bias"] },
+          { key: "notes",     label: "Notes",       required: false, hints: ["notes","note","comment","journal","summary","thought","review"] },
+          { key: "account",   label: "Account",     required: false, hints: ["account","acct","broker"] },
+          { key: "model",     label: "Entry Model", required: false, hints: ["model","setup","strategy","pattern","entry"] },
+          { key: "photos",    label: "Photos",      required: false, hints: ["photo","image","screenshot","chart","attachment","file"] },
+        ];
 
-        function autoMatchKey(notionColName) {
-          const lc = notionColName.toLowerCase().replace(/[\s_\-]/g, "");
-          for (const [key, hints] of Object.entries(KEY_HINTS)) {
-            if (hints.some(h => lc.includes(h.replace(/[\s_\-]/g, "")))) return key;
+        // Return the first Notion column name whose normalised form contains any hint.
+        function norm(s) { return s.toLowerCase().replace(/[\s_\-&:]/g, ""); }
+        function bestNotionMatch(hints) {
+          for (const { name } of notionColumns) {
+            const n = norm(name);
+            if (hints.some(h => n.includes(norm(h)))) return name;
           }
           return "";
         }
@@ -547,67 +552,73 @@
           }
         }
 
-        function makeRow(notionColName, jarvisKey, isCustom) {
+        // Build a full Notion-column <select> with all 34 options; preselect autoVal if provided.
+        function makeNotionSelect(autoVal) {
+          const wrap = document.createElement("div");
+          wrap.className = "map-select-wrap";
+          const sel = document.createElement("select");
+          sel.className = "map-select";
+          const blank = document.createElement("option");
+          blank.value = "";
+          blank.textContent = "— skip —";
+          sel.appendChild(blank);
+          notionColumns.forEach(({ name }) => {
+            const opt = document.createElement("option");
+            opt.value = name;
+            opt.textContent = name;
+            if (name === autoVal) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          wrap.appendChild(sel);
+          return wrap;
+        }
+
+        // isCustom=false: left=Jarvis label, right=Notion dropdown (auto-matched)
+        // isCustom=true:  left=text input for key, right=Notion dropdown (blank)
+        function makeRow(jarvisKey, jarvisLabel, required, hints, isCustom) {
           const row = document.createElement("div");
           row.className = "map-row";
           row.draggable = true;
 
-          // Drag handle
           const handle = document.createElement("span");
           handle.className = "drag-handle";
           handle.textContent = "⠿";
 
-          // Notion column side
-          let notionEl;
+          let leftEl;
           if (isCustom) {
-            const wrap = document.createElement("div");
-            wrap.className = "map-select-wrap";
-            const sel = document.createElement("select");
-            sel.className = "map-select map-custom-col";
-            const blank = document.createElement("option");
-            blank.value = "";
-            blank.textContent = "— notion column —";
-            sel.appendChild(blank);
-            notionColumns.forEach(({ name }) => {
-              const opt = document.createElement("option");
-              opt.value = name;
-              opt.textContent = name;
-              sel.appendChild(opt);
-            });
-            wrap.appendChild(sel);
-            notionEl = wrap;
+            const inp = document.createElement("input");
+            inp.className = "map-key-input";
+            inp.type = "text";
+            inp.placeholder = "field name";
+            leftEl = inp;
           } else {
-            row.dataset.notionCol = notionColName;
+            row.dataset.jarvisKey = jarvisKey;
             const lbl = document.createElement("span");
-            lbl.className = "map-notion-col";
-            lbl.title = notionColName;
-            lbl.textContent = notionColName;
-            notionEl = lbl;
+            lbl.className = "map-field-label";
+            lbl.title = jarvisLabel;
+            lbl.innerHTML = jarvisLabel + (required ? '<span class="required-star">*</span>' : '');
+            leftEl = lbl;
           }
 
           const arrow = document.createElement("span");
           arrow.className = "map-arrow";
           arrow.textContent = "→";
 
-          const inp = document.createElement("input");
-          inp.className = "map-key-input";
-          inp.type = "text";
-          inp.placeholder = "skip";
-          inp.value = jarvisKey;
-          inp.setAttribute("list", "jarvis-keys-list");
+          const autoVal = isCustom ? "" : bestNotionMatch(hints);
+          const selectWrap = makeNotionSelect(autoVal);
 
           row.appendChild(handle);
-          row.appendChild(notionEl);
+          row.appendChild(leftEl);
           row.appendChild(arrow);
-          row.appendChild(inp);
+          row.appendChild(selectWrap);
           return row;
         }
 
         function buildMappingForm() {
           const grid = document.getElementById("map-grid");
           grid.innerHTML = "";
-          notionColumns.forEach(({ name }) => {
-            grid.appendChild(makeRow(name, autoMatchKey(name), false));
+          JARVIS_FIELDS.forEach(({ key, label, required, hints }) => {
+            grid.appendChild(makeRow(key, label, required, hints, false));
           });
           initDragDrop(grid);
         }
@@ -653,7 +664,7 @@
 
         document.getElementById("add-field-btn").addEventListener("click", () => {
           const grid = document.getElementById("map-grid");
-          grid.appendChild(makeRow("", "", true));
+          grid.appendChild(makeRow("", "", false, [], true));
         });
 
         document.getElementById("save-mapping-btn").addEventListener("click", async () => {
@@ -662,20 +673,20 @@
 
           const mapping = {};
           document.querySelectorAll("#map-grid .map-row").forEach(row => {
-            const notionCol = row.dataset.notionCol !== undefined
-              ? row.dataset.notionCol
-              : (row.querySelector(".map-custom-col")?.value || "");
-            const jarvisKey = (row.querySelector(".map-key-input")?.value || "").trim().toLowerCase().replace(/\s+/g, "_");
-            if (notionCol && jarvisKey) mapping[jarvisKey] = notionCol;
+            // Fixed rows store the jarvis key in dataset; custom rows use the text input.
+            const jarvisKey = row.dataset.jarvisKey
+              || (row.querySelector(".map-key-input")?.value || "").trim().toLowerCase().replace(/\s+/g, "_");
+            const notionCol = row.querySelector(".map-select")?.value || "";
+            if (jarvisKey && notionCol) mapping[jarvisKey] = notionCol;
           });
 
           if (!mapping.date) {
-            statusEl.textContent = "date field is required — type 'date' next to your date column.";
+            statusEl.textContent = "Date is required — select the Notion column for Date.";
             statusEl.className = "status-msg error";
             return;
           }
           if (!mapping.outcome) {
-            statusEl.textContent = "outcome field is required — type 'outcome' next to your outcome column.";
+            statusEl.textContent = "Outcome is required — select the Notion column for Outcome.";
             statusEl.className = "status-msg error";
             return;
           }
