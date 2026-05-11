@@ -3030,7 +3030,7 @@ async function handleNotionColumns(req, res) {
   const sp = new URL(req.url, "http://localhost").searchParams;
   const userIdRaw = sp.get("user_id") || "aidenpasque11@gmail.com";
   const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
-  const databaseId = sp.get("database_id");
+  const databaseId = (sp.get("database_id") || "").replace(/-/g, "");
   if (!databaseId) { json(res, 400, { error: "database_id required" }); return; }
 
   const { url } = getSupabaseConfig();
@@ -3050,8 +3050,9 @@ async function handleNotionColumns(req, res) {
   if (!accessToken) { json(res, 404, { error: "No Notion connection found for this user" }); return; }
 
   try {
-    console.log("[notion/columns] querying database for one page:", databaseId);
-    const qr = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+    const queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+    console.log("[notion/columns] calling:", queryUrl);
+    const qr = await fetch(queryUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
