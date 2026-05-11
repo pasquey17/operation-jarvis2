@@ -2715,6 +2715,21 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/notion/connect")) {
+    await handleNotionConnect(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/notion/callback")) {
+    await handleNotionCallback(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/notion/databases")) {
+    await handleNotionDatabases(req, res);
+    return;
+  }
+
   if (req.method === "GET" && req.url.startsWith("/api/ping")) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok" }));
@@ -2804,6 +2819,160 @@ async function requestListener(req, res) {
     }
     send(res, 200, body, headers);
   });
+}
+
+// === NOTION OAUTH ===
+
+const NOTION_OAUTH_REDIRECT_URI = "https://operation-jarvis2.vercel.app/api/notion/callback";
+
+async function handleNotionConnect(req, res) {
+  const clientId = process.env.NOTION_OAUTH_CLIENT_ID?.trim();
+  if (!clientId) {
+    json(res, 500, { error: "NOTION_OAUTH_CLIENT_ID not configured" });
+    return;
+  }
+  const { searchParams } = new URL(req.url, `http://localhost`);
+  const userId = searchParams.get("user_id") || "aidenpasque11@gmail.com";
+  const state = encodeURIComponent(userId);
+  const authUrl =
+    `https://api.notion.com/v1/oauth/authorize` +
+    `?client_id=${encodeURIComponent(clientId)}` +
+    `&response_type=code` +
+    `&owner=user` +
+    `&redirect_uri=${encodeURIComponent(NOTION_OAUTH_REDIRECT_URI)}` +
+    `&state=${state}`;
+  send(res, 302, "", { Location: authUrl });
+}
+
+async function handleNotionCallback(req, res) {
+  const clientId = process.env.NOTION_OAUTH_CLIENT_ID?.trim();
+  const clientSecret = process.env.NOTION_OAUTH_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) {
+    json(res, 500, { error: "Notion OAuth credentials not configured" });
+    return;
+  }
+
+  const { searchParams } = new URL(req.url, `http://localhost`);
+  const code = searchParams.get("code");
+  const state = searchParams.get("state");
+  const userId = state ? decodeURIComponent(state) : "aidenpasque11@gmail.com";
+
+  if (!code) {
+    json(res, 400, { error: "Missing code from Notion callback" });
+    return;
+  }
+
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  let tokenData;
+  try {
+    const tr = await fetch("https://api.notion.com/v1/oauth/token", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: NOTION_OAUTH_REDIRECT_URI,
+      }),
+    });
+    if (!tr.ok) {
+      const err = await tr.text().catch(() => "unknown");
+      json(res, 502, { error: `Notion token exchange failed: ${err}` });
+      return;
+    }
+    tokenData = await tr.json();
+  } catch (e) {
+    json(res, 502, { error: `Notion token exchange error: ${String(e.message ?? e)}` });
+    return;
+  }
+
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) {
+    json(res, 500, { error: "Supabase not configured" });
+    return;
+  }
+
+  const row = {
+    user_id: userId,
+    access_token: tokenData.access_token,
+    workspace_name: tokenData.workspace_name ?? null,
+    workspace_id: tokenData.workspace_id ?? null,
+    bot_id: tokenData.bot_id ?? null,
+    created_at: new Date().toISOString(),
+  };
+
+  await fetch(`${url}/rest/v1/notion_connections`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify(row),
+  });
+
+  send(res, 302, "", { Location: "/app/onboarding/" });
+}
+
+async function handleNotionDatabases(req, res) {
+  const { searchParams } = new URL(req.url, `http://localhost`);
+  const userIdRaw = searchParams.get("user_id") || "aidenpasque11@gmail.com";
+  const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) {
+    json(res, 500, { error: "Supabase not configured" });
+    return;
+  }
+
+  let accessToken;
+  try {
+    const cr = await fetch(
+      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    const rows = await cr.json().catch(() => null);
+    accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
+  } catch {
+    json(res, 500, { error: "Failed to read Notion connection" });
+    return;
+  }
+
+  if (!accessToken) {
+    json(res, 404, { error: "No Notion connection found for this user" });
+    return;
+  }
+
+  try {
+    const dr = await fetch("https://api.notion.com/v1/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ filter: { value: "database", property: "object" } }),
+    });
+    if (!dr.ok) {
+      const err = await dr.text().catch(() => "unknown");
+      json(res, 502, { error: `Notion databases fetch failed: ${err}` });
+      return;
+    }
+    const data = await dr.json();
+    const databases = (data.results ?? []).map((db) => ({
+      id: db.id,
+      name:
+        db.title?.[0]?.plain_text ??
+        db.title?.[0]?.text?.content ??
+        "Untitled",
+    }));
+    json(res, 200, { databases });
+  } catch (e) {
+    json(res, 502, { error: `Notion databases error: ${String(e.message ?? e)}` });
+  }
 }
 
 const server = http.createServer(requestListener);
