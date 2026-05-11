@@ -3085,27 +3085,48 @@ async function handleNotionColumns(req, res) {
   if (!accessToken) { json(res, 404, { error: "No Notion connection found for this user" }); return; }
 
   try {
-    const queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
-    console.log("[notion/columns] databaseId bytes:", Buffer.from(databaseId).toString("hex").slice(0, 20));
-    console.log("[notion/columns] POST", queryUrl);
-    const qr = await fetch(queryUrl, {
+    // Step 1: fetch the database schema with 2025-09-03 (required for merged databases)
+    // This gives us data_sources for merged DBs, or properties for standard DBs
+    console.log("[notion/columns] fetching schema for:", databaseId);
+    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
+    });
+    const schemaRaw = await schemaRes.text();
+    console.log("[notion/columns] schema status:", schemaRes.status, "body:", schemaRaw.slice(0, 400));
+
+    if (!schemaRes.ok) {
+      json(res, 502, { error: `Notion schema fetch failed (${schemaRes.status}): ${schemaRaw}` }); return;
+    }
+
+    const schema = JSON.parse(schemaRaw);
+
+    // Determine which database ID to actually query pages from:
+    // - Merged DB: use first data_source ID (a regular DB queryable with 2022-06-28)
+    // - Standard DB: use the ID as-is
+    let queryDbId = databaseId;
+    if (Array.isArray(schema.data_sources) && schema.data_sources.length > 0) {
+      queryDbId = schema.data_sources[0].id ?? schema.data_sources[0];
+      console.log("[notion/columns] merged DB detected — querying source:", queryDbId);
+    }
+
+    // Step 2: query one page from the (source) database with 2022-06-28
+    const queryRes = await fetch(`https://api.notion.com/v1/databases/${queryDbId}/query`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Notion-Version": "2025-09-03",
+        "Notion-Version": "2022-06-28",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ page_size: 1 }),
     });
+    const queryRaw = await queryRes.text();
+    console.log("[notion/columns] query status:", queryRes.status, "body:", queryRaw.slice(0, 400));
 
-    const raw = await qr.text();
-    console.log("[notion/columns] status:", qr.status, "body:", raw.slice(0, 600));
-
-    if (!qr.ok) {
-      json(res, 502, { error: `Notion query failed (${qr.status}): ${raw}` }); return;
+    if (!queryRes.ok) {
+      json(res, 502, { error: `Notion page query failed (${queryRes.status}): ${queryRaw}` }); return;
     }
 
-    const qdata = JSON.parse(raw);
+    const qdata = JSON.parse(queryRaw);
     const firstPage = qdata.results?.[0];
     if (!firstPage?.properties) {
       json(res, 200, { columns: [], debug: "No pages found in database" }); return;
@@ -3115,7 +3136,7 @@ async function handleNotionColumns(req, res) {
       name,
       type: prop.type ?? "unknown",
     }));
-    console.log("[notion/columns] returning", columns.length, "columns");
+    console.log("[notion/columns] returning", columns.length, "columns:", columns.map(c => c.name));
     json(res, 200, { columns });
   } catch (e) {
     json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
