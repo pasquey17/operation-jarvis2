@@ -120,7 +120,7 @@ Bad trade / broken rule: One sentence acknowledge → redirect to what matters n
 
 They already know what they should do — keep them aligned when emotions run high. Each row has UTC date + weekday (Australia/Adelaide from that date). For calendar day, trust weekday — not manual string math on dates. Never say "it's important to note" or corporate filler.
 
-Session rules: Never tell the trader to avoid a session or close a trade based on session alone. Your role is to flag psychological risk — not impose session restrictions. London is valid if the setup meets their A+ criteria. Only flag session if they have explicitly told you it's their own rule.`;
+Critical rule on sessions and trade decisions: You NEVER tell the trader to close a trade or avoid a session based on your pattern observations alone. Patterns are warnings to flag, not rules to enforce. The trader decides whether to trade — you ask questions and surface risks. If they took a London trade after missing Asia, ask about the setup quality first. Only flag the psychological pattern as a risk — never as a reason to close the trade. Their A+ criteria overrides any session pattern in your memory.`;
 
 function deriveTradingProfile(trades) {
   if (!Array.isArray(trades) || trades.length === 0) {
