@@ -3205,6 +3205,61 @@ async function handleNotionSaveMapping(req, res) {
   }
 }
 
+// Parse a wide variety of date strings into "YYYY-MM-DD" for Postgres TIMESTAMPTZ.
+// Handles ISO dates, Notion date objects, and free-text like "Tuesday 14/10 ".
+function parseDateToIso(raw) {
+  if (raw == null) return null;
+  // Notion date properties return { start: "YYYY-MM-DD" } — already handled upstream,
+  // but if a string slips through, normalise it.
+  const s = String(raw).trim();
+  if (!s) return null;
+
+  // Already ISO YYYY-MM-DD[T...]
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : s.slice(0, 10);
+  }
+
+  // Strip leading day name ("Tuesday ", "Mon ", etc.)
+  const cleaned = s.replace(/^[a-z]+\s+/i, "").trim();
+
+  // DD/MM, DD/MM/YYYY, DD/MM/YY
+  const dm = cleaned.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (dm) {
+    const day = parseInt(dm[1], 10);
+    const mon = parseInt(dm[2], 10);
+    let yr  = dm[3] ? parseInt(dm[3], 10) : new Date().getFullYear();
+    if (yr < 100) yr += 2000;
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+      const d = new Date(Date.UTC(yr, mon - 1, day));
+      if (!isNaN(d.getTime()) && d.getUTCMonth() === mon - 1) {
+        return d.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  // MM/DD/YYYY fallback
+  const md = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (md) {
+    const mon = parseInt(md[1], 10);
+    const day = parseInt(md[2], 10);
+    let yr  = parseInt(md[3], 10);
+    if (yr < 100) yr += 2000;
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+      const d = new Date(Date.UTC(yr, mon - 1, day));
+      if (!isNaN(d.getTime()) && d.getUTCMonth() === mon - 1) {
+        return d.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  // Native parse last resort
+  const d = new Date(cleaned);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+
+  return null;
+}
+
 async function handleNotionSyncUser(req, res) {
   let body;
   try {
@@ -3286,12 +3341,13 @@ async function handleNotionSyncUser(req, res) {
     const get = (field) => notionPropValue(props[mapping[field]]);
 
     const rrRaw = get("rr");
+    const rrNum = rrRaw != null ? Number(String(rrRaw).replace(/[^0-9.\-]/g, "")) : null;
     const trade = {
       notion_id:    page.id,
       user_id,
-      date:         get("date"),
+      date:         parseDateToIso(get("date")),
       outcome:      get("outcome"),
-      rr:           rrRaw != null ? Number(rrRaw) : null,
+      rr:           (rrNum != null && !isNaN(rrNum)) ? rrNum : null,
       session:      get("session"),
       pair:         get("pair"),
       direction:    get("direction"),
