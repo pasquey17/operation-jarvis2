@@ -328,7 +328,7 @@
     </div>
 
     <style>
-      /* Home-only: orb emphasis, telemetry strip, comms — preserves HUD tokens */
+      /* Home-only: orb emphasis, telemetry strip, comms */
       .jarvis-home .hud-grid {
         gap: clamp(1.35rem, 3.2vw, 2.85rem);
       }
@@ -341,28 +341,27 @@
         letter-spacing: 0.24em;
       }
       @keyframes jarvis-orb-glow {
-        0%,
-        100% {
-          filter: drop-shadow(0 0 28px rgba(0, 191, 255, 0.45))
-            drop-shadow(0 0 64px rgba(0, 212, 255, 0.2))
-            drop-shadow(0 20px 48px rgba(0, 191, 255, 0.15));
+        0%, 100% {
+          filter: drop-shadow(0 0 32px rgba(0, 212, 255, 0.5))
+            drop-shadow(0 0 72px rgba(0, 212, 255, 0.22))
+            drop-shadow(0 20px 48px rgba(0, 212, 255, 0.15));
           transform: scale(1);
         }
         50% {
-          filter: drop-shadow(0 0 40px rgba(0, 191, 255, 0.65))
-            drop-shadow(0 0 92px rgba(0, 212, 255, 0.32))
-            drop-shadow(0 24px 56px rgba(192, 192, 192, 0.12));
-          transform: scale(1.015);
+          filter: drop-shadow(0 0 52px rgba(0, 212, 255, 0.72))
+            drop-shadow(0 0 100px rgba(0, 212, 255, 0.36))
+            drop-shadow(0 24px 56px rgba(192, 192, 192, 0.14));
+          transform: scale(1.018);
         }
       }
       .jarvis-home .orb-mount {
-        animation: jarvis-orb-glow 5s ease-in-out infinite;
+        animation: jarvis-orb-glow 4s ease-in-out infinite;
         will-change: filter, transform;
       }
       @media (prefers-reduced-motion: reduce) {
         .jarvis-home .orb-mount {
           animation: none;
-          filter: drop-shadow(0 0 32px rgba(0, 191, 255, 0.5));
+          filter: drop-shadow(0 0 40px rgba(0, 212, 255, 0.55));
         }
       }
       .jarvis-home #system-snapshot {
@@ -372,18 +371,16 @@
       .jarvis-home #system-snapshot::before {
         content: "";
         position: absolute;
-        left: 0;
-        top: 0;
-        right: 0;
+        left: 0; top: 0; right: 0;
         height: 2px;
         background: linear-gradient(
           90deg,
           transparent,
-          rgba(0, 212, 255, 0.55) 35%,
-          rgba(240, 180, 41, 0.35) 65%,
+          rgba(0, 212, 255, 0.7) 35%,
+          rgba(0, 212, 255, 0.4) 65%,
           transparent
         );
-        opacity: 0.85;
+        opacity: 0.9;
         pointer-events: none;
       }
       .jarvis-home .snapshot-top {
@@ -406,9 +403,7 @@
         font-variant-numeric: tabular-nums;
         letter-spacing: 0.06em;
       }
-      .jarvis-home .metric-cell:hover {
-        background: rgba(0, 212, 255, 0.08);
-      }
+      .jarvis-home .metric-cell:hover { background: rgba(0, 212, 255, 0.08); }
       .jarvis-home .snapshot-insight {
         font-family: "Outfit", system-ui, sans-serif;
         line-height: 1.55;
@@ -417,25 +412,17 @@
       .jarvis-home .comm-dock {
         border-color: rgba(0, 212, 255, 0.12);
         box-shadow:
-          0 0 0 1px rgba(0, 191, 255, 0.06) inset,
+          0 0 0 1px rgba(0, 212, 255, 0.06) inset,
           0 28px 80px rgba(0, 0, 0, 0.55),
-          0 0 60px rgba(0, 191, 255, 0.04);
+          0 0 60px rgba(0, 212, 255, 0.05);
       }
       .jarvis-home[data-mode="chat"] .chat-scroll {
         border-color: rgba(0, 212, 255, 0.1);
-        background: linear-gradient(
-          165deg,
-          rgba(255, 255, 255, 0.04) 0%,
-          rgba(0, 191, 255, 0.04) 100%
-        );
+        background: linear-gradient(165deg, rgba(255,255,255,0.04) 0%, rgba(0,212,255,0.04) 100%);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
       }
-      .jarvis-home .msg {
-        border-radius: 16px;
-      }
-      .jarvis-home .chat-form input:focus {
-        border-color: rgba(0, 212, 255, 0.5);
-      }
+      .jarvis-home .msg { border-radius: 16px; }
+      .jarvis-home .chat-form input:focus { border-color: rgba(0, 212, 255, 0.6); }
     </style>
 
     <!-- Chart lightbox (same behaviour as journal.html — zoom in-page, no new tab) -->
