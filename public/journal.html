@@ -857,6 +857,78 @@
         color: rgba(255,255,255,0.22);
       }
 
+      /* ── Premium card animations ── */
+      .jn-card {
+        opacity: 0;
+        transform: translateY(20px);
+        transition:
+          opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+          border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+          background 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .jn-card.jn-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .jn-card[data-outcome="win"] {
+        border-left-color: #00ff88;
+        background: rgba(0, 255, 136, 0.025);
+      }
+      .jn-card[data-outcome="loss"] {
+        border-left-color: #ff4466;
+        background: rgba(255, 68, 102, 0.025);
+      }
+      .jn-card[data-outcome="be"] {
+        border-left-color: rgba(192, 192, 192, 0.35);
+      }
+      .jn-card:hover {
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.06) inset,
+          0 20px 48px rgba(0, 0, 0, 0.4),
+          0 0 40px rgba(0, 212, 255, 0.1);
+      }
+      /* Stat pills enhanced */
+      .jn-stat-pill {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(0, 212, 255, 0.15);
+        backdrop-filter: blur(16px);
+        transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+      }
+      .jn-stat-pill:hover {
+        border-color: rgba(0, 212, 255, 0.32);
+        box-shadow: 0 0 24px rgba(0, 212, 255, 0.08);
+        transform: translateY(-1px);
+      }
+      /* Modal scale-in */
+      @keyframes jn-modal-in {
+        from { opacity: 0; transform: scale(0.94) translateY(12px); filter: blur(4px); }
+        to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+      }
+      .jn-trade-modal:not([hidden]) .jn-trade-modal__panel {
+        animation: jn-modal-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      /* Title letter reveal */
+      .jn-title {
+        overflow: hidden;
+      }
+      .jn-title-letter {
+        display: inline-block;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: jn-letter-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      @keyframes jn-letter-in {
+        to { opacity: 1; transform: translateY(0); }
+      }
+      /* RR badge enhancement */
+      .jn-card__rr {
+        font-size: 14px;
+        color: #00d4ff;
+        font-weight: 700;
+        text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+      }
       /* ── Responsive ── */
       @media (max-width: 768px) {
         .jn-list {
@@ -1606,25 +1678,40 @@
         return stats;
       }
 
+      function jnCountUp(el, target, prefix, suffix, decimals, durationMs) {
+        if (!el) return;
+        var start = performance.now();
+        function step(now) {
+          var t = Math.min((now - start) / durationMs, 1);
+          var ease = 1 - Math.pow(1 - t, 3);
+          el.textContent = prefix + (target * ease).toFixed(decimals) + suffix;
+          if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      }
+
       function renderWeeklyStats(stats) {
         var elTotal   = document.getElementById('pill-total');
         var elWinrate = document.getElementById('pill-winrate');
         var elNetR    = document.getElementById('pill-netr');
         var elBestRR  = document.getElementById('pill-bestrr');
 
-        if (elTotal)   elTotal.textContent  = stats.total;
-        if (elWinrate) elWinrate.textContent = stats.winRate == null ? '—' : stats.winRate + '%';
-
+        if (elTotal) jnCountUp(elTotal, stats.total, '', '', 0, 600);
+        if (elWinrate) {
+          if (stats.winRate == null) { elWinrate.textContent = '—'; }
+          else jnCountUp(elWinrate, stats.winRate, '', '%', 0, 600);
+        }
         if (elNetR) {
           if (stats.netR == null) { elNetR.textContent = '—'; elNetR.style.color = ''; }
           else {
             var sign = stats.netR >= 0 ? '+' : '';
-            elNetR.textContent = sign + stats.netR.toFixed(2) + 'R';
             elNetR.style.color = stats.netR >= 0 ? '#00ff88' : '#ff6b6b';
+            jnCountUp(elNetR, stats.netR, sign, 'R', 2, 700);
           }
         }
         if (elBestRR) {
-          elBestRR.textContent = stats.bestRR == null ? '—' : stats.bestRR.toFixed(2) + 'R';
+          if (stats.bestRR == null) { elBestRR.textContent = '—'; }
+          else jnCountUp(elBestRR, stats.bestRR, '', 'R', 2, 700);
         }
       }
 
@@ -2268,6 +2355,48 @@
         filteredTrades = allTrades.slice();
         list.innerHTML = '';
         renderNextPage();
+      }
+
+      // ── Premium animation layer ──
+
+      // Title letter-by-letter reveal
+      (function initTitleReveal() {
+        var titleEl = document.querySelector('.jn-title');
+        if (!titleEl) return;
+        var text = titleEl.textContent;
+        titleEl.textContent = '';
+        text.split('').forEach(function(ch, i) {
+          var span = document.createElement('span');
+          span.className = 'jn-title-letter';
+          span.style.animationDelay = (i * 0.07) + 's';
+          span.textContent = ch === ' ' ? ' ' : ch;
+          titleEl.appendChild(span);
+        });
+      })();
+
+      // Card scroll-in with stagger via IntersectionObserver
+      var jnCardObserver = new IntersectionObserver(function(entries) {
+        var idx = 0;
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            (function(card, delay) {
+              setTimeout(function() { card.classList.add('jn-visible'); }, delay);
+            })(entry.target, idx * 55);
+            idx++;
+            jnCardObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.06, rootMargin: '0px 0px -40px 0px' });
+
+      // Watch for new cards injected by renderNextPage
+      var listEl = document.getElementById('jn-list');
+      if (listEl) {
+        new MutationObserver(function() {
+          listEl.querySelectorAll('.jn-card:not(.jn-observed)').forEach(function(card) {
+            card.classList.add('jn-observed');
+            jnCardObserver.observe(card);
+          });
+        }).observe(listEl, { childList: true, subtree: false });
       }
 
       boot();
