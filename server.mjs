@@ -3100,77 +3100,63 @@ async function handleNotionColumns(req, res) {
 
     const schema = JSON.parse(schemaRaw);
 
-    // Use schema.properties if present (works for both standard and merged DBs via 2025-09-03)
+    // Helper: query one page and extract columns from its properties
+    const columnsFromPageQuery = async (endpoint) => {
+      const r = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Notion-Version": "2025-09-03",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ page_size: 1 }),
+      });
+      const text = await r.text();
+      console.log(`[notion/columns] query ${endpoint} → ${r.status}:`, text.slice(0, 300));
+      if (!r.ok) return null;
+      const data = JSON.parse(text);
+      const first = data.results?.[0];
+      if (!first?.properties) return null;
+      return Object.entries(first.properties).map(([name, prop]) => ({ name, type: prop.type ?? "unknown" }));
+    };
+
+    // For merged databases, Notion requires /data_sources/{id}/query (same endpoint the native sync uses)
+    // data_sources[].id stripped of dashes is the correct format for that endpoint.
+    const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
+    if (dataSources.length > 0) {
+      const rawId = dataSources[0].id ?? dataSources[0];
+      const dataSourceId = String(rawId).replace(/-/g, "");
+      console.log("[notion/columns] merged DB — querying data_source:", dataSourceId);
+      const cols = await columnsFromPageQuery(
+        `https://api.notion.com/v1/data_sources/${dataSourceId}/query`
+      );
+      if (cols) {
+        console.log("[notion/columns] data_source columns:", cols.map(c => c.name));
+        json(res, 200, { columns: cols, data_source_id: dataSourceId });
+        return;
+      }
+      json(res, 502, { error: "Could not retrieve columns from merged database data source." }); return;
+    }
+
+    // Standard DB: schema.properties may already have what we need
     if (schema.properties && Object.keys(schema.properties).length > 0) {
       const columns = Object.entries(schema.properties).map(([name, prop]) => ({
         name,
         type: prop.type ?? "unknown",
       }));
-      console.log("[notion/columns] schema properties →", columns.length, "columns:", columns.map(c => c.name));
+      console.log("[notion/columns] schema properties →", columns.length, "columns");
       json(res, 200, { columns });
       return;
     }
 
-    // Fallback: schema had no properties — try fetching source DB schemas from data_sources,
-    // then fall back to querying the merged DB directly with 2025-09-03.
-    console.log("[notion/columns] no schema properties, trying data_sources fallback");
-
-    // Try to GET each source database's schema (they may expose properties)
-    const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
-    for (const src of dataSources) {
-      const srcId = src.id ?? src;
-      if (!srcId || srcId === databaseId) continue;
-      try {
-        const srcRes = await fetch(`https://api.notion.com/v1/databases/${srcId}`, {
-          headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
-        });
-        const srcRaw = await srcRes.text();
-        console.log(`[notion/columns] source schema ${srcId} → ${srcRes.status}:`, srcRaw.slice(0, 200));
-        if (srcRes.ok) {
-          const srcSchema = JSON.parse(srcRaw);
-          if (srcSchema.properties && Object.keys(srcSchema.properties).length > 0) {
-            const columns = Object.entries(srcSchema.properties).map(([name, prop]) => ({
-              name,
-              type: prop.type ?? "unknown",
-            }));
-            console.log("[notion/columns] source schema columns:", columns.map(c => c.name));
-            json(res, 200, { columns });
-            return;
-          }
-        }
-      } catch { /* try next source */ }
+    // Standard DB fallback: query one page
+    const cols = await columnsFromPageQuery(`https://api.notion.com/v1/databases/${databaseId}/query`);
+    if (cols) {
+      console.log("[notion/columns] page-query columns:", cols.map(c => c.name));
+      json(res, 200, { columns: cols });
+      return;
     }
-
-    // Last resort: query the merged DB with 2025-09-03 (required version for merged DBs)
-    console.log("[notion/columns] falling back to direct query with 2025-09-03");
-    const r = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Notion-Version": "2025-09-03",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ page_size: 1 }),
-    });
-    const queryRaw = await r.text();
-    console.log(`[notion/columns] direct query → ${r.status}:`, queryRaw.slice(0, 300));
-
-    if (!r.ok) {
-      json(res, 502, { error: `Notion page query failed (${r.status}): ${queryRaw}` }); return;
-    }
-
-    const qdata = JSON.parse(queryRaw);
-    const firstPage = qdata.results?.[0];
-    if (!firstPage?.properties) {
-      json(res, 200, { columns: [], debug: "No pages found in database" }); return;
-    }
-
-    const columns = Object.entries(firstPage.properties).map(([name, prop]) => ({
-      name,
-      type: prop.type ?? "unknown",
-    }));
-    console.log("[notion/columns] returning", columns.length, "columns:", columns.map(c => c.name));
-    json(res, 200, { columns });
+    json(res, 200, { columns: [], debug: "No pages found in database" });
   } catch (e) {
     json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
   }
@@ -3184,10 +3170,15 @@ async function handleNotionSaveMapping(req, res) {
     body = JSON.parse(Buffer.concat(chunks).toString());
   } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
 
-  const { user_id, database_id, mapping } = body ?? {};
+  const { user_id, database_id, mapping, data_source_id } = body ?? {};
   if (!user_id || !database_id || !mapping) {
     json(res, 400, { error: "user_id, database_id, and mapping required" }); return;
   }
+
+  // Embed data_source_id (for merged DBs) into the mapping JSON so sync can use it
+  const mappingWithMeta = data_source_id
+    ? { ...mapping, __data_source_id: data_source_id }
+    : mapping;
 
   const { url } = getSupabaseConfig();
   const srKey = getServiceRoleKey();
@@ -3202,7 +3193,7 @@ async function handleNotionSaveMapping(req, res) {
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates",
       },
-      body: JSON.stringify({ user_id, database_id, mapping, created_at: new Date().toISOString() }),
+      body: JSON.stringify({ user_id, database_id, mapping: mappingWithMeta, created_at: new Date().toISOString() }),
     });
     if (!upsertRes.ok) {
       const err = await upsertRes.text().catch(() => "unknown");
@@ -3250,14 +3241,21 @@ async function handleNotionSyncUser(req, res) {
   if (!accessToken) { json(res, 404, { error: "No Notion connection found" }); return; }
   if (!databaseId || !mapping) { json(res, 404, { error: "No column mapping found — complete setup first" }); return; }
 
-  // Fetch all pages from Notion database (paginate)
+  // For merged databases the mapping stores __data_source_id; use /data_sources/{id}/query.
+  // For standard databases fall back to /databases/{id}/query.
+  const dataSourceId = mapping.__data_source_id ?? null;
+  const notionQueryUrl = dataSourceId
+    ? `https://api.notion.com/v1/data_sources/${dataSourceId}/query`
+    : `https://api.notion.com/v1/databases/${databaseId}/query`;
+
+  // Fetch all pages from Notion (paginate)
   const allPages = [];
   let cursor = undefined;
   try {
     do {
       const qBody = { page_size: 100 };
       if (cursor) qBody.start_cursor = cursor;
-      const qRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+      const qRes = await fetch(notionQueryUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,

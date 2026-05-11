@@ -335,6 +335,7 @@
 
         let selectedDbId = null;
         let notionColumns = [];
+        let notionDataSourceId = null;
 
         const JARVIS_FIELDS = [
           { key: "date",      label: "Date",         required: true },
@@ -412,6 +413,7 @@
             const data = await r.json();
             if (!r.ok) throw new Error(data.error || "Failed to load columns");
             notionColumns = Array.isArray(data.columns) ? data.columns : [];
+            notionDataSourceId = data.data_source_id ?? null;
             if (notionColumns.length === 0) {
               statusEl.textContent = "No columns found in this database. Make sure the database ID is correct and Jarvis has access.";
               statusEl.className = "status-msg error";
@@ -485,7 +487,7 @@
             const r = await fetch("/api/notion/save-mapping", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ user_id: userId, database_id: selectedDbId, mapping }),
+              body: JSON.stringify({ user_id: userId, database_id: selectedDbId, mapping, data_source_id: notionDataSourceId }),
               cache: "no-store",
             });
             const data = await r.json();
