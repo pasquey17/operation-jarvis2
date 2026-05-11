@@ -606,11 +606,7 @@
             lbl.title = notionColName;
             lbl.textContent = notionColName;
             leftEl = lbl;
-            const inp = document.createElement("input");
-            inp.className = "map-key-input";
-            inp.type = "text";
-            inp.placeholder = "skip";
-            rightEl = inp;
+            rightEl = makeNotionSelect(notionColName);
 
           } else { // "custom"
             const inp = document.createElement("input");
@@ -715,9 +711,9 @@
               jarvisKey = row.dataset.jarvisKey;
               notionCol = row.querySelector(".map-select")?.value || "";
             } else if ("notionCol" in row.dataset) {
-              // extra row: notion col fixed, jarvis key from text input
-              notionCol = row.dataset.notionCol;
-              jarvisKey = slugify(row.querySelector(".map-key-input")?.value || "");
+              // extra row: notion col label on left, key derived from col name, col from dropdown
+              notionCol = row.querySelector(".map-select")?.value || "";
+              jarvisKey = notionCol ? slugify(row.dataset.notionCol) : "";
             } else {
               // custom row: both from inputs
               jarvisKey = slugify(row.querySelector(".map-key-input")?.value || "");
