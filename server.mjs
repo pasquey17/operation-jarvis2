@@ -2709,6 +2709,12 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/ping")) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok" }));
+    return;
+  }
+
   if (req.method === "GET" && req.url.startsWith("/api/snapshot")) {
     await handleSnapshot(req, res);
     return;

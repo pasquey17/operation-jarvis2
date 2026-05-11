@@ -1836,4 +1836,10 @@ window.addEventListener("pageshow", (ev) => {
   if (ev.persisted && !chatSending) void loadTrades();
 });
 
+function keepAlive() {
+  fetch("/api/ping", { cache: "no-store" }).catch(() => {});
+}
+keepAlive();
+setInterval(keepAlive, 4 * 60 * 1000);
+
 boot();
