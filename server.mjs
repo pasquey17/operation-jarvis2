@@ -3030,7 +3030,7 @@ async function handleNotionColumns(req, res) {
   const sp = new URL(req.url, "http://localhost").searchParams;
   const userIdRaw = sp.get("user_id") || "aidenpasque11@gmail.com";
   const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
-  const databaseId = (sp.get("database_id") || "").replace(/-/g, "");
+  const databaseId = sp.get("database_id") || "";
   if (!databaseId) { json(res, 400, { error: "database_id required" }); return; }
 
   const { url } = getSupabaseConfig();
@@ -3051,37 +3051,35 @@ async function handleNotionColumns(req, res) {
 
   try {
     const queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
-    console.log("[notion/columns] calling:", queryUrl);
+    console.log("[notion/columns] POST", queryUrl);
     const qr = await fetch(queryUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Notion-Version": "2025-09-03",
+        "Notion-Version": "2022-06-28",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ page_size: 1 }),
     });
 
     const raw = await qr.text();
-    console.log("[notion/columns] query status:", qr.status, "body:", raw.slice(0, 800));
+    console.log("[notion/columns] status:", qr.status, "body:", raw.slice(0, 600));
 
     if (!qr.ok) {
       json(res, 502, { error: `Notion query failed (${qr.status}): ${raw}` }); return;
     }
 
-    let qdata;
-    try { qdata = JSON.parse(raw); } catch { json(res, 502, { error: "Invalid JSON from Notion" }); return; }
-
+    const qdata = JSON.parse(raw);
     const firstPage = qdata.results?.[0];
     if (!firstPage?.properties) {
-      json(res, 200, { columns: [], debug: "Query succeeded but returned no pages or no properties" }); return;
+      json(res, 200, { columns: [], debug: "No pages found in database" }); return;
     }
 
     const columns = Object.entries(firstPage.properties).map(([name, prop]) => ({
       name,
       type: prop.type ?? "unknown",
     }));
-    console.log("[notion/columns] returning", columns.length, "columns:", columns.map(c => c.name));
+    console.log("[notion/columns] returning", columns.length, "columns");
     json(res, 200, { columns });
   } catch (e) {
     json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
