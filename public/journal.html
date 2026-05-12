@@ -1088,8 +1088,6 @@
               <span class="jn-filter-label">Pair</span>
               <div class="jn-filter-pills">
                 <button class="jn-filter-pill active" data-group="pair" data-value="all">All</button>
-                <button class="jn-filter-pill" data-group="pair" data-value="XAU/USD">XAU/USD</button>
-                <button class="jn-filter-pill" data-group="pair" data-value="AUD/USD">AUD/USD</button>
               </div>
             </div>
             <div class="jn-filter-row" id="filter-model">
@@ -2359,9 +2357,7 @@
         }
         renderWeeklyStats(computeWeeklyStats(allTrades));
         buildFilterOptions(allTrades);
-        filteredTrades = allTrades.slice();
-        list.innerHTML = '';
-        renderNextPage();
+        applyFilters();
       }
 
       // ── Premium animation layer ──

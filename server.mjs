@@ -1729,7 +1729,7 @@ async function handleTrades(req, res) {
       new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
-    maybeSyncNotion(userId).catch(() => {});
+    await maybeSyncNotion(userId);
     const payload = await fetchTradesFromSupabase(userId);
     if (!payload.records.length) {
       json(res, 200, {
