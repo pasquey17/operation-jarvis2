@@ -18,6 +18,7 @@
         overflow: auto !important;
         height: auto !important;
         min-height: 100dvh !important;
+        background: #050a14 !important;
       }
 
       /* ═══════════ NAV BAR ═══════════ */
@@ -119,44 +120,65 @@
       }
       .jn-header__left { flex: 1; min-width: 0; }
       .jn-title {
-        margin: 0 0 4px; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: clamp(1.5rem,4vw,2.1rem); color: #00d4ff;
-        letter-spacing: 0.24em; text-transform: uppercase;
-        text-shadow: 0 0 30px rgba(0,212,255,0.5), 0 0 70px rgba(0,212,255,0.18);
+        margin: 0 0 6px;
+        font-family: "Outfit", system-ui, sans-serif;
+        font-weight: 200;
+        font-size: clamp(2rem, 5vw, 52px);
+        color: #ffffff;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08);
       }
       .jn-subtitle {
         margin: 0 0 20px; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.14em;
+        font-size: 11px; color: #00d4ff; letter-spacing: 0.14em;
         text-transform: uppercase;
       }
 
-      /* ── Stat pills — bigger ── */
-      .jn-week-pills { display: flex; flex-wrap: wrap; gap: 10px; }
+      /* ── Stat cards — glassmorphism ── */
+      .jn-week-pills { display: flex; flex-wrap: wrap; gap: 12px; }
       .jn-stat-pill {
-        padding: 14px 20px; border-radius: 8px;
-        border: 1px solid rgba(0,212,255,0.15); background: rgba(0,212,255,0.04);
-        min-width: 110px;
+        padding: 20px 24px; border-radius: 14px;
+        border: 1px solid rgba(0,212,255,0.2);
+        background: rgba(0,0,0,0.45);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        min-width: 130px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
       }
       .jn-stat-value {
-        display: block; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 22px; color: #fff; font-variant-numeric: tabular-nums;
-        letter-spacing: 0.04em; line-height: 1.15;
+        display: block; position: relative;
+        font-family: "Outfit", system-ui, sans-serif;
+        font-weight: 200;
+        font-size: 32px; color: #fff; font-variant-numeric: tabular-nums;
+        letter-spacing: 0.03em; line-height: 1.15;
+        padding-bottom: 12px;
       }
+      .jn-stat-value::after {
+        content: "";
+        position: absolute;
+        bottom: 0; left: 0;
+        width: 40px; height: 2px;
+        border-radius: 1px;
+      }
+      .jn-week-pills > div:nth-child(1) .jn-stat-value::after { background: #00d4ff; }
+      .jn-week-pills > div:nth-child(2) .jn-stat-value::after { background: #00ff88; }
+      .jn-week-pills > div:nth-child(3) .jn-stat-value::after { background: #00d4ff; }
+      .jn-week-pills > div:nth-child(4) .jn-stat-value::after { background: #8899aa; }
       .jn-stat-label {
         display: block; font-size: 9px; letter-spacing: 0.14em;
         text-transform: uppercase; color: rgba(255,255,255,0.28); margin-top: 4px;
       }
 
       .jn-log-btn {
-        flex-shrink: 0; padding: 10px 18px; border-radius: 6px;
-        border: 1px solid #00d4ff; background: rgba(0,212,255,0.08);
-        color: #00d4ff; font-family: "Share Tech Mono","Courier New",monospace;
+        flex-shrink: 0; padding: 10px 22px; border-radius: 6px;
+        border: none; background: #00d4ff;
+        color: #000000; font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 12px; font-weight: 600; letter-spacing: 0.14em;
         text-transform: uppercase; cursor: pointer; white-space: nowrap;
         transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
       }
       .jn-log-btn:hover {
-        background: rgba(0,212,255,0.18); box-shadow: 0 0 24px rgba(0,212,255,0.25);
+        background: #ffffff; box-shadow: 0 0 28px rgba(0,212,255,0.45);
         transform: translateY(-1px);
       }
       .jn-log-btn:active { transform: translateY(0); }
@@ -170,13 +192,13 @@
       /* ── FILTER + toggle button ── */
       .jn-filter-toggle {
         position: relative; padding: 10px 18px; border-radius: 6px;
-        border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04);
-        color: rgba(255,255,255,0.5); font-family: "Share Tech Mono","Courier New",monospace;
+        border: 1px solid rgba(0,212,255,0.3); background: rgba(0,212,255,0.06);
+        color: #00d4ff; font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
         cursor: pointer; white-space: nowrap;
         transition: border-color 0.2s, color 0.2s, background 0.2s;
       }
-      .jn-filter-toggle:hover { border-color: rgba(0,212,255,0.4); color: rgba(255,255,255,0.85); }
+      .jn-filter-toggle:hover { border-color: rgba(0,212,255,0.6); background: rgba(0,212,255,0.1); }
       .jn-filter-toggle.jn-filter-toggle--open {
         border-color: rgba(0,212,255,0.5); color: #00d4ff; background: rgba(0,212,255,0.06);
       }
@@ -300,12 +322,12 @@
       }
       .jn-card:hover {
         background: rgba(0, 212, 255, 0.06);
-        border-color: rgba(0, 212, 255, 0.22);
-        transform: translateY(-2px);
+        border-color: rgba(0, 212, 255, 0.28);
+        transform: translateY(-4px);
         box-shadow:
           0 1px 0 rgba(255, 255, 255, 0.06) inset,
-          0 20px 48px rgba(0, 0, 0, 0.4),
-          0 0 40px rgba(0, 191, 255, 0.08);
+          0 8px 32px rgba(0, 212, 255, 0.08),
+          0 20px 60px rgba(0, 0, 0, 0.5);
       }
       .jn-card:hover::after {
         opacity: 1;
@@ -324,15 +346,21 @@
       .jn-card__cover {
         position: relative;
         width: 100%;
-        /* ~Notion gallery: short strip (~35–42% of compact card), not a tall hero */
         aspect-ratio: 2.35 / 1;
-        max-height: 104px;
-        min-height: 68px;
+        max-height: 160px;
+        min-height: 80px;
         background: rgba(20, 22, 26, 0.95);
         border-bottom: 1px solid rgba(0, 212, 255, 0.12);
         overflow: hidden;
         flex-shrink: 0;
         line-height: 0;
+      }
+      .jn-card__cover::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.55) 100%);
+        pointer-events: none;
       }
       .jn-card__cover-img {
         display: block;
@@ -422,7 +450,7 @@
       .jn-badge--loss  { background: #ff4444; color: #fff; }
       .jn-badge--be    { background: rgba(255,255,255,0.16); color: #fff; }
       .jn-badge--long  { background: rgba(0,212,255,0.12); color: #00d4ff; border-color: rgba(0,212,255,0.35); }
-      .jn-badge--short { background: rgba(255,140,0,0.12); color: #ff8c00; border-color: rgba(255,140,0,0.35); }
+      .jn-badge--short { background: rgba(255,100,100,0.12); color: #ff8888; border-color: rgba(255,100,100,0.35); }
       .jn-badge--acct  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.38); border-color: rgba(255,255,255,0.1); font-weight: 400; font-size: 9px; }
 
       /* ── Trade detail pane (modal body reuses these) ── */
@@ -886,20 +914,17 @@
       .jn-card:hover {
         box-shadow:
           0 1px 0 rgba(255, 255, 255, 0.06) inset,
-          0 20px 48px rgba(0, 0, 0, 0.4),
-          0 0 40px rgba(0, 212, 255, 0.1);
+          0 8px 32px rgba(0, 212, 255, 0.08),
+          0 20px 60px rgba(0, 0, 0, 0.5);
       }
-      /* Stat pills enhanced */
+      /* Stat card hover */
       .jn-stat-pill {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(0, 212, 255, 0.15);
-        backdrop-filter: blur(16px);
         transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
       }
       .jn-stat-pill:hover {
-        border-color: rgba(0, 212, 255, 0.32);
-        box-shadow: 0 0 24px rgba(0, 212, 255, 0.08);
-        transform: translateY(-1px);
+        border-color: rgba(0, 212, 255, 0.4);
+        box-shadow: 0 0 32px rgba(0, 212, 255, 0.1), 0 8px 32px rgba(0,0,0,0.4);
+        transform: translateY(-2px);
       }
       /* Modal scale-in */
       @keyframes jn-modal-in {
@@ -940,12 +965,12 @@
         .jn-header__actions { flex-direction: column; align-items: stretch; width: 100%; }
         .jn-filter-toggle { text-align: center; min-height: 44px; }
         .jn-log-btn { text-align: center; min-height: 44px; }
-        .jn-title { font-size: 1.5rem; }
+        .jn-title { font-size: 2rem; }
         .jn-card__top { padding: 9px 10px 10px; }
         .jn-card__cover { max-height: 92px; min-height: 60px; }
         .jn-card__date { font-size: 10px; }
-        .jn-stat-pill { min-width: auto; }
-        .jn-stat-value { font-size: 18px; }
+        .jn-stat-pill { min-width: auto; padding: 14px 16px; }
+        .jn-stat-value { font-size: 24px; }
         .jn-week-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .jn-filter-grid { grid-template-columns: 1fr; }
         #filter-model { grid-column: 1; }
@@ -1528,56 +1553,125 @@
         return '';
       }
 
-      /* ── Particle system ── */
-      var PARTICLE_COUNT = 380;
-      var particles = [];
-
-      function Particle() {
-        this.x = Math.random() * window.innerWidth;
-        this.y = Math.random() * window.innerHeight;
-        this._reset();
-      }
-      Particle.prototype._reset = function () {
-        var speed = Math.random() * 0.3 + 0.04;
-        var angle = Math.random() * Math.PI * 2;
-        this.vx = Math.cos(angle) * speed; this.vy = Math.sin(angle) * speed;
-        this.size = Math.random() * 0.7 + 0.2;
-        this.baseAlpha = Math.random() * 0.45 + 0.08;
-        this.alpha = this.baseAlpha;
-        this.twinkle = Math.random() * Math.PI * 2;
-        var r = Math.random();
-        if (r < 0.65)      { this.cr = 0;   this.cg = 191; this.cb = 255; }
-        else if (r < 0.93) { this.cr = 192; this.cg = 192; this.cb = 192; }
-        else { this.cr = 255; this.cg = 255; this.cb = 255; this.size = Math.random() * 1.0 + 0.2; this.baseAlpha = Math.random() * 0.6 + 0.2; }
-      };
-      Particle.prototype.update = function () {
-        this.twinkle += 0.018;
-        this.vx *= 0.998; this.vy *= 0.998;
-        this.vx += (Math.random() - 0.5) * 0.004; this.vy += (Math.random() - 0.5) * 0.004;
-        this.alpha = this.baseAlpha * (0.72 + 0.28 * Math.sin(this.twinkle));
-        this.x += this.vx; this.y += this.vy;
-        var W = window.innerWidth, H = window.innerHeight;
-        if (this.x < -20) this.x = W + 20; if (this.x > W + 20) this.x = -20;
-        if (this.y < -20) this.y = H + 20; if (this.y > H + 20) this.y = -20;
-      };
-      Particle.prototype.draw = function (ctx) {
-        var a = Math.max(0, Math.min(1, this.alpha));
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + this.cr + ',' + this.cg + ',' + this.cb + ',' + a + ')';
-        ctx.fill();
-      };
+      /* ── Deep space star field (matches home page) ── */
       function initParticles() {
         var canvas = document.getElementById('particle-canvas');
         if (!canvas) return;
         var ctx = canvas.getContext('2d');
-        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        resize(); window.addEventListener('resize', resize);
-        for (var i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
-        (function loop() {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          for (var j = 0; j < particles.length; j++) { particles[j].update(); particles[j].draw(ctx); }
-          requestAnimationFrame(loop);
-        })();
+
+        var STAR_COUNT = 150;
+        var SPACE_FRAME_MS = 1000 / 30;
+        var stars = [];
+        var nebula = { x: 0.25, y: 0.45, r: 0.55, cr: 55, cg: 0, cb: 135, a: 0.055 };
+        var shooters = [];
+        var frameCount = 0;
+        var shootNextAt = 90;
+        var lastFrameTime = 0;
+
+        function buildStars() {
+          stars = [];
+          for (var i = 0; i < STAR_COUNT; i++) {
+            stars.push({
+              x: Math.random() * canvas.width,
+              y: Math.random() * canvas.height,
+              r: Math.random() * 1.4 + 0.3,
+              a: Math.random() * 0.7 + 0.3,
+              tw: Math.random() * 3000 + 1000,
+              tp: Math.random() * Math.PI * 2
+            });
+          }
+        }
+
+        function resize() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+          buildStars();
+        }
+
+        function ShootingStar() {
+          this.x = Math.random() * window.innerWidth * 0.7 + window.innerWidth * 0.05;
+          this.y = Math.random() * window.innerHeight * 0.5;
+          var angle = 0.4 + Math.random() * 0.6;
+          var spd = 6 + Math.random() * 5;
+          this.vx = Math.cos(angle) * spd;
+          this.vy = Math.sin(angle) * spd;
+          this.tailLen = 100;
+          this.life = 0;
+          this.maxLife = 27;
+          this.alive = true;
+        }
+        ShootingStar.prototype.update = function () {
+          this.x += this.vx; this.y += this.vy; this.life++;
+          if (this.life >= this.maxLife) this.alive = false;
+        };
+        ShootingStar.prototype.draw = function (ctx) {
+          var progress = this.life / this.maxLife;
+          var a = 0.7 * (1 - progress);
+          var hyp = Math.hypot(this.vx, this.vy) || 1;
+          var tailX = this.x - (this.vx / hyp) * this.tailLen;
+          var tailY = this.y - (this.vy / hyp) * this.tailLen;
+          var g = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
+          g.addColorStop(0, 'rgba(200,240,255,0)');
+          g.addColorStop(0.6, 'rgba(220,245,255,' + (a * 0.5) + ')');
+          g.addColorStop(1, 'rgba(255,255,255,' + a + ')');
+          ctx.save();
+          ctx.strokeStyle = g;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(tailX, tailY);
+          ctx.lineTo(this.x, this.y);
+          ctx.stroke();
+          ctx.restore();
+        };
+
+        function drawFrame(now) {
+          if (now - lastFrameTime < SPACE_FRAME_MS) {
+            requestAnimationFrame(drawFrame);
+            return;
+          }
+          lastFrameTime = now;
+          frameCount++;
+
+          ctx.fillStyle = '#050a14';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          var nx = nebula.x * canvas.width;
+          var ny = nebula.y * canvas.height;
+          var nr = nebula.r * Math.max(canvas.width, canvas.height);
+          var ng = ctx.createRadialGradient(nx, ny, 0, nx, ny, nr);
+          ng.addColorStop(0, 'rgba(' + nebula.cr + ',' + nebula.cg + ',' + nebula.cb + ',' + nebula.a + ')');
+          ng.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = ng;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          var t = now / 1000;
+          for (var i = 0; i < stars.length; i++) {
+            var s = stars[i];
+            var tw = 0.5 + 0.5 * Math.sin(t * (1000 / s.tw) * Math.PI * 2 + s.tp);
+            var alpha = s.a * (0.6 + 0.4 * tw);
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+            ctx.fill();
+          }
+
+          if (frameCount >= shootNextAt) {
+            shooters.push(new ShootingStar());
+            shootNextAt = frameCount + (15 + Math.random() * 10) * 30;
+            console.log('shooting star fired');
+          }
+          for (var j = shooters.length - 1; j >= 0; j--) {
+            shooters[j].update();
+            shooters[j].draw(ctx);
+            if (!shooters[j].alive) shooters.splice(j, 1);
+          }
+
+          requestAnimationFrame(drawFrame);
+        }
+
+        resize();
+        window.addEventListener('resize', resize);
+        requestAnimationFrame(drawFrame);
       }
 
       var DEFAULT_USER_ID = 'aidenpasque11@gmail.com';
