@@ -951,6 +951,35 @@
         return '';
       }
 
+      /* Extract a value from notion_extras (JSONB stored as JSON string on the wire).
+         Handles array values like ["Silver"] — returns first element as string. */
+      var _extrasCache = new WeakMap();
+      function parsedExtras(t) {
+        if (_extrasCache.has(t)) return _extrasCache.get(t);
+        var raw = t.notion_extras;
+        var parsed = null;
+        if (raw && typeof raw === 'string') {
+          try { parsed = JSON.parse(raw); } catch (e) {}
+        } else if (raw && typeof raw === 'object') {
+          parsed = raw;
+        }
+        _extrasCache.set(t, parsed);
+        return parsed;
+      }
+      function getExtrasVal(t) {
+        var extras = parsedExtras(t);
+        if (!extras) return '';
+        for (var i = 1; i < arguments.length; i++) {
+          var val = extras[arguments[i]];
+          if (val === undefined || val === null) continue;
+          if (Array.isArray(val)) { if (val.length > 0 && val[0] != null) return String(val[0]); continue; }
+          if (typeof val === 'object') { var n = val.name || (val.select && val.select.name) || ''; if (n) return String(n); continue; }
+          var s = String(val);
+          if (s) return s;
+        }
+        return '';
+      }
+
       function normalizeOutcome(raw) {
         var v = String(raw || '').trim().toLowerCase();
         if (v === 'win'  || v === 'w') return 'win';
@@ -1595,9 +1624,9 @@
         var models   = new Set();
 
         trades.forEach(function (t) {
-          var p = getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol');
-          var a = getField(t, 'account', 'Account', 'ACCOUNT');
-          var m = getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL');
+          var p = getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || getExtrasVal(t, 'PAIR', 'Pair', 'pair', 'instrument', 'symbol');
+          var a = getField(t, 'account', 'Account', 'ACCOUNT') || getExtrasVal(t, 'ACCOUNT', 'Account', 'account');
+          var m = getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || getExtrasVal(t, 'ENTRY MODEL', 'model', 'Model');
           if (p) pairs.add(p.toUpperCase());
           if (a) accounts.add(a);
           if (m) models.add(m);
@@ -1637,9 +1666,9 @@
         filteredTrades = allTrades.filter(function (t) {
           var outcome  = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
           var dir      = getTradeDirection(t);
-          var pairRaw  = (getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '').toUpperCase();
-          var modelRaw = (getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '').toLowerCase();
-          var acctRaw  = (getField(t, 'account', 'Account', 'ACCOUNT') || '').toLowerCase();
+          var pairRaw  = (getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || getExtrasVal(t, 'PAIR', 'Pair', 'pair', 'instrument', 'symbol') || '').toUpperCase();
+          var modelRaw = (getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || getExtrasVal(t, 'ENTRY MODEL', 'model', 'Model') || '').toLowerCase();
+          var acctRaw  = (getField(t, 'account', 'Account', 'ACCOUNT') || getExtrasVal(t, 'ACCOUNT', 'Account', 'account') || '').toLowerCase();
 
           if (!tradeMatchesPeriod(t, activeFilters.period)) return false;
           if (activeFilters.outcome !== 'all' && outcome !== activeFilters.outcome) return false;
