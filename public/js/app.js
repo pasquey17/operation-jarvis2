@@ -731,7 +731,7 @@ class Star {
     this.alpha = this.baseAlpha;
     this.twinkleSpeed = 0.004 + Math.random() * 0.016;
     this.twinklePhase = Math.random() * Math.PI * 2;
-    this.parallaxMul = [0.02, 0.04, 0.08][this.layer];
+    this.parallaxMul = [0.002, 0.004, 0.006][this.layer];
     const r = Math.random();
     if (r < 0.62)      { this.cr = 208; this.cg = 225; this.cb = 255; }
     else if (r < 0.88) { this.cr = 255; this.cg = 255; this.cb = 255; }
