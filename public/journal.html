@@ -13,7 +13,13 @@
     />
     <link rel="stylesheet" href="/css/style.css" />
     <style>
-      /* ── Unlock scroll ── */
+      /* ══════════════════════════════════════════════════════
+         JOURNAL — DEEP SPACE THEME
+         All critical colour / font rules use !important to
+         defeat style.css cascade (body font-family, bg-color).
+      ══════════════════════════════════════════════════════ */
+
+      /* ── Base ── */
       html, body {
         overflow: auto !important;
         height: auto !important;
@@ -30,7 +36,7 @@
         display: flex; align-items: center; padding: 0 24px; gap: 0;
       }
       .jv-nav__brand {
-        color: #00d4ff; font-family: "Share Tech Mono","Courier New",monospace;
+        color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important;
         font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase;
         white-space: nowrap; flex-shrink: 0; text-decoration: none;
       }
@@ -39,37 +45,27 @@
         margin: 0 auto; padding: 0;
       }
       .jv-nav__links a {
-        color: rgba(255,255,255,0.5); text-decoration: none;
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px;
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px;
         font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
         padding-bottom: 2px; border-bottom: 1px solid transparent;
         transition: color 0.2s, border-color 0.2s;
       }
-      .jv-nav__links a:hover { color: rgba(255,255,255,0.85); }
+      .jv-nav__links a:hover { color: rgba(255,255,255,0.85) !important; }
       .jv-nav__links a.jv-nav--active,
-      .jv-nav__links a[aria-current="page"] { color: #00d4ff; border-bottom: 1px solid #00d4ff; }
+      .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
       .jv-nav__user {
         font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px;
         color: rgba(255,255,255,0.3); letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
       }
       .jv-nav__logout {
-        margin-left: 14px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid rgba(0, 212, 255, 0.25);
-        background: rgba(0, 212, 255, 0.06);
-        color: rgba(0, 212, 255, 0.85);
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s;
+        margin-left: 14px; padding: 6px 10px; border-radius: 999px;
+        border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06);
+        color: rgba(0,212,255,0.85) !important; font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+        cursor: pointer; transition: background 0.2s, border-color 0.2s;
       }
-      .jv-nav__logout:hover {
-        background: rgba(0, 212, 255, 0.14);
-        border-color: rgba(0, 212, 255, 0.55);
-      }
+      .jv-nav__logout:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.55); }
       .jv-nav__hamburger {
         display: none; flex-direction: column; justify-content: center; gap: 5px;
         background: none; border: none; cursor: pointer; padding: 4px;
@@ -88,15 +84,15 @@
       }
       .jv-nav__dropdown.jv-nav--open { display: flex; }
       .jv-nav__dropdown a {
-        color: rgba(255,255,255,0.5); text-decoration: none;
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px;
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px;
         font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
         padding: 12px 24px; border-left: 2px solid transparent;
         transition: color 0.2s, border-color 0.2s;
       }
-      .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85); }
+      .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85) !important; }
       .jv-nav__dropdown a.jv-nav--active,
-      .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff; border-left-color: #00d4ff; }
+      .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff !important; border-left-color: #00d4ff; }
       @media (max-width: 768px) {
         .jv-nav__links, .jv-nav__user { display: none; }
         .jv-nav__hamburger { display: flex; }
@@ -108,9 +104,7 @@
         position: relative; z-index: 1; min-height: 100dvh;
         padding: 72px 20px 100px;
         max-width: min(1580px, 100%);
-        margin: 0 auto;
-        width: 100%;
-        box-sizing: border-box;
+        margin: 0 auto; width: 100%; box-sizing: border-box;
       }
 
       /* ── Header ── */
@@ -119,824 +113,18 @@
         gap: 16px; margin-bottom: 32px; padding-top: 16px;
       }
       .jn-header__left { flex: 1; min-width: 0; }
+
+      /* ── TITLE — Outfit 200, 52px, white ── */
       .jn-title {
-        margin: 0 0 6px;
-        font-family: "Outfit", system-ui, sans-serif;
-        font-weight: 200;
-        font-size: clamp(2rem, 5vw, 52px);
-        color: #ffffff;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+        margin: 0 0 6px !important;
+        font-family: "Outfit", system-ui, sans-serif !important;
+        font-weight: 200 !important;
+        font-size: clamp(2rem, 5vw, 52px) !important;
+        color: #ffffff !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+        overflow: hidden;
         text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08);
-      }
-      .jn-subtitle {
-        margin: 0 0 20px; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px; color: #00d4ff; letter-spacing: 0.14em;
-        text-transform: uppercase;
-      }
-
-      /* ── Stat cards — glassmorphism ── */
-      .jn-week-pills { display: flex; flex-wrap: wrap; gap: 12px; }
-      .jn-stat-pill {
-        padding: 20px 24px; border-radius: 14px;
-        border: 1px solid rgba(0,212,255,0.2);
-        background: rgba(0,0,0,0.45);
-        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-        min-width: 130px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
-      }
-      .jn-stat-value {
-        display: block; position: relative;
-        font-family: "Outfit", system-ui, sans-serif;
-        font-weight: 200;
-        font-size: 32px; color: #fff; font-variant-numeric: tabular-nums;
-        letter-spacing: 0.03em; line-height: 1.15;
-        padding-bottom: 12px;
-      }
-      .jn-stat-value::after {
-        content: "";
-        position: absolute;
-        bottom: 0; left: 0;
-        width: 40px; height: 2px;
-        border-radius: 1px;
-      }
-      .jn-week-pills > div:nth-child(1) .jn-stat-value::after { background: #00d4ff; }
-      .jn-week-pills > div:nth-child(2) .jn-stat-value::after { background: #00ff88; }
-      .jn-week-pills > div:nth-child(3) .jn-stat-value::after { background: #00d4ff; }
-      .jn-week-pills > div:nth-child(4) .jn-stat-value::after { background: #8899aa; }
-      .jn-stat-label {
-        display: block; font-size: 9px; letter-spacing: 0.14em;
-        text-transform: uppercase; color: rgba(255,255,255,0.28); margin-top: 4px;
-      }
-
-      .jn-log-btn {
-        flex-shrink: 0; padding: 10px 22px; border-radius: 6px;
-        border: none; background: #00d4ff;
-        color: #000000; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 12px; font-weight: 600; letter-spacing: 0.14em;
-        text-transform: uppercase; cursor: pointer; white-space: nowrap;
-        transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
-      }
-      .jn-log-btn:hover {
-        background: #ffffff; box-shadow: 0 0 28px rgba(0,212,255,0.45);
-        transform: translateY(-1px);
-      }
-      .jn-log-btn:active { transform: translateY(0); }
-
-      /* ── Header actions (FILTER + LOG TRADE buttons) ── */
-      .jn-header__actions {
-        display: flex; flex-direction: column; gap: 8px;
-        align-items: flex-end; flex-shrink: 0;
-      }
-
-      /* ── FILTER + toggle button ── */
-      .jn-filter-toggle {
-        position: relative; padding: 10px 18px; border-radius: 6px;
-        border: 1px solid rgba(0,212,255,0.3); background: rgba(0,212,255,0.06);
-        color: #00d4ff; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
-        cursor: pointer; white-space: nowrap;
-        transition: border-color 0.2s, color 0.2s, background 0.2s;
-      }
-      .jn-filter-toggle:hover { border-color: rgba(0,212,255,0.6); background: rgba(0,212,255,0.1); }
-      .jn-filter-toggle.jn-filter-toggle--open {
-        border-color: rgba(0,212,255,0.5); color: #00d4ff; background: rgba(0,212,255,0.06);
-      }
-      .jn-filter-dot {
-        display: none; position: absolute; top: 7px; right: 7px;
-        width: 6px; height: 6px; border-radius: 50%; background: #00d4ff;
-        box-shadow: 0 0 6px rgba(0,212,255,0.7);
-      }
-      .jn-filter-dot--visible { display: block; }
-
-      /* ── Collapsible filter panel (grid clip — smoother than fixed max-height) ── */
-      .jn-filter-panel {
-        display: grid;
-        grid-template-rows: 0fr;
-        margin-bottom: 0;
-        transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-          margin-bottom 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .jn-filter-panel--open {
-        grid-template-rows: 1fr;
-        margin-bottom: 22px;
-      }
-      .jn-filter-panel-inner {
-        min-height: 0;
-        overflow: hidden;
-        padding: 20px 22px 18px;
-        background: linear-gradient(
-          165deg,
-          rgba(0, 212, 255, 0.06) 0%,
-          rgba(0, 0, 0, 0.45) 100%
-        );
-        border: 1px solid rgba(0, 212, 255, 0.15);
-        border-radius: 12px;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.04),
-          0 16px 48px rgba(0, 0, 0, 0.35);
-      }
-
-      /* ── Filter grid — 3 columns ── */
-      .jn-filter-grid {
-        display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 24px;
-      }
-      .jn-filter-row {
-        display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
-      }
-      /* Period + model span full width so pills wrap cleanly */
-      #filter-period,
-      #filter-model { grid-column: 1 / -1; }
-      #filter-model .jn-filter-pill { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .jn-filter-label {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
-        letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.28);
-      }
-      .jn-filter-pills { display: flex; flex-wrap: wrap; gap: 5px; }
-      .jn-filter-pill {
-        padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1);
-        background: transparent; color: rgba(255,255,255,0.35);
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px;
-        letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
-        transition: border-color 0.2s, color 0.2s, background 0.2s;
-      }
-      .jn-filter-pill:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.25); }
-      .jn-filter-pill.active { border-color: #00d4ff; color: #00d4ff; background: rgba(0,212,255,0.08); }
-
-      /* ── Panel footer (CLEAR ALL) ── */
-      .jn-filter-panel-foot {
-        display: flex; justify-content: flex-end;
-        margin-top: 16px; padding-top: 12px;
-        border-top: 1px solid rgba(255,255,255,0.06);
-      }
-      .jn-filter-clear-btn {
-        background: none; border: none; color: rgba(255,255,255,0.3);
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px;
-        letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; padding: 2px 0;
-        transition: color 0.2s;
-      }
-      .jn-filter-clear-btn:hover { color: #00d4ff; }
-
-      /* ── Trade list (Notion gallery–style grid) ── */
-      .jn-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
-        gap: 10px 11px;
-        align-items: start;
-      }
-
-      /* ── Card ── */
-      .jn-card {
-        position: relative;
-        border-radius: 10px;
-        border: 1px solid rgba(0, 212, 255, 0.12);
-        border-left: 4px solid rgba(255, 255, 255, 0.14);
-        background: rgba(0, 0, 0, 0.4);
-        overflow: hidden;
-        cursor: pointer;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        transition:
-          border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-          background 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-          box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-          transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-        box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.04) inset,
-          0 12px 32px rgba(0, 0, 0, 0.32);
-        width: 100%;
-        min-width: 0;
-      }
-      .jn-card::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        opacity: 0;
-        background: radial-gradient(
-          ellipse 120% 80% at 100% 0%,
-          rgba(0, 212, 255, 0.08),
-          transparent 55%
-        );
-        transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .jn-card:hover {
-        background: rgba(0, 212, 255, 0.06);
-        border-color: rgba(0, 212, 255, 0.28);
-        transform: translateY(-4px);
-        box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.06) inset,
-          0 8px 32px rgba(0, 212, 255, 0.08),
-          0 20px 60px rgba(0, 0, 0, 0.5);
-      }
-      .jn-card:hover::after {
-        opacity: 1;
-      }
-      .jn-card[data-outcome="win"] {
-        border-left-color: #00ff88;
-      }
-      .jn-card[data-outcome="loss"] {
-        border-left-color: #ff5050;
-      }
-      .jn-card[data-outcome="be"] {
-        border-left-color: rgba(192, 192, 192, 0.35);
-      }
-
-      /* Gallery-style cover (Notion board): main chart on top */
-      .jn-card__cover {
-        position: relative;
-        width: 100%;
-        aspect-ratio: 2.35 / 1;
-        max-height: 160px;
-        min-height: 80px;
-        background: rgba(20, 22, 26, 0.95);
-        border-bottom: 1px solid rgba(0, 212, 255, 0.12);
-        overflow: hidden;
-        flex-shrink: 0;
-        line-height: 0;
-      }
-      .jn-card__cover::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.55) 100%);
-        pointer-events: none;
-      }
-      .jn-card__cover-img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: center top;
-        pointer-events: none;
-        user-select: none;
-      }
-
-      /* ── Card top row ── */
-      .jn-card__top {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        padding: 9px 11px 10px;
-        min-height: 0;
-        gap: 6px;
-      }
-      .jn-card__bands {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 6px 8px;
-      }
-      /* Badges / pair / model */
-      .jn-card__left {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 5px 6px;
-        flex: 1 1 100px;
-        min-width: 0;
-      }
-      /* Account + RR + chevron */
-      .jn-card__right {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-        margin-left: auto;
-      }
-
-      .jn-card__date {
-        font-family: "Outfit", system-ui, sans-serif;
-        font-size: 13px;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.96);
-        letter-spacing: 0.03em;
-        line-height: 1.28;
-      }
-      .jn-card__pair {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px;
-        color: #fff; letter-spacing: 0.06em; flex-shrink: 0; white-space: nowrap;
-      }
-      .jn-card__model {
-        flex-basis: 100%;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px;
-        color: rgba(255,255,255,0.38);
-        letter-spacing: 0.04em;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        min-width: 0;
-      }
-      .jn-card__rr {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px;
-        color: #00d4ff; font-weight: 700; font-variant-numeric: tabular-nums;
-        flex-shrink: 0; white-space: nowrap;
-      }
-      .jn-card__chevron {
-        font-size: 10px; color: rgba(255,255,255,0.18); flex-shrink: 0;
-      }
-
-      /* ── Badges ── */
-      .jn-badge {
-        display: inline-flex; align-items: center;
-        padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
-        font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
-        border: 1px solid transparent; white-space: nowrap;
-      }
-      .jn-badge--win   { background: #00ff88; color: #001a00; }
-      .jn-badge--loss  { background: #ff4444; color: #fff; }
-      .jn-badge--be    { background: rgba(255,255,255,0.16); color: #fff; }
-      .jn-badge--long  { background: rgba(0,212,255,0.12); color: #00d4ff; border-color: rgba(0,212,255,0.35); }
-      .jn-badge--short { background: rgba(255,100,100,0.12); color: #ff8888; border-color: rgba(255,100,100,0.35); }
-      .jn-badge--acct  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.38); border-color: rgba(255,255,255,0.1); font-weight: 400; font-size: 9px; }
-
-      /* ── Trade detail pane (modal body reuses these) ── */
-      .jn-expand-inner {
-        padding: 13px 12px 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        background: rgba(0, 0, 0, 0.25);
-      }
-      .jn-trade-modal .jn-expand-inner {
-        background: transparent;
-      }
-      .jn-detail { display: flex; flex-direction: column; gap: 3px; }
-      .jn-detail__label {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px;
-        letter-spacing: 0.18em; text-transform: uppercase; color: #00d4ff;
-      }
-      .jn-detail__value {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 13px;
-        color: rgba(255,255,255,0.65); line-height: 1.5;
-      }
-      .jn-detail__notes {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 13px;
-        color: rgba(255,255,255,0.5); line-height: 1.65; white-space: pre-wrap;
-        word-break: break-word; margin: 0;
-      }
-      .jn-notion-extras {
-        border: 1px solid rgba(0, 212, 255, 0.18);
-        border-radius: 12px;
-        padding: 12px 12px 10px;
-        background: rgba(0, 191, 255, 0.05);
-      }
-      .jn-notion-extras__head {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        color: #00d4ff;
-        margin-bottom: 10px;
-      }
-      .jn-notion-extras__grid {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .jn-notion-row {
-        display: grid;
-        grid-template-columns: minmax(72px, 34%) 1fr;
-        gap: 8px 12px;
-        align-items: start;
-      }
-      .jn-notion-row__k {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(192, 192, 192, 0.85);
-        word-break: break-word;
-      }
-      .jn-notion-row__v {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.72);
-        line-height: 1.55;
-        white-space: pre-wrap;
-        word-break: break-word;
-        max-height: 200px;
-        overflow-y: auto;
-      }
-      .jn-notion-section {
-        margin-bottom: 14px;
-      }
-      .jn-notion-section:last-child { margin-bottom: 0; }
-      .jn-notion-section__title {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 8px;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.55);
-        margin: 0 0 8px;
-        padding-bottom: 4px;
-        border-bottom: 1px solid rgba(0, 212, 255, 0.12);
-      }
-      .jn-chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 8px;
-        margin: 0 6px 4px 0;
-        border-radius: 999px;
-        border: 1px solid rgba(0, 212, 255, 0.28);
-        background: rgba(0, 0, 0, 0.35);
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px;
-        color: rgba(255, 255, 255, 0.82);
-        max-width: 100%;
-        word-break: break-word;
-      }
-      .jn-notion-long {
-        margin: 0;
-        width: 100%;
-      }
-      .jn-notion-long__sum {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.72);
-        cursor: pointer;
-        list-style: none;
-      }
-      .jn-notion-long__sum::-webkit-details-marker { display: none; }
-      .jn-notion-long__full {
-        margin-top: 8px;
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid rgba(0, 212, 255, 0.15);
-        background: rgba(0, 0, 0, 0.4);
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.78);
-        white-space: pre-wrap;
-        word-break: break-word;
-        max-height: 240px;
-        overflow-y: auto;
-      }
-      .jn-notion-row__v-chips { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0; max-width: 100%; }
-      .jn-card__extras-preview {
-        grid-column: 1 / -1;
-        margin-top: 6px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(0, 212, 255, 0.12);
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .jn-card__extras-line {
-        display: grid;
-        grid-template-columns: minmax(52px, 32%) 1fr;
-        gap: 6px 10px;
-        align-items: baseline;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px;
-        line-height: 1.35;
-      }
-      .jn-card__extras-k {
-        color: rgba(0, 212, 255, 0.65);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        min-width: 0;
-      }
-      .jn-card__extras-v {
-        color: rgba(192, 192, 192, 0.85);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        min-width: 0;
-      }
-      .jn-trade-photos {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px 18px;
-        margin-top: 4px;
-        align-items: flex-start;
-      }
-      .jn-photo-item {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        flex: 0 0 auto;
-        max-width: min(160px, 100%);
-      }
-      .jn-photo-caption {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.48);
-        line-height: 1.35;
-        word-break: break-word;
-      }
-      .jn-photo-open {
-        display: block;
-        margin: 0;
-        padding: 0;
-        border: none;
-        border-radius: 10px;
-        overflow: hidden;
-        cursor: zoom-in;
-        background: rgba(0, 0, 0, 0.35);
-        border: 1px solid rgba(0, 212, 255, 0.18);
-        flex: 0 0 auto;
-        max-width: 100%;
-        line-height: 0;
-      }
-      .jn-photo-thumb {
-        display: block;
-        width: 140px;
-        height: 88px;
-        object-fit: cover;
-        vertical-align: middle;
-        pointer-events: none;
-      }
-      .jn-photo-open:hover {
-        border-color: rgba(0, 212, 255, 0.45);
-        box-shadow: 0 0 16px rgba(0, 212, 255, 0.12);
-      }
-
-      /* ── Trade detail modal (Notion page–style peek) ── */
-      .jn-trade-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 199000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
-          max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
-      }
-      .jn-trade-modal[hidden] {
-        display: none !important;
-      }
-      .jn-trade-modal__backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.76);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        cursor: pointer;
-      }
-      .jn-trade-modal__panel {
-        position: relative;
-        z-index: 1;
-        width: min(100%, 580px);
-        max-height: min(90vh, 920px);
-        display: flex;
-        flex-direction: column;
-        border-radius: var(--radius-panel, 14px);
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        border-left-width: 4px;
-        border-left-color: rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.93);
-        box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.06) inset,
-          0 28px 90px rgba(0, 0, 0, 0.55);
-        overflow: hidden;
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-      }
-      .jn-trade-modal__panel[data-outcome="win"] {
-        border-left-color: #00ff88;
-      }
-      .jn-trade-modal__panel[data-outcome="loss"] {
-        border-left-color: #ff5050;
-      }
-      .jn-trade-modal__panel[data-outcome="be"] {
-        border-left-color: rgba(192, 192, 192, 0.35);
-      }
-      .jn-trade-modal__head {
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 12px 14px;
-        border-bottom: 1px solid rgba(0, 212, 255, 0.14);
-      }
-      .jn-trade-modal__title {
-        margin: 0;
-        font-family: "Outfit", system-ui, sans-serif;
-        font-size: 14px;
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.95);
-        letter-spacing: 0.02em;
-        line-height: 1.3;
-      }
-      .jn-trade-modal__close {
-        flex-shrink: 0;
-        width: 38px;
-        height: 38px;
-        border: 1px solid rgba(0, 212, 255, 0.35);
-        border-radius: var(--radius-soft, 10px);
-        background: rgba(0, 0, 0, 0.45);
-        color: #00d4ff;
-        font-size: 22px;
-        line-height: 1;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s, border-color 0.2s;
-      }
-      .jn-trade-modal__close:hover {
-        background: rgba(0, 212, 255, 0.12);
-        border-color: #00d4ff;
-      }
-      .jn-trade-modal__scroll {
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-      }
-      .jn-trade-modal__hero {
-        width: 100%;
-        max-height: min(260px, 36vh);
-        background: rgba(22, 24, 28, 0.98);
-        border-bottom: 1px solid rgba(0, 212, 255, 0.12);
-        line-height: 0;
-      }
-      .jn-trade-modal__hero-img {
-        display: block;
-        width: 100%;
-        height: auto;
-        max-height: min(260px, 36vh);
-        object-fit: contain;
-        object-position: center top;
-      }
-
-      /* Chart lightbox */
-      .jn-lightbox {
-        position: fixed;
-        inset: 0;
-        z-index: 200000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-      }
-      .jn-lightbox[hidden] {
-        display: none !important;
-      }
-      .jn-lightbox__backdrop {
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.9);
-        backdrop-filter: blur(10px);
-        cursor: zoom-out;
-      }
-      .jn-lightbox__close {
-        position: absolute;
-        top: max(12px, env(safe-area-inset-top));
-        right: max(12px, env(safe-area-inset-right));
-        z-index: 2;
-        width: 44px;
-        height: 44px;
-        border: 1px solid rgba(0, 212, 255, 0.35);
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.5);
-        color: #00d4ff;
-        font-size: 24px;
-        line-height: 1;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .jn-lightbox__close:hover {
-        background: rgba(0, 212, 255, 0.12);
-        border-color: #00d4ff;
-      }
-      .jn-lightbox__figure {
-        position: relative;
-        z-index: 1;
-        margin: 0;
-        max-width: min(96vw, 1280px);
-        text-align: center;
-      }
-      .jn-lightbox__img {
-        max-width: 100%;
-        max-height: min(82vh, 880px);
-        width: auto;
-        height: auto;
-        object-fit: contain;
-        border-radius: 12px;
-        border: 1px solid rgba(0, 212, 255, 0.22);
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
-      }
-      .jn-lightbox__caption {
-        margin-top: 14px;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.88);
-        line-height: 1.45;
-      }
-      .jn-card__photo-hit {
-        display: inline-flex;
-        align-items: center;
-        margin-left: 6px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        border: 1px solid rgba(0, 212, 255, 0.22);
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 8px;
-        letter-spacing: 0.14em;
-        color: rgba(0, 212, 255, 0.75);
-        vertical-align: middle;
-      }
-      .jn-ask-btn {
-        align-self: flex-start; padding: 8px 16px; border-radius: 6px;
-        border: 1px solid rgba(0,212,255,0.35); background: rgba(0,212,255,0.06);
-        color: #00d4ff; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
-        cursor: pointer; transition: background 0.2s, border-color 0.2s;
-      }
-      .jn-ask-btn:hover { background: rgba(0,212,255,0.14); border-color: #00d4ff; }
-
-      /* ── Load more ── */
-      .jn-load-more-wrap { display: flex; justify-content: center; margin-top: 24px; }
-      .jn-load-more {
-        padding: 10px 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
-        background: transparent; color: rgba(255,255,255,0.35);
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px;
-        letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer;
-        transition: border-color 0.2s, color 0.2s;
-      }
-      .jn-load-more:hover { border-color: rgba(0,212,255,0.4); color: #00d4ff; }
-      .jn-load-more:disabled { opacity: 0.3; cursor: not-allowed; }
-      .jn-load-more.hidden { display: none; }
-
-      /* ── State messages ── */
-      .jn-state {
-        grid-column: 1 / -1;
-        padding: 48px 0;
-        text-align: center;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 12px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.22);
-      }
-
-      /* ── Premium card animations ── */
-      .jn-card {
-        opacity: 0;
-        transform: translateY(20px);
-        transition:
-          opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-          transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-          border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-          background 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-          box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .jn-card.jn-visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      .jn-card[data-outcome="win"] {
-        border-left-color: #00ff88;
-        background: rgba(0, 255, 136, 0.025);
-      }
-      .jn-card[data-outcome="loss"] {
-        border-left-color: #ff4466;
-        background: rgba(255, 68, 102, 0.025);
-      }
-      .jn-card[data-outcome="be"] {
-        border-left-color: rgba(192, 192, 192, 0.35);
-      }
-      .jn-card:hover {
-        box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.06) inset,
-          0 8px 32px rgba(0, 212, 255, 0.08),
-          0 20px 60px rgba(0, 0, 0, 0.5);
-      }
-      /* Stat card hover */
-      .jn-stat-pill {
-        transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
-      }
-      .jn-stat-pill:hover {
-        border-color: rgba(0, 212, 255, 0.4);
-        box-shadow: 0 0 32px rgba(0, 212, 255, 0.1), 0 8px 32px rgba(0,0,0,0.4);
-        transform: translateY(-2px);
-      }
-      /* Modal scale-in */
-      @keyframes jn-modal-in {
-        from { opacity: 0; transform: scale(0.94) translateY(12px); filter: blur(4px); }
-        to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
-      }
-      .jn-trade-modal:not([hidden]) .jn-trade-modal__panel {
-        animation: jn-modal-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-      }
-      /* Title letter reveal */
-      .jn-title {
-        overflow: hidden;
       }
       .jn-title-letter {
         display: inline-block;
@@ -947,43 +135,434 @@
       @keyframes jn-letter-in {
         to { opacity: 1; transform: translateY(0); }
       }
-      /* RR badge enhancement */
-      .jn-card__rr {
-        font-size: 14px;
-        color: #00d4ff;
-        font-weight: 700;
-        text-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+
+      .jn-subtitle {
+        margin: 0 0 20px !important;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 11px !important; color: #00d4ff !important;
+        letter-spacing: 0.14em; text-transform: uppercase;
       }
+
+      /* ── Weekly stats cards ── */
+      .jn-week-pills { display: flex; flex-wrap: wrap; gap: 12px; }
+      .jn-stat-pill {
+        padding: 20px 24px !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(0,212,255,0.12) !important;
+        background: rgba(255,255,255,0.03) !important;
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        min-width: 130px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+        transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+      }
+      .jn-stat-pill:hover {
+        border-color: rgba(0,212,255,0.3) !important;
+        box-shadow: 0 0 28px rgba(0,212,255,0.1), 0 8px 32px rgba(0,0,0,0.4);
+        transform: translateY(-2px);
+      }
+      .jn-stat-value {
+        display: block !important; position: relative;
+        font-family: "Outfit", system-ui, sans-serif !important;
+        font-weight: 200 !important;
+        font-size: 32px !important; color: #ffffff !important;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.03em; line-height: 1.15;
+        padding-bottom: 12px;
+      }
+      .jn-stat-value::after {
+        content: "";
+        position: absolute; bottom: 0; left: 0;
+        width: 40px; height: 2px; border-radius: 1px;
+      }
+      .jn-week-pills > div:nth-child(1) .jn-stat-value::after { background: #00d4ff; }
+      .jn-week-pills > div:nth-child(2) .jn-stat-value::after { background: #00ff88; }
+      .jn-week-pills > div:nth-child(3) .jn-stat-value::after { background: #00d4ff; }
+      .jn-week-pills > div:nth-child(4) .jn-stat-value::after { background: #8899aa; }
+      .jn-stat-label {
+        display: block !important;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 10px !important; color: #00d4ff !important;
+        letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px;
+      }
+
+      /* ── Header actions ── */
+      .jn-header__actions {
+        display: flex; flex-direction: column; gap: 8px;
+        align-items: flex-end; flex-shrink: 0;
+      }
+
+      /* ── LOG TRADE — solid fill ── */
+      .jn-log-btn {
+        flex-shrink: 0; padding: 10px 22px; border-radius: 6px;
+        border: none !important; background: #00d4ff !important;
+        color: #000000 !important; font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 12px; font-weight: 600; letter-spacing: 0.14em;
+        text-transform: uppercase; cursor: pointer; white-space: nowrap;
+        transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+      }
+      .jn-log-btn:hover {
+        background: #ffffff !important;
+        box-shadow: 0 0 28px rgba(0,212,255,0.45);
+        transform: translateY(-1px);
+      }
+      .jn-log-btn:active { transform: translateY(0); }
+
+      /* ── Filter toggle ── */
+      .jn-filter-toggle {
+        position: relative; padding: 10px 18px; border-radius: 6px;
+        border: 1px solid rgba(0,212,255,0.3) !important;
+        background: rgba(0,212,255,0.06) !important;
+        color: #00d4ff !important;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+        cursor: pointer; white-space: nowrap;
+        transition: border-color 0.2s, background 0.2s;
+      }
+      .jn-filter-toggle:hover {
+        border-color: rgba(0,212,255,0.6) !important;
+        background: rgba(0,212,255,0.1) !important;
+      }
+      .jn-filter-toggle.jn-filter-toggle--open {
+        border-color: #00d4ff !important;
+        background: rgba(0,212,255,0.1) !important;
+      }
+      .jn-filter-dot {
+        display: none; position: absolute; top: 7px; right: 7px;
+        width: 6px; height: 6px; border-radius: 50%; background: #00d4ff;
+        box-shadow: 0 0 6px rgba(0,212,255,0.7);
+      }
+      .jn-filter-dot--visible { display: block; }
+
+      /* ── Filter panel — max-height slide ── */
+      .jn-filter-panel {
+        max-height: 0;
+        overflow: hidden;
+        margin-bottom: 0;
+        transition: max-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                    margin-bottom 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .jn-filter-panel--open {
+        max-height: 900px;
+        margin-bottom: 22px;
+      }
+      .jn-filter-panel-inner {
+        padding: 20px 22px 18px;
+        background: rgba(5,10,20,0.95) !important;
+        border: 1px solid rgba(0,212,255,0.15);
+        border-radius: 12px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 16px 48px rgba(0,0,0,0.4);
+      }
+
+      /* ── Filter grid ── */
+      .jn-filter-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 24px;
+      }
+      .jn-filter-row {
+        display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+      }
+      #filter-period, #filter-model { grid-column: 1 / -1; }
+      #filter-model .jn-filter-pill { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .jn-filter-label {
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: rgba(255,255,255,0.28) !important;
+      }
+      .jn-filter-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+      .jn-filter-pill {
+        padding: 5px 12px; border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        background: transparent !important;
+        color: rgba(255,255,255,0.35) !important;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+        transition: border-color 0.2s, color 0.2s, background 0.2s;
+      }
+      .jn-filter-pill:hover {
+        color: rgba(255,255,255,0.7) !important;
+        border-color: rgba(255,255,255,0.25) !important;
+      }
+      .jn-filter-pill.active {
+        border: 1px solid #00d4ff !important;
+        color: #00d4ff !important;
+        background: rgba(0,212,255,0.15) !important;
+      }
+
+      /* ── Filter footer ── */
+      .jn-filter-panel-foot {
+        display: flex; justify-content: flex-end;
+        margin-top: 16px; padding-top: 12px;
+        border-top: 1px solid rgba(255,255,255,0.06);
+      }
+      .jn-filter-clear-btn {
+        background: none; border: none; color: rgba(255,255,255,0.3) !important;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+        cursor: pointer; padding: 2px 0; transition: color 0.2s;
+      }
+      .jn-filter-clear-btn:hover { color: #00d4ff !important; }
+
+      /* ── Trade list grid ── */
+      .jn-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+        gap: 10px 11px;
+        align-items: start;
+      }
+
+      /* ── Trade cards ── */
+      .jn-card {
+        position: relative;
+        border-radius: 10px;
+        border: 1px solid rgba(0,212,255,0.1) !important;
+        border-left: 3px solid rgba(255,255,255,0.14) !important;
+        background: rgba(255,255,255,0.03) !important;
+        overflow: hidden; cursor: pointer;
+        backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+        width: 100%; min-width: 0;
+        /* scroll-in start state */
+        opacity: 0;
+        transform: translateY(20px);
+        transition:
+          opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+          transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+      }
+      .jn-card.jn-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      /* Outcome border-left colours */
+      .jn-card[data-outcome="win"]  { border-left: 3px solid #00ff88 !important; background: rgba(0,255,136,0.025) !important; }
+      .jn-card[data-outcome="loss"] { border-left: 3px solid #ff4466 !important; background: rgba(255,68,102,0.025) !important; }
+      .jn-card[data-outcome="be"]   { border-left: 3px solid #8899aa !important; }
+      /* Hover */
+      .jn-card:hover {
+        transform: translateY(-4px) !important;
+        box-shadow: 0 8px 32px rgba(0,212,255,0.1), 0 20px 60px rgba(0,0,0,0.5) !important;
+      }
+      .jn-card.jn-visible:hover { opacity: 1; }
+
+      /* ── Cover image ── */
+      .jn-card__cover {
+        position: relative; width: 100%;
+        aspect-ratio: 2.35 / 1; max-height: 160px; min-height: 80px;
+        background: rgba(20,22,26,0.95);
+        border-bottom: 1px solid rgba(0,212,255,0.12);
+        overflow: hidden; flex-shrink: 0; line-height: 0;
+      }
+      .jn-card__cover::after {
+        content: ""; position: absolute; inset: 0;
+        background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.55) 100%);
+        pointer-events: none;
+      }
+      .jn-card__cover-img {
+        display: block; width: 100%; height: 100%;
+        object-fit: cover; object-position: center top;
+        pointer-events: none; user-select: none;
+      }
+
+      /* ── Card body ── */
+      .jn-card__top {
+        display: flex; flex-direction: column; align-items: stretch;
+        padding: 9px 11px 10px; min-height: 0; gap: 6px;
+      }
+      .jn-card__bands {
+        display: flex; flex-wrap: wrap; align-items: center;
+        justify-content: space-between; gap: 6px 8px;
+      }
+      .jn-card__left {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 5px 6px; flex: 1 1 100px; min-width: 0;
+      }
+      .jn-card__right {
+        display: flex; align-items: center; gap: 6px;
+        flex-shrink: 0; margin-left: auto;
+      }
+      .jn-card__date {
+        font-family: "Outfit", system-ui, sans-serif !important;
+        font-size: 13px; font-weight: 600;
+        color: rgba(255,255,255,0.96) !important;
+        letter-spacing: 0.03em; line-height: 1.28;
+      }
+      .jn-card__pair {
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 12px; color: #fff !important;
+        letter-spacing: 0.06em; flex-shrink: 0; white-space: nowrap;
+      }
+      .jn-card__model {
+        flex-basis: 100%;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 10px; color: rgba(255,255,255,0.38) !important;
+        letter-spacing: 0.04em; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+      }
+
+      /* ── RR value — Outfit 200, 20px, coloured by outcome ── */
+      .jn-card__rr {
+        font-family: "Outfit", system-ui, sans-serif !important;
+        font-size: 20px !important; font-weight: 200 !important;
+        font-variant-numeric: tabular-nums;
+        color: rgba(255,255,255,0.5) !important;
+        flex-shrink: 0; white-space: nowrap;
+      }
+      .jn-card[data-outcome="win"]  .jn-card__rr { color: #00ff88 !important; }
+      .jn-card[data-outcome="loss"] .jn-card__rr { color: #ff4466 !important; }
+      .jn-card__chevron { font-size: 10px; color: rgba(255,255,255,0.18); flex-shrink: 0; }
+
+      /* ── Badges ── */
+      .jn-badge {
+        display: inline-flex; align-items: center;
+        padding: 3px 8px; border-radius: 4px; flex-shrink: 0;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 9px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+        border: 1px solid transparent; white-space: nowrap;
+      }
+      .jn-badge--win   { background: #00ff88 !important; color: #001a00 !important; }
+      .jn-badge--loss  { background: #ff4466 !important; color: #fff !important; }
+      .jn-badge--be    { background: rgba(255,255,255,0.16) !important; color: #fff !important; }
+      .jn-badge--long  { background: rgba(0,212,255,0.12) !important; color: #00d4ff !important; border-color: rgba(0,212,255,0.35) !important; }
+      .jn-badge--short { background: rgba(255,100,100,0.12) !important; color: #ff8888 !important; border-color: rgba(255,100,100,0.35) !important; }
+      .jn-badge--acct  { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.38) !important; border-color: rgba(255,255,255,0.1) !important; font-weight: 400; font-size: 9px; }
+
+      /* ── Card extras (Notion fields preview) ── */
+      .jn-card__extras-preview {
+        grid-column: 1 / -1; margin-top: 6px; padding-top: 8px;
+        border-top: 1px solid rgba(0,212,255,0.12);
+        display: flex; flex-direction: column; gap: 4px;
+      }
+      .jn-card__extras-line {
+        display: grid; grid-template-columns: minmax(52px, 32%) 1fr;
+        gap: 6px 10px; align-items: baseline;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 9px; line-height: 1.35;
+      }
+      .jn-card__extras-k { color: rgba(0,212,255,0.65) !important; letter-spacing: 0.08em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+      .jn-card__extras-v { color: rgba(192,192,192,0.85) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+      .jn-card__photo-hit {
+        display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 6px;
+        border-radius: 4px; border: 1px solid rgba(0,212,255,0.22);
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 8px; letter-spacing: 0.14em; color: rgba(0,212,255,0.75) !important; vertical-align: middle;
+      }
+
+      /* ── Trade detail expand (modal body reuses these) ── */
+      .jn-expand-inner {
+        padding: 13px 12px 14px; display: flex; flex-direction: column;
+        gap: 12px; background: rgba(0,0,0,0.25);
+      }
+      .jn-trade-modal .jn-expand-inner { background: transparent; }
+      .jn-detail { display: flex; flex-direction: column; gap: 3px; }
+      .jn-detail__label { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #00d4ff !important; }
+      .jn-detail__value { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 13px; color: rgba(255,255,255,0.65) !important; line-height: 1.5; }
+      .jn-detail__notes { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 13px; color: rgba(255,255,255,0.5) !important; line-height: 1.65; white-space: pre-wrap; word-break: break-word; margin: 0; }
+
+      /* ── Notion extras panel ── */
+      .jn-notion-extras { border: 1px solid rgba(0,212,255,0.18); border-radius: 12px; padding: 12px 12px 10px; background: rgba(0,191,255,0.05); }
+      .jn-notion-extras__head { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #00d4ff !important; margin-bottom: 10px; }
+      .jn-notion-extras__grid { display: flex; flex-direction: column; gap: 10px; }
+      .jn-notion-row { display: grid; grid-template-columns: minmax(72px, 34%) 1fr; gap: 8px 12px; align-items: start; }
+      .jn-notion-row__k { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(192,192,192,0.85) !important; word-break: break-word; }
+      .jn-notion-row__v { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; color: rgba(255,255,255,0.72) !important; line-height: 1.55; white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; }
+      .jn-notion-section { margin-bottom: 14px; }
+      .jn-notion-section:last-child { margin-bottom: 0; }
+      .jn-notion-section__title { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(0,212,255,0.55) !important; margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(0,212,255,0.12); }
+      .jn-chip { display: inline-flex; align-items: center; padding: 2px 8px; margin: 0 6px 4px 0; border-radius: 999px; border: 1px solid rgba(0,212,255,0.28); background: rgba(0,0,0,0.35); font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 10px; color: rgba(255,255,255,0.82) !important; max-width: 100%; word-break: break-word; }
+      .jn-notion-long { margin: 0; width: 100%; }
+      .jn-notion-long__sum { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; color: rgba(255,255,255,0.72) !important; cursor: pointer; list-style: none; }
+      .jn-notion-long__sum::-webkit-details-marker { display: none; }
+      .jn-notion-long__full { margin-top: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(0,212,255,0.15); background: rgba(0,0,0,0.4); font-size: 11px; color: rgba(255,255,255,0.78) !important; white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; }
+      .jn-notion-row__v-chips { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0; max-width: 100%; }
+
+      /* ── Photo strip ── */
+      .jn-trade-photos { display: flex; flex-wrap: wrap; gap: 14px 18px; margin-top: 4px; align-items: flex-start; }
+      .jn-photo-item { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; max-width: min(160px, 100%); }
+      .jn-photo-caption { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.48) !important; line-height: 1.35; word-break: break-word; }
+      .jn-photo-open { display: block; margin: 0; padding: 0; border-radius: 10px; overflow: hidden; cursor: zoom-in; background: rgba(0,0,0,0.35); border: 1px solid rgba(0,212,255,0.18); flex: 0 0 auto; max-width: 100%; line-height: 0; }
+      .jn-photo-thumb { display: block; width: 140px; height: 88px; object-fit: cover; vertical-align: middle; pointer-events: none; }
+      .jn-photo-open:hover { border-color: rgba(0,212,255,0.45); box-shadow: 0 0 16px rgba(0,212,255,0.12); }
+
+      /* ── Ask Jarvis button ── */
+      .jn-ask-btn { align-self: flex-start; padding: 8px 16px; border-radius: 6px; border: 1px solid rgba(0,212,255,0.35); background: rgba(0,212,255,0.06); color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+      .jn-ask-btn:hover { background: rgba(0,212,255,0.14); border-color: #00d4ff; }
+
+      /* ── Trade detail modal ── */
+      .jn-trade-modal { position: fixed; inset: 0; z-index: 199000; display: flex; align-items: center; justify-content: center; padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+      .jn-trade-modal[hidden] { display: none !important; }
+      .jn-trade-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.76); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; }
+      .jn-trade-modal__panel {
+        position: relative; z-index: 1; width: min(100%, 580px);
+        max-height: min(90vh, 920px); display: flex; flex-direction: column;
+        border-radius: 14px; border: 1px solid rgba(0,212,255,0.2);
+        border-left-width: 4px; border-left-color: rgba(255,255,255,0.16);
+        background: rgba(5,10,20,0.96) !important;
+        box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 28px 90px rgba(0,0,0,0.6);
+        overflow: hidden; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      }
+      .jn-trade-modal__panel[data-outcome="win"]  { border-left-color: #00ff88 !important; }
+      .jn-trade-modal__panel[data-outcome="loss"] { border-left-color: #ff4466 !important; }
+      .jn-trade-modal__panel[data-outcome="be"]   { border-left-color: #8899aa !important; }
+      .jn-trade-modal__head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(0,212,255,0.14); }
+      .jn-trade-modal__title { margin: 0; font-family: "Outfit", system-ui, sans-serif !important; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.95) !important; letter-spacing: 0.02em; line-height: 1.3; }
+      .jn-trade-modal__close { flex-shrink: 0; width: 38px; height: 38px; border: 1px solid rgba(0,212,255,0.35); border-radius: 10px; background: rgba(0,0,0,0.45); color: #00d4ff !important; font-size: 22px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s, border-color 0.2s; }
+      .jn-trade-modal__close:hover { background: rgba(0,212,255,0.12); border-color: #00d4ff; }
+      .jn-trade-modal__scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+      .jn-trade-modal__hero { width: 100%; max-height: min(260px, 36vh); background: rgba(22,24,28,0.98); border-bottom: 1px solid rgba(0,212,255,0.12); line-height: 0; }
+      .jn-trade-modal__hero-img { display: block; width: 100%; height: auto; max-height: min(260px, 36vh); object-fit: contain; object-position: center top; }
+      @keyframes jn-modal-in {
+        from { opacity: 0; transform: scale(0.94) translateY(12px); filter: blur(4px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+      }
+      .jn-trade-modal:not([hidden]) .jn-trade-modal__panel { animation: jn-modal-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+      /* ── Chart lightbox ── */
+      .jn-lightbox { position: fixed; inset: 0; z-index: 200000; display: flex; align-items: center; justify-content: center; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+      .jn-lightbox[hidden] { display: none !important; }
+      .jn-lightbox__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); cursor: zoom-out; }
+      .jn-lightbox__close { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); z-index: 2; width: 44px; height: 44px; border: 1px solid rgba(0,212,255,0.35); border-radius: 10px; background: rgba(0,0,0,0.5); color: #00d4ff !important; font-size: 24px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .jn-lightbox__close:hover { background: rgba(0,212,255,0.12); border-color: #00d4ff; }
+      .jn-lightbox__figure { position: relative; z-index: 1; margin: 0; max-width: min(96vw, 1280px); text-align: center; }
+      .jn-lightbox__img { max-width: 100%; max-height: min(82vh, 880px); width: auto; height: auto; object-fit: contain; border-radius: 12px; border: 1px solid rgba(0,212,255,0.22); box-shadow: 0 24px 80px rgba(0,0,0,0.65); }
+      .jn-lightbox__caption { margin-top: 14px; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,212,255,0.88) !important; line-height: 1.45; }
+
+      /* ── Load more ── */
+      .jn-load-more-wrap { display: flex; justify-content: center; margin-top: 24px; }
+      .jn-load-more { padding: 10px 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: transparent; color: rgba(255,255,255,0.35) !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: border-color 0.2s, color 0.2s; }
+      .jn-load-more:hover { border-color: rgba(0,212,255,0.4); color: #00d4ff !important; }
+      .jn-load-more:disabled { opacity: 0.3; cursor: not-allowed; }
+      .jn-load-more.hidden { display: none; }
+
+      /* ── State message ── */
+      .jn-state { grid-column: 1 / -1; padding: 48px 0; text-align: center; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.22) !important; }
+
+      /* ── Toast ── */
+      .trade-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.35); border-radius: 8px; padding: 10px 20px; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px; color: #00d4ff !important; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; z-index: 300000; }
+      .trade-toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+      .trade-toast--error { background: rgba(255,68,102,0.12); border-color: rgba(255,68,102,0.35); color: #ff4466 !important; }
+
       /* ── Responsive ── */
       @media (max-width: 768px) {
-        .jn-list {
-          grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
-          gap: 8px;
-        }
+        .jn-list { grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 8px; }
         .jn-page { padding: 68px 14px 90px; }
         .jn-header { flex-direction: column; gap: 12px; align-items: stretch; }
         .jn-header__actions { flex-direction: column; align-items: stretch; width: 100%; }
         .jn-filter-toggle { text-align: center; min-height: 44px; }
         .jn-log-btn { text-align: center; min-height: 44px; }
-        .jn-title { font-size: 2rem; }
+        .jn-title { font-size: 2rem !important; }
         .jn-card__top { padding: 9px 10px 10px; }
         .jn-card__cover { max-height: 92px; min-height: 60px; }
-        .jn-card__date { font-size: 10px; }
-        .jn-stat-pill { min-width: auto; padding: 14px 16px; }
-        .jn-stat-value { font-size: 24px; }
+        .jn-card__date { font-size: 10px !important; }
+        .jn-stat-pill { min-width: auto; padding: 14px 16px !important; }
+        .jn-stat-value { font-size: 24px !important; }
         .jn-week-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .jn-filter-grid { grid-template-columns: 1fr; }
         #filter-model { grid-column: 1; }
-        .jn-card:hover { transform: none; }
+        .jn-card:hover { transform: none !important; }
+        .jn-card__rr { font-size: 16px !important; }
       }
       @media (prefers-reduced-motion: reduce) {
-        .jn-card,
-        .jn-filter-panel {
-          transition-duration: 0.01ms !important;
-        }
-        .jn-card:hover {
-          transform: none;
-        }
+        .jn-card, .jn-filter-panel { transition-duration: 0.01ms !important; }
+        .jn-card:hover { transform: none !important; }
       }
     </style>
   </head>
