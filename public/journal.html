@@ -636,38 +636,50 @@
         letter-spacing: 0.15em !important;
         text-transform: uppercase !important;
       }
-      /* ── Filter panel layout — structured rows ── */
+      /* ── Filter panel — structured rows ── */
+      .jn-filter-panel-inner {
+        background: rgba(10,20,35,0.95) !important;
+        border: 1px solid rgba(0,212,255,0.2) !important;
+        padding: 24px !important;
+      }
       .jn-filter-grid {
         display: flex !important;
         flex-direction: column !important;
-        gap: 10px !important;
+        gap: 14px !important;
       }
       .jn-filter-row {
         display: flex !important;
         flex-direction: row !important;
-        align-items: center !important;
+        align-items: flex-start !important;
         gap: 14px !important;
-        min-height: 28px !important;
       }
       .jn-filter-label {
-        width: 76px !important;
+        min-width: 70px !important;
         flex-shrink: 0 !important;
         font-family: "Share Tech Mono","Courier New",monospace !important;
-        font-size: 9px !important;
-        letter-spacing: 0.2em !important;
+        font-size: 11px !important;
+        letter-spacing: 0.15em !important;
         text-transform: uppercase !important;
-        color: rgba(255,255,255,0.35) !important;
+        color: #00d4ff !important;
         text-align: right !important;
+        padding-top: 4px !important;
       }
       .jn-filter-pills {
         display: flex !important;
         flex-wrap: wrap !important;
-        gap: 5px !important;
+        gap: 8px !important;
         align-items: center !important;
       }
-      /* Remove grid column spans — not a grid any more */
+      .jn-filter-pill {
+        padding: 5px 12px !important;
+        font-size: 11px !important;
+        max-width: 200px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+      }
+      /* Remove grid spans — now a flex column */
       #filter-period, #filter-model { grid-column: unset !important; }
-      #filter-model .jn-filter-pill { max-width: unset !important; }
     </style>
   </head>
   <body>
@@ -1528,7 +1540,9 @@
             btn.dataset.group   = group;
             btn.dataset.value   = val;
             btn.dataset.dynamic = '1';
-            btn.textContent = val;
+            var displayText = val.length > 20 ? val.slice(0, 20) + '…' : val;
+            btn.textContent = displayText;
+            btn.title = val;
             pillsWrap.appendChild(btn);
           });
         }
