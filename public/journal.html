@@ -300,7 +300,13 @@
         transition: max-height 0.3s cubic-bezier(0.22,1,0.36,1);
       }
       .jn-filter-row.jn-acc-row--open .jn-acc-body { max-height: 240px; }
+      #filter-period.jn-acc-row--open .jn-acc-body { max-height: 360px; }
       .jn-acc-body-inner { padding: 2px 14px 14px; }
+      .jn-custom-range { padding: 10px 0 4px; display: flex; flex-direction: column; gap: 6px; }
+      .jn-custom-range-row { display: flex; align-items: center; gap: 10px; }
+      .jn-custom-range-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8899AA; text-transform: uppercase; width: 28px; flex-shrink: 0; }
+      .jn-custom-date-input { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,212,255,0.2); border-radius: 6px; color: #fff; font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 5px 8px; outline: none; color-scheme: dark; }
+      .jn-custom-date-input:focus { border-color: rgba(0,212,255,0.55); box-shadow: 0 0 6px rgba(0,212,255,0.2); }
 
       /* ── Filter pills ── */
       .jn-filter-pills { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -777,9 +783,23 @@
                     <div class="jn-filter-pills">
                       <button class="jn-filter-pill active" data-group="period" data-value="all">All time</button>
                       <button class="jn-filter-pill" data-group="period" data-value="today">Today</button>
+                      <button class="jn-filter-pill" data-group="period" data-value="yesterday">Yesterday</button>
                       <button class="jn-filter-pill" data-group="period" data-value="week">This week</button>
+                      <button class="jn-filter-pill" data-group="period" data-value="lastweek">Last week</button>
                       <button class="jn-filter-pill" data-group="period" data-value="month">This month</button>
+                      <button class="jn-filter-pill" data-group="period" data-value="lastmonth">Last month</button>
                       <button class="jn-filter-pill" data-group="period" data-value="year">This year</button>
+                      <button class="jn-filter-pill" data-group="period" data-value="custom">Custom</button>
+                    </div>
+                    <div class="jn-custom-range" id="jn-custom-range" hidden>
+                      <div class="jn-custom-range-row">
+                        <label class="jn-custom-range-label" for="jn-custom-from">From</label>
+                        <input type="date" class="jn-custom-date-input" id="jn-custom-from">
+                      </div>
+                      <div class="jn-custom-range-row">
+                        <label class="jn-custom-range-label" for="jn-custom-to">To</label>
+                        <input type="date" class="jn-custom-date-input" id="jn-custom-to">
+                      </div>
                     </div>
                   </div></div>
                 </div>
@@ -917,7 +937,9 @@
         pair: 'all',
         model: 'all',
         account: 'all',
-        sort: 'newest'
+        sort: 'newest',
+        customFrom: '',
+        customTo: ''
       };
 
       /* ── Helpers ── */
@@ -1027,15 +1049,44 @@
 
         if (period === 'today') return tk === today;
 
+        if (period === 'yesterday') {
+          var yesterday = addDaysToDateKey(today, -1);
+          return yesterday ? tk === yesterday : false;
+        }
+
         if (period === 'week') {
           var mon = mondayKeyOfWeekContaining(today);
           var sun = addDaysToDateKey(mon, 6);
           return tk >= mon && tk <= sun;
         }
 
+        if (period === 'lastweek') {
+          var thisMon = mondayKeyOfWeekContaining(today);
+          var lastMon = addDaysToDateKey(thisMon, -7);
+          var lastSun = addDaysToDateKey(thisMon, -1);
+          return tk >= lastMon && tk <= lastSun;
+        }
+
         if (period === 'month') return tk.slice(0, 7) === today.slice(0, 7);
 
+        if (period === 'lastmonth') {
+          var yr = parseInt(today.slice(0, 4), 10);
+          var mo = parseInt(today.slice(5, 7), 10) - 1;
+          if (mo === 0) { mo = 12; yr -= 1; }
+          var lastMonthKey = yr + '-' + (mo < 10 ? '0' + mo : '' + mo);
+          return tk.slice(0, 7) === lastMonthKey;
+        }
+
         if (period === 'year') return tk.slice(0, 4) === today.slice(0, 4);
+
+        if (period === 'custom') {
+          var from = activeFilters.customFrom;
+          var to   = activeFilters.customTo;
+          if (!from && !to) return true;
+          if (from && tk < from) return false;
+          if (to   && tk > to)   return false;
+          return true;
+        }
 
         return true;
       }
@@ -1594,8 +1645,8 @@
           if (activeFilters.outcome !== 'all' && outcome !== activeFilters.outcome) return false;
           if (activeFilters.direction !== 'all' && dir !== activeFilters.direction) return false;
           if (activeFilters.pair    !== 'all' && pairRaw  !== activeFilters.pair.toUpperCase())   return false;
-          if (activeFilters.model   !== 'all' && modelRaw !== activeFilters.model)  return false;
-          if (activeFilters.account !== 'all' && acctRaw  !== activeFilters.account) return false;
+          if (activeFilters.model   !== 'all' && modelRaw !== activeFilters.model.toLowerCase())   return false;
+          if (activeFilters.account !== 'all' && acctRaw  !== activeFilters.account.toLowerCase()) return false;
           return true;
         });
 
@@ -2055,9 +2106,26 @@
             .forEach(function (p) { p.classList.remove('active'); });
         pill.classList.add('active');
         activeFilters[group] = value;
+        if (group === 'period') {
+          var cr = document.getElementById('jn-custom-range');
+          if (cr) cr.hidden = (value !== 'custom');
+        }
         applyFilters();
         updateFilterDot();
         updateAccordionLabels();
+      });
+
+      /* ── Custom date range inputs ── */
+      document.getElementById('jn-filters').addEventListener('input', function (e) {
+        if (e.target.id === 'jn-custom-from') {
+          activeFilters.customFrom = e.target.value;
+          applyFilters();
+          updateFilterDot();
+        } else if (e.target.id === 'jn-custom-to') {
+          activeFilters.customTo = e.target.value;
+          applyFilters();
+          updateFilterDot();
+        }
       });
 
       /* ── Filter panel toggle ── */
@@ -2068,18 +2136,27 @@
                         activeFilters.pair      !== 'all'    ||
                         activeFilters.model     !== 'all'    ||
                         activeFilters.account   !== 'all'    ||
-                        activeFilters.sort      !== 'newest';
+                        activeFilters.sort      !== 'newest' ||
+                        activeFilters.customFrom !== ''      ||
+                        activeFilters.customTo   !== '';
         var dot = document.getElementById('jn-filter-dot');
         if (dot) dot.classList.toggle('jn-filter-dot--visible', hasActive);
       }
 
       function updateAccordionLabels() {
+        var periodMap = {
+          all: '', today: 'TODAY', yesterday: 'YESTERDAY',
+          week: 'THIS WEEK', lastweek: 'LAST WEEK',
+          month: 'THIS MONTH', lastmonth: 'LAST MONTH',
+          year: 'THIS YEAR', custom: 'CUSTOM'
+        };
+        var elPeriod = document.getElementById('acc-val-period');
+        if (elPeriod) elPeriod.textContent = periodMap[activeFilters.period] !== undefined ? periodMap[activeFilters.period] : activeFilters.period.toUpperCase();
         function set(id, val, def) {
           var el = document.getElementById(id);
           if (!el) return;
           el.textContent = (def !== null && val === def) ? '' : val.toUpperCase();
         }
-        set('acc-val-period',    activeFilters.period,    'all');
         set('acc-val-outcome',   activeFilters.outcome,   'all');
         set('acc-val-direction', activeFilters.direction, 'all');
         set('acc-val-pair',      activeFilters.pair,      'all');
@@ -2139,19 +2216,21 @@
         /* Clear all */
         document.getElementById('jn-filter-clear').addEventListener('click', function () {
           activeFilters = {
-            period:    'all',
-            outcome:   'all',
-            direction: 'all',
-            pair:      'all',
-            model:     'all',
-            account:   'all',
-            sort:      'newest'
+            period: 'all', outcome: 'all', direction: 'all',
+            pair: 'all', model: 'all', account: 'all',
+            sort: 'newest', customFrom: '', customTo: ''
           };
           document.querySelectorAll('#jn-filters .jn-filter-pill').forEach(function (p) {
             var isDefault = p.dataset.value === 'all' ||
                             (p.dataset.group === 'sort' && p.dataset.value === 'newest');
             p.classList.toggle('active', isDefault);
           });
+          var cfr = document.getElementById('jn-custom-from');
+          var cto = document.getElementById('jn-custom-to');
+          if (cfr) cfr.value = '';
+          if (cto) cto.value = '';
+          var cr = document.getElementById('jn-custom-range');
+          if (cr) cr.hidden = true;
           updateFilterDot();
           updateAccordionLabels();
           applyFilters();
