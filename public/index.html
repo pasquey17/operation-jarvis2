@@ -474,14 +474,14 @@
       .jarvis-home .metric-cell .snapshot-value {
         position: relative;
         font-family: "Outfit",system-ui,sans-serif !important;
-        font-weight: 100 !important;
-        font-size: 36px !important;
+        font-weight: 200 !important;
+        font-size: 40px !important;
         color: #ffffff !important;
         letter-spacing: 0.03em;
         font-variant-numeric: tabular-nums;
         line-height: 1;
         padding-bottom: 14px;
-        text-shadow: 0 0 20px rgba(0,212,255,0.3);
+        text-shadow: 0 0 30px rgba(0,212,255,0.4);
       }
       .jarvis-home .metric-cell .snapshot-value::after {
         content: "";
@@ -637,18 +637,18 @@
         padding-bottom: 12px;
       }
       .jarvis-home .chat-form input[type="text"] {
-        height: 48px;
-        font-size: 15px;
-        padding: 0 20px;
+        height: 56px;
+        font-size: 16px;
+        padding: 0 24px;
         box-sizing: border-box;
       }
       .jarvis-home .chat-send {
-        height: 48px;
-        padding: 0 24px;
-        font-size: 13px;
+        height: 56px;
+        padding: 0 32px;
+        font-size: 14px;
         font-family: "Outfit",system-ui,sans-serif;
-        font-weight: 500;
-        letter-spacing: 0.08em;
+        font-weight: 600;
+        letter-spacing: 0.1em;
         background: #00d4ff;
         color: #000000;
         border: none;
@@ -671,16 +671,17 @@
       .jarvis-home .msg--jarvis {
         font-family: "Outfit",system-ui,sans-serif;
         font-weight: 300;
-        font-size: 15px;
-        line-height: 1.8;
+        font-size: 17px;
+        line-height: 1.9;
         color: #dce8ff;
         border-left: 2px solid rgba(0,212,255,0.4);
-        padding-left: 12px;
+        padding: 16px 20px;
         background: rgba(0,212,255,0.03);
       }
       .jarvis-home .chat-form input::placeholder {
         font-family: "Outfit",system-ui,sans-serif;
         font-size: 14px;
+        font-style: italic;
         color: #8899aa;
         opacity: 1;
       }
@@ -714,5 +715,24 @@
     </div>
 
     <script type="module" src="/js/app.js"></script>
+    <script>
+      (function () {
+        var hints = [
+          "Ask about your best performing model...",
+          "What was my worst trade this week?",
+          "Am I overtrading on Fridays?",
+          "Where is my edge breaking down?"
+        ];
+        var idx = 0;
+        var input = document.getElementById("chat-input");
+        if (!input) return;
+        setInterval(function () {
+          if (document.activeElement !== input && !input.value) {
+            idx = (idx + 1) % hints.length;
+            input.placeholder = hints[idx];
+          }
+        }, 4000);
+      })();
+    </script>
   </body>
 </html>
