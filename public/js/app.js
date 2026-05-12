@@ -709,7 +709,7 @@ async function showGreeting() {
 
 /* ═══════════ Deep space star field ═══════════ */
 let particleMode = "idle";
-const STAR_COUNT = 800;
+const STAR_COUNT = 300;
 const stars = [];
 const shootingStars = [];
 let spaceMouseX = 0;
@@ -830,39 +830,44 @@ function initParticles() {
     spaceMouseY = e.clientY - window.innerHeight * 0.5;
   });
 
-  const nebulae = [
-    { x: 0.18, y: 0.38, r: 0.44, cr: 55, cg: 0, cb: 135, a: 0.052 },
-    { x: 0.76, y: 0.63, r: 0.38, cr: 0, cg: 45, cb: 125, a: 0.042 },
-    { x: 0.48, y: 0.11, r: 0.31, cr: 0, cg: 85, cb: 155, a: 0.036 },
-  ];
+  // Single nebula — three gradients were the main perf cost
+  const nebula = { x: 0.25, y: 0.45, r: 0.55, cr: 55, cg: 0, cb: 135, a: 0.055 };
   let nebulaT = 0;
 
-  function drawNebulae() {
+  function drawNebula() {
     nebulaT += 0.0006;
-    for (const n of nebulae) {
-      const pulse = 1 + 0.1 * Math.sin(nebulaT * 1.9 + n.x * 8);
-      const nx = n.x * pCanvas.width;
-      const ny = n.y * pCanvas.height;
-      const nr = n.r * Math.max(pCanvas.width, pCanvas.height) * pulse;
-      const g = pCtx.createRadialGradient(nx, ny, 0, nx, ny, nr);
-      g.addColorStop(0, `rgba(${n.cr},${n.cg},${n.cb},${n.a * pulse})`);
-      g.addColorStop(1, `rgba(${n.cr},${n.cg},${n.cb},0)`);
-      pCtx.fillStyle = g;
-      pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
-    }
+    const pulse = 1 + 0.1 * Math.sin(nebulaT * 1.9);
+    const nx = nebula.x * pCanvas.width;
+    const ny = nebula.y * pCanvas.height;
+    const nr = nebula.r * Math.max(pCanvas.width, pCanvas.height) * pulse;
+    const g = pCtx.createRadialGradient(nx, ny, 0, nx, ny, nr);
+    g.addColorStop(0, `rgba(${nebula.cr},${nebula.cg},${nebula.cb},${nebula.a * pulse})`);
+    g.addColorStop(1, `rgba(${nebula.cr},${nebula.cg},${nebula.cb},0)`);
+    pCtx.fillStyle = g;
+    pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
   }
 
+  // 30fps cap — target ~33ms between frames
+  const SPACE_FRAME_MS = 1000 / 30;
+  let lastSpaceFrame = 0;
   let frameCount = 0;
-  function loop() {
+
+  function loop(now) {
+    if (now - lastSpaceFrame < SPACE_FRAME_MS) {
+      requestAnimationFrame(loop);
+      return;
+    }
+    lastSpaceFrame = now;
     pCtx.fillStyle = "#050a14";
     pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
-    drawNebulae();
+    drawNebula();
     for (const s of stars) {
       s.update();
       s.draw(pCtx);
     }
+    // Shooting stars every 12–20 s at 30fps
     if (frameCount > shootNextAt) {
-      shootNextAt = frameCount + (3 + Math.random() * 6) * 60;
+      shootNextAt = frameCount + (12 + Math.random() * 8) * 30;
       shootingStars.push(new ShootingStar());
     }
     for (let i = shootingStars.length - 1; i >= 0; i--) {
