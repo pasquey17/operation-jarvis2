@@ -577,6 +577,15 @@
         font-size: clamp(2rem, 5vw, 52px) !important;
         letter-spacing: 0.08em !important;
         color: #ffffff !important;
+        text-shadow:
+          -1px -1px 0 rgba(0,0,0,0.9),
+           1px -1px 0 rgba(0,0,0,0.9),
+          -1px  1px 0 rgba(0,0,0,0.9),
+           1px  1px 0 rgba(0,0,0,0.9),
+          -2px  0   0 rgba(0,0,0,0.6),
+           2px  0   0 rgba(0,0,0,0.6),
+           0   -2px 0 rgba(0,0,0,0.6),
+           0    2px 0 rgba(0,0,0,0.6) !important;
       }
       .jn-card {
         background: rgba(255,255,255,0.03) !important;
@@ -627,6 +636,38 @@
         letter-spacing: 0.15em !important;
         text-transform: uppercase !important;
       }
+      /* ── Filter panel layout — structured rows ── */
+      .jn-filter-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+      }
+      .jn-filter-row {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 14px !important;
+        min-height: 28px !important;
+      }
+      .jn-filter-label {
+        width: 76px !important;
+        flex-shrink: 0 !important;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 9px !important;
+        letter-spacing: 0.2em !important;
+        text-transform: uppercase !important;
+        color: rgba(255,255,255,0.35) !important;
+        text-align: right !important;
+      }
+      .jn-filter-pills {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 5px !important;
+        align-items: center !important;
+      }
+      /* Remove grid column spans — not a grid any more */
+      #filter-period, #filter-model { grid-column: unset !important; }
+      #filter-model .jn-filter-pill { max-width: unset !important; }
     </style>
   </head>
   <body>
