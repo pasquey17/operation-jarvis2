@@ -236,7 +236,7 @@
           <div class="hud-chrome__right">
             <span class="hud-chrome__channel">UPLINK</span>
             <span class="hud-chrome__pulse" aria-hidden="true"></span>
-            <span class="hud-chrome__status">Neural core stable</span>
+            <span class="hud-chrome__status">Deep space link established</span>
           </div>
         </header>
 
@@ -244,7 +244,7 @@
           <section class="hud-core" aria-label="Intelligence core">
             <div class="orb-stage">
               <div class="orb-mount">
-                <canvas id="orb-canvas" width="560" height="560" aria-hidden="true"></canvas>
+                <canvas id="orb-canvas" width="700" height="700" aria-hidden="true"></canvas>
               </div>
               <div class="orb-identity">
                 <p class="orb-identity__eyebrow">Primary interface</p>
@@ -305,7 +305,12 @@
 
             <div class="comm-dock">
               <div class="comm-dock__body conductor">
+                <div class="comms-header">
+                  <span class="comms-header__label">JARVIS COMMS TERMINAL</span>
+                  <span class="comms-header__status"><span class="comms-status-dot" aria-hidden="true"></span>UPLINK ACTIVE</span>
+                </div>
                 <div class="chat-scroll" id="chat-scroll">
+                  <div id="chat-standby" class="chat-standby">STANDING BY...</div>
                   <div id="chat-history" class="chat-history" aria-live="polite"></div>
                 </div>
                 <form class="chat-form" id="chat-form" autocomplete="off">
@@ -314,7 +319,7 @@
                     type="text"
                     id="chat-input"
                     name="message"
-                    placeholder="Talk to Jarvis..."
+                    placeholder="Transmit to Jarvis..."
                     autocomplete="off"
                     enterkeyhint="send"
                   />
@@ -328,101 +333,170 @@
     </div>
 
     <style>
-      /* Home-only: orb emphasis, telemetry strip, comms */
-      .jarvis-home .hud-grid {
-        gap: clamp(1.35rem, 3.2vw, 2.85rem);
-      }
+      /* ── Deep space base ── */
+      body.jarvis-home { background: #050a14; }
+
+      .jarvis-home .hud-grid { gap: clamp(1.35rem, 3.2vw, 2.85rem); }
       .jarvis-home .orb-identity__eyebrow,
       .jarvis-home .snapshot-eyebrow,
-      .jarvis-home .snapshot-live {
-        font-family: "Share Tech Mono", "Courier New", monospace;
+      .jarvis-home .snapshot-live { font-family: "Share Tech Mono","Courier New",monospace; }
+      .jarvis-home .jarvis-caption { letter-spacing: 0.24em; }
+
+      /* ── Orb: 700px desktop / 340px mobile, 4s breathing pulse ── */
+      .jarvis-home #orb-canvas {
+        width: clamp(240px, 44vw, 700px) !important;
+        height: clamp(240px, 44vw, 700px) !important;
       }
-      .jarvis-home .jarvis-caption {
-        letter-spacing: 0.24em;
-      }
-      @keyframes jarvis-orb-glow {
+      @keyframes ds-orb-breathe {
         0%, 100% {
-          filter: drop-shadow(0 0 32px rgba(0, 212, 255, 0.5))
-            drop-shadow(0 0 72px rgba(0, 212, 255, 0.22))
-            drop-shadow(0 20px 48px rgba(0, 212, 255, 0.15));
+          filter: drop-shadow(0 0 28px rgba(0,212,255,0.42))
+                  drop-shadow(0 0 70px rgba(0,191,255,0.18))
+                  drop-shadow(0 20px 52px rgba(0,80,180,0.12));
           transform: scale(1);
         }
         50% {
-          filter: drop-shadow(0 0 52px rgba(0, 212, 255, 0.72))
-            drop-shadow(0 0 100px rgba(0, 212, 255, 0.36))
-            drop-shadow(0 24px 56px rgba(192, 192, 192, 0.14));
-          transform: scale(1.018);
+          filter: drop-shadow(0 0 56px rgba(0,212,255,0.72))
+                  drop-shadow(0 0 110px rgba(0,191,255,0.36))
+                  drop-shadow(0 28px 70px rgba(0,140,240,0.22));
+          transform: scale(1.02);
         }
       }
       .jarvis-home .orb-mount {
-        animation: jarvis-orb-glow 4s ease-in-out infinite;
+        animation: ds-orb-breathe 4s ease-in-out infinite;
         will-change: filter, transform;
+        transition: filter 0.4s ease;
+      }
+      .jarvis-home .orb-mount:hover {
+        filter: drop-shadow(0 0 72px rgba(0,212,255,0.85))
+                drop-shadow(0 0 140px rgba(0,191,255,0.45)) !important;
       }
       @media (prefers-reduced-motion: reduce) {
-        .jarvis-home .orb-mount {
-          animation: none;
-          filter: drop-shadow(0 0 40px rgba(0, 212, 255, 0.55));
-        }
+        .jarvis-home .orb-mount { animation: none; filter: drop-shadow(0 0 40px rgba(0,212,255,0.55)); }
       }
+
+      /* ── Telemetry: deep space glassmorphism ── */
       .jarvis-home #system-snapshot {
         position: relative;
         overflow: hidden;
+        background: rgba(5,10,20,0.72);
+        border: 1px solid rgba(0,191,255,0.15);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
       }
       .jarvis-home #system-snapshot::before {
         content: "";
         position: absolute;
         left: 0; top: 0; right: 0;
         height: 2px;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(0, 212, 255, 0.7) 35%,
-          rgba(0, 212, 255, 0.4) 65%,
-          transparent
-        );
+        background: linear-gradient(90deg, transparent, rgba(0,212,255,0.7) 35%, rgba(0,212,255,0.4) 65%, transparent);
         opacity: 0.9;
         pointer-events: none;
       }
-      .jarvis-home .snapshot-top {
-        margin-bottom: 1.1rem;
-        padding-bottom: 0.35rem;
+      .jarvis-home .snapshot-top { margin-bottom: 1.1rem; padding-bottom: 0.35rem; }
+      .jarvis-home .metric-strip { border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 40px rgba(0,0,0,0.45); }
+      .jarvis-home .metric-cell .snapshot-label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 0.54rem; letter-spacing: 0.22em; color: rgba(136,153,170,0.95); }
+      .jarvis-home .metric-cell .snapshot-value { font-variant-numeric: tabular-nums; letter-spacing: 0.06em; }
+      .jarvis-home .metric-cell:hover { background: rgba(0,212,255,0.08); }
+      .jarvis-home .snapshot-insight { font-family: "Outfit",system-ui,sans-serif; line-height: 1.55; color: rgba(255,255,255,0.72); }
+
+      /* ── COMMS TERMINAL header ── */
+      .comm-dock__body { display: flex; flex-direction: column; }
+      .comms-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 14px 6px;
+        border-bottom: 1px solid rgba(0,191,255,0.12);
+        background: rgba(5,10,20,0.55);
+        flex-shrink: 0;
       }
-      .jarvis-home .metric-strip {
-        border-radius: 14px;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.05),
-          0 12px 40px rgba(0, 0, 0, 0.35);
+      .comms-header__label {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.65);
       }
-      .jarvis-home .metric-cell .snapshot-label {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 0.54rem;
-        letter-spacing: 0.22em;
-        color: rgba(136, 153, 170, 0.95);
+      .comms-header__status {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 7px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.45);
       }
-      .jarvis-home .metric-cell .snapshot-value {
-        font-variant-numeric: tabular-nums;
-        letter-spacing: 0.06em;
+      .comms-status-dot {
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: #00d4ff;
+        box-shadow: 0 0 6px rgba(0,212,255,0.9);
+        animation: comms-dot-pulse 2.2s ease-in-out infinite;
       }
-      .jarvis-home .metric-cell:hover { background: rgba(0, 212, 255, 0.08); }
-      .jarvis-home .snapshot-insight {
-        font-family: "Outfit", system-ui, sans-serif;
-        line-height: 1.55;
-        color: rgba(255, 255, 255, 0.72);
+      @keyframes comms-dot-pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+      /* ── STANDING BY empty state ── */
+      .chat-standby {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 36px 20px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        letter-spacing: 0.42em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.18);
+        animation: standby-blink 3.5s ease-in-out infinite;
       }
+      .chat-standby.hidden { display: none; }
+      @keyframes standby-blink { 0%,75%,100%{opacity:1} 37%{opacity:0.25} }
+
+      /* ── Chat panel: scan line + deep space feel ── */
       .jarvis-home .comm-dock {
-        border-color: rgba(0, 212, 255, 0.12);
+        position: relative;
+        overflow: hidden;
+        border-color: rgba(0,212,255,0.12);
+        background: rgba(5,10,20,0.78);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         box-shadow:
-          0 0 0 1px rgba(0, 212, 255, 0.06) inset,
-          0 28px 80px rgba(0, 0, 0, 0.55),
-          0 0 60px rgba(0, 212, 255, 0.05);
+          0 0 0 1px rgba(0,212,255,0.06) inset,
+          0 28px 80px rgba(0,0,0,0.6),
+          0 0 60px rgba(0,212,255,0.05);
+      }
+      .jarvis-home .comm-dock::after {
+        content: "";
+        position: absolute;
+        left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0,212,255,0.28), transparent);
+        animation: ds-scan-line 7s linear infinite;
+        pointer-events: none;
+        z-index: 10;
+      }
+      @keyframes ds-scan-line {
+        0%   { top: 0; opacity: 0; }
+        4%   { opacity: 1; }
+        96%  { opacity: 1; }
+        100% { top: 100%; opacity: 0; }
       }
       .jarvis-home[data-mode="chat"] .chat-scroll {
-        border-color: rgba(0, 212, 255, 0.1);
-        background: linear-gradient(165deg, rgba(255,255,255,0.04) 0%, rgba(0,212,255,0.04) 100%);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        border-color: rgba(0,212,255,0.1);
+        background: linear-gradient(165deg, rgba(5,10,20,0.35) 0%, rgba(0,18,40,0.35) 100%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
       }
       .jarvis-home .msg { border-radius: 16px; }
-      .jarvis-home .chat-form input:focus { border-color: rgba(0, 212, 255, 0.6); }
+      .jarvis-home .msg--user { border-right: 2px solid rgba(0,212,255,0.45); }
+      .jarvis-home .msg--jarvis { border-left: 2px solid rgba(192,192,192,0.25); }
+      .jarvis-home .chat-form input:focus { border-color: rgba(0,212,255,0.6); }
+
+      /* ── Page load entrance stagger ── */
+      @keyframes ds-enter { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+      .jarvis-home .orb-stage        { animation: ds-enter 0.85s cubic-bezier(0.22,1,0.36,1) 0.1s both; }
+      .jarvis-home #system-snapshot  { animation: ds-enter 0.85s cubic-bezier(0.22,1,0.36,1) 0.3s both; }
+      .jarvis-home .comm-dock        { animation: ds-enter 0.85s cubic-bezier(0.22,1,0.36,1) 0.5s both; }
+      .jarvis-home .comms-header     { animation: ds-enter 0.85s cubic-bezier(0.22,1,0.36,1) 0.65s both; }
     </style>
 
     <!-- Chart lightbox (same behaviour as journal.html — zoom in-page, no new tab) -->
