@@ -745,17 +745,16 @@ class Star {
 
 class ShootingStar {
   constructor() {
-    this.x = Math.random() * window.innerWidth * 0.75 + window.innerWidth * 0.1;
-    this.y = Math.random() * window.innerHeight * 0.5;
-    const angle = 0.62 + (Math.random() - 0.5) * 0.55;
-    const spd = 10 + Math.random() * 14;
+    this.x = Math.random() * window.innerWidth * 0.65 + window.innerWidth * 0.05;
+    this.y = Math.random() * window.innerHeight * 0.45;
+    const angle = 0.6 + (Math.random() - 0.5) * 0.15;
+    const spd = 7 + Math.random() * 4;
     this.vx = Math.cos(angle) * spd;
     this.vy = Math.sin(angle) * spd;
-    this.tailLen = 90 + Math.random() * 110;
+    this.tailLen = 80;
     this.life = 0;
-    this.maxLife = 55 + Math.random() * 35;
+    this.maxLife = 24;
     this.alive = true;
-    this.width = 0.7 + Math.random() * 1.0;
   }
   update() {
     this.x += this.vx;
@@ -765,20 +764,16 @@ class ShootingStar {
   }
   draw(ctx) {
     const progress = this.life / this.maxLife;
-    const a = Math.sin(progress * Math.PI) * 0.9;
+    const a = 0.6 * (1 - progress);
     const hyp = Math.hypot(this.vx, this.vy) || 1;
     const tailX = this.x - (this.vx / hyp) * this.tailLen;
     const tailY = this.y - (this.vy / hyp) * this.tailLen;
     const g = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
     g.addColorStop(0, `rgba(255,255,255,0)`);
-    g.addColorStop(0.55, `rgba(180,220,255,${a * 0.32})`);
     g.addColorStop(1, `rgba(255,255,255,${a})`);
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
     ctx.strokeStyle = g;
-    ctx.lineWidth = this.width;
-    ctx.shadowColor = "rgba(120,200,255,0.65)";
-    ctx.shadowBlur = 5;
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(tailX, tailY);
     ctx.lineTo(this.x, this.y);
@@ -845,7 +840,7 @@ function initParticles() {
     }
     // Shooting stars every 12–20 s at 30fps
     if (frameCount > shootNextAt && shootingStars.length < 1) {
-      shootNextAt = frameCount + (12 + Math.random() * 8) * 30;
+      shootNextAt = frameCount + (15 + Math.random() * 10) * 30;
       shootingStars.push(new ShootingStar());
     }
     for (let i = shootingStars.length - 1; i >= 0; i--) {

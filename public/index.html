@@ -55,7 +55,7 @@
         color: rgba(255, 255, 255, 0.5);
         text-decoration: none;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
+        font-size: 13px;
         font-variant: small-caps;
         letter-spacing: 0.12em;
         text-transform: uppercase;
@@ -312,7 +312,7 @@
 
     <style>
       /* ── Base ── */
-      html, body { height: 100%; margin: 0; }
+      html, body { height: 100%; margin: 0; overflow: hidden; }
       html { font-size: 14px; }
       body.jarvis-home { background: #050a14; }
 
@@ -470,25 +470,35 @@
       .jarvis-home .metric-cell .metric-cell__body { display: flex; flex-direction: column; gap: 8px; }
       .jarvis-home .metric-cell .snapshot-label {
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px;
+        font-size: 11px;
         letter-spacing: 0.15em;
         text-transform: uppercase;
         color: #00d4ff;
       }
       .jarvis-home .metric-cell .snapshot-value {
+        position: relative;
         font-family: "Outfit",system-ui,sans-serif !important;
-        font-weight: 200 !important;
-        font-size: 32px !important;
+        font-weight: 100 !important;
+        font-size: 36px !important;
         color: #ffffff !important;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.03em;
         font-variant-numeric: tabular-nums;
         line-height: 1;
-        padding-bottom: 12px;
+        padding-bottom: 14px;
+        text-shadow: 0 0 20px rgba(0,212,255,0.3);
       }
-      .jarvis-home .metric-cell:nth-child(1) .snapshot-value { border-bottom: 2px solid #00ff88; }
-      .jarvis-home .metric-cell:nth-child(2) .snapshot-value { border-bottom: 2px solid #00d4ff; }
-      .jarvis-home .metric-cell:nth-child(3) .snapshot-value { border-bottom: 2px solid #00d4ff; }
-      .jarvis-home .metric-cell:nth-child(4) .snapshot-value { border-bottom: 2px solid #8899aa; }
+      .jarvis-home .metric-cell .snapshot-value::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 2px;
+      }
+      .jarvis-home .metric-cell:nth-child(1) .snapshot-value::after { background: #00ff88; }
+      .jarvis-home .metric-cell:nth-child(2) .snapshot-value::after { background: #00d4ff; }
+      .jarvis-home .metric-cell:nth-child(3) .snapshot-value::after { background: #00d4ff; }
+      .jarvis-home .metric-cell:nth-child(4) .snapshot-value::after { background: #8899aa; }
 
       /* ── COMMS TERMINAL ── */
       .comm-dock__body {
@@ -638,14 +648,15 @@
         font-family: "Outfit",system-ui,sans-serif;
         font-weight: 300;
         font-size: 15px;
-        line-height: 1.7;
-        color: #e0e8ff;
+        line-height: 1.8;
+        color: #dce8ff;
         border-left: 2px solid rgba(0,212,255,0.4);
         padding-left: 12px;
         background: rgba(0,212,255,0.03);
       }
       .jarvis-home .chat-form input::placeholder {
         font-family: "Outfit",system-ui,sans-serif;
+        font-size: 14px;
         color: #8899aa;
         opacity: 1;
       }
