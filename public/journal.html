@@ -1671,7 +1671,7 @@
           }
           if (item && typeof item === 'object' && typeof item.url === 'string') {
             var u = item.url.trim();
-            if (!/^https?:\/\//i.test(u)) continue;
+            if (!/^https?:\/\//i.test(u) && !/^data:/i.test(u)) continue;
             var lbl = typeof item.label === 'string' ? item.label.trim() : '';
             out.push({ url: u, label: lbl });
           }

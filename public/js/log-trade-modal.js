@@ -1,487 +1,395 @@
 /**
- * Shared LOG TRADE modal — used by index (app.js) and journal.html.
- * Single prefill, sticky defaults, coach prompts, and /api/log-trade payload.
+ * LOG TRADE modal — premium rebuild.
+ * Opens blank every time. Drag-to-reorder fields. Photo paste/drop with preview.
+ * Custom field adder. Saves to /api/log-trade with unchanged payload shape.
  */
 
+export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1"; // kept for compat
+const FIELD_ORDER_KEY = "jarvis_field_order_v2";
 const CORE_FIELD_NAMES = new Set(["date", "session", "outcome", "rr", "pair", "account"]);
-export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1";
-const LOG_FALLBACK_SAMPLE = 50;
 
-let logTradeModalOpen = false;
+let ltmOpen = false;
+let ltmPhotos = [];
 
+// ── Escape helpers ──────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-
 function escAttr(s) {
   return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;");
+    .replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
-function getField(obj) {
-  for (let i = 1; i < arguments.length; i++) {
-    const v = obj[arguments[i]];
-    if (v !== undefined && v !== null && v !== "") return v;
-  }
-  return "";
-}
-
-function parseNotionExtrasRow(trade) {
-  if (!trade) return null;
-  const raw = trade.notion_extras;
-  if (raw && typeof raw === "object") return raw;
-  if (typeof raw === "string" && raw.trim().charAt(0) === "{") {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-function classifyAuxFieldRole(fieldName) {
-  const n = String(fieldName || "").toLowerCase();
-  if (n.indexOf("psych") !== -1) return "psychology";
-  if (n.indexOf("summary") !== -1) return "summary";
-  if ((n.indexOf("entry") !== -1 && n.indexOf("model") !== -1) || n === "model") return "model";
-  return "";
-}
-
-function loadLogDefaultsFromStorage() {
+// ── Field order persistence ─────────────────────────────────────────────
+function loadFieldOrder(allIds) {
   try {
-    const raw = localStorage.getItem(LOG_DEFAULTS_STORAGE_KEY);
-    if (!raw) return null;
-    const j = JSON.parse(raw);
-    return j && typeof j === "object" ? j : null;
-  } catch {
-    return null;
+    const saved = JSON.parse(localStorage.getItem(FIELD_ORDER_KEY) || "null");
+    if (!Array.isArray(saved) || !saved.length) return allIds;
+    const savedSet = new Set(saved);
+    const ordered = saved.filter(id => allIds.includes(id));
+    const unseen  = allIds.filter(id => !savedSet.has(id));
+    return [...ordered, ...unseen];
+  } catch { return allIds; }
+}
+
+function saveFieldOrder(ids) {
+  try { localStorage.setItem(FIELD_ORDER_KEY, JSON.stringify(ids)); } catch {}
+}
+
+// ── Core field definitions ──────────────────────────────────────────────
+const CORE_FIELD_DEFS = [
+  { id: "date",    label: "Date",    type: "date",   required: true },
+  { id: "pair",    label: "Pair",    type: "text",   placeholder: "XAUUSD" },
+  { id: "session", label: "Session", type: "select",
+    options: ["Asia", "London", "New York", "London/New York"], required: true },
+  { id: "outcome", label: "Outcome", type: "select",
+    options: ["Win", "Loss", "BE"], required: true },
+  { id: "rr",      label: "RR",      type: "number", placeholder: "2.5",
+    step: "0.01", min: "0" },
+  { id: "account", label: "Account", type: "text",   placeholder: "Main" },
+];
+
+// ── Convert journal_fields row → internal field def ─────────────────────
+function notionFieldToDef(f) {
+  const n = (f.field_name || "").toLowerCase();
+  let type = "text";
+  let options = [];
+  if (f.field_type === "dropdown" || f.field_type === "multiselect") {
+    type = "select";
+    try { options = JSON.parse(f.field_options || "[]"); } catch {}
+  } else if (f.field_type === "number") {
+    type = "number";
+  } else if (f.field_type === "yesno" || f.field_type === "boolean") {
+    type = "yesno";
+  } else if (
+    n.includes("note") || n.includes("summary") ||
+    n.includes("comment") || n.includes("journal")
+  ) {
+    type = "textarea";
+  }
+  return { id: f.field_name, label: f.field_name, type, options };
+}
+
+// ── Stable field input ID from field id ────────────────────────────────
+function fieldInputId(fieldId) {
+  return `ltm-f-${fieldId.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9\-_]/g, "").toLowerCase()}`;
+}
+
+// ── Build input element HTML ────────────────────────────────────────────
+function buildInputHtml(field, today) {
+  const id   = fieldInputId(field.id);
+  const name = field.id;
+  const req  = field.required ? "required" : "";
+  switch (field.type) {
+    case "date":
+      return `<input id="${id}" type="date" name="${escAttr(name)}" class="trade-input ltm-input" value="${escHtml(today)}" ${req}>`;
+    case "number":
+      return `<input id="${id}" type="number" name="${escAttr(name)}" class="trade-input ltm-input" step="${field.step || "1"}" min="${field.min || ""}" placeholder="${escAttr(field.placeholder || "")}">`;
+    case "select": {
+      const opts = (field.options || []).map(o =>
+        `<option value="${escHtml(o)}">${escHtml(o)}</option>`
+      ).join("");
+      return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input" ${req}><option value="">— select —</option>${opts}</select>`;
+    }
+    case "yesno":
+      return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input"><option value="">— select —</option><option value="Yes">Yes</option><option value="No">No</option></select>`;
+    case "textarea":
+      return `<textarea id="${id}" name="${escAttr(name)}" class="trade-input ltm-input ltm-textarea" rows="3"></textarea>`;
+    default:
+      return `<input id="${id}" type="text" name="${escAttr(name)}" class="trade-input ltm-input" placeholder="${escAttr(field.placeholder || "")}">`;
   }
 }
 
-function customFieldValueFromFormData(fd, f) {
-  if (f.field_type === "multiselect") {
-    return fd
-      .getAll(f.field_name)
-      .map((x) => String(x).trim())
-      .filter(Boolean)
-      .join(", ");
-  }
-  const v = fd.get(f.field_name);
-  return v != null ? String(v).trim() : "";
-}
-
-function persistLogDefaultsFromStorage(fd, customFields) {
-  try {
-    const payload = {
-      pair: (fd.get("pair") || "").trim(),
-      session: fd.get("session") || "",
-      account: (fd.get("account") || "").trim(),
-      entry_model: "",
-      custom: {},
-    };
-    for (const f of customFields) {
-      const nm = f.field_name;
-      const v = customFieldValueFromFormData(fd, f);
-      if (v === "") continue;
-      const role = classifyAuxFieldRole(nm);
-      if (role === "model") payload.entry_model = v;
-      payload.custom[nm] = v;
-    }
-    localStorage.setItem(LOG_DEFAULTS_STORAGE_KEY, JSON.stringify(payload));
-  } catch {}
-}
-
-function mostCommonAmong(trades, getter) {
-  const counts = {};
-  for (const t of trades) {
-    const v = getter(t);
-    if (!v || !String(v).trim()) continue;
-    const k = String(v).trim();
-    counts[k] = (counts[k] || 0) + 1;
-  }
-  let best = "";
-  let bestN = 0;
-  for (const k of Object.keys(counts)) {
-    if (counts[k] > bestN) {
-      bestN = counts[k];
-      best = k;
-    }
-  }
-  return best;
-}
-
-function normalizeSessionForSelect(raw) {
-  if (!raw) return "";
-  const s = String(raw).trim();
-  const opts = ["Asia", "London", "New York", "London/New York"];
-  const lower = s.toLowerCase();
-  for (let i = 0; i < opts.length; i++) {
-    if (opts[i].toLowerCase() === lower) return opts[i];
-  }
-  if (lower.indexOf("london") !== -1 && lower.indexOf("new york") !== -1) return "London/New York";
-  if (lower.indexOf("asia") !== -1) return "Asia";
-  if (lower.indexOf("london") !== -1) return "London";
-  if (lower.indexOf("new york") !== -1 || /\bny\b/.test(lower)) return "New York";
-  return "";
-}
-
-/**
- * Prefill: last trade via getField → sticky localStorage → modal over recent N trades.
- * New trade: do NOT copy prior outcome or RR.
- */
-function applyLogTradePrefills(allTrades, customFields) {
-  const sticky = loadLogDefaultsFromStorage();
-  const slice =
-    allTrades && allTrades.length
-      ? allTrades.slice(0, Math.min(LOG_FALLBACK_SAMPLE, allTrades.length))
-      : [];
-  const last = slice.length ? slice[0] : null;
-
-  function fillPair() {
-    const el = document.getElementById("tf-pair");
-    if (!el) return;
-    const v =
-      (last && String(getField(last, "pair", "Pair", "PAIR", "instrument", "symbol")).trim()) ||
-      (sticky && sticky.pair) ||
-      mostCommonAmong(slice, (t) => getField(t, "pair", "Pair", "PAIR", "instrument", "symbol"));
-    if (v) el.value = v;
-  }
-
-  function fillSession() {
-    const el = document.getElementById("tf-session");
-    if (!el) return;
-    const raw =
-      (last && String(getField(last, "session", "Session", "SESSION")).trim()) ||
-      (sticky && sticky.session) ||
-      mostCommonAmong(slice, (t) => getField(t, "session", "Session", "SESSION"));
-    const norm = normalizeSessionForSelect(raw);
-    if (norm) el.value = norm;
-  }
-
-  function fillAccount() {
-    const el = document.getElementById("tf-account");
-    if (!el) return;
-    const v =
-      (last && String(getField(last, "account", "Account", "ACCOUNT")).trim()) ||
-      (sticky && sticky.account) ||
-      mostCommonAmong(slice, (t) => getField(t, "account", "Account", "ACCOUNT"));
-    if (v) el.value = v;
-  }
-
-  fillPair();
-  fillSession();
-  fillAccount();
-
-  const oe = document.getElementById("tf-outcome");
-  if (oe) oe.value = "";
-  const re = document.getElementById("tf-rr");
-  if (re) re.value = "";
-
-  const extras = last ? parseNotionExtrasRow(last) : null;
-  const formEl = document.getElementById("trade-log-form");
-  for (const f of customFields) {
-    const name = f.field_name;
-    if (!name || !formEl?.elements) continue;
-    const fdDef = customFields.find((x) => x.field_name === name);
-    const el = formEl.elements.namedItem(name);
-    let valStr = "";
-    if (extras) {
-      const nk = Object.keys(extras).find((k) => k.toLowerCase() === name.toLowerCase());
-      if (nk && extras[nk] != null) {
-        valStr = Array.isArray(extras[nk]) ? extras[nk].map(String).join(", ") : String(extras[nk]);
-      }
-    }
-    if (!String(valStr).trim()) {
-      if (sticky?.custom?.[name]) valStr = sticky.custom[name];
-      else if (classifyAuxFieldRole(name) === "model" && sticky?.entry_model) {
-        valStr = sticky.entry_model;
-      } else if (last && classifyAuxFieldRole(name) === "model") {
-        const mv = getField(last, "model", "Model", "MODEL", "ENTRY MODEL");
-        if (mv) valStr = mv;
-      }
-    }
-    if (!String(valStr).trim()) continue;
-
-    if (fdDef?.field_type === "multiselect") {
-      const parts = String(valStr)
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean);
-      const group = formEl.elements[name];
-      const boxes = group?.length != null ? Array.from(group) : group ? [group] : [];
-      boxes.forEach((node) => {
-        if (node && node.type === "checkbox") {
-          node.checked = parts.indexOf(node.value) !== -1;
-        }
-      });
-      continue;
-    }
-
-    if (!el || !("value" in el)) continue;
-    if (el.tagName === "SELECT" && el.multiple) {
-      const parts = String(valStr)
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean);
-      for (let oi = 0; oi < el.options.length; oi++) {
-        el.options[oi].selected = parts.indexOf(el.options[oi].value) !== -1;
-      }
-    } else {
-      el.value = valStr;
-    }
-  }
-}
-
-function renderCustomField(f) {
-  const id = `tf-${f.field_name.toLowerCase().replace(/\s+/g, "-")}`;
-  const label = escHtml(f.field_name);
-  const req = f.is_required ? "required" : "";
-  const name = escHtml(f.field_name);
-  const role = classifyAuxFieldRole(f.field_name);
-  const guidedSummary =
-    role === "summary"
-      ? `<div class="tf-guided-only" aria-hidden="true">
-      <p class="tf-guided-line">What was the actual trigger vs what you hoped would happen?</p>
-      <p class="tf-guided-line">What would invalidate first — one sentence.</p>
-    </div>`
-      : "";
-  let psychChips = "";
-  if (role === "psychology") {
-    psychChips = `<div class="tf-psych-chips tf-guided-only" aria-hidden="true">${["Frustrated", "Focused", "Chasing", "Patient", "Doubt"]
-      .map(
-        (lab) =>
-          `<button type="button" class="tf-psych-chip" data-tf-chip="${escHtml(lab)}">${escHtml(lab)}</button>`
-      )
-      .join("")}</div>`;
-  }
-
-  if (f.field_type === "dropdown") {
-    let opts = [];
-    try {
-      opts = JSON.parse(f.field_options || "[]");
-    } catch {}
-    const optsHtml = opts.map((o) => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join("");
-    return `<div class="trade-field trade-field--full"><label class="trade-label" for="${id}">${label}</label><select id="${id}" name="${name}" class="trade-input trade-select" data-custom="1" ${req}><option value="">— select —</option>${optsHtml}</select></div>`;
-  }
-  if (f.field_type === "multiselect") {
-    let opts = [];
-    try {
-      opts = JSON.parse(f.field_options || "[]");
-    } catch {}
-    const hint = '<p class="trade-multiselect-hint">Select any that apply</p>';
-    const optsHtml = opts
-      .map(
-        (o) =>
-          `<label class="trade-multi-option"><input type="checkbox" name="${escAttr(
-            f.field_name
-          )}" value="${escAttr(o)}" class="trade-multi-option__input" /><span class="trade-multi-option__text">${escHtml(
-            o
-          )}</span></label>`
-      )
-      .join("");
-    return `<div class="trade-field trade-field--full" data-multiselect-field="1"><label class="trade-label" id="${id}-legend">${label}</label>${hint}<div class="trade-multiselect-panel trade-input" role="group" aria-labelledby="${id}-legend">${optsHtml}</div></div>`;
-  }
-  if (f.field_type === "number") {
-    return `<div class="trade-field"><label class="trade-label" for="${id}">${label}</label><input id="${id}" type="number" name="${name}" class="trade-input" data-custom="1" step="0.01" ${req}></div>`;
-  }
-  return `<div class="trade-field trade-field--full">
-  <label class="trade-label" for="${id}">${label}</label>
-  ${guidedSummary}
-  ${psychChips}
-  <textarea id="${id}" name="${name}" class="trade-input" data-custom="1" rows="3" ${req}></textarea>
+// ── Render one draggable field row ──────────────────────────────────────
+function renderFieldRow(field, today) {
+  const inputId = fieldInputId(field.id);
+  return `<div class="ltm-field-row" data-field-id="${escAttr(field.id)}" draggable="true">
+  <div class="ltm-drag-handle" title="Drag to reorder" aria-hidden="true">
+    <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="3" cy="3"  r="1.3"/><circle cx="7" cy="3"  r="1.3"/>
+      <circle cx="3" cy="8"  r="1.3"/><circle cx="7" cy="8"  r="1.3"/>
+      <circle cx="3" cy="13" r="1.3"/><circle cx="7" cy="13" r="1.3"/>
+    </svg>
+  </div>
+  <div class="ltm-field-inner">
+    <label class="trade-label ltm-label" for="${escAttr(inputId)}">${escHtml(field.label)}</label>
+    ${buildInputHtml(field, today)}
+  </div>
 </div>`;
 }
 
-function buildOverlayHtml(today, customHtml) {
-  return `
-    <div class="trade-form-panel" id="trade-form-panel">
-      <div class="trade-form-header">
-        <span class="trade-form-title">LOG TRADE</span>
-        <button type="button" class="trade-form-close" aria-label="Close">&#x2715;</button>
-      </div>
-      <div class="trade-form-body">
-        <form id="trade-log-form" autocomplete="off" novalidate>
-          <div class="trade-form-grid">
-            <div class="trade-field trade-field--full tf-guided-bar">
-              <label class="tf-guided-toggle"><input type="checkbox" id="tf-guided-toggle" autocomplete="off" />
-              <span>Coach prompts</span></label>
-              <p class="tf-guided-microcopy tf-guided-only">This trains Jarvis for your next session — not grading you.</p>
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-date">Date</label>
-              <input id="tf-date" type="date" name="date" class="trade-input" value="${escHtml(today)}" required>
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-pair">Pair</label>
-              <input id="tf-pair" type="text" name="pair" class="trade-input" placeholder="e.g. XAUUSD">
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-session">Session</label>
-              <select id="tf-session" name="session" class="trade-input trade-select" required>
-                <option value="">— select —</option>
-                <option value="Asia">Asia</option>
-                <option value="London">London</option>
-                <option value="New York">New York</option>
-                <option value="London/New York">London/New York</option>
-              </select>
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-outcome">Outcome</label>
-              <select id="tf-outcome" name="outcome" class="trade-input trade-select" required>
-                <option value="">— select —</option>
-                <option value="Win">Win</option>
-                <option value="Loss">Loss</option>
-                <option value="BE">BE</option>
-              </select>
-            </div>
-            <div class="trade-field" id="tf-rr-field">
-              <label class="trade-label" for="tf-rr">RR</label>
-              <input id="tf-rr" type="number" name="rr" class="trade-input" step="0.01" min="0" placeholder="e.g. 2.5">
-            </div>
-            <div class="trade-field">
-              <label class="trade-label" for="tf-account">Account</label>
-              <input id="tf-account" type="text" name="account" class="trade-input" placeholder="e.g. Main">
-            </div>
-            <div class="trade-field trade-field--full trade-form-core-end" aria-hidden="true"></div>
-            ${customHtml}
-          </div>
-          <div class="trade-form-actions">
-            <button type="submit" class="trade-submit-btn">SAVE TRADE</button>
-          </div>
-        </form>
-      </div>
-    </div>`;
+// ── Photo preview renderer ──────────────────────────────────────────────
+function renderPhotoPreviews(container) {
+  if (!ltmPhotos.length) { container.innerHTML = ""; return; }
+  container.innerHTML = ltmPhotos.map((p, i) =>
+    `<div class="ltm-thumb">
+      <img class="ltm-thumb-img" src="${escHtml(p.dataUrl)}" alt="Photo ${i + 1}">
+      <button type="button" class="ltm-thumb-remove" data-idx="${i}" aria-label="Remove photo">&times;</button>
+    </div>`
+  ).join("");
 }
 
-/**
- * @param {object} options
- * @param {() => string} options.getUserId
- * @param {() => Promise<Array>} options.fetchTradeRowsForPrefill — newest first, same shape as /api/trades records
- * @param {(data: object) => string} options.readApiErrorMessage
- * @param {(msg: string, isError?: boolean) => void} options.showToast
- * @param {(ctx: object) => void | Promise<void>} [options.onTradeSaved] — after successful save + toast
- */
+function addPhotoFile(file, previewContainer) {
+  if (!file || !file.type.startsWith("image/")) return;
+  if (ltmPhotos.length >= 6) return; // cap at 6
+  const reader = new FileReader();
+  reader.onload = ev => {
+    ltmPhotos.push({ dataUrl: ev.target.result, label: "" });
+    renderPhotoPreviews(previewContainer);
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Drag-and-drop reordering ────────────────────────────────────────────
+function initFieldDrag(list) {
+  let dragging   = null;
+  let fromHandle = false;
+
+  list.addEventListener("mousedown", e => {
+    fromHandle = !!e.target.closest(".ltm-drag-handle");
+  });
+  document.addEventListener("mouseup", () => { fromHandle = false; }, { passive: true });
+
+  list.addEventListener("dragstart", e => {
+    const row = e.target.closest(".ltm-field-row");
+    if (!row || !fromHandle) { e.preventDefault(); return; }
+    dragging = row;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", row.dataset.fieldId || "");
+    setTimeout(() => row.classList.add("ltm-dragging"), 0);
+  });
+
+  list.addEventListener("dragover", e => {
+    e.preventDefault();
+    if (!dragging) return;
+    const target = e.target.closest(".ltm-field-row");
+    if (!target || target === dragging) return;
+    const rect = target.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      list.insertBefore(dragging, target);
+    } else {
+      target.after(dragging);
+    }
+  });
+
+  list.addEventListener("dragend", () => {
+    if (dragging) dragging.classList.remove("ltm-dragging");
+    dragging   = null;
+    fromHandle = false;
+    const ids = Array.from(list.querySelectorAll(".ltm-field-row"))
+      .map(r => r.dataset.fieldId).filter(Boolean);
+    saveFieldOrder(ids);
+  });
+}
+
+// ── Full overlay HTML ───────────────────────────────────────────────────
+function buildOverlayHtml(today, orderedFields) {
+  const rowsHtml = orderedFields.map(f => renderFieldRow(f, today)).join("\n");
+  return `<div class="trade-form-panel ltm-panel" id="ltm-panel">
+  <div class="trade-form-header">
+    <span class="trade-form-title">LOG TRADE</span>
+    <button type="button" class="trade-form-close" id="ltm-close" aria-label="Close">&#x2715;</button>
+  </div>
+  <div class="trade-form-body">
+    <form id="ltm-form" autocomplete="off" novalidate>
+
+      <div class="ltm-fields-list" id="ltm-fields-list">${rowsHtml}</div>
+
+      <div class="ltm-section-label">Photos</div>
+      <div class="ltm-photo-section">
+        <div class="ltm-dropzone" id="ltm-dropzone" tabindex="0" role="button"
+             aria-label="Upload photo — drop files or click to browse">
+          <svg class="ltm-dz-icon" width="24" height="24" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span class="ltm-dz-hint">Drop images or paste from clipboard</span>
+          <span class="ltm-dz-sub">Click to browse · PNG, JPG, WEBP · max 6</span>
+        </div>
+        <div class="ltm-photo-previews" id="ltm-photo-previews"></div>
+      </div>
+
+      <div class="ltm-section-label">Custom fields</div>
+      <div class="ltm-adder-wrap" id="ltm-adder-wrap">
+        <button type="button" class="ltm-adder-btn" id="ltm-adder-btn">
+          <span aria-hidden="true">+</span> Add field
+        </button>
+        <div class="ltm-adder-form" id="ltm-adder-form" hidden>
+          <input type="text" id="ltm-adder-name" class="trade-input ltm-input ltm-adder-name"
+                 placeholder="Field name" maxlength="48" autocomplete="off">
+          <select id="ltm-adder-type" class="trade-input trade-select ltm-input ltm-adder-type">
+            <option value="text">Text</option>
+            <option value="textarea">Long text</option>
+            <option value="number">Number</option>
+            <option value="yesno">Yes / No</option>
+          </select>
+          <button type="button" class="ltm-adder-confirm" id="ltm-adder-confirm">Add</button>
+          <button type="button" class="ltm-adder-cancel"  id="ltm-adder-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div class="trade-form-actions">
+        <button type="submit" class="trade-submit-btn" id="ltm-submit">SAVE TRADE</button>
+      </div>
+
+    </form>
+  </div>
+</div>`;
+}
+
+// ── Main export ─────────────────────────────────────────────────────────
 export async function openLogTradeModal(options) {
-  const {
-    getUserId,
-    fetchTradeRowsForPrefill,
-    readApiErrorMessage,
-    showToast,
-    onTradeSaved,
-  } = options;
+  const { getUserId, fetchTradeRowsForPrefill, readApiErrorMessage, showToast, onTradeSaved } = options;
 
-  if (logTradeModalOpen) return;
-  logTradeModalOpen = true;
-
-  let tradeRows = [];
-  try {
-    tradeRows = (await fetchTradeRowsForPrefill()) || [];
-  } catch (e) {
-    console.warn("[log-trade-modal] prefill fetch", e);
-    tradeRows = [];
-  }
+  if (ltmOpen) return;
+  ltmOpen   = true;
+  ltmPhotos = [];
 
   const userId = getUserId();
-  let customFields = [];
+  let notionFields = [];
   try {
-    const r = await fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`, { cache: "no-store" });
+    const r    = await fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`, { cache: "no-store" });
     const data = await r.json().catch(() => ({}));
-    const all = Array.isArray(data.fields) ? data.fields : [];
-    customFields = all.filter((f) => !CORE_FIELD_NAMES.has(f.field_name.toLowerCase()));
+    const all  = Array.isArray(data.fields) ? data.fields : [];
+    notionFields = all
+      .filter(f => !CORE_FIELD_NAMES.has((f.field_name || "").toLowerCase()))
+      .map(notionFieldToDef);
   } catch {}
 
-  const today = new Date().toISOString().slice(0, 10);
-  const customHtml = customFields.map(renderCustomField).join("");
+  const today      = new Date().toISOString().slice(0, 10);
+  const allDefs    = [...CORE_FIELD_DEFS, ...notionFields];
+  const allIds     = allDefs.map(f => f.id);
+  const orderedIds = loadFieldOrder(allIds);
+  const orderedDefs = orderedIds.map(id => allDefs.find(f => f.id === id)).filter(Boolean);
 
   const overlay = document.createElement("div");
   overlay.className = "trade-form-overlay";
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
-  overlay.innerHTML = buildOverlayHtml(today, customHtml);
+  overlay.innerHTML = buildOverlayHtml(today, orderedDefs);
   document.body.appendChild(overlay);
-
-  try {
-    applyLogTradePrefills(tradeRows, customFields);
-  } catch (eDef) {
-    console.warn("[log-trade-modal] defaults", eDef);
-  }
-
-  const panelEl = document.getElementById("trade-form-panel");
-  const guidedCb = document.getElementById("tf-guided-toggle");
-  function syncGuidedCoachUi() {
-    const on = guidedCb?.checked;
-    if (panelEl) panelEl.classList.toggle("trade-form-panel--guided", !!on);
-    overlay.querySelectorAll(".tf-guided-only").forEach((node) => {
-      node.setAttribute("aria-hidden", on ? "false" : "true");
-    });
-  }
-  guidedCb?.addEventListener("change", syncGuidedCoachUi);
-  syncGuidedCoachUi();
-
-  overlay.addEventListener("click", (e) => {
-    const chip = e.target.closest(".tf-psych-chip");
-    if (!chip) return;
-    const lab = chip.getAttribute("data-tf-chip");
-    if (!lab) return;
-    const row = chip.closest(".trade-field");
-    if (!row) return;
-    const ta = row.querySelector("textarea.trade-input[data-custom=\"1\"]");
-    if (!ta) return;
-    const cur = (ta.value || "").trim();
-    ta.value = cur ? `${cur}, ${lab}` : lab;
-  });
 
   requestAnimationFrame(() => {
     overlay.classList.add("trade-form-overlay--visible");
-    document.getElementById("trade-form-panel")?.classList.add("trade-form-panel--visible");
+    document.getElementById("ltm-panel")?.classList.add("trade-form-panel--visible");
   });
 
-  function closeForm() {
+  // ── Close ────────────────────────────────────────────────────────────
+  function closeModal() {
     overlay.classList.remove("trade-form-overlay--visible");
-    document.getElementById("trade-form-panel")?.classList.remove("trade-form-panel--visible");
-    overlay.addEventListener(
-      "transitionend",
-      () => {
-        overlay.remove();
-        logTradeModalOpen = false;
-      },
-      { once: true }
-    );
+    document.getElementById("ltm-panel")?.classList.remove("trade-form-panel--visible");
+    overlay.addEventListener("transitionend", () => {
+      overlay.remove();
+      ltmOpen   = false;
+      ltmPhotos = [];
+    }, { once: true });
+    document.removeEventListener("paste",   pasteHandler);
+    document.removeEventListener("keydown", escHandler);
+    document.removeEventListener("mouseup", mouseupHandler);
   }
 
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) closeForm();
-  });
-  overlay.querySelector(".trade-form-close").addEventListener("click", closeForm);
+  const escHandler = e => { if (e.key === "Escape") closeModal(); };
+  document.addEventListener("keydown", escHandler);
 
-  const outcomeSelect = document.getElementById("tf-outcome");
-  const rrField = document.getElementById("tf-rr-field");
-  if (outcomeSelect && rrField) {
-    rrField.style.display = outcomeSelect.value === "BE" ? "none" : "";
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
+  document.getElementById("ltm-close").addEventListener("click", closeModal);
+
+  // ── Field drag-and-drop ──────────────────────────────────────────────
+  const fieldsList = document.getElementById("ltm-fields-list");
+  initFieldDrag(fieldsList);
+  const mouseupHandler = () => {};
+  document.addEventListener("mouseup", mouseupHandler, { passive: true });
+
+  // ── Photos ───────────────────────────────────────────────────────────
+  const dropzone = document.getElementById("ltm-dropzone");
+  const previews = document.getElementById("ltm-photo-previews");
+
+  dropzone.addEventListener("dragover", e => {
+    e.preventDefault(); dropzone.classList.add("ltm-dropzone--over");
+  });
+  dropzone.addEventListener("dragleave", e => {
+    if (!dropzone.contains(e.relatedTarget)) dropzone.classList.remove("ltm-dropzone--over");
+  });
+  dropzone.addEventListener("drop", e => {
+    e.preventDefault(); dropzone.classList.remove("ltm-dropzone--over");
+    Array.from(e.dataTransfer.files).forEach(f => addPhotoFile(f, previews));
+  });
+  dropzone.addEventListener("click", () => {
+    const inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*"; inp.multiple = true;
+    inp.onchange = () => Array.from(inp.files || []).forEach(f => addPhotoFile(f, previews));
+    inp.click();
+  });
+  dropzone.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dropzone.click(); }
+  });
+
+  const pasteHandler = e => {
+    if (!document.body.contains(overlay)) return;
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) addPhotoFile(item.getAsFile(), previews);
+    }
+  };
+  document.addEventListener("paste", pasteHandler);
+
+  previews.addEventListener("click", e => {
+    const btn = e.target.closest(".ltm-thumb-remove");
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.idx, 10);
+    if (!isNaN(idx)) { ltmPhotos.splice(idx, 1); renderPhotoPreviews(previews); }
+  });
+
+  // ── Custom field adder ───────────────────────────────────────────────
+  const adderBtn     = document.getElementById("ltm-adder-btn");
+  const adderForm    = document.getElementById("ltm-adder-form");
+  const adderName    = document.getElementById("ltm-adder-name");
+  const adderType    = document.getElementById("ltm-adder-type");
+  const adderConfirm = document.getElementById("ltm-adder-confirm");
+  const adderCancel  = document.getElementById("ltm-adder-cancel");
+  const userAddedFields = [];
+
+  adderBtn.addEventListener("click", () => {
+    adderBtn.hidden = true; adderForm.hidden = false; adderName.focus();
+  });
+  adderCancel.addEventListener("click", () => {
+    adderBtn.hidden = false; adderForm.hidden = true; adderName.value = "";
+  });
+  adderConfirm.addEventListener("click", () => {
+    const label = adderName.value.trim();
+    if (!label) { adderName.focus(); return; }
+    const type  = adderType.value;
+    const def   = { id: label, label, type, options: [] };
+    userAddedFields.push(def);
+    fieldsList.insertAdjacentHTML("beforeend", renderFieldRow(def, today));
+    adderBtn.hidden = false; adderForm.hidden = true; adderName.value = "";
+  });
+
+  // ── RR visibility ────────────────────────────────────────────────────
+  const outcomeEl = document.querySelector("#ltm-form [name='outcome']");
+  const rrRow     = fieldsList.querySelector("[data-field-id='rr']");
+  function syncRR() {
+    if (rrRow) rrRow.style.display = (outcomeEl?.value === "BE") ? "none" : "";
   }
-  outcomeSelect?.addEventListener("change", () => {
-    if (rrField) rrField.style.display = outcomeSelect.value === "BE" ? "none" : "";
-  });
+  outcomeEl?.addEventListener("change", syncRR);
+  syncRR();
 
-  const form = document.getElementById("trade-log-form");
-  form.addEventListener("submit", async (e) => {
+  // ── Submit ───────────────────────────────────────────────────────────
+  const form = document.getElementById("ltm-form");
+  form.addEventListener("submit", async e => {
     e.preventDefault();
     const fd = new FormData(form);
-    const uid =
-      getUserId();
-    const dateVal = fd.get("date") || "";
-    const pair = (fd.get("pair") || "").trim();
-    const session = fd.get("session") || "";
-    const outcome = fd.get("outcome") || "";
-    const rrRaw = fd.get("rr");
-    const rr = rrRaw !== "" && rrRaw !== null ? Number(rrRaw) : null;
+
+    const dateVal = (fd.get("date")    || "").trim();
+    const pair    = (fd.get("pair")    || "").trim();
+    const session = (fd.get("session") || "").trim();
+    const outcome = (fd.get("outcome") || "").trim();
+    const rrRaw   = fd.get("rr");
+    const rr      = rrRaw !== "" && rrRaw !== null ? Number(rrRaw) : null;
     const account = (fd.get("account") || "").trim();
 
     if (!dateVal || !session || !outcome) {
@@ -489,26 +397,17 @@ export async function openLogTradeModal(options) {
       return;
     }
 
-    for (const f of customFields) {
-      if (f.field_type !== "multiselect" || !f.is_required) continue;
-      const picks = fd.getAll(f.field_name).filter((x) => x != null && String(x).trim());
-      if (picks.length === 0) {
-        showToast(`Please select at least one option for ${f.field_name}.`, true);
-        return;
-      }
-    }
-
     const custom_data = {};
-    for (const f of customFields) {
-      const val = customFieldValueFromFormData(fd, f);
-      if (val !== "") custom_data[f.field_name] = val;
+    for (const f of [...notionFields, ...userAddedFields]) {
+      const v = (fd.get(f.id) || "").trim();
+      if (v) custom_data[f.id] = v;
+    }
+    if (ltmPhotos.length) {
+      custom_data.photos = ltmPhotos.map(p => ({ url: p.dataUrl, label: p.label }));
     }
 
-    const submitBtn = form.querySelector(".trade-submit-btn");
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Saving…";
-    }
+    const submitBtn = document.getElementById("ltm-submit");
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Saving…"; }
 
     try {
       const res = await fetch("/api/log-trade", {
@@ -516,13 +415,13 @@ export async function openLogTradeModal(options) {
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: uid,
-          traded_at: `${dateVal}T00:00:00.000Z`,
-          pair: pair || null,
+          user_id:    getUserId(),
+          traded_at:  `${dateVal}T00:00:00.000Z`,
+          pair:       pair    || null,
           outcome,
-          rr: rr !== null && !Number.isNaN(rr) ? rr : null,
+          rr:         rr !== null && !Number.isNaN(rr) ? rr : null,
           session,
-          account: account || null,
+          account:    account || null,
           custom_data,
         }),
       });
@@ -532,31 +431,17 @@ export async function openLogTradeModal(options) {
         throw new Error(readApiErrorMessage(d) || `Save failed (${res.status})`);
       }
 
-      persistLogDefaultsFromStorage(fd, customFields);
-      closeForm();
+      closeModal();
       showToast("Trade logged.");
-
       if (onTradeSaved) {
-        await onTradeSaved({
-          outcome,
-          pair,
-          session,
-          rr,
-          account,
-          custom_data,
-          dateVal,
-          userId: uid,
-        });
+        await onTradeSaved({ outcome, pair, session, rr, account, custom_data, dateVal, userId: getUserId() });
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Save failed.";
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Save failed.";
       showToast(msg, true);
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "SAVE TRADE";
-      }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "SAVE TRADE"; }
     }
   });
 
-  document.getElementById("tf-date")?.focus();
+  document.getElementById("ltm-f-date")?.focus();
 }

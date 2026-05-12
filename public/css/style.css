@@ -1121,3 +1121,153 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   #orb-canvas { width: clamp(160px, 60vw, 280px) !important; height: clamp(160px, 60vw, 280px) !important; }
   .orb-stage { align-items: center; }
 }
+
+/* ═══════════ LOG TRADE modal — premium rebuild (ltm-*) ═══════════ */
+
+/* Fields list — vertical stack */
+.ltm-panel { max-width: 560px; }
+.ltm-fields-list {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-bottom: 8px;
+}
+
+/* Each draggable field row */
+.ltm-field-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,212,255,0.06);
+  border-radius: 6px;
+  transition: background 0.15s, opacity 0.15s;
+  cursor: default;
+}
+.ltm-field-row:last-child { border-bottom: none; }
+.ltm-field-row.ltm-dragging {
+  opacity: 0.4;
+  background: rgba(0,212,255,0.04);
+}
+
+/* Drag handle */
+.ltm-drag-handle {
+  flex-shrink: 0; width: 24px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(0,212,255,0.22); cursor: grab;
+  transition: color 0.2s;
+  margin-top: 22px;
+}
+.ltm-drag-handle:hover { color: rgba(0,212,255,0.6); }
+.ltm-drag-handle:active { cursor: grabbing; }
+
+/* Field label + input */
+.ltm-field-inner { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ltm-label {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(0,212,255,0.7);
+}
+.ltm-input { display: block; }
+.ltm-textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+
+/* Section labels */
+.ltm-section-label {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: rgba(255,255,255,0.2);
+  margin: 22px 0 10px 34px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ltm-section-label::after {
+  content: ""; flex: 1; height: 1px; background: rgba(0,212,255,0.08);
+}
+
+/* Photo drop zone */
+.ltm-photo-section { margin-left: 34px; }
+.ltm-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 22px 16px;
+  border: 1px dashed rgba(0,212,255,0.22);
+  border-radius: 10px;
+  background: rgba(0,212,255,0.02);
+  cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  text-align: center; user-select: none;
+}
+.ltm-dropzone:hover,
+.ltm-dropzone:focus-visible { border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.06); outline: none; }
+.ltm-dropzone--over { border-color: #00d4ff; background: rgba(0,212,255,0.1); }
+.ltm-dz-icon { color: rgba(0,212,255,0.4); flex-shrink: 0; }
+.ltm-dz-hint {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.45);
+}
+.ltm-dz-sub {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.2); text-transform: uppercase;
+}
+
+/* Photo preview strip */
+.ltm-photo-previews {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+}
+.ltm-thumb {
+  position: relative; border-radius: 8px; overflow: hidden;
+  border: 1px solid rgba(0,212,255,0.2);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  flex-shrink: 0;
+}
+.ltm-thumb-img {
+  display: block; width: 90px; height: 68px;
+  object-fit: cover; object-position: center;
+}
+.ltm-thumb-remove {
+  position: absolute; top: 4px; right: 4px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.8); font-size: 13px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+}
+.ltm-thumb-remove:hover { background: rgba(255,60,60,0.75); border-color: rgba(255,100,100,0.4); }
+
+/* Custom field adder */
+.ltm-adder-wrap { margin-left: 34px; margin-bottom: 24px; }
+.ltm-adder-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 16px; border-radius: 6px;
+  border: 1px solid rgba(0,212,255,0.25);
+  background: rgba(0,212,255,0.04);
+  color: rgba(0,212,255,0.7);
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  cursor: pointer; transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.ltm-adder-btn:hover { border-color: rgba(0,212,255,0.5); background: rgba(0,212,255,0.08); color: #00d4ff; }
+
+.ltm-adder-form {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px;
+}
+.ltm-adder-name { flex: 1; min-width: 140px; }
+.ltm-adder-type { width: 130px; flex-shrink: 0; }
+.ltm-adder-confirm,
+.ltm-adder-cancel {
+  padding: 9px 16px; border-radius: 6px; font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.ltm-adder-confirm {
+  border: 1px solid rgba(0,212,255,0.4); background: rgba(0,212,255,0.1); color: #00d4ff;
+}
+.ltm-adder-confirm:hover { background: rgba(0,212,255,0.2); border-color: #00d4ff; }
+.ltm-adder-cancel {
+  border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.35);
+}
+.ltm-adder-cancel:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
+
+@media (max-width: 620px) {
+  .ltm-section-label,
+  .ltm-photo-section,
+  .ltm-adder-wrap { margin-left: 0; }
+  .ltm-drag-handle { display: none; }
+  .ltm-field-row { padding: 8px 0; }
+  .ltm-thumb-img { width: 72px; height: 56px; }
+  .ltm-adder-form { flex-direction: column; }
+  .ltm-adder-name,
+  .ltm-adder-type { width: 100%; }
+}
