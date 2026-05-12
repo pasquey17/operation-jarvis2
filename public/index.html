@@ -635,7 +635,34 @@
       }
 
       /* ── Input bar: pinned to bottom, never shrinks ── */
-      .jarvis-home .chat-form { flex-shrink: 0; }
+      .jarvis-home .chat-form {
+        flex-shrink: 0;
+        padding-bottom: 12px;
+      }
+      .jarvis-home .chat-form input[type="text"] {
+        height: 48px;
+        font-size: 15px;
+        padding: 0 20px;
+        box-sizing: border-box;
+      }
+      .jarvis-home .chat-send {
+        height: 48px;
+        padding: 0 24px;
+        font-size: 13px;
+        font-family: "Outfit",system-ui,sans-serif;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        background: #00d4ff;
+        color: #000000;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.2s, box-shadow 0.2s;
+      }
+      .jarvis-home .chat-send:hover {
+        background: #ffffff;
+        box-shadow: 0 0 20px rgba(0,212,255,0.5);
+      }
 
       .jarvis-home[data-mode="chat"] .chat-scroll {
         border-color: rgba(0,212,255,0.1);

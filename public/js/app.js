@@ -745,15 +745,15 @@ class Star {
 
 class ShootingStar {
   constructor() {
-    this.x = Math.random() * window.innerWidth * 0.65 + window.innerWidth * 0.05;
-    this.y = Math.random() * window.innerHeight * 0.45;
-    const angle = 0.6 + (Math.random() - 0.5) * 0.15;
-    const spd = 7 + Math.random() * 4;
+    this.x = Math.random() * window.innerWidth * 0.7 + window.innerWidth * 0.05;
+    this.y = Math.random() * window.innerHeight * 0.5;
+    const angle = 0.4 + Math.random() * 0.6;
+    const spd = 6 + Math.random() * 5;
     this.vx = Math.cos(angle) * spd;
     this.vy = Math.sin(angle) * spd;
-    this.tailLen = 80;
+    this.tailLen = 100;
     this.life = 0;
-    this.maxLife = 24;
+    this.maxLife = 27;
     this.alive = true;
   }
   update() {
@@ -764,16 +764,17 @@ class ShootingStar {
   }
   draw(ctx) {
     const progress = this.life / this.maxLife;
-    const a = 0.6 * (1 - progress);
+    const a = 0.7 * (1 - progress);
     const hyp = Math.hypot(this.vx, this.vy) || 1;
     const tailX = this.x - (this.vx / hyp) * this.tailLen;
     const tailY = this.y - (this.vy / hyp) * this.tailLen;
     const g = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
-    g.addColorStop(0, `rgba(255,255,255,0)`);
+    g.addColorStop(0, `rgba(200,240,255,0)`);
+    g.addColorStop(0.6, `rgba(220,245,255,${a * 0.5})`);
     g.addColorStop(1, `rgba(255,255,255,${a})`);
     ctx.save();
     ctx.strokeStyle = g;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(tailX, tailY);
     ctx.lineTo(this.x, this.y);
