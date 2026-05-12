@@ -1893,11 +1893,12 @@
           var cap = it.label ? it.label.replace(/\s*:+\s*$/,'').trim() : '';
           var lineLabel = cap || ('Chart ' + (ix + 1));
           var dataCap = cap;
+          var nid = esc(trade.notion_id || '');
           return (
             '<div class="jn-photo-item">' +
             '  <span class="jn-photo-caption">' + esc(lineLabel) + '</span>' +
-            '  <button type="button" class="jn-photo-open" data-src="' + esc(it.url) + '" data-caption="' + esc(dataCap) + '" aria-label="Expand chart">' +
-            '    <img class="jn-photo-thumb" src="' + esc(it.url) + '" alt="' + esc(lineLabel) + '" loading="lazy" decoding="async" />' +
+            '  <button type="button" class="jn-photo-open" data-src="' + esc(it.url) + '" data-caption="' + esc(dataCap) + '" data-notion-id="' + nid + '" aria-label="Expand chart">' +
+            '    <img class="jn-photo-thumb" src="' + esc(it.url) + '" alt="' + esc(lineLabel) + '" data-notion-id="' + nid + '" data-img-idx="' + ix + '" loading="lazy" decoding="async" />' +
             '  </button>' +
             '</div>'
           );
@@ -1917,7 +1918,7 @@
         if (!coverItem || !coverItem.url) return '';
         return (
           '<div class="jn-trade-modal__hero">' +
-          '  <img class="jn-trade-modal__hero-img" src="' + esc(coverItem.url) + '" alt="" decoding="async" />' +
+          '  <img class="jn-trade-modal__hero-img" src="' + esc(coverItem.url) + '" alt="" data-notion-id="' + esc(trade.notion_id || '') + '" data-img-idx="0" decoding="async" />' +
           '</div>'
         );
       }
@@ -2032,7 +2033,7 @@
         if (coverItem && coverItem.url) {
           coverPiece =
             '  <div class="jn-card__cover" aria-hidden="true">' +
-            '    <img class="jn-card__cover-img" src="' + esc(coverItem.url) + '" alt="" loading="lazy" decoding="async" />' +
+            '    <img class="jn-card__cover-img" src="' + esc(coverItem.url) + '" alt="" data-notion-id="' + esc(trade.notion_id || '') + '" data-img-idx="0" loading="lazy" decoding="async" />' +
             '  </div>';
         }
 
@@ -2341,6 +2342,34 @@
           applyFilters();
         } catch(e) { /* silent */ }
       }
+
+      /* ── Image self-heal: refresh expired Notion S3 URLs on onerror ── */
+      document.addEventListener('error', function (e) {
+        var img = e.target;
+        if (img.tagName !== 'IMG') return;
+        var notionId = img.dataset.notionId;
+        if (!notionId || img.dataset.imgRefreshed) return;
+        // Mark all imgs for this trade to avoid duplicate fetches
+        document.querySelectorAll('img[data-notion-id="' + notionId + '"]').forEach(function (el) {
+          el.dataset.imgRefreshed = '1';
+        });
+        fetch('/api/refresh-trade-image?notion_id=' + encodeURIComponent(notionId) + '&user_id=' + encodeURIComponent(currentUserId || ''), { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+          .then(function (data) {
+            if (!Array.isArray(data.images) || !data.images.length) return;
+            // Update each img by its index in the trade_images array
+            document.querySelectorAll('img[data-notion-id="' + notionId + '"]').forEach(function (el) {
+              var idx = parseInt(el.dataset.imgIdx || '0', 10);
+              var freshUrl = (data.images[idx] || data.images[0]).url;
+              el.src = freshUrl;
+            });
+            // Update lightbox button data-src so clicks open the fresh URL
+            document.querySelectorAll('[data-notion-id="' + notionId + '"][data-src]').forEach(function (btn, i) {
+              if (data.images[i]) btn.dataset.src = data.images[i].url;
+            });
+          })
+          .catch(function () {});
+      }, true); // capture phase — error events don't bubble
 
       /* ── Boot ── */
       document.getElementById('jn-log-btn').addEventListener('click', openTradeForm);

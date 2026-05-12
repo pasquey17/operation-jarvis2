@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { buildMessagesUserContent } from "./prompts.mjs";
 import { syncNotionToSupabase } from './notion-sync.mjs';
 import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
+import { fetchTradeImagesFromNotionPageBlocks } from './notion-page-images.mjs';
 import { syncJournalFieldsFromNotion } from "./sync-journal-fields-notion.mjs";
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 
@@ -1729,7 +1730,7 @@ async function handleTrades(req, res) {
       new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
-    await maybeSyncNotion(userId);
+    maybeSyncNotion(userId).catch(() => {});
     const payload = await fetchTradesFromSupabase(userId);
     if (!payload.records.length) {
       json(res, 200, {
@@ -2541,6 +2542,71 @@ async function handleLogTrade(req, res) {
   }
 }
 
+/** Extract file URLs from Notion page properties (files-type columns). */
+function extractFilesFromNotionProps(props) {
+  const urls = [];
+  if (!props || typeof props !== "object") return urls;
+  for (const key of Object.keys(props)) {
+    const prop = props[key];
+    if (!prop || prop.type !== "files" || !Array.isArray(prop.files)) continue;
+    for (const f of prop.files) {
+      const u =
+        f.type === "external" && f.external?.url
+          ? String(f.external.url).trim()
+          : f.type === "file" && f.file?.url
+            ? String(f.file.url).trim()
+            : null;
+      if (u && /^https?:\/\//i.test(u)) urls.push(u);
+    }
+  }
+  return urls;
+}
+
+/**
+ * Returns fresh image URLs for one Notion page without running a full sync.
+ * Called by the client when an S3 presigned URL has expired (onerror).
+ * GET /api/refresh-trade-image?notion_id=xxx&user_id=xxx
+ */
+async function handleRefreshTradeImage(req, res) {
+  const u = new URL(req.url, `http://localhost:${PORT}`);
+  const notionId = (u.searchParams.get("notion_id") || "").trim();
+  const userId = (u.searchParams.get("user_id") || "").trim();
+
+  if (!notionId) { json(res, 400, { error: "Missing notion_id" }); return; }
+
+  const notionKey = userId === "spasque70@gmail.com"
+    ? process.env.NOTION_API_KEY_MUM?.trim()
+    : process.env.NOTION_API_KEY?.trim();
+
+  if (!notionKey) { json(res, 503, { error: "Notion key not configured" }); return; }
+
+  try {
+    const pageRes = await fetch(`https://api.notion.com/v1/pages/${notionId}`, {
+      headers: {
+        Authorization: `Bearer ${notionKey}`,
+        "Notion-Version": "2025-09-03",
+        Accept: "application/json",
+      },
+    });
+    if (!pageRes.ok) {
+      json(res, 502, { error: `Notion API ${pageRes.status}` });
+      return;
+    }
+    const page = await pageRes.json();
+    const propUrls = extractFilesFromNotionProps(page.properties || {});
+    const images = propUrls.map((url) => ({ url, label: "" }));
+
+    if (!images.length) {
+      const blockItems = await fetchTradeImagesFromNotionPageBlocks(notionKey, notionId, { maxItems: 20 });
+      blockItems.forEach((item) => images.push(item));
+    }
+
+    json(res, 200, { images });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 const MAX_PROXY_IMAGE_BYTES = 12 * 1024 * 1024;
 
 /**
@@ -2702,6 +2768,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/chat")) {
     await handleChat(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/refresh-trade-image")) {
+    await handleRefreshTradeImage(req, res);
     return;
   }
 
