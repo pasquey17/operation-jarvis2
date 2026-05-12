@@ -225,11 +225,6 @@
               <div class="orb-mount">
                 <canvas id="orb-canvas" width="700" height="700" aria-hidden="true"></canvas>
               </div>
-              <div class="orb-identity">
-                <p class="orb-identity__eyebrow">Primary interface</p>
-                <h1 class="jarvis-title">JARVIS</h1>
-                <p class="jarvis-caption">Living intelligence · Electric energy core</p>
-              </div>
             </div>
           </section>
 
@@ -321,11 +316,11 @@
       html { font-size: 14px; }
       body.jarvis-home { background: #050a14; }
 
-      /* ── Viewport: fills below fixed nav ── */
+      /* ── Viewport: fills exactly below fixed nav ── */
       .jarvis-home .jarvis-viewport {
         margin-top: 52px;
         height: calc(100vh - 52px);
-        padding: 16px 40px 0;
+        padding: 0 40px;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
@@ -347,46 +342,54 @@
         align-items: stretch;
         gap: clamp(1rem, 2.5vw, 2rem);
         min-height: 0;
-        padding-bottom: 16px;
       }
 
-      /* ── Left panel: 380px, orb centred ── */
+      /* ── Left panel: 420px, orb perfectly centred ── */
       .jarvis-home .hud-core {
-        width: 380px;
-        max-width: 380px;
+        width: 420px;
+        max-width: 420px;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: calc(100vh - 52px);
+      }
+
+      /* ── Right panel: fills remaining space, full height ── */
+      .jarvis-home .hud-deck {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 52px);
+      }
+
+      /* ── Mobile ── */
+      @media (max-width: 900px) {
+        .jarvis-home .jarvis-viewport { padding: 0 16px; height: auto; overflow: visible; }
+        .jarvis-home .hud-grid { flex-direction: column !important; align-items: stretch; padding-bottom: 24px; }
+        .jarvis-home .hud-core { width: 100%; max-width: 100%; height: auto; }
+        .jarvis-home .hud-deck { height: auto; }
+      }
+
+      /* ── Font overrides ── */
+      .jarvis-home .snapshot-eyebrow,
+      .jarvis-home .snapshot-live { font-family: "Share Tech Mono","Courier New",monospace; }
+
+      /* ── Orb stage: pass-through flex centre ── */
+      .jarvis-home .orb-stage {
         display: flex;
         align-items: center;
         justify-content: center;
       }
 
-      /* ── Right panel fills remaining space ── */
-      .jarvis-home .hud-deck {
-        flex: 1;
-        min-width: 0;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      /* ── Mobile ── */
-      @media (max-width: 900px) {
-        .jarvis-home .jarvis-viewport { padding: 12px 16px 0; height: auto; overflow: visible; }
-        .jarvis-home .hud-grid { flex-direction: column !important; align-items: stretch; padding-bottom: 24px; }
-        .jarvis-home .hud-core { width: 100%; max-width: 100%; }
-      }
-
-      /* ── Font overrides ── */
-      .jarvis-home .orb-identity__eyebrow,
-      .jarvis-home .snapshot-eyebrow,
-      .jarvis-home .snapshot-live { font-family: "Share Tech Mono","Courier New",monospace; }
-      .jarvis-home .jarvis-caption { letter-spacing: 0.24em; }
-
-      /* ── Orb canvas ── */
+      /* ── Orb canvas: 500px desktop ── */
       .jarvis-home #orb-canvas {
-        width: clamp(180px, 100%, 340px) !important;
-        height: clamp(180px, 100%, 340px) !important;
+        width: 500px !important;
+        height: 500px !important;
+      }
+      @media (max-width: 900px) {
+        .jarvis-home #orb-canvas { width: clamp(240px, 80vw, 340px) !important; height: clamp(240px, 80vw, 340px) !important; }
       }
       @keyframes ds-orb-breathe {
         0%, 100% {
@@ -415,7 +418,7 @@
         .jarvis-home .orb-mount { animation: none; filter: drop-shadow(0 0 40px rgba(0,212,255,0.55)); }
       }
 
-      /* ── Telemetry: fixed height (shrink to content, never grow) ── */
+      /* ── Telemetry: shrinks to content height, never grows ── */
       .jarvis-home #system-snapshot {
         flex-shrink: 0;
         position: relative;
@@ -467,7 +470,7 @@
       .jarvis-home .metric-cell .metric-cell__body { display: flex; flex-direction: column; gap: 8px; }
       .jarvis-home .metric-cell .snapshot-label {
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px;
+        font-size: 10px;
         letter-spacing: 0.15em;
         text-transform: uppercase;
         color: #00d4ff;
@@ -475,7 +478,7 @@
       .jarvis-home .metric-cell .snapshot-value {
         font-family: "Outfit",system-ui,sans-serif !important;
         font-weight: 200 !important;
-        font-size: 30px !important;
+        font-size: 32px !important;
         color: #ffffff !important;
         letter-spacing: 0.02em;
         font-variant-numeric: tabular-nums;
@@ -530,7 +533,7 @@
       }
       @keyframes comms-dot-pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
 
-      /* ── Chat scroll: fills space between header and input ── */
+      /* ── Message scroll: fills between header and input bar ── */
       .jarvis-home .chat-scroll {
         flex: 1;
         min-height: 0;
@@ -578,7 +581,7 @@
         letter-spacing: 0.01em;
       }
 
-      /* ── Chat panel: flex column, fills all remaining deck height ── */
+      /* ── Chat panel: flex:1, fills all remaining deck height ── */
       .jarvis-home .comm-dock {
         flex: 1;
         min-height: 0;
@@ -621,7 +624,7 @@
         100% { top: 100%; opacity: 0; }
       }
 
-      /* ── Input bar pinned to bottom ── */
+      /* ── Input bar: pinned to bottom, never shrinks ── */
       .jarvis-home .chat-form { flex-shrink: 0; }
 
       .jarvis-home[data-mode="chat"] .chat-scroll {
