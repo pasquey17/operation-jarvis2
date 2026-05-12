@@ -7,1528 +7,1385 @@
     <title>ANALYTICS · JARVIS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/style.css" />
     <style>
-      /* ── Unlock scroll (global HUD locks overflow) ── */
-      html,
-      body {
+      html, body {
         overflow: auto !important;
         height: auto !important;
         min-height: 100dvh !important;
+        background: #050a14 !important;
       }
 
-      /* ═══════════════════ NAV BAR (inlined) ═══════════════════ */
+      /* ═══ NAV ═══ */
       .jv-nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 52px;
-        z-index: 1000;
-        background: rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-        display: flex;
-        align-items: center;
-        padding: 0 24px;
-        gap: 0;
+        position: fixed; top: 0; left: 0; right: 0; height: 52px;
+        z-index: 1000; background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0,212,255,0.2);
+        display: flex; align-items: center; padding: 0 24px; gap: 0;
       }
       .jv-nav__brand {
-        color: #00d4ff;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 15px;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        white-space: nowrap;
-        flex-shrink: 0;
-        text-decoration: none;
+        color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase;
+        white-space: nowrap; flex-shrink: 0; text-decoration: none;
       }
       .jv-nav__links {
-        display: flex;
-        align-items: center;
-        gap: 32px;
-        list-style: none;
-        margin: 0 auto;
-        padding: 0;
+        display: flex; align-items: center; gap: 32px; list-style: none;
+        margin: 0 auto; padding: 0;
       }
       .jv-nav__links a {
-        color: rgba(255, 255, 255, 0.5);
-        text-decoration: none;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        font-variant: small-caps;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        padding-bottom: 2px;
-        border-bottom: 1px solid transparent;
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px;
+        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
+        padding-bottom: 2px; border-bottom: 1px solid transparent;
         transition: color 0.2s, border-color 0.2s;
       }
-      .jv-nav__links a:hover {
-        color: rgba(255, 255, 255, 0.85);
-      }
+      .jv-nav__links a:hover { color: rgba(255,255,255,0.85) !important; }
       .jv-nav__links a.jv-nav--active,
-      .jv-nav__links a[aria-current="page"] {
-        color: #00d4ff;
-        border-bottom: 1px solid #00d4ff;
-      }
+      .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
       .jv-nav__user {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        color: rgba(255, 255, 255, 0.3);
-        letter-spacing: 0.06em;
-        white-space: nowrap;
-        flex-shrink: 0;
+        font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px;
+        color: rgba(255,255,255,0.3); letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
       }
       .jv-nav__logout {
-        margin-left: 14px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid rgba(0, 212, 255, 0.25);
-        background: rgba(0, 212, 255, 0.06);
-        color: rgba(0, 212, 255, 0.85);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s;
+        margin-left: 14px; padding: 6px 10px; border-radius: 999px;
+        border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06);
+        color: rgba(0,212,255,0.85) !important; font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+        cursor: pointer; transition: background 0.2s, border-color 0.2s;
       }
-      .jv-nav__logout:hover {
-        background: rgba(0, 212, 255, 0.14);
-        border-color: rgba(0, 212, 255, 0.55);
-      }
+      .jv-nav__logout:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.55); }
       .jv-nav__hamburger {
-        display: none;
-        flex-direction: column;
-        justify-content: center;
-        gap: 5px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        margin-left: auto;
-        flex-shrink: 0;
+        display: none; flex-direction: column; justify-content: center; gap: 5px;
+        background: none; border: none; cursor: pointer; padding: 4px;
+        margin-left: auto; flex-shrink: 0;
       }
       .jv-nav__hamburger span {
-        display: block;
-        width: 20px;
-        height: 1.5px;
-        background: rgba(255, 255, 255, 0.6);
-        border-radius: 2px;
-        transition: background 0.2s;
+        display: block; width: 20px; height: 1.5px;
+        background: rgba(255,255,255,0.6); border-radius: 2px; transition: background 0.2s;
       }
-      .jv-nav__hamburger:hover span {
-        background: #00d4ff;
-      }
+      .jv-nav__hamburger:hover span { background: #00d4ff; }
       .jv-nav__dropdown {
-        display: none;
-        position: fixed;
-        top: 52px;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.95);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(0, 212, 255, 0.15);
-        z-index: 999;
-        flex-direction: column;
-        padding: 8px 0;
+        display: none; position: fixed; top: 52px; left: 0; right: 0;
+        background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,212,255,0.15);
+        z-index: 999; flex-direction: column; padding: 8px 0;
       }
-      .jv-nav__dropdown.jv-nav--open {
-        display: flex;
-      }
+      .jv-nav__dropdown.jv-nav--open { display: flex; }
       .jv-nav__dropdown a {
-        color: rgba(255, 255, 255, 0.5);
-        text-decoration: none;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 12px;
-        font-variant: small-caps;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        padding: 12px 24px;
-        border-left: 2px solid transparent;
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px;
+        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
+        padding: 12px 24px; border-left: 2px solid transparent;
         transition: color 0.2s, border-color 0.2s;
       }
-      .jv-nav__dropdown a:hover {
-        color: rgba(255, 255, 255, 0.85);
-      }
+      .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85) !important; }
       .jv-nav__dropdown a.jv-nav--active,
-      .jv-nav__dropdown a[aria-current="page"] {
-        color: #00d4ff;
-        border-left-color: #00d4ff;
-      }
+      .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff !important; border-left-color: #00d4ff; }
       @media (max-width: 768px) {
-        .jv-nav__links,
-        .jv-nav__user {
-          display: none;
-        }
-        .jv-nav__hamburger {
-          display: flex;
-        }
-        .jv-nav__brand {
-          font-size: 13px;
-        }
+        .jv-nav__links, .jv-nav__user { display: none; }
+        .jv-nav__hamburger { display: flex; }
+        .jv-nav__brand { font-size: 13px; }
       }
 
-      /* ═══════════════════ ANALYTICS PAGE ═══════════════════ */
-      .an-viewport {
-        position: relative;
-        z-index: 1;
-        padding-top: 70px;
+      /* ═══ PAGE ═══ */
+      .an-page {
+        position: relative; z-index: 1;
+        padding: 76px 0 80px;
       }
       .an-shell {
-        width: min(1280px, calc(100vw - 40px));
+        width: min(1320px, calc(100vw - 40px));
         margin: 0 auto;
       }
+
+      /* ═══ HEADER ═══ */
       .an-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 18px;
-        margin-bottom: 18px;
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 16px; margin-bottom: 24px; padding-top: 12px;
       }
+      .an-header__left { flex: 1; min-width: 0; }
       .an-title {
-        margin: 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: clamp(1.55rem, 3.5vw, 2.25rem);
-        color: #00d4ff;
-        letter-spacing: 0.24em;
+        margin: 0 0 6px;
+        font-family: "Outfit", system-ui, sans-serif;
+        font-weight: 200;
+        font-size: clamp(2rem, 5vw, 52px);
+        color: #ffffff;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        text-shadow: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 70px rgba(0, 212, 255, 0.18);
+        text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08);
       }
       .an-subtitle {
-        margin: 6px 0 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.3);
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
+        margin: 0; font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; color: rgba(255,255,255,0.3);
+        letter-spacing: 0.14em; text-transform: uppercase;
       }
-      .an-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        background: rgba(0, 212, 255, 0.06);
-        box-shadow: 0 0 0 1px rgba(0, 191, 255, 0.06) inset;
-        color: rgba(0, 212, 255, 0.85);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        white-space: nowrap;
-        user-select: none;
+      .an-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 8px 14px; border-radius: 999px;
+        border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: rgba(0,212,255,0.85); white-space: nowrap; flex-shrink: 0;
       }
-      .an-status__dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: rgba(0, 212, 255, 0.9);
-        box-shadow: 0 0 12px rgba(0, 212, 255, 0.7);
+      .an-badge__dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: rgba(0,212,255,0.9); box-shadow: 0 0 10px rgba(0,212,255,0.7);
         animation: anPulse 1.7s ease-in-out infinite;
       }
       @keyframes anPulse {
-        0%,
-        100% {
-          transform: scale(1);
-          opacity: 0.65;
-        }
-        50% {
-          transform: scale(1.18);
-          opacity: 1;
-        }
+        0%, 100% { transform: scale(1); opacity: 0.65; }
+        50% { transform: scale(1.2); opacity: 1; }
       }
 
-      .an-grid {
-        display: grid;
-        grid-template-columns: 1.45fr 1fr;
-        gap: 18px;
-        margin-bottom: 18px;
+      /* ═══ FILTER BAR ═══ */
+      .an-filter-bar {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+        padding: 14px 18px; margin-bottom: 22px;
+        background: rgba(4,9,18,0.9);
+        border: 1px solid rgba(0,212,255,0.12); border-radius: 14px;
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       }
-      .an-row {
+      .an-filter-group {
+        display: flex; align-items: center; gap: 6px;
+      }
+      .an-filter-label {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: rgba(0,212,255,0.7); white-space: nowrap;
+      }
+      .an-filter-input,
+      .an-filter-select {
+        background: rgba(0,0,0,0.55); border: 1px solid rgba(0,212,255,0.18);
+        border-radius: 7px; color: #fff;
+        font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px;
+        padding: 5px 9px; outline: none; color-scheme: dark;
+        transition: border-color 0.2s;
+        min-width: 0;
+      }
+      .an-filter-input:focus,
+      .an-filter-select:focus { border-color: rgba(0,212,255,0.5); }
+      .an-filter-select { cursor: pointer; padding-right: 6px; }
+      .an-filter-input[type="date"] { max-width: 140px; }
+      .an-filter-select { max-width: 160px; }
+      .an-filter-sep {
+        width: 1px; height: 20px; background: rgba(0,212,255,0.12);
+        flex-shrink: 0;
+      }
+      .an-filter-reset {
+        margin-left: auto; padding: 6px 14px; border-radius: 7px;
+        border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06);
+        color: rgba(0,212,255,0.8); font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+        cursor: pointer; transition: background 0.2s, border-color 0.2s;
+      }
+      .an-filter-reset:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.45); }
+      .an-filter-count {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+        color: rgba(255,255,255,0.3);
+      }
+
+      /* ═══ CHART GRID ═══ */
+      .an-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 18px;
-        margin-bottom: 18px;
       }
+      .an-card--wide { grid-column: 1 / -1; }
 
-      /* Reusable chart card styling */
+      /* ═══ CHART CARD ═══ */
       .an-card {
         position: relative;
         border-radius: 20px;
-        border: 1px solid rgba(0, 212, 255, 0.14);
-        background: rgba(0, 0, 0, 0.78);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(0,212,255,0.13);
+        background: rgba(4,9,18,0.85);
+        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 60px rgba(0,0,0,0.5);
         overflow: hidden;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.05),
-          0 18px 60px rgba(0, 0, 0, 0.48);
-        transition:
-          transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-          border-color 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-          box-shadow 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .an-card::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
         opacity: 0;
-        background: radial-gradient(
-          ellipse 120% 90% at 100% 0%,
-          rgba(0, 212, 255, 0.12),
-          transparent 55%
-        );
-        transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        transform: translateY(18px);
+        transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1),
+                    transform 0.55s cubic-bezier(0.22,1,0.36,1),
+                    border-color 0.3s, box-shadow 0.3s;
+      }
+      .an-card--visible {
+        opacity: 1;
+        transform: translateY(0);
       }
       .an-card:hover {
-        transform: translateY(-2px);
-        border-color: rgba(0, 212, 255, 0.28);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.06),
-          0 26px 80px rgba(0, 0, 0, 0.55),
-          0 0 48px rgba(0, 191, 255, 0.06);
+        border-color: rgba(0,212,255,0.26);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 24px 72px rgba(0,0,0,0.55), 0 0 36px rgba(0,191,255,0.05);
       }
-      .an-card:hover::after {
-        opacity: 1;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .an-card,
-        .an-card::after {
-          transition-duration: 0.01ms !important;
-        }
-        .an-card:hover {
-          transform: none;
-        }
-        .an-status__dot {
-          animation: none;
-        }
-      }
-
       .an-card__top {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 18px 18px 10px;
+        display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+        padding: 16px 18px 10px;
       }
       .an-card__eyebrow {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.85);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: rgba(0,212,255,0.85);
       }
       .an-card__meta {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.32);
-        white-space: nowrap;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: rgba(255,255,255,0.28); white-space: nowrap;
       }
-      .an-card__body {
-        padding: 0 16px 16px;
-      }
+      .an-card__body { padding: 0 14px 16px; }
       .an-canvas {
-        display: block;
-        width: 100%;
-        height: 300px;
+        display: block; width: 100%; height: 280px;
       }
-      .an-canvas--tall {
-        height: 360px;
-      }
-      .an-footer {
-        margin-top: 16px;
-        padding: 0 4px 10px;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.25);
+      .an-canvas--tall { height: 320px; }
+      .an-canvas--model { height: 380px; }
+      .an-canvas--drawdown { height: 220px; }
+
+      /* ═══ FOOTER ═══ */
+      .an-foot {
+        margin-top: 20px; padding-bottom: 16px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+        color: rgba(255,255,255,0.22); text-align: center;
       }
 
-      @media (max-width: 1024px) {
-        .an-grid {
-          grid-template-columns: 1fr;
-        }
+      /* ═══ LOADING STATE ═══ */
+      .an-loading {
+        display: flex; align-items: center; justify-content: center;
+        height: 280px; color: rgba(255,255,255,0.25);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; letter-spacing: 0.14em;
       }
-      @media (max-width: 768px) {
-        .an-shell {
-          width: min(1280px, calc(100vw - 24px));
-        }
-        .an-header {
-          flex-direction: column;
-          align-items: stretch;
-        }
-        .an-status {
-          align-self: flex-start;
-        }
-        .an-row {
-          grid-template-columns: 1fr;
-        }
-        .an-canvas {
-          height: 260px;
-        }
-        .an-canvas--tall {
-          height: 320px;
-        }
+
+      /* ═══ RESPONSIVE ═══ */
+      @media (max-width: 900px) {
+        .an-grid { grid-template-columns: 1fr; }
+        .an-card--wide { grid-column: 1; }
+        .an-shell { width: min(1320px, calc(100vw - 24px)); }
+      }
+      @media (max-width: 600px) {
+        .an-page { padding-top: 68px; }
+        .an-header { flex-direction: column; gap: 10px; align-items: stretch; }
+        .an-title { font-size: 1.9rem !important; }
+        .an-filter-bar { gap: 8px; padding: 12px 14px; }
+        .an-filter-input[type="date"] { max-width: 120px; }
+        .an-filter-select { max-width: 130px; }
+        .an-canvas { height: 240px; }
+        .an-canvas--tall { height: 260px; }
+        .an-canvas--model { height: 320px; }
+        .an-canvas--drawdown { height: 180px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .an-card { transition-duration: 0.01ms !important; animation: none !important; }
+        .an-badge__dot { animation: none; }
       }
     </style>
   </head>
   <body>
-    <!-- ═══════════════════ NAV BAR ═══════════════════ -->
+    <!-- ═══ NAV ═══ -->
     <nav class="jv-nav" aria-label="Main navigation">
       <a class="jv-nav__brand" href="/index.html">JARVIS</a>
       <ul class="jv-nav__links" role="list">
         <li><a href="/index.html" id="nav-home">Home</a></li>
         <li><a href="/journal.html" id="nav-journal">Journal</a></li>
-        <li>
-          <a href="/analytics.html" id="nav-analytics" class="jv-nav--active" aria-current="page"
-            >Analytics</a
-          >
-        </li>
+        <li><a href="/analytics.html" id="nav-analytics" class="jv-nav--active" aria-current="page">Analytics</a></li>
         <li><a href="/calendar.html" id="nav-calendar">Calendar</a></li>
       </ul>
       <span class="jv-nav__user" id="jv-nav-user" aria-label="Current user"></span>
       <button class="jv-nav__logout" id="logout-btn" type="button">Logout</button>
-      <button
-        class="jv-nav__hamburger"
-        id="jv-nav-hamburger"
-        aria-label="Toggle navigation"
-        aria-expanded="false"
-        aria-controls="jv-nav-dropdown"
-      >
-        <span aria-hidden="true"></span>
-        <span aria-hidden="true"></span>
-        <span aria-hidden="true"></span>
+      <button class="jv-nav__hamburger" id="jv-nav-hamburger" aria-label="Toggle navigation" aria-expanded="false" aria-controls="jv-nav-dropdown">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
       </button>
     </nav>
-
     <div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
       <a href="/index.html">Home</a>
       <a href="/journal.html">Journal</a>
       <a href="/analytics.html" class="jv-nav--active" aria-current="page">Analytics</a>
       <a href="/calendar.html">Calendar</a>
     </div>
-
     <script>
       (function () {
-        var user = localStorage.getItem("jarvis_user") || localStorage.getItem("user_id");
-        if (user) document.getElementById("jv-nav-user").textContent = user;
-
-        var logoutBtn = document.getElementById("logout-btn");
+        var user = localStorage.getItem('jarvis_user') || localStorage.getItem('user_id');
+        if (user) document.getElementById('jv-nav-user').textContent = user;
+        var logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
-          logoutBtn.addEventListener("click", function () {
-            try {
-              localStorage.removeItem("jarvis_user");
-              localStorage.removeItem("user_id");
-            } catch (e) {}
-            window.location.href = "/index.html";
+          logoutBtn.addEventListener('click', function () {
+            try { localStorage.removeItem('jarvis_user'); localStorage.removeItem('user_id'); } catch (e) {}
+            window.location.href = '/index.html';
           });
         }
-
-        var btn = document.getElementById("jv-nav-hamburger");
-        var dropdown = document.getElementById("jv-nav-dropdown");
-        btn.addEventListener("click", function () {
-          var open = dropdown.classList.toggle("jv-nav--open");
-          btn.setAttribute("aria-expanded", open ? "true" : "false");
-          dropdown.setAttribute("aria-hidden", open ? "false" : "true");
+        var btn = document.getElementById('jv-nav-hamburger');
+        var dropdown = document.getElementById('jv-nav-dropdown');
+        btn.addEventListener('click', function () {
+          var open = dropdown.classList.toggle('jv-nav--open');
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          dropdown.setAttribute('aria-hidden', open ? 'false' : 'true');
         });
-        document.addEventListener("click", function (e) {
+        document.addEventListener('click', function (e) {
           if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.remove("jv-nav--open");
-            btn.setAttribute("aria-expanded", "false");
-            dropdown.setAttribute("aria-hidden", "true");
+            dropdown.classList.remove('jv-nav--open');
+            btn.setAttribute('aria-expanded', 'false');
+            dropdown.setAttribute('aria-hidden', 'true');
           }
         });
       })();
     </script>
-    <!-- ═══════════════════ END NAV BAR ═══════════════════ -->
 
     <canvas id="particle-canvas" aria-hidden="true"></canvas>
 
-    <div class="an-viewport">
-      <div class="hud-frame" data-hud-frame>
-        <span class="hud-corner hud-corner--tl" aria-hidden="true"></span>
-        <span class="hud-corner hud-corner--tr" aria-hidden="true"></span>
-        <span class="hud-corner hud-corner--bl" aria-hidden="true"></span>
-        <span class="hud-corner hud-corner--br" aria-hidden="true"></span>
+    <div class="an-page">
+      <div class="an-shell">
 
-        <div class="an-shell">
-          <header class="an-header">
-            <div>
-              <h1 class="an-title">ANALYTICS</h1>
-              <p class="an-subtitle">System-level performance diagnostics</p>
-            </div>
-            <div class="an-status" aria-label="Analytics status">
-              <span class="an-status__dot" aria-hidden="true"></span>
-              Streaming
-            </div>
-          </header>
+        <!-- Header -->
+        <header class="an-header">
+          <div class="an-header__left">
+            <h1 class="an-title">ANALYTICS</h1>
+            <p class="an-subtitle">System-level performance diagnostics</p>
+          </div>
+          <div class="an-badge" id="an-badge">
+            <span class="an-badge__dot" aria-hidden="true"></span>
+            <span id="an-badge-text">Loading…</span>
+          </div>
+        </header>
 
-          <!-- Row 1: flagship charts -->
-          <section class="an-grid" aria-label="Analytics charts">
-            <article class="an-card" aria-label="Equity curve">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">Equity curve</div>
-                <div class="an-card__meta" id="meta-equity">—</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas an-canvas--tall" id="chart-equity"></canvas>
-              </div>
-            </article>
-
-            <article class="an-card" aria-label="Rolling win rate (20-trade window)">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">Rolling win rate</div>
-                <div class="an-card__meta" id="meta-winrate">20-trade window</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas an-canvas--tall" id="chart-winrate"></canvas>
-              </div>
-            </article>
-          </section>
-
-          <!-- Row 2: histogram + drawdown -->
-          <section class="an-row" aria-label="Distribution charts">
-            <article class="an-card" aria-label="R distribution histogram">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">R distribution</div>
-                <div class="an-card__meta" id="meta-histogram">—</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas" id="chart-histogram"></canvas>
-              </div>
-            </article>
-
-            <article class="an-card" aria-label="Drawdown">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">Drawdown</div>
-                <div class="an-card__meta" id="meta-drawdown">—</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas" id="chart-drawdown"></canvas>
-              </div>
-            </article>
-          </section>
-
-          <!-- Row 3: session + model -->
-          <section class="an-row" aria-label="Breakdowns">
-            <article class="an-card" aria-label="Performance by session">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">By session</div>
-                <div class="an-card__meta" id="meta-session">—</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas" id="chart-session"></canvas>
-              </div>
-            </article>
-
-            <article class="an-card" aria-label="Performance by entry model">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">By entry model</div>
-                <div class="an-card__meta" id="meta-model">—</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas" id="chart-model"></canvas>
-              </div>
-            </article>
-          </section>
-
-          <!-- Row 4: weekday + monte carlo -->
-          <section class="an-row" aria-label="Advanced analysis">
-            <article class="an-card" aria-label="Performance by weekday">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">By weekday</div>
-                <div class="an-card__meta" id="meta-weekday">—</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas" id="chart-weekday"></canvas>
-              </div>
-            </article>
-
-            <article class="an-card" aria-label="Monte Carlo simulation">
-              <div class="an-card__top">
-                <div class="an-card__eyebrow">Monte Carlo</div>
-                <div class="an-card__meta" id="meta-montecarlo">250 simulations</div>
-              </div>
-              <div class="an-card__body">
-                <canvas class="an-canvas" id="chart-montecarlo"></canvas>
-              </div>
-            </article>
-          </section>
-
-          <div class="an-footer" id="an-foot">Loading trades…</div>
+        <!-- Filter bar -->
+        <div class="an-filter-bar" id="an-filter-bar">
+          <div class="an-filter-group">
+            <label class="an-filter-label" for="f-from">From</label>
+            <input type="date" class="an-filter-input" id="f-from" autocomplete="off">
+          </div>
+          <div class="an-filter-group">
+            <label class="an-filter-label" for="f-to">To</label>
+            <input type="date" class="an-filter-input" id="f-to" autocomplete="off">
+          </div>
+          <div class="an-filter-sep" aria-hidden="true"></div>
+          <div class="an-filter-group">
+            <label class="an-filter-label" for="f-pair">Pair</label>
+            <select class="an-filter-select" id="f-pair">
+              <option value="">All pairs</option>
+            </select>
+          </div>
+          <div class="an-filter-group">
+            <label class="an-filter-label" for="f-model">Model</label>
+            <select class="an-filter-select" id="f-model">
+              <option value="">All models</option>
+            </select>
+          </div>
+          <button class="an-filter-reset" id="f-reset" type="button">Reset</button>
+          <span class="an-filter-count" id="f-count"></span>
         </div>
+
+        <!-- Charts grid -->
+        <div class="an-grid" id="an-grid">
+
+          <!-- 1. Equity Curve -->
+          <article class="an-card" id="card-equity">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Equity Curve</span>
+              <span class="an-card__meta" id="meta-equity">—</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas an-canvas--tall" id="chart-equity" aria-label="Equity curve chart"></canvas>
+            </div>
+          </article>
+
+          <!-- 2. Monte Carlo -->
+          <article class="an-card" id="card-monte">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Monte Carlo — 500 Paths</span>
+              <span class="an-card__meta" id="meta-monte">—</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas an-canvas--tall" id="chart-monte" aria-label="Monte Carlo simulation chart"></canvas>
+            </div>
+          </article>
+
+          <!-- 3. Rolling Win Rate -->
+          <article class="an-card" id="card-winrate">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Rolling Win Rate</span>
+              <span class="an-card__meta" id="meta-winrate">20-trade window</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas" id="chart-winrate" aria-label="Rolling win rate chart"></canvas>
+            </div>
+          </article>
+
+          <!-- 4. R Distribution -->
+          <article class="an-card" id="card-rdist">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">R Distribution</span>
+              <span class="an-card__meta" id="meta-rdist">—</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas" id="chart-rdist" aria-label="R distribution histogram"></canvas>
+            </div>
+          </article>
+
+          <!-- 5. Performance by Entry Model (full width) -->
+          <article class="an-card an-card--wide" id="card-model">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Performance by Entry Model</span>
+              <span class="an-card__meta" id="meta-model">sorted by total R</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas an-canvas--model" id="chart-model" aria-label="Performance by entry model"></canvas>
+            </div>
+          </article>
+
+          <!-- 6. Performance by Day of Week -->
+          <article class="an-card" id="card-weekday">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Performance by Day</span>
+              <span class="an-card__meta" id="meta-weekday">—</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas" id="chart-weekday" aria-label="Performance by day of week"></canvas>
+            </div>
+          </article>
+
+          <!-- 7. Performance by Session -->
+          <article class="an-card" id="card-session">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Performance by Session</span>
+              <span class="an-card__meta" id="meta-session">—</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas" id="chart-session" aria-label="Performance by session"></canvas>
+            </div>
+          </article>
+
+          <!-- 8. Drawdown (full width) -->
+          <article class="an-card an-card--wide" id="card-drawdown">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Drawdown</span>
+              <span class="an-card__meta" id="meta-drawdown">—</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas an-canvas--drawdown" id="chart-drawdown" aria-label="Drawdown chart"></canvas>
+            </div>
+          </article>
+
+        </div>
+
+        <div class="an-foot" id="an-foot"></div>
       </div>
     </div>
 
-    <!-- Chart.js via CDN only -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
     <script>
       (function () {
-        "use strict";
+        'use strict';
 
-        var DEFAULT_USER_ID = "aidenpasque11@gmail.com";
-        var currentUserId = DEFAULT_USER_ID;
+        /* ═══ USER ═══ */
+        var DEFAULT_USER = 'aidenpasque11@gmail.com';
+        var currentUserId = DEFAULT_USER;
 
         function ensureUserId() {
-          return new Promise(function (resolve) {
-            var ju = (localStorage.getItem("jarvis_user") || "").trim();
-            var uid = (localStorage.getItem("user_id") || "").trim();
-            if (ju) {
-              currentUserId = ju;
-              if (uid !== ju) {
-                try {
-                  localStorage.setItem("user_id", ju);
-                } catch (e) {}
-              }
-            } else if (uid) {
-              currentUserId = uid;
-            } else {
-              currentUserId = DEFAULT_USER_ID;
-              try {
-                localStorage.setItem("user_id", DEFAULT_USER_ID);
-                localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
-              } catch (e) {}
-            }
-            var navUser = document.getElementById("jv-nav-user");
-            if (navUser) navUser.textContent = currentUserId;
-            resolve(currentUserId);
-          });
+          var ju = (localStorage.getItem('jarvis_user') || '').trim();
+          var uid = (localStorage.getItem('user_id') || '').trim();
+          if (ju) {
+            currentUserId = ju;
+            if (uid !== ju) try { localStorage.setItem('user_id', ju); } catch (e) {}
+          } else if (uid) {
+            currentUserId = uid;
+          } else {
+            currentUserId = DEFAULT_USER;
+            try { localStorage.setItem('user_id', DEFAULT_USER); localStorage.setItem('jarvis_user', DEFAULT_USER); } catch (e) {}
+          }
+          var el = document.getElementById('jv-nav-user');
+          if (el) el.textContent = currentUserId;
         }
 
+        /* ═══ HELPERS ═══ */
         function getField(obj) {
           for (var i = 1; i < arguments.length; i++) {
             var v = obj[arguments[i]];
-            if (v !== undefined && v !== null && v !== "") return v;
+            if (v !== undefined && v !== null && v !== '') return v;
           }
-          return "";
+          return '';
+        }
+
+        var _extCache = new WeakMap();
+        function parsedExtras(t) {
+          if (_extCache.has(t)) return _extCache.get(t);
+          var raw = t.notion_extras, parsed = null;
+          if (raw && typeof raw === 'string') { try { parsed = JSON.parse(raw); } catch (e) {} }
+          else if (raw && typeof raw === 'object') { parsed = raw; }
+          _extCache.set(t, parsed);
+          return parsed;
+        }
+        function getExtrasVal(t) {
+          var extras = parsedExtras(t);
+          if (!extras) return '';
+          for (var i = 1; i < arguments.length; i++) {
+            var val = extras[arguments[i]];
+            if (val == null) continue;
+            if (Array.isArray(val)) { if (val.length > 0 && val[0] != null) return String(val[0]); continue; }
+            if (typeof val === 'object') { var n = val.name || (val.select && val.select.name) || ''; if (n) return String(n); continue; }
+            var s = String(val); if (s) return s;
+          }
+          return '';
+        }
+
+        function tradePair(t) {
+          return getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') ||
+                 getExtrasVal(t, 'PAIR', 'Pair', 'pair', 'instrument', 'symbol');
+        }
+        function tradeModel(t) {
+          return getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') ||
+                 getExtrasVal(t, 'ENTRY MODEL', 'model', 'Model');
+        }
+        function tradeSession(t) {
+          return getField(t, 'session', 'Session', 'SESSION') ||
+                 getExtrasVal(t, 'SESSION', 'Session', 'session');
         }
 
         function normalizeOutcome(raw) {
-          var v = String(raw || "").trim().toLowerCase();
-          if (v === "win" || v === "w") return "win";
-          if (v === "loss" || v === "l") return "loss";
-          if (
-            v === "be" ||
-            v === "breakeven" ||
-            v === "break even" ||
-            v === "break-even"
-          )
-            return "be";
+          var v = String(raw || '').trim().toLowerCase();
+          if (v === 'win' || v === 'w') return 'win';
+          if (v === 'loss' || v === 'l') return 'loss';
+          if (v === 'be' || v === 'breakeven' || v === 'break even' || v === 'break-even') return 'be';
           return v;
         }
 
         function tradeDate(t) {
-          return new Date(getField(t, "date", "traded_at", "Date") || "");
+          return new Date(getField(t, 'date', 'traded_at', 'Date') || '');
         }
 
-        function formatDateShort(t) {
+        function dateKeyAdelaide(d) {
+          if (!d || isNaN(d)) return '';
+          try {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+          } catch (e) {
+            return d.toISOString().slice(0, 10);
+          }
+        }
+
+        function formatDateLabel(t) {
           var d = tradeDate(t);
-          if (isNaN(d)) return "—";
-          try {
-            return d.toLocaleDateString("en-AU", {
-              timeZone: "Australia/Adelaide",
-              day: "2-digit",
-              month: "short",
-            });
-          } catch (e) {
-            return d.toDateString();
-          }
+          if (isNaN(d)) return '—';
+          try { return d.toLocaleDateString('en-AU', { timeZone: 'Australia/Adelaide', day: '2-digit', month: 'short' }); }
+          catch (e) { return d.toDateString(); }
         }
 
-        function weekdayName(d) {
-          try {
-            return d.toLocaleDateString("en-AU", {
-              timeZone: "Australia/Adelaide",
-              weekday: "short",
-            });
-          } catch (e) {
-            return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
-          }
+        function weekdayAdelaide(d) {
+          try { return d.toLocaleDateString('en-AU', { timeZone: 'Australia/Adelaide', weekday: 'short' }); }
+          catch (e) { return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]; }
         }
 
-        function normalizeTradesApiBody(data) {
-          if (!data || typeof data !== "object") return { records: [] };
-          var inner = data.payload && typeof data.payload === "object" ? data.payload : data;
-          // Support both { trades: [...] } and { records: [...] } shapes
-          var trades = Array.isArray(inner.trades) ? inner.trades : null;
-          var recs = Array.isArray(inner.records) ? inner.records : null;
-          return { records: trades || recs || [] };
-        }
-
-        async function fetchAllTrades() {
-          var userId = currentUserId || DEFAULT_USER_ID;
-          var reqs = [
-            fetch("/api/trades?user_id=eq." + encodeURIComponent(userId), {
-              cache: "no-store",
-            }).then(function (r) {
-              return r.json();
-            }),
-            // Existing pipeline already used by journal.html
-            fetch("/api/journal-trades?user_id=eq." + encodeURIComponent(userId), {
-              cache: "no-store",
-            }).then(function (r) {
-              return r.json();
-            }),
-          ];
-
-          var res = await Promise.allSettled(reqs);
-          var merged = [];
-
-          if (res[0].status === "fulfilled") {
-            var norm = normalizeTradesApiBody(res[0].value);
-            merged = merged.concat(norm.records);
-          }
-          if (res[1].status === "fulfilled" && Array.isArray(res[1].value)) {
-            merged = merged.concat(res[1].value);
-          }
-
-          merged.sort(function (a, b) {
-            return tradeDate(b) - tradeDate(a);
-          });
-
-          return merged;
-        }
-
-        function rDeltaForTrade(t) {
-          var outcome = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
-          var rr = parseFloat(getField(t, "rr", "RR"));
-
-          if (outcome === "win") return !isNaN(rr) ? rr : 0;
-          if (outcome === "loss") return !isNaN(rr) ? -Math.abs(rr) : -1;
-          if (outcome === "be") return 0;
+        function rDelta(t) {
+          var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+          var rr = parseFloat(getField(t, 'rr', 'RR'));
+          if (o === 'win')  return !isNaN(rr) ? rr : 0;
+          if (o === 'loss') return !isNaN(rr) ? -Math.abs(rr) : -1;
           return 0;
         }
 
-        function computeStats(trades) {
-          var total = trades.length;
-          var wins = 0;
-          var losses = 0;
-          var netR = 0;
+        /* ═══ DATA FETCH ═══ */
+        function normalizeBody(data) {
+          if (!data || typeof data !== 'object') return [];
+          var inner = (data.payload && typeof data.payload === 'object') ? data.payload : data;
+          var recs = Array.isArray(inner.records) ? inner.records : (Array.isArray(inner.trades) ? inner.trades : null);
+          return recs || [];
+        }
 
-          trades.forEach(function (t) {
-            var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
-            if (o === "win") wins++;
-            if (o === "loss") losses++;
-            netR += rDeltaForTrade(t);
+        async function fetchAllTrades() {
+          var uid = currentUserId || DEFAULT_USER;
+          var res = await Promise.allSettled([
+            fetch('/api/trades?user_id=eq.' + encodeURIComponent(uid), { cache: 'no-store' }).then(function (r) { return r.json(); }),
+            fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(uid), { cache: 'no-store' }).then(function (r) { return r.json(); })
+          ]);
+          var merged = [];
+          if (res[0].status === 'fulfilled') merged = merged.concat(normalizeBody(res[0].value));
+          if (res[1].status === 'fulfilled' && Array.isArray(res[1].value)) merged = merged.concat(res[1].value);
+          merged.sort(function (a, b) { return tradeDate(b) - tradeDate(a); });
+          return merged;
+        }
+
+        /* ═══ FILTER ═══ */
+        var allTrades = [];
+        var activeFilter = { from: '', to: '', pair: '', model: '' };
+
+        function applyFilter(trades) {
+          return trades.filter(function (t) {
+            var dk = dateKeyAdelaide(tradeDate(t));
+            if (activeFilter.from && dk < activeFilter.from) return false;
+            if (activeFilter.to   && dk > activeFilter.to)   return false;
+            if (activeFilter.pair) {
+              var p = tradePair(t).toUpperCase();
+              if (p !== activeFilter.pair.toUpperCase()) return false;
+            }
+            if (activeFilter.model) {
+              var m = tradeModel(t).toLowerCase();
+              if (m !== activeFilter.model.toLowerCase()) return false;
+            }
+            return true;
           });
+        }
 
+        function populateFilters(trades) {
+          var pairs = new Set(), models = new Set();
+          trades.forEach(function (t) {
+            var p = tradePair(t), m = tradeModel(t);
+            if (p) pairs.add(p.toUpperCase());
+            if (m) models.add(m);
+          });
+          var pairSel = document.getElementById('f-pair');
+          var modelSel = document.getElementById('f-model');
+          var savedPair = pairSel ? pairSel.value : '';
+          var savedModel = modelSel ? modelSel.value : '';
+          if (pairSel) {
+            pairSel.innerHTML = '<option value="">All pairs</option>';
+            Array.from(pairs).sort().forEach(function (p) {
+              var o = document.createElement('option'); o.value = p; o.textContent = p;
+              if (p === savedPair) o.selected = true;
+              pairSel.appendChild(o);
+            });
+          }
+          if (modelSel) {
+            modelSel.innerHTML = '<option value="">All models</option>';
+            Array.from(models).sort().forEach(function (m) {
+              var o = document.createElement('option'); o.value = m;
+              o.textContent = m.length > 32 ? m.slice(0, 32) + '…' : m;
+              o.title = m;
+              if (m === savedModel) o.selected = true;
+              modelSel.appendChild(o);
+            });
+          }
+        }
+
+        /* ═══ CHART UTILS ═══ */
+        var chartInstances = {};
+
+        function destroyChart(id) {
+          if (chartInstances[id]) { try { chartInstances[id].destroy(); } catch (e) {} delete chartInstances[id]; }
+        }
+        function destroyAll() {
+          Object.keys(chartInstances).forEach(destroyChart);
+        }
+
+        function tooltipDefaults() {
           return {
-            total: total,
-            wins: wins,
-            losses: losses,
-            winRate: total > 0 ? (wins / total) * 100 : null,
-            netR: netR,
+            backgroundColor: 'rgba(4,9,18,0.96)',
+            borderColor: 'rgba(0,212,255,0.22)',
+            borderWidth: 1,
+            titleColor: 'rgba(255,255,255,0.9)',
+            bodyColor: 'rgba(255,255,255,0.72)',
+            padding: 10,
+            displayColors: false,
           };
         }
 
-        function weekKey(d) {
-          // Week start Monday in Adelaide time using UTC math fallback
-          var x = new Date(d);
-          if (isNaN(x)) return "";
-          // Convert to AU local-like date by shifting via locale string (best-effort)
-          try {
-            var parts = new Intl.DateTimeFormat("en-CA", {
-              timeZone: "Australia/Adelaide",
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-            })
-              .formatToParts(x)
-              .reduce(function (acc, p) {
-                acc[p.type] = p.value;
-                return acc;
-              }, {});
-            x = new Date(parts.year + "-" + parts.month + "-" + parts.day + "T00:00:00Z");
-          } catch (e) {}
-
-          var day = x.getUTCDay(); // 0=Sun..6=Sat
-          var daysToMon = day === 0 ? 6 : day - 1;
-          var mon = new Date(x);
-          mon.setUTCDate(x.getUTCDate() - daysToMon);
-          mon.setUTCHours(0, 0, 0, 0);
-          return mon.toISOString().slice(0, 10);
+        function axisX(opts) {
+          return Object.assign({
+            grid: { color: 'rgba(0,212,255,0.07)' },
+            border: { color: 'rgba(0,212,255,0.15)' },
+            ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 8, font: { size: 10 } }
+          }, opts || {});
+        }
+        function axisY(opts) {
+          return Object.assign({
+            grid: { color: 'rgba(0,212,255,0.07)' },
+            border: { color: 'rgba(0,212,255,0.15)' },
+            ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 7, font: { size: 10 } }
+          }, opts || {});
         }
 
-        function buildEquitySeries(tradesAsc) {
-          var labels = [];
-          var data = [];
-          var cum = 0;
+        function baseOpts(overrides) {
+          return Object.assign({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 800, easing: 'easeOutQuart' },
+            interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { display: false }, tooltip: tooltipDefaults() }
+          }, overrides || {});
+        }
+
+        /* ═══ EQUITY CURVE ═══ */
+        function renderEquity(tradesAsc) {
+          destroyChart('equity');
+          var canvas = document.getElementById('chart-equity');
+          if (!canvas) return;
+          var cum = 0, labels = [], data = [];
           tradesAsc.forEach(function (t) {
-            cum += rDeltaForTrade(t);
-            labels.push(formatDateShort(t));
-            data.push(Number(cum.toFixed(2)));
+            cum += rDelta(t);
+            labels.push(formatDateLabel(t));
+            data.push(parseFloat(cum.toFixed(2)));
           });
-          return { labels: labels, data: data };
-        }
+          var final = data.length ? data[data.length - 1] : 0;
+          document.getElementById('meta-equity').textContent = 'CUM ' + final.toFixed(2) + 'R';
 
-        function buildRollingWinRate(tradesAsc, window) {
-          window = window || 20;
-          var labels = [];
-          var data = [];
-          for (var i = window - 1; i < tradesAsc.length; i++) {
-            var slice = tradesAsc.slice(i - window + 1, i + 1);
-            var wins = 0;
-            slice.forEach(function (t) {
-              if (normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME")) === "win") wins++;
-            });
-            labels.push(formatDateShort(tradesAsc[i]));
-            data.push(Number(((wins / window) * 100).toFixed(1)));
-          }
-          return { labels: labels, data: data, count: labels.length };
-        }
+          var ctx = canvas.getContext('2d');
+          var grad = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 320);
+          grad.addColorStop(0, 'rgba(0,212,255,0.38)');
+          grad.addColorStop(1, 'rgba(0,212,255,0.02)');
 
-        function buildRHistogram(trades) {
-          var bins = [-4, -3, -2, -1.5, -1, -0.5, 0, 0.5, 1, 1.5, 2, 3, 4];
-          var counts = new Array(bins.length - 1).fill(0);
-          var overflow = 0;
-          trades.forEach(function (t) {
-            var r = rDeltaForTrade(t);
-            var placed = false;
-            for (var i = 0; i < bins.length - 1; i++) {
-              if (r >= bins[i] && r < bins[i + 1]) {
-                counts[i]++;
-                placed = true;
-                break;
+          chartInstances['equity'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                data: data,
+                borderColor: 'rgba(0,212,255,0.95)',
+                backgroundColor: grad,
+                fill: true, tension: 0.35,
+                pointRadius: 0, pointHitRadius: 12, borderWidth: 2
+              }]
+            },
+            options: baseOpts({
+              scales: {
+                x: axisX({ ticks: { color: 'rgba(255,255,255,0.35)', maxTicksLimit: 8, font: { size: 10 } } }),
+                y: axisY({ ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 7, font: { size: 10 }, callback: function (v) { return v + 'R'; } } })
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  callbacks: {
+                    title: function (items) { return items[0].label; },
+                    label: function (ctx) { return 'Equity: ' + ctx.parsed.y.toFixed(2) + 'R'; }
+                  }
+                })
               }
-            }
-            if (!placed) overflow++;
+            })
           });
-          var labels = bins.slice(0, -1).map(function (b, i) {
-            var next = bins[i + 1];
-            return b + "R";
-          });
-          labels.push("4R+");
-          counts.push(overflow);
-          var midpoints = bins.concat([5]).map(function (_, i) { return bins[i] !== undefined ? bins[i] : 4; });
-          return { labels: labels, counts: counts, midpoints: bins };
         }
 
-        function buildDrawdown(tradesAsc) {
-          var labels = [];
-          var data = [];
-          var cum = 0;
-          var peak = 0;
-          tradesAsc.forEach(function (t) {
-            cum += rDeltaForTrade(t);
-            if (cum > peak) peak = cum;
-            labels.push(formatDateShort(t));
-            data.push(Number((cum - peak).toFixed(2)));
-          });
-          var maxDD = Math.min.apply(null, data.concat([0]));
-          return { labels: labels, data: data, maxDD: maxDD };
-        }
-
-        function buildMonteCarlo(tradesAsc, numSims) {
-          numSims = numSims || 250;
-          var rDeltas = tradesAsc.map(rDeltaForTrade);
-          if (!rDeltas.length) return null;
-          var numSteps = rDeltas.length;
-
+        /* ═══ MONTE CARLO ═══ */
+        function runMonteCarlo(tradesAsc, numSims) {
+          numSims = numSims || 500;
+          var deltas = tradesAsc.map(rDelta);
+          if (!deltas.length) return null;
+          var steps = deltas.length;
           var paths = [];
           for (var s = 0; s < numSims; s++) {
-            var cum = 0;
-            var path = [];
-            for (var i = 0; i < numSteps; i++) {
-              var r = rDeltas[Math.floor(Math.random() * rDeltas.length)];
-              cum += r;
-              path.push(Number(cum.toFixed(2)));
+            var cum = 0, path = [0];
+            for (var i = 0; i < steps; i++) {
+              cum += deltas[Math.floor(Math.random() * deltas.length)];
+              path.push(parseFloat(cum.toFixed(2)));
             }
             paths.push(path);
           }
-
           function pctAt(step, pct) {
             var vals = paths.map(function (p) { return p[step]; }).sort(function (a, b) { return a - b; });
-            return vals[Math.floor(pct * (vals.length - 1))];
+            return vals[Math.round(pct * (vals.length - 1))];
           }
-
-          var p10 = [], p25 = [], p50 = [], p75 = [], p90 = [];
-          for (var i = 0; i < numSteps; i++) {
+          var p10 = [], p50 = [], p90 = [];
+          for (var i = 0; i <= steps; i++) {
             p10.push(pctAt(i, 0.10));
-            p25.push(pctAt(i, 0.25));
             p50.push(pctAt(i, 0.50));
-            p75.push(pctAt(i, 0.75));
             p90.push(pctAt(i, 0.90));
           }
-
-          var labels = Array.from({ length: numSteps }, function (_, i) { return "T" + (i + 1); });
-          return { labels: labels, p10: p10, p25: p25, p50: p50, p75: p75, p90: p90, numSims: numSims };
+          var labels = ['0'].concat(Array.from({ length: steps }, function (_, i) { return String(i + 1); }));
+          return { labels: labels, p10: p10, p50: p50, p90: p90, numSims: numSims, trades: steps };
         }
 
-        function groupBreakdown(trades, keyFn) {
+        function renderMonteCarlo(tradesAsc) {
+          destroyChart('monte');
+          var canvas = document.getElementById('chart-monte');
+          if (!canvas) return;
+          var mc = runMonteCarlo(tradesAsc, 500);
+          if (!mc) { document.getElementById('meta-monte').textContent = 'No data'; return; }
+          document.getElementById('meta-monte').textContent = mc.numSims + ' paths · ' + mc.trades + ' trades';
+
+          var ctx = canvas.getContext('2d');
+          chartInstances['monte'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: mc.labels,
+              datasets: [
+                {
+                  label: 'Best 10%',
+                  data: mc.p90,
+                  borderColor: 'rgba(0,255,136,0.6)',
+                  backgroundColor: 'rgba(0,255,136,0.08)',
+                  fill: '+2',
+                  tension: 0.4, pointRadius: 0, borderWidth: 1.5, borderDash: [4,3]
+                },
+                {
+                  label: 'Median',
+                  data: mc.p50,
+                  borderColor: 'rgba(0,212,255,0.95)',
+                  backgroundColor: 'rgba(0,212,255,0.06)',
+                  fill: false,
+                  tension: 0.4, pointRadius: 0, borderWidth: 2.5
+                },
+                {
+                  label: 'Worst 10%',
+                  data: mc.p10,
+                  borderColor: 'rgba(255,68,102,0.6)',
+                  backgroundColor: 'rgba(255,68,102,0.06)',
+                  fill: false,
+                  tension: 0.4, pointRadius: 0, borderWidth: 1.5, borderDash: [4,3]
+                }
+              ]
+            },
+            options: baseOpts({
+              scales: {
+                x: axisX({ ticks: { display: false } }),
+                y: axisY({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, callback: function (v) { return v + 'R'; } } })
+              },
+              plugins: {
+                legend: {
+                  display: true,
+                  position: 'top',
+                  align: 'end',
+                  labels: {
+                    color: 'rgba(255,255,255,0.45)', font: { size: 9, family: '"Share Tech Mono",monospace' },
+                    boxWidth: 20, boxHeight: 2, padding: 12
+                  }
+                },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  callbacks: {
+                    title: function (items) { return 'Trade ' + items[0].label + ' / ' + mc.trades + ' (based on ' + mc.trades + ' trades)'; },
+                    label: function (ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + 'R'; }
+                  }
+                })
+              }
+            })
+          });
+        }
+
+        /* ═══ ROLLING WIN RATE ═══ */
+        function renderRollingWR(tradesAsc, stats) {
+          destroyChart('winrate');
+          var canvas = document.getElementById('chart-winrate');
+          if (!canvas) return;
+          var window_ = 20;
+          var labels = [], data = [];
+          for (var i = window_ - 1; i < tradesAsc.length; i++) {
+            var slice = tradesAsc.slice(i - window_ + 1, i + 1);
+            var wins = slice.filter(function (t) { return normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win'; }).length;
+            labels.push(formatDateLabel(tradesAsc[i]));
+            data.push(parseFloat(((wins / window_) * 100).toFixed(1)));
+          }
+          var avgWR = stats.winRate != null ? parseFloat(stats.winRate.toFixed(1)) : null;
+          document.getElementById('meta-winrate').textContent = data.length ? data.length + ' pts · avg ' + (avgWR != null ? avgWR.toFixed(1) + '%' : '—') : 'Need 20+ trades';
+
+          var ctx = canvas.getContext('2d');
+          var datasets = [{
+            label: 'Rolling WR',
+            data: data,
+            borderColor: 'rgba(0,212,255,0.95)',
+            backgroundColor: 'rgba(0,212,255,0.1)',
+            fill: true, tension: 0.4, pointRadius: 0, pointHitRadius: 12, borderWidth: 2
+          }];
+          if (avgWR != null && labels.length > 0) {
+            datasets.push({
+              label: 'Avg WR',
+              data: labels.map(function () { return avgWR; }),
+              borderColor: 'rgba(255,200,0,0.5)',
+              backgroundColor: 'transparent',
+              fill: false, tension: 0, pointRadius: 0, borderWidth: 1.5,
+              borderDash: [6, 4]
+            });
+          }
+
+          chartInstances['winrate'] = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: datasets },
+            options: baseOpts({
+              scales: {
+                x: axisX({ ticks: { color: 'rgba(255,255,255,0.35)', maxTicksLimit: 7, font: { size: 10 } } }),
+                y: axisY({
+                  min: 0, max: 100,
+                  ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 6, font: { size: 10 }, callback: function (v) { return v + '%'; } }
+                })
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  callbacks: {
+                    label: function (ctx) {
+                      if (ctx.datasetIndex === 1) return 'Avg: ' + ctx.parsed.y.toFixed(1) + '%';
+                      return 'WR: ' + ctx.parsed.y.toFixed(1) + '%';
+                    }
+                  }
+                })
+              }
+            })
+          });
+        }
+
+        /* ═══ R DISTRIBUTION ═══ */
+        function renderRDist(trades) {
+          destroyChart('rdist');
+          var canvas = document.getElementById('chart-rdist');
+          if (!canvas) return;
+          var bins = [
+            { label: '≤-3R', min: -Infinity, max: -2.5 },
+            { label: '-2R',  min: -2.5, max: -1.5 },
+            { label: '-1R',  min: -1.5, max: -0.5 },
+            { label: '0R',   min: -0.5, max: 0.5  },
+            { label: '+1R',  min: 0.5,  max: 1.5  },
+            { label: '+2R',  min: 1.5,  max: 2.5  },
+            { label: '+3R',  min: 2.5,  max: 3.5  },
+            { label: '+4R',  min: 3.5,  max: 4.5  },
+            { label: '≥+5R', min: 4.5,  max: Infinity }
+          ];
+          var counts = new Array(bins.length).fill(0);
+          trades.forEach(function (t) {
+            var r = rDelta(t);
+            for (var i = 0; i < bins.length; i++) {
+              if (r >= bins[i].min && r < bins[i].max) { counts[i]++; break; }
+            }
+          });
+          var colors = bins.map(function (b) {
+            if (b.max <= 0.5 && b.min < 0) return 'rgba(255,68,102,0.7)';
+            if (b.min < 0.5 && b.max <= 0.5) return 'rgba(136,153,170,0.6)';
+            return 'rgba(0,220,120,0.7)';
+          });
+          document.getElementById('meta-rdist').textContent = trades.length + ' trades';
+
+          chartInstances['rdist'] = new Chart(document.getElementById('chart-rdist').getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: bins.map(function (b) { return b.label; }),
+              datasets: [{
+                data: counts,
+                backgroundColor: colors,
+                borderColor: colors.map(function (c) { return c.replace('0.7','0.95').replace('0.6','0.85'); }),
+                borderWidth: 1, borderRadius: 6, borderSkipped: false
+              }]
+            },
+            options: baseOpts({
+              scales: {
+                x: axisX({ ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 10 } } }),
+                y: axisY({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, stepSize: 1 } })
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  callbacks: {
+                    title: function (items) { return items[0].label; },
+                    label: function (ctx) { return ctx.parsed.y + ' trade' + (ctx.parsed.y !== 1 ? 's' : ''); }
+                  }
+                })
+              }
+            })
+          });
+        }
+
+        /* ═══ PERFORMANCE BY MODEL ═══ */
+        function renderModel(trades) {
+          destroyChart('model');
+          var canvas = document.getElementById('chart-model');
+          if (!canvas) return;
           var map = {};
           trades.forEach(function (t) {
-            var k = keyFn(t);
-            if (!k) return;
-            if (!map[k]) map[k] = { total: 0, wins: 0, netR: 0 };
-            map[k].total++;
-            var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
-            if (o === "win") map[k].wins++;
-            map[k].netR += rDeltaForTrade(t);
+            var m = tradeModel(t).trim();
+            if (!m) return;
+            if (!map[m]) map[m] = { total: 0, wins: 0, netR: 0 };
+            map[m].total++;
+            if (normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win') map[m].wins++;
+            map[m].netR += rDelta(t);
           });
-          return map;
+          var keys = Object.keys(map).sort(function (a, b) { return map[b].netR - map[a].netR; });
+          if (!keys.length) { document.getElementById('meta-model').textContent = 'No data'; return; }
+          document.getElementById('meta-model').textContent = keys.length + ' models · sorted by total R';
+
+          var labels = keys.map(function (k) { return k.length > 30 ? k.slice(0, 30) + '…' : k; });
+          var netRs = keys.map(function (k) { return parseFloat(map[k].netR.toFixed(2)); });
+          var bgColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.55)' : 'rgba(255,68,102,0.55)'; });
+          var bdrColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.9)' : 'rgba(255,68,102,0.9)'; });
+
+          chartInstances['model'] = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [{
+                data: netRs,
+                backgroundColor: bgColors,
+                borderColor: bdrColors,
+                borderWidth: 1, borderRadius: 5, borderSkipped: false
+              }]
+            },
+            options: baseOpts({
+              indexAxis: 'y',
+              scales: {
+                x: axisX({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, callback: function (v) { return v + 'R'; } } }),
+                y: axisY({ ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 10 } } })
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  callbacks: {
+                    title: function (items) { return keys[items[0].dataIndex]; },
+                    label: function (ctx) {
+                      var k = keys[ctx.dataIndex], b = map[k];
+                      var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : '—';
+                      return ['Net: ' + ctx.parsed.x.toFixed(2) + 'R', 'WR: ' + wr + '%  N: ' + b.total];
+                    }
+                  }
+                })
+              }
+            })
+          });
         }
 
-        function setMeta(id, text) {
-          var el = document.getElementById(id);
-          if (el) el.textContent = text;
-        }
-
-        function initParticles() {
-          var canvas = document.getElementById("particle-canvas");
+        /* ═══ PERFORMANCE BY DAY ═══ */
+        function renderWeekday(trades) {
+          destroyChart('weekday');
+          var canvas = document.getElementById('chart-weekday');
           if (!canvas) return;
-          var ctx = canvas.getContext("2d");
-          var particles = [];
-          var PARTICLE_COUNT = 320;
+          var ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+          var map = {};
+          ORDER.forEach(function (d) { map[d] = { total: 0, wins: 0, netR: 0 }; });
+          trades.forEach(function (t) {
+            var d = tradeDate(t); if (isNaN(d)) return;
+            var wd = weekdayAdelaide(d);
+            if (!map[wd]) return;
+            map[wd].total++;
+            if (normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win') map[wd].wins++;
+            map[wd].netR += rDelta(t);
+          });
+          var activeDays = ORDER.filter(function (d) { return map[d].total > 0; });
+          if (!activeDays.length) { document.getElementById('meta-weekday').textContent = 'No data'; return; }
+          document.getElementById('meta-weekday').textContent = activeDays.length + ' days';
 
-          function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+          var wrData = activeDays.map(function (d) { return parseFloat(((map[d].wins / map[d].total) * 100).toFixed(1)); });
+          var netRData = activeDays.map(function (d) { return parseFloat(map[d].netR.toFixed(2)); });
+
+          chartInstances['weekday'] = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: activeDays,
+              datasets: [
+                {
+                  label: 'Win Rate %',
+                  data: wrData,
+                  backgroundColor: 'rgba(0,212,255,0.45)',
+                  borderColor: 'rgba(0,212,255,0.85)',
+                  borderWidth: 1, borderRadius: 5, yAxisID: 'yWR'
+                },
+                {
+                  label: 'Net R',
+                  data: netRData,
+                  backgroundColor: netRData.map(function (r) { return r >= 0 ? 'rgba(0,220,120,0.4)' : 'rgba(255,68,102,0.4)'; }),
+                  borderColor: netRData.map(function (r) { return r >= 0 ? 'rgba(0,220,120,0.85)' : 'rgba(255,68,102,0.85)'; }),
+                  borderWidth: 1, borderRadius: 5, yAxisID: 'yR'
+                }
+              ]
+            },
+            options: baseOpts({
+              interaction: { mode: 'index', intersect: false },
+              scales: {
+                x: axisX({ ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 } } }),
+                yWR: Object.assign({}, axisY(), {
+                  position: 'left', min: 0, max: 100,
+                  ticks: { color: 'rgba(0,212,255,0.6)', font: { size: 10 }, maxTicksLimit: 6, callback: function (v) { return v + '%'; } }
+                }),
+                yR: Object.assign({}, axisY(), {
+                  position: 'right', grid: { drawOnChartArea: false },
+                  ticks: { color: 'rgba(0,220,120,0.6)', font: { size: 10 }, maxTicksLimit: 6, callback: function (v) { return v + 'R'; } }
+                })
+              },
+              plugins: {
+                legend: {
+                  display: true, position: 'top', align: 'end',
+                  labels: { color: 'rgba(255,255,255,0.42)', font: { size: 9, family: '"Share Tech Mono",monospace' }, boxWidth: 14, boxHeight: 10, padding: 10 }
+                },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  callbacks: {
+                    label: function (ctx) {
+                      var d = activeDays[ctx.dataIndex], b = map[d];
+                      if (ctx.datasetIndex === 0) return 'Win rate: ' + ctx.parsed.y.toFixed(1) + '%  (N=' + b.total + ')';
+                      return 'Net R: ' + ctx.parsed.y.toFixed(2) + 'R';
+                    }
+                  }
+                })
+              }
+            })
+          });
+        }
+
+        /* ═══ PERFORMANCE BY SESSION ═══ */
+        function normalizeSession(raw) {
+          var v = String(raw || '').trim().toUpperCase();
+          if (v.includes('LONDON') && v.includes('NEW')) return 'LDN/NY';
+          if (v.includes('LONDON') && v.includes('NY'))  return 'LDN/NY';
+          if (v.includes('LONDON')) return 'London';
+          if (v.includes('NEW YORK') || v === 'NY' || v === 'NEW YORK') return 'New York';
+          if (v.includes('ASIA')) return 'Asia';
+          return raw.trim() || null;
+        }
+
+        function renderSession(trades) {
+          destroyChart('session');
+          var canvas = document.getElementById('chart-session');
+          if (!canvas) return;
+          var map = {};
+          trades.forEach(function (t) {
+            var s = normalizeSession(tradeSession(t));
+            if (!s) return;
+            if (!map[s]) map[s] = { total: 0, wins: 0, netR: 0 };
+            map[s].total++;
+            if (normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win') map[s].wins++;
+            map[s].netR += rDelta(t);
+          });
+          var keys = Object.keys(map).sort(function (a, b) { return map[b].netR - map[a].netR; });
+          if (!keys.length) { document.getElementById('meta-session').textContent = 'No data'; return; }
+          document.getElementById('meta-session').textContent = keys.length + ' sessions';
+
+          var netRs = keys.map(function (k) { return parseFloat(map[k].netR.toFixed(2)); });
+          var wrData = keys.map(function (k) { return parseFloat(((map[k].wins / map[k].total) * 100).toFixed(1)); });
+          var bgColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.5)' : 'rgba(255,68,102,0.5)'; });
+          var bdrColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.9)' : 'rgba(255,68,102,0.9)'; });
+
+          chartInstances['session'] = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: keys,
+              datasets: [{
+                label: 'Net R',
+                data: netRs,
+                backgroundColor: bgColors,
+                borderColor: bdrColors,
+                borderWidth: 1, borderRadius: 6, borderSkipped: false
+              }]
+            },
+            options: baseOpts({
+              indexAxis: 'y',
+              scales: {
+                x: axisX({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, callback: function (v) { return v + 'R'; } } }),
+                y: axisY({ ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 } } })
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  callbacks: {
+                    label: function (ctx) {
+                      var k = keys[ctx.dataIndex], b = map[k];
+                      var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : '—';
+                      return ['Net: ' + ctx.parsed.x.toFixed(2) + 'R', 'WR: ' + wr + '%  N: ' + b.total];
+                    }
+                  }
+                })
+              }
+            })
+          });
+        }
+
+        /* ═══ DRAWDOWN ═══ */
+        function renderDrawdown(tradesAsc) {
+          destroyChart('drawdown');
+          var canvas = document.getElementById('chart-drawdown');
+          if (!canvas) return;
+          var cum = 0, peak = 0, labels = [], data = [];
+          tradesAsc.forEach(function (t) {
+            cum += rDelta(t);
+            if (cum > peak) peak = cum;
+            labels.push(formatDateLabel(t));
+            data.push(parseFloat((cum - peak).toFixed(2)));
+          });
+          var maxDD = data.length ? Math.min.apply(null, data) : 0;
+          document.getElementById('meta-drawdown').textContent = 'Max drawdown ' + maxDD.toFixed(2) + 'R';
+
+          var ctx = canvas.getContext('2d');
+          var grad = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 220);
+          grad.addColorStop(0, 'rgba(255,68,102,0.35)');
+          grad.addColorStop(1, 'rgba(255,68,102,0.03)');
+
+          chartInstances['drawdown'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                data: data,
+                borderColor: 'rgba(255,68,102,0.9)',
+                backgroundColor: grad,
+                fill: true, tension: 0.25,
+                pointRadius: 0, pointHitRadius: 12, borderWidth: 1.5
+              }]
+            },
+            options: baseOpts({
+              scales: {
+                x: axisX({ ticks: { color: 'rgba(255,255,255,0.35)', maxTicksLimit: 8, font: { size: 10 } } }),
+                y: axisY({
+                  max: 0,
+                  ticks: { color: 'rgba(255,68,102,0.65)', maxTicksLimit: 6, font: { size: 10 }, callback: function (v) { return v + 'R'; } }
+                })
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, tooltipDefaults(), {
+                  borderColor: 'rgba(255,68,102,0.3)',
+                  callbacks: {
+                    label: function (ctx) { return 'Drawdown: ' + ctx.parsed.y.toFixed(2) + 'R'; }
+                  }
+                })
+              }
+            })
+          });
+        }
+
+        /* ═══ RENDER ALL ═══ */
+        function renderAll(trades) {
+          if (!window.Chart) return;
+          Chart.defaults.color = 'rgba(255,255,255,0.65)';
+          Chart.defaults.font.family = '"Outfit", system-ui, sans-serif';
+
+          var tradesAsc = trades.slice().sort(function (a, b) { return tradeDate(a) - tradeDate(b); }).filter(function (t) { return !isNaN(tradeDate(t)); });
+
+          var total = trades.length, wins = 0, netR = 0;
+          trades.forEach(function (t) {
+            var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+            if (o === 'win') wins++;
+            netR += rDelta(t);
+          });
+          var stats = {
+            total: total,
+            wins: wins,
+            winRate: total > 0 ? (wins / total) * 100 : null,
+            netR: netR
+          };
+
+          document.getElementById('an-badge-text').textContent =
+            total + ' trades · ' + (stats.winRate != null ? stats.winRate.toFixed(1) + '% WR' : '—') + ' · ' + netR.toFixed(2) + 'R';
+          document.getElementById('f-count').textContent = total + ' trades';
+
+          var foot = document.getElementById('an-foot');
+          if (foot) foot.textContent = 'Trades: ' + total + '  ·  Win rate: ' + (stats.winRate != null ? stats.winRate.toFixed(1) + '%' : '—') + '  ·  Net R: ' + netR.toFixed(2) + 'R';
+
+          renderEquity(tradesAsc);
+          renderMonteCarlo(tradesAsc);
+          renderRollingWR(tradesAsc, stats);
+          renderRDist(trades);
+          renderModel(trades);
+          renderWeekday(trades);
+          renderSession(trades);
+          renderDrawdown(tradesAsc);
+        }
+
+        /* ═══ SCROLL ANIMATION ═══ */
+        function initScrollAnim() {
+          if (!window.IntersectionObserver) {
+            document.querySelectorAll('.an-card').forEach(function (c) { c.classList.add('an-card--visible'); });
+            return;
           }
+          var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('an-card--visible');
+                observer.unobserve(entry.target);
+              }
+            });
+          }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
+          document.querySelectorAll('.an-card').forEach(function (c) { observer.observe(c); });
+        }
+
+        /* ═══ PARTICLES ═══ */
+        function initParticles() {
+          var canvas = document.getElementById('particle-canvas');
+          if (!canvas) return;
+          var ctx = canvas.getContext('2d');
+          function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
           resize();
-          window.addEventListener("resize", resize);
-
-          function Particle() {
-            this.x = Math.random() * window.innerWidth;
-            this.y = Math.random() * window.innerHeight;
-            var speed = Math.random() * 0.3 + 0.04;
-            var angle = Math.random() * Math.PI * 2;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-            this.size = Math.random() * 0.7 + 0.2;
-            this.baseAlpha = Math.random() * 0.45 + 0.08;
-            this.twinkle = Math.random() * Math.PI * 2;
+          window.addEventListener('resize', resize);
+          var particles = [];
+          for (var i = 0; i < 300; i++) {
             var r = Math.random();
-            if (r < 0.65) {
-              this.cr = 0;
-              this.cg = 191;
-              this.cb = 255;
-            } else if (r < 0.93) {
-              this.cr = 192;
-              this.cg = 192;
-              this.cb = 192;
-            } else {
-              this.cr = 255;
-              this.cg = 255;
-              this.cb = 255;
-              this.size = Math.random() * 1.0 + 0.2;
-              this.baseAlpha = Math.random() * 0.6 + 0.2;
-            }
+            particles.push({
+              x: Math.random() * window.innerWidth,
+              y: Math.random() * window.innerHeight,
+              vx: (Math.random() - 0.5) * 0.22,
+              vy: (Math.random() - 0.5) * 0.22,
+              size: Math.random() * 0.8 + 0.2,
+              base: Math.random() * 0.45 + 0.06,
+              tw: Math.random() * Math.PI * 2,
+              cr: r < 0.65 ? 0 : r < 0.93 ? 192 : 255,
+              cg: r < 0.65 ? 191 : r < 0.93 ? 192 : 255,
+              cb: r < 0.65 ? 255 : r < 0.93 ? 192 : 255
+            });
           }
-          for (var i = 0; i < PARTICLE_COUNT; i++) particles.push(new Particle());
-
           (function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (var j = 0; j < particles.length; j++) {
               var p = particles[j];
-              p.twinkle += 0.018;
-              var a = p.baseAlpha * (0.72 + 0.28 * Math.sin(p.twinkle));
-              p.vx *= 0.998;
-              p.vy *= 0.998;
-              p.vx += (Math.random() - 0.5) * 0.004;
-              p.vy += (Math.random() - 0.5) * 0.004;
-              p.x += p.vx;
-              p.y += p.vy;
-              var W = window.innerWidth,
-                H = window.innerHeight;
-              if (p.x < -20) p.x = W + 20;
-              if (p.x > W + 20) p.x = -20;
-              if (p.y < -20) p.y = H + 20;
-              if (p.y > H + 20) p.y = -20;
+              p.tw += 0.018;
+              var a = p.base * (0.72 + 0.28 * Math.sin(p.tw));
+              p.x += p.vx; p.y += p.vy;
+              var W = window.innerWidth, H = window.innerHeight;
+              if (p.x < -20) p.x = W + 20; if (p.x > W + 20) p.x = -20;
+              if (p.y < -20) p.y = H + 20; if (p.y > H + 20) p.y = -20;
               ctx.beginPath();
               ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-              ctx.fillStyle = "rgba(" + p.cr + "," + p.cg + "," + p.cb + "," + a + ")";
+              ctx.fillStyle = 'rgba(' + p.cr + ',' + p.cg + ',' + p.cb + ',' + a + ')';
               ctx.fill();
             }
             requestAnimationFrame(loop);
           })();
         }
 
-        function chartDefaults() {
-          Chart.defaults.color = "rgba(255,255,255,0.72)";
-          Chart.defaults.font.family = '"Outfit", system-ui, sans-serif';
-        }
-
-        function gridColor() {
-          return "rgba(0, 212, 255, 0.10)";
-        }
-
-        function axisCommon() {
-          return {
-            ticks: {
-              color: "rgba(255,255,255,0.50)",
-              maxTicksLimit: 7,
-            },
-            grid: {
-              color: gridColor(),
-            },
-            border: {
-              color: "rgba(0, 212, 255, 0.20)",
-            },
-          };
-        }
-
-        function buildLineChart(ctx, labels, series, opts) {
-          return new Chart(ctx, {
-            type: "line",
-            data: {
-              labels: labels,
-              datasets: [
-                {
-                  label: opts.label,
-                  data: series,
-                  borderColor: "rgba(0, 212, 255, 0.95)",
-                  backgroundColor: "rgba(0, 212, 255, 0.18)",
-                  fill: true,
-                  tension: 0.35,
-                  pointRadius: 0,
-                  pointHitRadius: 10,
-                  borderWidth: 2,
-                },
-              ],
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              animation: { duration: 900, easing: "easeOutQuart" },
-              interaction: { mode: "index", intersect: false },
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  backgroundColor: "rgba(0,0,0,0.92)",
-                  borderColor: "rgba(0, 212, 255, 0.25)",
-                  borderWidth: 1,
-                  titleColor: "rgba(255,255,255,0.9)",
-                  bodyColor: "rgba(255,255,255,0.75)",
-                  displayColors: false,
-                  callbacks: opts.tooltipCb || {},
-                },
-              },
-              scales: {
-                x: axisCommon(),
-                y: axisCommon(),
-              },
-            },
-          });
-        }
-
-        function buildBarChart(ctx, labels, series, opts) {
-          return new Chart(ctx, {
-            type: "bar",
-            data: {
-              labels: labels,
-              datasets: [
-                {
-                  label: opts.label,
-                  data: series,
-                  backgroundColor: "rgba(0, 212, 255, 0.22)",
-                  borderColor: "rgba(0, 212, 255, 0.85)",
-                  borderWidth: 1,
-                  borderRadius: 10,
-                  hoverBackgroundColor: "rgba(0, 212, 255, 0.34)",
-                },
-              ],
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              animation: { duration: 900, easing: "easeOutQuart" },
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  backgroundColor: "rgba(0,0,0,0.92)",
-                  borderColor: "rgba(0, 212, 255, 0.25)",
-                  borderWidth: 1,
-                  titleColor: "rgba(255,255,255,0.9)",
-                  bodyColor: "rgba(255,255,255,0.75)",
-                  displayColors: false,
-                  callbacks: opts.tooltipCb || {},
-                },
-              },
-              scales: {
-                x: axisCommon(),
-                y: axisCommon(),
-              },
-            },
-          });
-        }
-
-        var charts = [];
-        function destroyCharts() {
-          charts.forEach(function (c) {
-            try {
-              c.destroy();
-            } catch (e) {}
-          });
-          charts = [];
-        }
-
-        function bootRender(trades) {
-          destroyCharts();
-          chartDefaults();
-
-          var stats = computeStats(trades);
-          var foot = document.getElementById("an-foot");
-          if (foot) {
-            var wr = stats.winRate == null ? "—" : stats.winRate.toFixed(1) + "%";
-            foot.textContent =
-              "Trades: " +
-              stats.total +
-              " · Win-rate: " +
-              wr +
-              " · Net: " +
-              stats.netR.toFixed(2) +
-              "R";
-          }
-
-          var tradesAsc = trades
-            .slice()
-            .sort(function (a, b) {
-              return tradeDate(a) - tradeDate(b);
-            })
-            .filter(function (t) {
-              return !isNaN(tradeDate(t));
-            });
-
-          // 1) Equity curve (cumulative R)
-          var equity = buildEquitySeries(tradesAsc);
-          setMeta("meta-equity", "CUM " + (equity.data.length ? equity.data[equity.data.length - 1].toFixed(2) + "R" : "—"));
-          var ec = document.getElementById("chart-equity");
-          if (ec) {
-            charts.push(
-              buildLineChart(
-                ec.getContext("2d"),
-                equity.labels,
-                equity.data,
-                {
-                  label: "Cumulative R",
-                  tooltipCb: {
-                    label: function (ctx) {
-                      return "CUM: " + Number(ctx.parsed.y).toFixed(2) + "R";
-                    },
-                  },
-                }
-              )
-            );
-          }
-
-          // 2) Rolling win rate (20-trade window)
-          var rwr = buildRollingWinRate(tradesAsc, 20);
-          setMeta("meta-winrate", rwr.count ? rwr.count + " pts" : "Need 20+ trades");
-          var wc = document.getElementById("chart-winrate");
-          if (wc) {
-            charts.push(new Chart(wc.getContext("2d"), {
-              type: "line",
-              data: {
-                labels: rwr.labels,
-                datasets: [{
-                  label: "Rolling Win Rate %",
-                  data: rwr.data,
-                  borderColor: "rgba(0, 212, 255, 0.95)",
-                  backgroundColor: "rgba(0, 212, 255, 0.12)",
-                  fill: true,
-                  tension: 0.4,
-                  pointRadius: 0,
-                  pointHitRadius: 10,
-                  borderWidth: 2,
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 900, easing: "easeOutQuart" },
-                interaction: { mode: "index", intersect: false },
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    backgroundColor: "rgba(0,0,0,0.92)",
-                    borderColor: "rgba(0, 212, 255, 0.25)",
-                    borderWidth: 1,
-                    titleColor: "rgba(255,255,255,0.9)",
-                    bodyColor: "rgba(255,255,255,0.75)",
-                    displayColors: false,
-                    callbacks: {
-                      label: function (ctx) { return "WR: " + ctx.parsed.y.toFixed(1) + "%"; }
-                    }
-                  },
-                  annotation: {}
-                },
-                scales: {
-                  x: axisCommon(),
-                  y: Object.assign({}, axisCommon(), { min: 0, max: 100, ticks: { color: "rgba(255,255,255,0.50)", callback: function (v) { return v + "%"; } } })
-                }
-              }
-            }));
-          }
-
-          // 3) Performance by session
-          var bySession = groupBreakdown(trades, function (t) {
-            return String(getField(t, "session", "Session", "SESSION") || "").trim();
-          });
-          var sessionKeys = Object.keys(bySession).sort(function (a, b) {
-            return bySession[b].total - bySession[a].total;
-          });
-          setMeta("meta-session", sessionKeys.length ? sessionKeys.length + " groups" : "—");
-
-          var sessionLabels = sessionKeys;
-          var sessionNet = sessionKeys.map(function (k) {
-            return Number(bySession[k].netR.toFixed(2));
-          });
-          var sc = document.getElementById("chart-session");
-          if (sc) {
-            charts.push(
-              buildBarChart(sc.getContext("2d"), sessionLabels, sessionNet, {
-                label: "Net R",
-                tooltipCb: {
-                  label: function (ctx) {
-                    var k = ctx.label;
-                    var b = bySession[k];
-                    var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : "—";
-                    return (
-                      "Net: " +
-                      Number(ctx.parsed.y).toFixed(2) +
-                      "R · WR: " +
-                      wr +
-                      "% · N: " +
-                      b.total
-                    );
-                  },
-                },
-              })
-            );
-          }
-
-          // 4) Performance by entry model (top 8 by count)
-          var byModel = groupBreakdown(trades, function (t) {
-            var m = String(getField(t, "model", "Model", "MODEL", "ENTRY MODEL") || "").trim();
-            return m;
-          });
-          var modelKeys = Object.keys(byModel)
-            .sort(function (a, b) {
-              return byModel[b].total - byModel[a].total;
-            })
-            .slice(0, 8);
-          setMeta("meta-model", modelKeys.length ? "Top " + modelKeys.length : "—");
-          var modelLabels = modelKeys.map(function (k) {
-            return k.length > 22 ? k.slice(0, 22) + "…" : k;
-          });
-          var modelNet = modelKeys.map(function (k) {
-            return Number(byModel[k].netR.toFixed(2));
-          });
-          var mc = document.getElementById("chart-model");
-          if (mc) {
-            charts.push(
-              buildBarChart(mc.getContext("2d"), modelLabels, modelNet, {
-                label: "Net R",
-                tooltipCb: {
-                  title: function (items) {
-                    var idx = items[0].dataIndex;
-                    return modelKeys[idx];
-                  },
-                  label: function (ctx) {
-                    var idx = ctx.dataIndex;
-                    var key = modelKeys[idx];
-                    var b = byModel[key];
-                    var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : "—";
-                    return (
-                      "Net: " +
-                      Number(ctx.parsed.y).toFixed(2) +
-                      "R · WR: " +
-                      wr +
-                      "% · N: " +
-                      b.total
-                    );
-                  },
-                },
-              })
-            );
-          }
-
-          // 5) Performance by weekday
-          var byWeekday = groupBreakdown(trades, function (t) {
-            var d = tradeDate(t);
-            if (isNaN(d)) return "";
-            return weekdayName(d);
-          });
-          var weekdayOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-          var weekdayKeys = weekdayOrder.filter(function (k) {
-            return byWeekday[k] && byWeekday[k].total > 0;
-          });
-          setMeta("meta-weekday", weekdayKeys.length ? weekdayKeys.length + " days" : "—");
-          var weekdayNet = weekdayKeys.map(function (k) {
-            return Number(byWeekday[k].netR.toFixed(2));
-          });
-          var wdc = document.getElementById("chart-weekday");
-          if (wdc) {
-            charts.push(
-              buildBarChart(wdc.getContext("2d"), weekdayKeys, weekdayNet, {
-                label: "Net R",
-                tooltipCb: {
-                  label: function (ctx) {
-                    var k = ctx.label;
-                    var b = byWeekday[k];
-                    var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : "—";
-                    return (
-                      "Net: " +
-                      Number(ctx.parsed.y).toFixed(2) +
-                      "R · WR: " +
-                      wr +
-                      "% · N: " +
-                      b.total
-                    );
-                  },
-                },
-              })
-            );
-          }
-
-          // 6) R Distribution Histogram
-          var hist = buildRHistogram(trades);
-          setMeta("meta-histogram", trades.length + " trades");
-          var hc = document.getElementById("chart-histogram");
-          if (hc) {
-            var histColors = hist.midpoints.concat([4]).map(function (mid) {
-              return mid < 0
-                ? "rgba(255, 68, 102, 0.65)"
-                : mid === 0
-                ? "rgba(136, 153, 170, 0.55)"
-                : "rgba(0, 255, 136, 0.65)";
-            });
-            charts.push(new Chart(hc.getContext("2d"), {
-              type: "bar",
-              data: {
-                labels: hist.labels,
-                datasets: [{
-                  label: "Trades",
-                  data: hist.counts,
-                  backgroundColor: histColors,
-                  borderColor: histColors.map(function (c) { return c.replace("0.65", "0.9"); }),
-                  borderWidth: 1,
-                  borderRadius: 6,
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 900, easing: "easeOutQuart" },
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    backgroundColor: "rgba(0,0,0,0.92)",
-                    borderColor: "rgba(0, 212, 255, 0.25)",
-                    borderWidth: 1,
-                    titleColor: "rgba(255,255,255,0.9)",
-                    bodyColor: "rgba(255,255,255,0.75)",
-                    displayColors: false,
-                    callbacks: {
-                      label: function (ctx) { return ctx.parsed.y + " trade" + (ctx.parsed.y !== 1 ? "s" : ""); }
-                    }
-                  }
-                },
-                scales: {
-                  x: Object.assign({}, axisCommon(), { ticks: { color: "rgba(255,255,255,0.45)", maxRotation: 45 } }),
-                  y: Object.assign({}, axisCommon(), { ticks: { color: "rgba(255,255,255,0.50)", stepSize: 1 } })
-                }
-              }
-            }));
-          }
-
-          // 7) Drawdown chart
-          var dd = buildDrawdown(tradesAsc);
-          setMeta("meta-drawdown", dd.maxDD != null ? "Max " + dd.maxDD.toFixed(2) + "R" : "—");
-          var ddc = document.getElementById("chart-drawdown");
-          if (ddc) {
-            charts.push(new Chart(ddc.getContext("2d"), {
-              type: "line",
-              data: {
-                labels: dd.labels,
-                datasets: [{
-                  label: "Drawdown (R)",
-                  data: dd.data,
-                  borderColor: "rgba(255, 68, 102, 0.9)",
-                  backgroundColor: "rgba(255, 68, 102, 0.15)",
-                  fill: true,
-                  tension: 0.2,
-                  pointRadius: 0,
-                  pointHitRadius: 10,
-                  borderWidth: 1.5,
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 900, easing: "easeOutQuart" },
-                interaction: { mode: "index", intersect: false },
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    backgroundColor: "rgba(0,0,0,0.92)",
-                    borderColor: "rgba(255, 68, 102, 0.35)",
-                    borderWidth: 1,
-                    titleColor: "rgba(255,255,255,0.9)",
-                    bodyColor: "rgba(255,255,255,0.75)",
-                    displayColors: false,
-                    callbacks: {
-                      label: function (ctx) { return "DD: " + ctx.parsed.y.toFixed(2) + "R"; }
-                    }
-                  }
-                },
-                scales: {
-                  x: axisCommon(),
-                  y: Object.assign({}, axisCommon(), { max: 0 })
-                }
-              }
-            }));
-          }
-
-          // 8) Monte Carlo simulation
-          var mc_data = buildMonteCarlo(tradesAsc, 250);
-          if (mc_data) {
-            setMeta("meta-montecarlo", mc_data.numSims + " paths");
-            var mcc = document.getElementById("chart-montecarlo");
-            if (mcc) {
-              charts.push(new Chart(mcc.getContext("2d"), {
-                type: "line",
-                data: {
-                  labels: mc_data.labels,
-                  datasets: [
-                    {
-                      label: "90th pct",
-                      data: mc_data.p90,
-                      borderColor: "rgba(0, 212, 255, 0.15)",
-                      backgroundColor: "rgba(0, 212, 255, 0.06)",
-                      fill: "+1",
-                      tension: 0.35,
-                      pointRadius: 0,
-                      borderWidth: 1,
-                    },
-                    {
-                      label: "75th pct",
-                      data: mc_data.p75,
-                      borderColor: "rgba(0, 212, 255, 0.25)",
-                      backgroundColor: "rgba(0, 212, 255, 0.10)",
-                      fill: "+1",
-                      tension: 0.35,
-                      pointRadius: 0,
-                      borderWidth: 1,
-                    },
-                    {
-                      label: "Median",
-                      data: mc_data.p50,
-                      borderColor: "rgba(0, 212, 255, 0.95)",
-                      backgroundColor: "rgba(0, 212, 255, 0.08)",
-                      fill: false,
-                      tension: 0.35,
-                      pointRadius: 0,
-                      borderWidth: 2.5,
-                    },
-                    {
-                      label: "25th pct",
-                      data: mc_data.p25,
-                      borderColor: "rgba(255, 68, 102, 0.25)",
-                      backgroundColor: "rgba(255, 68, 102, 0.10)",
-                      fill: "+1",
-                      tension: 0.35,
-                      pointRadius: 0,
-                      borderWidth: 1,
-                    },
-                    {
-                      label: "10th pct",
-                      data: mc_data.p10,
-                      borderColor: "rgba(255, 68, 102, 0.15)",
-                      backgroundColor: "rgba(255, 68, 102, 0.06)",
-                      fill: false,
-                      tension: 0.35,
-                      pointRadius: 0,
-                      borderWidth: 1,
-                    },
-                  ]
-                },
-                options: {
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  animation: { duration: 1100, easing: "easeOutQuart" },
-                  interaction: { mode: "index", intersect: false },
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      backgroundColor: "rgba(0,0,0,0.92)",
-                      borderColor: "rgba(0, 212, 255, 0.25)",
-                      borderWidth: 1,
-                      titleColor: "rgba(255,255,255,0.9)",
-                      bodyColor: "rgba(255,255,255,0.75)",
-                      displayColors: true,
-                      callbacks: {
-                        label: function (ctx) {
-                          return ctx.dataset.label + ": " + ctx.parsed.y.toFixed(2) + "R";
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    x: Object.assign({}, axisCommon(), { ticks: { display: false } }),
-                    y: axisCommon()
-                  }
-                }
-              }));
-            }
-          }
-        }
-
+        /* ═══ DEBOUNCE ═══ */
         function debounce(fn, ms) {
-          var t = null;
-          return function () {
-            var args = arguments;
-            clearTimeout(t);
-            t = setTimeout(function () {
-              fn.apply(null, args);
-            }, ms);
-          };
+          var t; return function () { var args = arguments; clearTimeout(t); t = setTimeout(function () { fn.apply(null, args); }, ms); };
         }
 
+        /* ═══ BOOT ═══ */
         async function boot() {
+          ensureUserId();
           initParticles();
-          await ensureUserId();
 
-          var foot = document.getElementById("an-foot");
-          if (foot) foot.textContent = "Loading trades…";
+          var foot = document.getElementById('an-foot');
+          if (foot) foot.textContent = 'Loading trades…';
 
           if (!window.Chart) {
-            if (foot) foot.textContent = "Charts offline. CDN blocked.";
+            if (foot) foot.textContent = 'Charts offline. CDN may be blocked.';
             return;
           }
 
-          var trades = [];
-          try {
-            trades = await fetchAllTrades();
-          } catch (e) {
-            trades = [];
-          }
+          try { allTrades = await fetchAllTrades(); } catch (e) { allTrades = []; }
 
-          if (!trades.length) {
-            if (foot) foot.textContent = "No trades found for this user.";
+          if (!allTrades.length) {
+            document.getElementById('an-badge-text').textContent = 'No trades found';
+            if (foot) foot.textContent = 'No trades found for ' + currentUserId;
+            document.querySelectorAll('.an-card').forEach(function (c) { c.classList.add('an-card--visible'); });
             return;
           }
 
-          bootRender(trades);
-          window.addEventListener(
-            "resize",
-            debounce(function () {
-              bootRender(trades);
-            }, 220)
-          );
+          populateFilters(allTrades);
+
+          var filtered = applyFilter(allTrades);
+          renderAll(filtered);
+          initScrollAnim();
+
+          /* Filter inputs */
+          function onFilterChange() {
+            activeFilter.from  = (document.getElementById('f-from')  || {}).value || '';
+            activeFilter.to    = (document.getElementById('f-to')    || {}).value || '';
+            activeFilter.pair  = (document.getElementById('f-pair')  || {}).value || '';
+            activeFilter.model = (document.getElementById('f-model') || {}).value || '';
+            var f = applyFilter(allTrades);
+            document.getElementById('f-count').textContent = f.length + ' trades';
+            renderAll(f);
+          }
+          var debouncedFilter = debounce(onFilterChange, 180);
+
+          ['f-from', 'f-to', 'f-pair', 'f-model'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', debouncedFilter);
+          });
+          ['f-from', 'f-to'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', debouncedFilter);
+          });
+
+          var resetBtn = document.getElementById('f-reset');
+          if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+              ['f-from', 'f-to'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+              ['f-pair', 'f-model'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+              activeFilter = { from: '', to: '', pair: '', model: '' };
+              document.getElementById('f-count').textContent = allTrades.length + ' trades';
+              renderAll(allTrades);
+            });
+          }
+
+          /* Re-render on resize (debounced) */
+          window.addEventListener('resize', debounce(function () {
+            var f = applyFilter(allTrades);
+            renderAll(f);
+          }, 300));
         }
 
         boot();
@@ -1536,4 +1393,3 @@
     </script>
   </body>
 </html>
-
