@@ -1211,6 +1211,8 @@
       function tradeDate(t) {
         var raw = String(getField(t, 'date', 'traded_at', 'Date') || '').trim();
         if (!raw) return new Date(NaN);
+        // Normalise "14 Nov 2026" → "Nov 14 2026" so V8 can parse it
+        raw = raw.replace(/^(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})$/i, '$2 $1 $3');
         // Normalise PostgreSQL "YYYY-MM-DD HH:MM:SS±ZZ" → ISO 8601 (replace space before digits/sign)
         raw = raw.replace(/(\d{4}-\d{2}-\d{2})\s+(\d)/, '$1T$2');
         return new Date(raw);
@@ -1796,11 +1798,12 @@
             break;
           default: /* newest */
             filteredTrades.sort(function (a, b) { return tradeDateMs(b) - tradeDateMs(a); });
-            console.log('[Jarvis] sorted newest→oldest, first 5 dates:',
-              filteredTrades.slice(0, 5).map(function(t) {
-                return getField(t, 'date', 'traded_at', 'Date');
-              }));
         }
+
+        console.log('[Jarvis] sort=' + activeFilters.sort + ', first 5 dates:',
+          filteredTrades.slice(0, 5).map(function(t) {
+            return getField(t, 'date', 'traded_at', 'Date');
+          }));
 
         displayedCount = 0;
         document.getElementById('jn-list').innerHTML = '';
