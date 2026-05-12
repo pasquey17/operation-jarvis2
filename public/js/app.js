@@ -709,53 +709,36 @@ async function showGreeting() {
 
 /* ═══════════ Deep space star field ═══════════ */
 let particleMode = "idle";
-const STAR_COUNT = 300;
+const STAR_COUNT = 150;
 const stars = [];
 const shootingStars = [];
-let spaceMouseX = 0;
-let spaceMouseY = 0;
 let shootNextAt = 0;
 
 class Star {
   constructor() {
-    this.init();
-  }
-  init() {
     this.x = Math.random() * window.innerWidth;
     this.y = Math.random() * window.innerHeight;
-    this.layer = Math.floor(Math.random() * 3); // 0=far 1=mid 2=near
-    const sz = [0.22, 0.6, 1.2][this.layer];
-    this.size = sz + Math.random() * sz * 0.9;
-    const ba = [0.15, 0.3, 0.65][this.layer];
-    this.baseAlpha = ba * (0.55 + Math.random() * 0.45);
+    this.size = Math.random() * 0.9 + 0.2;
+    this.baseAlpha = Math.random() * 0.5 + 0.15;
     this.alpha = this.baseAlpha;
-    this.twinkleSpeed = 0.004 + Math.random() * 0.016;
+    this.twinkleSpeed = 0.003 + Math.random() * 0.012;
     this.twinklePhase = Math.random() * Math.PI * 2;
-    this.parallaxMul = [0.002, 0.004, 0.006][this.layer];
     const r = Math.random();
-    if (r < 0.62)      { this.cr = 208; this.cg = 225; this.cb = 255; }
+    if (r < 0.65)      { this.cr = 210; this.cg = 228; this.cb = 255; }
     else if (r < 0.88) { this.cr = 255; this.cg = 255; this.cb = 255; }
     else               { this.cr = 120; this.cg = 200; this.cb = 255; }
   }
   update() {
     this.twinklePhase += this.twinkleSpeed;
-    this.alpha = this.baseAlpha * (0.52 + 0.48 * Math.sin(this.twinklePhase));
+    this.alpha = this.baseAlpha * (0.5 + 0.5 * Math.sin(this.twinklePhase));
   }
   draw(ctx) {
-    const px = this.x + spaceMouseX * this.parallaxMul;
-    const py = this.y + spaceMouseY * this.parallaxMul;
     const a = Math.max(0, Math.min(1, this.alpha));
     ctx.globalAlpha = a;
     ctx.fillStyle = `rgb(${this.cr},${this.cg},${this.cb})`;
     ctx.beginPath();
-    ctx.arc(px, py, this.size, 0, Math.PI * 2);
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
     ctx.fill();
-    if (this.layer === 2 && a > 0.4) {
-      ctx.globalAlpha = a * 0.22;
-      ctx.beginPath();
-      ctx.arc(px, py, this.size * 2.8, 0, Math.PI * 2);
-      ctx.fill();
-    }
     ctx.globalAlpha = 1;
   }
 }
@@ -825,11 +808,6 @@ function initParticles() {
   resize();
   window.addEventListener("resize", resize);
 
-  window.addEventListener("mousemove", (e) => {
-    spaceMouseX = e.clientX - window.innerWidth * 0.5;
-    spaceMouseY = e.clientY - window.innerHeight * 0.5;
-  });
-
   // Single nebula — three gradients were the main perf cost
   const nebula = { x: 0.25, y: 0.45, r: 0.55, cr: 55, cg: 0, cb: 135, a: 0.055 };
   let nebulaT = 0;
@@ -866,7 +844,7 @@ function initParticles() {
       s.draw(pCtx);
     }
     // Shooting stars every 12–20 s at 30fps
-    if (frameCount > shootNextAt) {
+    if (frameCount > shootNextAt && shootingStars.length < 1) {
       shootNextAt = frameCount + (12 + Math.random() * 8) * 30;
       shootingStars.push(new ShootingStar());
     }
@@ -1814,96 +1792,9 @@ function startOrb() {
     ctx.arc(cx, cy, cr * 0.58, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
-
-    // ── Corona rays ──
-    if (!reducedMotion) {
-      drawCoronaRays(ctx, cx, cy, projScale, timeSec, e);
-    }
-
-    // ── Lightning arcs ──
-    if (!reducedMotion) {
-      drawLightningArcs(ctx, cx, cy, projScale, timeSec, e);
-    }
-
-    requestAnimationFrame(frame);
   }
 
-  /* Corona ray state */
-  function drawCoronaRays(ctx, cx, cy, ps, t, e) {
-    const numRays = 10;
-    const baseAngle = t * 0.065;
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    for (let i = 0; i < numRays; i++) {
-      const angle = baseAngle + (i / numRays) * Math.PI * 2;
-      const lenFactor = 0.7 + 0.3 * Math.abs(Math.sin(t * 0.21 + i * 1.13));
-      const rayLen = ps * (1.08 + 0.42 * lenFactor + 0.3 * e);
-      const rayStart = ps * 0.46;
-      const alpha = (0.025 + 0.065 * e) * (0.45 + 0.55 * Math.abs(Math.sin(t * 0.33 + i * 0.71)));
-      if (alpha < 0.006) continue;
-      const x1 = cx + Math.cos(angle) * rayStart;
-      const y1 = cy + Math.sin(angle) * rayStart;
-      const x2 = cx + Math.cos(angle) * rayLen;
-      const y2 = cy + Math.sin(angle) * rayLen;
-      const g = ctx.createLinearGradient(x1, y1, x2, y2);
-      g.addColorStop(0, `rgba(0,212,255,${Math.min(0.85, alpha * 2.8)})`);
-      g.addColorStop(0.4, `rgba(0,191,255,${alpha})`);
-      g.addColorStop(1, `rgba(0,150,220,0)`);
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = g;
-      ctx.lineWidth = 1.1 + e * 1.6;
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  /* Lightning arc state */
-  const arcs = [];
-  let nextArcAt = 0;
-
-  function spawnArc() {
-    const a0 = Math.random() * Math.PI * 2;
-    const a1 = a0 + (Math.random() - 0.5) * 1.4 + (Math.random() > 0.5 ? 1 : -1) * 0.6;
-    arcs.push({ a0, a1, life: 0, maxLife: 0.18 + Math.random() * 0.22 });
-  }
-
-  function drawLightningArcs(ctx, cx, cy, ps, t, e) {
-    if (t > nextArcAt) {
-      const interval = 2.8 - e * 1.8;
-      nextArcAt = t + interval * (0.5 + Math.random() * 0.8);
-      spawnArc();
-      if (e > 0.3 && Math.random() > 0.5) spawnArc();
-    }
-
-    for (let i = arcs.length - 1; i >= 0; i--) {
-      const arc = arcs[i];
-      arc.life += 0.016;
-      if (arc.life >= arc.maxLife) { arcs.splice(i, 1); continue; }
-      const progress = arc.life / arc.maxLife;
-      const fadeAlpha = Math.sin(progress * Math.PI);
-      const r = ps * (0.92 + 0.12 * e);
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      ctx.strokeStyle = `rgba(0,212,255,${fadeAlpha * (0.35 + 0.45 * e)})`;
-      ctx.lineWidth = 0.8 + e * 0.7;
-      ctx.shadowColor = "rgba(0,212,255,0.8)";
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      const steps = 7;
-      for (let s = 0; s <= steps; s++) {
-        const angle = arc.a0 + (arc.a1 - arc.a0) * (s / steps);
-        const jitter = s > 0 && s < steps ? (Math.random() - 0.5) * ps * 0.04 : 0;
-        const x = cx + Math.cos(angle) * r + jitter;
-        const y = cy + Math.sin(angle) * r + jitter;
-        s === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
+  // Render orb once — CSS ds-orb-breathe handles all animation
   requestAnimationFrame(frame);
 }
 

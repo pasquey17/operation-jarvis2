@@ -436,10 +436,10 @@
         color: #00d4ff;
       }
       .jarvis-home .metric-cell .snapshot-value {
-        font-family: "Outfit",system-ui,sans-serif;
-        font-weight: 200;
-        font-size: 36px;
-        color: #ffffff;
+        font-family: "Outfit",system-ui,sans-serif !important;
+        font-weight: 200 !important;
+        font-size: 32px !important;
+        color: #ffffff !important;
         letter-spacing: 0.02em;
         font-variant-numeric: tabular-nums;
         line-height: 1;
@@ -487,6 +487,27 @@
         animation: comms-dot-pulse 2.2s ease-in-out infinite;
       }
       @keyframes comms-dot-pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+      /* ── JARVIS watermark — fills the visual void behind chat content ── */
+      .jarvis-home .comm-dock__body {
+        position: relative;
+      }
+      .jarvis-home .comm-dock__body::before {
+        content: "JARVIS";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 80px;
+        color: #00d4ff;
+        opacity: 0.03;
+        letter-spacing: 0.25em;
+        white-space: nowrap;
+        pointer-events: none;
+        user-select: none;
+        z-index: 0;
+      }
 
       /* ── STANDING BY: centred vertically in the empty scroll area ── */
       .jarvis-home .chat-scroll {
