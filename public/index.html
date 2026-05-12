@@ -279,10 +279,6 @@
 
             <div class="comm-dock">
               <div class="comm-dock__body conductor">
-                <div class="comms-header">
-                  <span class="comms-header__label">JARVIS COMMS TERMINAL</span>
-                  <span class="comms-header__status"><span class="comms-status-dot" aria-hidden="true"></span>UPLINK ACTIVE</span>
-                </div>
                 <div class="chat-scroll" id="chat-scroll">
                   <div id="chat-standby" class="chat-standby">
                     <div class="standby-orb" aria-hidden="true"></div>
@@ -543,13 +539,14 @@
       }
       @keyframes comms-dot-pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
 
-      /* ── Message scroll: fills between header and input bar ── */
+      /* ── Message scroll: fills panel, small top padding in place of removed header ── */
       .jarvis-home .chat-scroll {
         flex: 1;
         min-height: 0;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
+        padding-top: 10px;
       }
 
       /* ── Empty standby state ── */

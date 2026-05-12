@@ -712,7 +712,7 @@ let particleMode = "idle";
 const STAR_COUNT = 150;
 const stars = [];
 const shootingStars = [];
-let shootNextAt = 0;
+let shootNextAt = 90;
 
 class Star {
   constructor() {
@@ -843,6 +843,7 @@ function initParticles() {
     if (frameCount > shootNextAt && shootingStars.length < 1) {
       shootNextAt = frameCount + (15 + Math.random() * 10) * 30;
       shootingStars.push(new ShootingStar());
+      console.log("shooting star fired");
     }
     for (let i = shootingStars.length - 1; i >= 0; i--) {
       const ss = shootingStars[i];
