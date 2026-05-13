@@ -2529,6 +2529,45 @@ async function handleJournalFields(req, res) {
   }
 }
 
+/** GET /api/journal-trades?user_id=eq.{email} — manual LOG TRADE rows (journal_trades). */
+async function handleJournalTradesGet(req, res) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+  const userId = parseSupabaseUserIdParam(req);
+  try {
+    const endpoint = `${url}/rest/v1/journal_trades?user_id=eq.${encodeURIComponent(userId)}&select=*&order=traded_at.desc`;
+    const r = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Accept: "application/json",
+        Range: `0-${MAX_SUPABASE_ROWS - 1}`,
+      },
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase HTTP ${r.status}`,
+      });
+      return;
+    }
+    let rows;
+    try {
+      rows = JSON.parse(text);
+    } catch {
+      json(res, 502, { error: "Invalid JSON from Supabase" });
+      return;
+    }
+    json(res, 200, Array.isArray(rows) ? rows : []);
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 async function handleLogTrade(req, res) {
   let raw;
   try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
@@ -3353,6 +3392,11 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/journal-fields")) {
     await handleJournalFields(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/journal-trades")) {
+    await handleJournalTradesGet(req, res);
     return;
   }
 

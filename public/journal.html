@@ -1043,20 +1043,45 @@
        * Trade date parsing for sort + filters (same anchor as card headline via Adelaide).
        * Priority: core columns → custom_data (manual journal) → notion_extras.Date-like keys.
        * Plain YYYY-MM-DD → UTC noon; timestamps keep instant for intraday order.
+       *
+       * Notion extras store date props as { start, end } — never String() those directly.
        */
-      function tradeDateFromExtras(ex) {
-        if (!ex || typeof ex !== 'object') return '';
-        var v =
-          ex.Date ||
-          ex.date ||
-          ex['Trade Date'] ||
-          ex['trade date'] ||
-          ex['DATE'] ||
-          '';
-        return v !== undefined && v !== null && v !== '' ? String(v).trim() : '';
+      function coerceNotionDateValue(val) {
+        if (val == null || val === '') return '';
+        if (typeof val === 'string') return val.trim();
+        if (typeof val === 'object') {
+          if (typeof val.start === 'string' && val.start.trim()) return val.start.trim();
+          if (typeof val.end === 'string' && val.end.trim()) return val.end.trim();
+        }
+        return '';
       }
 
-      function tradeDate(t) {
+      function tradeDateFromExtras(ex) {
+        if (!ex || typeof ex !== 'object') return '';
+        var preferred = [
+          'Date',
+          'date',
+          'Trade Date',
+          'trade date',
+          'DATE',
+          'Day',
+        ];
+        for (var pi = 0; pi < preferred.length; pi++) {
+          var s = coerceNotionDateValue(ex[preferred[pi]]);
+          if (s) return s;
+        }
+        for (var k in ex) {
+          if (!Object.prototype.hasOwnProperty.call(ex, k)) continue;
+          if (!/date/i.test(k)) continue;
+          var s2 = coerceNotionDateValue(ex[k]);
+          if (s2) return s2;
+        }
+        return '';
+      }
+
+      /** Raw date/trade instant string or ms — single source for tradeDate + tradeDateKeySort. */
+      function resolveTradeDateRaw(t) {
+        if (!t || typeof t !== 'object') return '';
         var rawIn = getField(t, 'date', 'traded_at', 'Date', 'trade_date');
         if ((rawIn == null || rawIn === '') && t.custom_data) {
           var cd = t.custom_data;
@@ -1085,7 +1110,14 @@
             }
           } catch (e2) {}
         }
-        if (rawIn == null || rawIn === '') return new Date(NaN);
+        if (rawIn == null || rawIn === '') return '';
+        if (typeof rawIn === 'number' && Number.isFinite(rawIn)) return rawIn;
+        return String(rawIn).trim();
+      }
+
+      function tradeDate(t) {
+        var rawIn = resolveTradeDateRaw(t);
+        if (rawIn === '' || rawIn == null) return new Date(NaN);
         if (typeof rawIn === 'number' && Number.isFinite(rawIn)) {
           var dn = new Date(rawIn);
           if (!isNaN(dn.getTime())) return dn;
@@ -1120,8 +1152,17 @@
         return new Date(NaN);
       }
 
-      /** Adelaide calendar day string — matches formatDateShort headline for sorting. */
+      /**
+       * Lexicographic sort key for calendar order.
+       * Date-only YYYY-MM-DD (from Notion/Postgres DATE or extras.start) sorts as that civil day.
+       * Instants use Australia/Adelaide calendar day (matches card headline).
+       */
       function tradeDateKeySort(t) {
+        var raw = resolveTradeDateRaw(t);
+        if (typeof raw === 'string') {
+          var tr = raw.trim();
+          if (/^\d{4}-\d{2}-\d{2}$/.test(tr)) return tr;
+        }
         return dateKeyAdelaide(tradeDate(t));
       }
 
@@ -1892,21 +1933,35 @@
         if (!jnDebugDates() || filteredTrades.length === 0) return;
         var sort = activeFilters.sort;
         if (sort === 'newest') {
+          var maxKey = filteredTrades.reduce(function (acc, t) {
+            var k = tradeDateKeySort(t);
+            if (!k) return acc;
+            return k > acc ? k : acc;
+          }, '');
+          var firstKey = tradeDateKeySort(filteredTrades[0]);
+          if (maxKey && firstKey !== maxKey) {
+            console.warn('[jn_debug] Sort newest: top row key', firstKey, '!== max key', maxKey);
+          }
           var maxMs = filteredTrades.reduce(function (acc, t) {
             return Math.max(acc, tradeDateMsNewest(t));
           }, -Infinity);
           var firstMs = tradeDateMsNewest(filteredTrades[0]);
-          if (firstMs !== maxMs) {
-            console.warn('[jn_debug] Sort newest: top row ms', firstMs, '!== max', maxMs);
+          var keysEq =
+            filteredTrades.length > 1 &&
+            tradeDateKeySort(filteredTrades[0]) === tradeDateKeySort(filteredTrades[1]);
+          if (keysEq && firstMs !== maxMs) {
+            console.warn('[jn_debug] Same calendar day: top row ms', firstMs, '!== max ms', maxMs);
           }
         }
         if (sort === 'oldest' && filteredTrades.length > 0) {
-          var minMs = filteredTrades.reduce(function (acc, t) {
-            return Math.min(acc, tradeDateMsOldest(t));
-          }, Infinity);
-          var firstMs = tradeDateMsOldest(filteredTrades[0]);
-          if (firstMs !== minMs) {
-            console.warn('[jn_debug] Sort oldest: top row ms', firstMs, '!== min', minMs);
+          var minKey = filteredTrades.reduce(function (acc, t) {
+            var k = tradeDateKeySort(t);
+            if (!k) return acc;
+            return acc === '' || k < acc ? k : acc;
+          }, '');
+          var firstKeyO = tradeDateKeySort(filteredTrades[0]);
+          if (minKey && firstKeyO !== minKey) {
+            console.warn('[jn_debug] Sort oldest: top row key', firstKeyO, '!== min key', minKey);
           }
         }
       }
@@ -1944,11 +1999,12 @@
         }
 
         if (jnDebugDates()) {
-          console.log('[Jarvis] sort=' + activeFilters.sort + ' first 10 dates:',
+          console.log('[Jarvis] sort=' + activeFilters.sort + ' first 10 (sortKey → raw → ISO):',
             filteredTrades.slice(0, 10).map(function (t) {
-              var raw = getField(t, 'date', 'traded_at', 'Date');
+              var sk = tradeDateKeySort(t);
+              var raw = resolveTradeDateRaw(t);
               var d = tradeDate(t);
-              return raw + ' → ' + (isNaN(d.getTime()) ? 'INVALID' : d.toISOString().slice(0, 10));
+              return sk + ' | ' + String(raw).slice(0, 32) + ' | ' + (isNaN(d.getTime()) ? 'INVALID' : d.toISOString().slice(0, 19));
             }));
         }
 
