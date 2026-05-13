@@ -184,6 +184,29 @@
         font-size: 10px !important; color: #00d4ff !important;
         letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px;
       }
+      .jn-week-range {
+        margin: 14px 0 0;
+        max-width: min(720px, 100%);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        line-height: 1.5;
+        color: rgba(236, 242, 247, 0.42);
+      }
+      .jn-filter-hint {
+        margin: 0 0 14px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.14);
+        background: rgba(0, 212, 255, 0.05);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        line-height: 1.5;
+        color: rgba(236, 242, 247, 0.62);
+        max-width: 100%;
+        box-sizing: border-box;
+      }
 
       /* ── Header actions ── */
       .jn-header__actions {
@@ -772,6 +795,7 @@
               <span class="jn-stat-label">Best RR this week</span>
             </div>
           </div>
+          <p class="jn-week-range" id="jn-week-range" aria-live="polite"></p>
         </div>
         <div class="jn-header__actions">
           <div class="jn-filter-wrap">
@@ -894,6 +918,8 @@
         </div>
       </header>
 
+      <p class="jn-filter-hint" id="jn-filter-hint" hidden></p>
+
       <div class="jn-list" id="jn-list">
         <div class="jn-state">Loading trades…</div>
       </div>
@@ -1013,24 +1039,114 @@
         return normalizeDirection(raw);
       }
 
+      /**
+       * Trade date parsing for sort + filters.
+       * — ISO / Postgres timestamptz: parsed as instant (space before time normalised to T).
+       * — Plain YYYY-MM-DD (DATE column): UTC noon so calendar day is stable.
+       * — Display strings "DD Mon YYYY"; Unix ms numbers.
+       */
       function tradeDate(t) {
-        var raw = String(getField(t, 'date', 'traded_at', 'Date') || '').trim();
+        var rawIn = getField(t, 'date', 'traded_at', 'Date');
+        if (rawIn == null || rawIn === '') return new Date(NaN);
+        if (typeof rawIn === 'number' && Number.isFinite(rawIn)) {
+          var dn = new Date(rawIn);
+          if (!isNaN(dn.getTime())) return dn;
+        }
+        var raw = String(rawIn).trim();
         if (!raw) return new Date(NaN);
-        // "14 Nov 2026" or "21 June 2026" — rewrite to "Nov 14, 2026" which Date() parses reliably
+
+        var hasTimePart = /[Tt]\d/.test(raw) || /\d{4}-\d{2}-\d{2}\s+\d/.test(raw);
+        if (hasTimePart) {
+          var norm = raw.replace(/(\d{4}-\d{2}-\d{2})\s+(\d)/, '$1T$2');
+          var inst = new Date(norm);
+          if (!isNaN(inst.getTime())) return inst;
+        }
+
+        var ymdOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (ymdOnly) {
+          var y = parseInt(ymdOnly[1], 10);
+          var mo = parseInt(ymdOnly[2], 10) - 1;
+          var day = parseInt(ymdOnly[3], 10);
+          var utcNoon = new Date(Date.UTC(y, mo, day, 12, 0, 0));
+          if (!isNaN(utcNoon.getTime())) return utcNoon;
+        }
+
         var dmy = raw.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
         if (dmy) {
           var attempt = new Date(dmy[2] + ' ' + dmy[1] + ', ' + dmy[3]);
           if (!isNaN(attempt.getTime())) return attempt;
         }
-        // Normalise PostgreSQL "YYYY-MM-DD HH:MM:SS±ZZ" → ISO 8601 (replace space before digits/sign)
-        raw = raw.replace(/(\d{4}-\d{2}-\d{2})\s+(\d)/, '$1T$2');
-        return new Date(raw);
+
+        var fallback = new Date(raw.replace(/(\d{4}-\d{2}-\d{2})\s+(\d)/, '$1T$2'));
+        if (!isNaN(fallback.getTime())) return fallback;
+        return new Date(NaN);
       }
 
-      // Returns numeric ms for safe sorting; Invalid Date → -Infinity (sorts to end for "newest")
-      function tradeDateMs(t) {
+      function jnDebugDates() {
+        try {
+          return typeof window !== 'undefined' && window.location.search.indexOf('jn_debug=1') !== -1;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      /** For "newest first": invalid dates sink to bottom (use -Infinity). */
+      function tradeDateMsNewest(t) {
         var ms = tradeDate(t).getTime();
-        return isNaN(ms) ? -Infinity : ms;
+        if (!isNaN(ms)) return ms;
+        if (jnDebugDates()) {
+          console.warn('[journal] Unparsed date (sorted last for newest):', getField(t, 'date', 'traded_at', 'Date'), t);
+        }
+        return -Infinity;
+      }
+
+      /** For "oldest first": invalid dates sink to bottom (use +Infinity). */
+      function tradeDateMsOldest(t) {
+        var ms = tradeDate(t).getTime();
+        if (!isNaN(ms)) return ms;
+        if (jnDebugDates()) {
+          console.warn('[journal] Unparsed date (sorted last for oldest):', getField(t, 'date', 'traded_at', 'Date'), t);
+        }
+        return Infinity;
+      }
+
+      function tradeIdTiebreak(t) {
+        return String(getField(t, 'notion_id', 'id') || '');
+      }
+
+      function cmpSortNewest(a, b) {
+        var d = tradeDateMsNewest(b) - tradeDateMsNewest(a);
+        if (d !== 0) return d;
+        return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
+      }
+
+      function cmpSortOldest(a, b) {
+        var d = tradeDateMsOldest(a) - tradeDateMsOldest(b);
+        if (d !== 0) return d;
+        return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
+      }
+
+      function cmpSortHighestRr(a, b) {
+        var ra = parseFloat(getField(a, 'rr', 'RR'));
+        ra = isNaN(ra) ? -Infinity : ra;
+        var rb = parseFloat(getField(b, 'rr', 'RR'));
+        rb = isNaN(rb) ? -Infinity : rb;
+        if (rb !== ra) return rb - ra;
+        return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
+      }
+
+      function cmpSortLowestRr(a, b) {
+        var ra = parseFloat(getField(a, 'rr', 'RR'));
+        ra = isNaN(ra) ? Infinity : ra;
+        var rb = parseFloat(getField(b, 'rr', 'RR'));
+        rb = isNaN(rb) ? Infinity : rb;
+        if (ra !== rb) return ra - rb;
+        return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
+      }
+
+      /** @deprecated use tradeDateMsNewest — kept for any stray refs */
+      function tradeDateMs(t) {
+        return tradeDateMsNewest(t);
       }
 
       /** YYYY-MM-DD in Australia/Adelaide (matches journal date display). */
@@ -1535,7 +1651,7 @@
         if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value)) {
           merged = merged.concat(journalRes.value);
         }
-        merged.sort(function (a, b) { return tradeDateMs(b) - tradeDateMs(a); });
+        merged.sort(cmpSortNewest);
 
         /* Debug: log first trade from each source so we can see exact field names */
         if (tradesRes.status === 'fulfilled') {
@@ -1577,10 +1693,12 @@
         });
 
         var stats = {
-          total:   total,
+          total: total,
           winRate: total > 0 ? Math.round(wins / total * 100) : null,
-          netR:    total > 0 ? netR : null,
-          bestRR:  bestRR
+          netR: total > 0 ? netR : null,
+          bestRR: bestRR,
+          weekMon: weekMon,
+          weekSun: weekSun
         };
         console.log('[Jarvis] weekly stats | week:', weekMon, '→', weekSun,
                     '| trades:', total, '| wins:', wins, '| netR:', netR, '| bestRR:', bestRR);
@@ -1600,10 +1718,11 @@
       }
 
       function renderWeeklyStats(stats) {
-        var elTotal   = document.getElementById('pill-total');
+        var elTotal = document.getElementById('pill-total');
         var elWinrate = document.getElementById('pill-winrate');
-        var elNetR    = document.getElementById('pill-netr');
-        var elBestRR  = document.getElementById('pill-bestrr');
+        var elNetR = document.getElementById('pill-netr');
+        var elBestRR = document.getElementById('pill-bestrr');
+        var elRange = document.getElementById('jn-week-range');
 
         if (elTotal) jnCountUp(elTotal, stats.total, '', '', 0, 600);
         if (elWinrate) {
@@ -1621,6 +1740,14 @@
         if (elBestRR) {
           if (stats.bestRR == null) { elBestRR.textContent = '—'; }
           else jnCountUp(elBestRR, stats.bestRR, '', 'R', 2, 700);
+        }
+        if (elRange && stats.weekMon && stats.weekSun) {
+          elRange.textContent =
+            'Weekly pills count trades dated ' +
+            stats.weekMon +
+            '–' +
+            stats.weekSun +
+            ' (Australia/Adelaide, Mon–Sun week). The trade grid can show other dates when Period is All time.';
         }
       }
 
@@ -1668,51 +1795,108 @@
         addPills('filter-account', 'account', Array.from(accounts).sort());
       }
 
+      function updateFilterHint() {
+        var el = document.getElementById('jn-filter-hint');
+        if (!el) return;
+        var period = activeFilters.period;
+        if (!period || period === 'all') {
+          el.hidden = true;
+          el.textContent = '';
+          return;
+        }
+        var periodHuman = {
+          today: 'today',
+          yesterday: 'yesterday',
+          week: 'this calendar week (Adelaide)',
+          lastweek: 'last calendar week (Adelaide)',
+          month: 'this calendar month',
+          lastmonth: 'last calendar month',
+          year: 'this calendar year',
+          custom: 'your custom date range'
+        };
+        var ph = periodHuman[period] || period;
+        var sortLab = {
+          newest: 'newest first',
+          oldest: 'oldest first',
+          highestrr: 'highest RR first',
+          lowestrr: 'lowest RR first'
+        };
+        var sl = sortLab[activeFilters.sort] || activeFilters.sort;
+        el.hidden = false;
+        el.textContent =
+          'List: trades in ' +
+          ph +
+          ', sorted ' +
+          sl +
+          '. (Weekly summary pills above use the current Adelaide week only.)';
+      }
+
+      function jnDebugRegressionSort() {
+        if (!jnDebugDates() || filteredTrades.length === 0) return;
+        var sort = activeFilters.sort;
+        if (sort === 'newest') {
+          var maxMs = filteredTrades.reduce(function (acc, t) {
+            return Math.max(acc, tradeDateMsNewest(t));
+          }, -Infinity);
+          var firstMs = tradeDateMsNewest(filteredTrades[0]);
+          if (firstMs !== maxMs) {
+            console.warn('[jn_debug] Sort newest: top row ms', firstMs, '!== max', maxMs);
+          }
+        }
+        if (sort === 'oldest' && filteredTrades.length > 0) {
+          var minMs = filteredTrades.reduce(function (acc, t) {
+            return Math.min(acc, tradeDateMsOldest(t));
+          }, Infinity);
+          var firstMs = tradeDateMsOldest(filteredTrades[0]);
+          if (firstMs !== minMs) {
+            console.warn('[jn_debug] Sort oldest: top row ms', firstMs, '!== min', minMs);
+          }
+        }
+      }
+
       /* ── Apply all filters + sort ── */
       function applyFilters() {
         filteredTrades = allTrades.filter(function (t) {
-          var outcome  = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
-          var dir      = getTradeDirection(t);
-          var pairRaw  = (getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || getExtrasVal(t, 'PAIR', 'Pair', 'pair', 'instrument', 'symbol') || '').toUpperCase();
+          var outcome = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+          var dir = getTradeDirection(t);
+          var pairRaw = (getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || getExtrasVal(t, 'PAIR', 'Pair', 'pair', 'instrument', 'symbol') || '').toUpperCase();
           var modelRaw = (getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || getExtrasVal(t, 'ENTRY MODEL', 'model', 'Model') || '').toLowerCase();
-          var acctRaw  = (getField(t, 'account', 'Account', 'ACCOUNT') || getExtrasVal(t, 'ACCOUNT', 'Account', 'account') || '').toLowerCase();
+          var acctRaw = (getField(t, 'account', 'Account', 'ACCOUNT') || getExtrasVal(t, 'ACCOUNT', 'Account', 'account') || '').toLowerCase();
 
           if (!tradeMatchesPeriod(t, activeFilters.period)) return false;
           if (activeFilters.outcome !== 'all' && outcome !== activeFilters.outcome) return false;
           if (activeFilters.direction !== 'all' && dir !== activeFilters.direction) return false;
-          if (activeFilters.pair    !== 'all' && pairRaw  !== activeFilters.pair.toUpperCase())   return false;
-          if (activeFilters.model   !== 'all' && modelRaw !== activeFilters.model.toLowerCase())   return false;
-          if (activeFilters.account !== 'all' && acctRaw  !== activeFilters.account.toLowerCase()) return false;
+          if (activeFilters.pair !== 'all' && pairRaw !== activeFilters.pair.toUpperCase()) return false;
+          if (activeFilters.model !== 'all' && modelRaw !== activeFilters.model.toLowerCase()) return false;
+          if (activeFilters.account !== 'all' && acctRaw !== activeFilters.account.toLowerCase()) return false;
           return true;
         });
 
-        /* Sort */
         switch (activeFilters.sort) {
           case 'oldest':
-            filteredTrades.sort(function (a, b) { return tradeDateMs(a) - tradeDateMs(b); });
+            filteredTrades.sort(cmpSortOldest);
             break;
           case 'highestrr':
-            filteredTrades.sort(function (a, b) {
-              var ra = parseFloat(getField(a, 'rr', 'RR')); ra = isNaN(ra) ? -Infinity : ra;
-              var rb = parseFloat(getField(b, 'rr', 'RR')); rb = isNaN(rb) ? -Infinity : rb;
-              return rb - ra;
-            });
+            filteredTrades.sort(cmpSortHighestRr);
             break;
           case 'lowestrr':
-            filteredTrades.sort(function (a, b) {
-              var ra = parseFloat(getField(a, 'rr', 'RR')); ra = isNaN(ra) ? Infinity : ra;
-              var rb = parseFloat(getField(b, 'rr', 'RR')); rb = isNaN(rb) ? Infinity : rb;
-              return ra - rb;
-            });
+            filteredTrades.sort(cmpSortLowestRr);
             break;
-          default: /* newest */
-            filteredTrades.sort(function (a, b) { return tradeDateMs(b) - tradeDateMs(a); });
+          default:
+            filteredTrades.sort(cmpSortNewest);
         }
-        console.log('[Jarvis] sort=' + activeFilters.sort + ' first 10 dates:',
-          filteredTrades.slice(0, 10).map(function(t) {
-            var raw = getField(t, 'date', 'traded_at', 'Date');
-            return raw + ' → ' + tradeDate(t).toISOString().slice(0, 10);
-          }));
+
+        if (jnDebugDates()) {
+          console.log('[Jarvis] sort=' + activeFilters.sort + ' first 10 dates:',
+            filteredTrades.slice(0, 10).map(function (t) {
+              var raw = getField(t, 'date', 'traded_at', 'Date');
+              var d = tradeDate(t);
+              return raw + ' → ' + (isNaN(d.getTime()) ? 'INVALID' : d.toISOString().slice(0, 10));
+            }));
+        }
+
+        jnDebugRegressionSort();
+        updateFilterHint();
 
         displayedCount = 0;
         document.getElementById('jn-list').innerHTML = '';
@@ -2214,10 +2398,12 @@
           activeFilters.customFrom = e.target.value;
           applyFilters();
           updateFilterDot();
+          updateAccordionLabels();
         } else if (e.target.id === 'jn-custom-to') {
           activeFilters.customTo = e.target.value;
           applyFilters();
           updateFilterDot();
+          updateAccordionLabels();
         }
       });
 
@@ -2250,12 +2436,16 @@
           if (!el) return;
           el.textContent = (def !== null && val === def) ? '' : val.toUpperCase();
         }
-        set('acc-val-outcome',   activeFilters.outcome,   'all');
+        set('acc-val-outcome', activeFilters.outcome, 'all');
         set('acc-val-direction', activeFilters.direction, 'all');
-        set('acc-val-pair',      activeFilters.pair,      'all');
-        set('acc-val-model',     activeFilters.model,     'all');
-        set('acc-val-account',   activeFilters.account,   'all');
-        set('acc-val-sort',      activeFilters.sort,      null);
+        set('acc-val-pair', activeFilters.pair, 'all');
+        set('acc-val-model', activeFilters.model, 'all');
+        set('acc-val-account', activeFilters.account, 'all');
+        var sortEl = document.getElementById('acc-val-sort');
+        if (sortEl) {
+          var sortLabels = { newest: 'Newest', oldest: 'Oldest', highestrr: 'Highest RR', lowestrr: 'Lowest RR' };
+          sortEl.textContent = sortLabels[activeFilters.sort] || String(activeFilters.sort || '').toUpperCase();
+        }
       }
 
       (function () {
