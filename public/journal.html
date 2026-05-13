@@ -500,6 +500,11 @@
       .jn-detail__label { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #00d4ff !important; }
       .jn-detail__value { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 13px; color: rgba(255,255,255,0.65) !important; line-height: 1.5; }
       .jn-detail__notes { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 13px; color: rgba(255,255,255,0.5) !important; line-height: 1.65; white-space: pre-wrap; word-break: break-word; margin: 0; }
+      .jn-detail--span-full { grid-column: 1 / -1; }
+      .cal-modal-fields-grid { display: flex; flex-direction: column; gap: 12px; }
+      @media (min-width: 700px) {
+        .cal-modal-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; align-items: start; }
+      }
 
       /* ── Notion extras panel ── */
       .jn-notion-extras { border: 1px solid rgba(0,212,255,0.18); border-radius: 12px; padding: 12px 12px 10px; background: rgba(0,191,255,0.05); }
@@ -1825,25 +1830,82 @@
 
       /** Entry Model, date, notes, charts, Ask Jarvis — same markup as legacy inline expand. */
       function tradeDetailPaneHtml(trade, idx) {
+        var pair = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '';
+        var session = getField(trade, 'session', 'Session', 'SESSION') || '';
         var model = getField(trade, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '';
         var notes = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
+        var account = getField(trade, 'account', 'Account', 'ACCOUNT') || '';
         var dateFull = formatDateFull(trade);
-        var parts = [];
+        var outcome = normalizeOutcome(getField(trade, 'outcome', 'Outcome', 'OUTCOME'));
+        var outcomeLabel = outcome === 'win' ? 'WIN' : outcome === 'loss' ? 'LOSS' : outcome === 'be' ? 'BE' : (outcome || '—').toUpperCase();
+        var dir = getTradeDirection(trade);
+        var dirLabel = dir ? dir.toUpperCase() : '—';
+        var rrRaw = parseFloat(getField(trade, 'rr', 'RR'));
+        var rrDisplay;
+        if (!isNaN(rrRaw)) {
+          rrDisplay = (rrRaw >= 0 ? '+' : '') + rrRaw.toFixed(2) + 'R';
+        } else if (outcome === 'loss') {
+          rrDisplay = '−1R';
+        } else {
+          rrDisplay = '—';
+        }
+
+        /* Core order: public/js/log-trade-modal.js CORE_FIELD_DEFS (date → pair → session → outcome → rr → account), with direction immediately after pair (journal card read: outcome/direction/pair); entry model after account. */
+        var core = [];
+        core.push(
+          '<div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' +
+            esc(dateFull) +
+            '</span></div>'
+        );
+        if (pair) {
+          core.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Pair</span><span class="jn-detail__value">' +
+              esc(String(pair).toUpperCase()) +
+              '</span></div>'
+          );
+        }
+        core.push(
+          '<div class="jn-detail"><span class="jn-detail__label">Direction</span><span class="jn-detail__value">' +
+            esc(dirLabel) +
+            '</span></div>'
+        );
+        if (session) {
+          core.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Session</span><span class="jn-detail__value">' +
+              esc(session) +
+              '</span></div>'
+          );
+        }
+        core.push(
+          '<div class="jn-detail"><span class="jn-detail__label">Outcome</span><span class="jn-detail__value">' +
+            esc(outcomeLabel) +
+            '</span></div>'
+        );
+        core.push(
+          '<div class="jn-detail"><span class="jn-detail__label">R multiple</span><span class="jn-detail__value">' +
+            esc(rrDisplay) +
+            '</span></div>'
+        );
+        if (account) {
+          core.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Account</span><span class="jn-detail__value">' +
+              esc(account) +
+              '</span></div>'
+          );
+        }
         if (model) {
-          parts.push(
+          core.push(
             '<div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' +
               esc(model) +
               '</span></div>'
           );
         }
-        parts.push(
-          '<div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' +
-            esc(dateFull) +
-            '</span></div>'
-        );
+
+        var parts = [];
+        parts.push('<div class="cal-modal-fields-grid">' + core.join('') + '</div>');
         if (notes) {
           parts.push(
-            '<div class="jn-detail"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' +
+            '<div class="jn-detail jn-detail--span-full"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' +
               esc(notes) +
               '</p></div>'
           );

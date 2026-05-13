@@ -2282,7 +2282,13 @@
             rrDisplay = "—";
           }
 
+          /* Core order: public/js/log-trade-modal.js CORE_FIELD_DEFS (date → pair → session → outcome → rr → account), with direction immediately after pair (journal card read: outcome/direction/pair); entry model after account. */
           var core = [];
+          core.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' +
+              escAttr(dateFull) +
+              "</span></div>"
+          );
           if (pair) {
             core.push(
               '<div class="jn-detail"><span class="jn-detail__label">Pair</span><span class="jn-detail__value">' +
@@ -2295,11 +2301,6 @@
               escAttr(dirLabel) +
               "</span></div>"
           );
-          core.push(
-            '<div class="jn-detail"><span class="jn-detail__label">Outcome</span><span class="jn-detail__value">' +
-              escAttr(outcomeLabel) +
-              "</span></div>"
-          );
           if (session) {
             core.push(
               '<div class="jn-detail"><span class="jn-detail__label">Session</span><span class="jn-detail__value">' +
@@ -2308,26 +2309,26 @@
             );
           }
           core.push(
-            '<div class="jn-detail"><span class="jn-detail__label">R multiple</span><span class="jn-detail__value">' +
-              escAttr(rrDisplay) +
+            '<div class="jn-detail"><span class="jn-detail__label">Outcome</span><span class="jn-detail__value">' +
+              escAttr(outcomeLabel) +
               "</span></div>"
           );
-          if (model) {
-            core.push(
-              '<div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' +
-                escAttr(model) +
-                "</span></div>"
-            );
-          }
           core.push(
-            '<div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' +
-              escAttr(dateFull) +
+            '<div class="jn-detail"><span class="jn-detail__label">R multiple</span><span class="jn-detail__value">' +
+              escAttr(rrDisplay) +
               "</span></div>"
           );
           if (account) {
             core.push(
               '<div class="jn-detail"><span class="jn-detail__label">Account</span><span class="jn-detail__value">' +
                 escAttr(account) +
+                "</span></div>"
+            );
+          }
+          if (model) {
+            core.push(
+              '<div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' +
+                escAttr(model) +
                 "</span></div>"
             );
           }
