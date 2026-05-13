@@ -3,29 +3,32 @@
   "source": "curated",
   "items": [
     {
-      "time": "12:30 UTC",
-      "currency": "USD",
-      "headline": "Core CPI — high volatility window"
+      "session": "London",
+      "headline": "London open — liquidity patch; avoid fading the first impulse without size plan"
     },
     {
-      "time": "14:00 UTC",
-      "currency": "GBP",
-      "headline": "BOE commentary — watch cable spreads"
+      "session": "NY",
+      "headline": "NY session — index correlation risk; trim correlated FX legs into cash prints"
     },
     {
-      "time": "15:00 UTC",
-      "currency": "USD",
-      "headline": "Fed speaker — headline risk on indices"
+      "session": "Asia",
+      "headline": "Asia range — mean reversion works until London sweep; watch false breaks on yen pairs"
     },
     {
-      "time": "22:30 UTC",
-      "currency": "AUD",
-      "headline": "Employment change — Asia session liquidity"
+      "session": "Global",
+      "headline": "CPI week — reduce size pre-release; widen stops only if your rulebook allows"
     },
     {
-      "time": "—",
-      "currency": "XAU",
-      "headline": "Gold: liquidity patch post-New York — manage size"
+      "session": "London/NY",
+      "headline": "Overlap window — highest flow; pay up on slippage or scale entries in slices"
+    },
+    {
+      "session": "NY",
+      "headline": "FOMC / major risk — flat or hedged beats hero trades; protect mental capital first"
+    },
+    {
+      "session": "Global",
+      "headline": "Friday close — weekend gap risk; consider flat micros or reduce carry into Sunday"
     }
   ]
 }

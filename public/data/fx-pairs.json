@@ -1,0 +1,30 @@
+{
+  "note": "Static pip $ / standard lot for rough position sizing only — not live quotes. Override pip $ after major rate moves.",
+  "pairs": [
+    { "symbol": "EURUSD", "label": "EUR / USD", "pipSize": 0.0001, "pipUsdPerLot": 10 },
+    { "symbol": "GBPUSD", "label": "GBP / USD", "pipSize": 0.0001, "pipUsdPerLot": 10 },
+    { "symbol": "AUDUSD", "label": "AUD / USD", "pipSize": 0.0001, "pipUsdPerLot": 10 },
+    { "symbol": "NZDUSD", "label": "NZD / USD", "pipSize": 0.0001, "pipUsdPerLot": 10 },
+    { "symbol": "USDCAD", "label": "USD / CAD", "pipSize": 0.0001, "pipUsdPerLot": 7.4 },
+    { "symbol": "USDCHF", "label": "USD / CHF", "pipSize": 0.0001, "pipUsdPerLot": 11.2 },
+    { "symbol": "EURGBP", "label": "EUR / GBP", "pipSize": 0.0001, "pipUsdPerLot": 12.6 },
+    { "symbol": "EURJPY", "label": "EUR / JPY", "pipSize": 0.01, "pipUsdPerLot": 9.1 },
+    { "symbol": "GBPJPY", "label": "GBP / JPY", "pipSize": 0.01, "pipUsdPerLot": 9.1 },
+    { "symbol": "AUDJPY", "label": "AUD / JPY", "pipSize": 0.01, "pipUsdPerLot": 9.1 },
+    { "symbol": "NZDJPY", "label": "NZD / JPY", "pipSize": 0.01, "pipUsdPerLot": 9.1 },
+    { "symbol": "CADJPY", "label": "CAD / JPY", "pipSize": 0.01, "pipUsdPerLot": 9.1 },
+    { "symbol": "CHFJPY", "label": "CHF / JPY", "pipSize": 0.01, "pipUsdPerLot": 9.1 },
+    { "symbol": "USDJPY", "label": "USD / JPY", "pipSize": 0.01, "pipUsdPerLot": 9.09 },
+    { "symbol": "EURCHF", "label": "EUR / CHF", "pipSize": 0.0001, "pipUsdPerLot": 11 },
+    { "symbol": "GBPCHF", "label": "GBP / CHF", "pipSize": 0.0001, "pipUsdPerLot": 11 },
+    { "symbol": "AUDCHF", "label": "AUD / CHF", "pipSize": 0.0001, "pipUsdPerLot": 11 },
+    { "symbol": "EURAUD", "label": "EUR / AUD", "pipSize": 0.0001, "pipUsdPerLot": 6.5 },
+    { "symbol": "EURNZD", "label": "EUR / NZD", "pipSize": 0.0001, "pipUsdPerLot": 6.2 },
+    { "symbol": "GBPAUD", "label": "GBP / AUD", "pipSize": 0.0001, "pipUsdPerLot": 6.5 },
+    { "symbol": "GBPNZD", "label": "GBP / NZD", "pipSize": 0.0001, "pipUsdPerLot": 6.2 },
+    { "symbol": "AUDNZD", "label": "AUD / NZD", "pipSize": 0.0001, "pipUsdPerLot": 6.6 },
+    { "symbol": "CADCHF", "label": "CAD / CHF", "pipSize": 0.0001, "pipUsdPerLot": 8.2 },
+    { "symbol": "XAUUSD", "label": "XAU / USD (gold)", "pipSize": 0.01, "pipUsdPerLot": 10 },
+    { "symbol": "XAGUSD", "label": "XAG / USD (silver)", "pipSize": 0.01, "pipUsdPerLot": 5 }
+  ]
+}
