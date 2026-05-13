@@ -383,7 +383,9 @@
         border: 1px solid rgba(0,212,255,0.1) !important;
         border-left: 3px solid rgba(255,255,255,0.14) !important;
         background: rgba(255,255,255,0.03) !important;
-        overflow: hidden; cursor: pointer;
+        /* overflow visible so headline dates are never clipped (cover uses own overflow) */
+        overflow: visible;
+        cursor: pointer;
         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
         width: 100%; min-width: 0;
         /* scroll-in start state */
@@ -417,6 +419,7 @@
         background: rgba(20,22,26,0.95);
         border-bottom: 1px solid rgba(0,212,255,0.12);
         overflow: hidden; flex-shrink: 0; line-height: 0;
+        border-radius: 10px 10px 0 0;
       }
       .jn-card__cover::after {
         content: ""; position: absolute; inset: 0;
@@ -451,6 +454,10 @@
         font-size: 13px; font-weight: 600;
         color: rgba(255,255,255,0.96) !important;
         letter-spacing: 0.03em; line-height: 1.28;
+        white-space: nowrap;
+        flex-shrink: 0;
+        min-width: min(100%, 9.5em);
+        overflow: visible;
       }
       .jn-card__pair {
         font-family: "Share Tech Mono","Courier New",monospace !important;
@@ -1153,17 +1160,39 @@
       }
 
       /**
-       * Lexicographic sort key for calendar order.
-       * Date-only YYYY-MM-DD (from Notion/Postgres DATE or extras.start) sorts as that civil day.
-       * Instants use Australia/Adelaide calendar day (matches card headline).
+       * Plausible calendar years for trading rows. Outside this range we treat the Adelaide day as corrupt
+       * (e.g. ISO "206-01-13" parses as year 206 and used to sort ahead of 2026 via string compare).
        */
+      var JN_YEAR_MIN = 1990;
+      var JN_YEAR_MAX = 2100;
+
+      /** Adelaide YYYY-MM-DD for sorting, or "" if invalid / absurd year (sort & display last). */
       function tradeDateKeySort(t) {
-        var raw = resolveTradeDateRaw(t);
-        if (typeof raw === 'string') {
-          var tr = raw.trim();
-          if (/^\d{4}-\d{2}-\d{2}$/.test(tr)) return tr;
+        var d = tradeDate(t);
+        if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+        var key = dateKeyAdelaide(d);
+        if (!key) return '';
+        var y = parseInt(key.slice(0, 4), 10);
+        if (isNaN(y) || y < JN_YEAR_MIN || y > JN_YEAR_MAX) {
+          if (jnDebugDates()) {
+            console.warn('[journal] Absurd/out-of-range trade year — sorted last:', key, resolveTradeDateRaw(t));
+          }
+          return '';
         }
-        return dateKeyAdelaide(tradeDate(t));
+        return key;
+      }
+
+      /** UTC midnight rank for calendar day (tie-break uses tradeDateMs*). NaN = invalid/absurd. */
+      function tradeRankDayMs(t) {
+        var k = tradeDateKeySort(t);
+        if (!k) return NaN;
+        var p = k.split('-').map(Number);
+        if (p.length !== 3 || p.some(isNaN)) return NaN;
+        return Date.UTC(p[0], p[1] - 1, p[2]);
+      }
+
+      function tradeDisplayAllowed(t) {
+        return tradeDateKeySort(t) !== '';
       }
 
       function jnDebugDates() {
@@ -1199,26 +1228,24 @@
       }
 
       function cmpSortNewest(a, b) {
-        var ka = tradeDateKeySort(a);
-        var kb = tradeDateKeySort(b);
-        if (ka !== kb) {
-          if (!ka && kb) return 1;
-          if (ka && !kb) return -1;
-          return kb.localeCompare(ka);
-        }
+        var ra = tradeRankDayMs(a);
+        var rb = tradeRankDayMs(b);
+        if (isNaN(ra) && isNaN(rb)) return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
+        if (isNaN(ra)) return 1;
+        if (isNaN(rb)) return -1;
+        if (rb !== ra) return rb - ra;
         var d = tradeDateMsNewest(b) - tradeDateMsNewest(a);
         if (d !== 0) return d;
         return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
       }
 
       function cmpSortOldest(a, b) {
-        var ka = tradeDateKeySort(a);
-        var kb = tradeDateKeySort(b);
-        if (ka !== kb) {
-          if (!ka && kb) return 1;
-          if (ka && !kb) return -1;
-          return ka.localeCompare(kb);
-        }
+        var ra = tradeRankDayMs(a);
+        var rb = tradeRankDayMs(b);
+        if (isNaN(ra) && isNaN(rb)) return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
+        if (isNaN(ra)) return 1;
+        if (isNaN(rb)) return -1;
+        if (ra !== rb) return ra - rb;
         var d = tradeDateMsOldest(a) - tradeDateMsOldest(b);
         if (d !== 0) return d;
         return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
@@ -1342,6 +1369,7 @@
       }
 
       function formatDateShort(t) {
+        if (!tradeDisplayAllowed(t)) return '—';
         var d = tradeDate(t);
         if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
         try {
@@ -1352,6 +1380,7 @@
       }
 
       function formatDateFull(t) {
+        if (!tradeDisplayAllowed(t)) return '—';
         var d = tradeDate(t);
         if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
         try {
@@ -1815,6 +1844,31 @@
         requestAnimationFrame(step);
       }
 
+      /** Human-readable week span for the subtitle (Adelaide, hyphenated between dates). */
+      function formatWeekRangeSubtitle(monKey, sunKey) {
+        function parseYmd(k) {
+          var p = String(k || '').split('-').map(Number);
+          if (p.length !== 3 || p.some(isNaN)) return null;
+          return new Date(Date.UTC(p[0], p[1] - 1, p[2], 12, 0, 0));
+        }
+        var a = parseYmd(monKey);
+        var b = parseYmd(sunKey);
+        if (!a || !b) {
+          return String(monKey || '') + ' – ' + String(sunKey || '');
+        }
+        try {
+          var left = a.toLocaleDateString('en-AU', {
+            timeZone: 'Australia/Adelaide', day: 'numeric', month: 'short', year: 'numeric'
+          });
+          var right = b.toLocaleDateString('en-AU', {
+            timeZone: 'Australia/Adelaide', day: 'numeric', month: 'short', year: 'numeric'
+          });
+          return left + ' – ' + right;
+        } catch (e) {
+          return String(monKey || '') + ' – ' + String(sunKey || '');
+        }
+      }
+
       function renderWeeklyStats(stats) {
         var elTotal = document.getElementById('pill-total');
         var elWinrate = document.getElementById('pill-winrate');
@@ -1842,9 +1896,7 @@
         if (elRange && stats.weekMon && stats.weekSun) {
           elRange.textContent =
             'Weekly pills count trades dated ' +
-            stats.weekMon +
-            ' to ' +
-            stats.weekSun +
+            formatWeekRangeSubtitle(stats.weekMon, stats.weekSun) +
             ' (Australia/Adelaide, Mon–Sun week). The trade grid can show other dates when Period is All time.';
         }
       }
@@ -1933,14 +1985,14 @@
         if (!jnDebugDates() || filteredTrades.length === 0) return;
         var sort = activeFilters.sort;
         if (sort === 'newest') {
-          var maxKey = filteredTrades.reduce(function (acc, t) {
-            var k = tradeDateKeySort(t);
-            if (!k) return acc;
-            return k > acc ? k : acc;
-          }, '');
-          var firstKey = tradeDateKeySort(filteredTrades[0]);
-          if (maxKey && firstKey !== maxKey) {
-            console.warn('[jn_debug] Sort newest: top row key', firstKey, '!== max key', maxKey);
+          var maxR = filteredTrades.reduce(function (acc, t) {
+            var r = tradeRankDayMs(t);
+            if (isNaN(r)) return acc;
+            return r > acc ? r : acc;
+          }, -Infinity);
+          var firstR = tradeRankDayMs(filteredTrades[0]);
+          if (!isNaN(maxR) && !isNaN(firstR) && firstR !== maxR) {
+            console.warn('[jn_debug] Sort newest: top row day-rank', firstR, '!== max', maxR);
           }
           var maxMs = filteredTrades.reduce(function (acc, t) {
             return Math.max(acc, tradeDateMsNewest(t));
@@ -1954,14 +2006,14 @@
           }
         }
         if (sort === 'oldest' && filteredTrades.length > 0) {
-          var minKey = filteredTrades.reduce(function (acc, t) {
-            var k = tradeDateKeySort(t);
-            if (!k) return acc;
-            return acc === '' || k < acc ? k : acc;
-          }, '');
-          var firstKeyO = tradeDateKeySort(filteredTrades[0]);
-          if (minKey && firstKeyO !== minKey) {
-            console.warn('[jn_debug] Sort oldest: top row key', firstKeyO, '!== min key', minKey);
+          var minR = filteredTrades.reduce(function (acc, t) {
+            var r = tradeRankDayMs(t);
+            if (isNaN(r)) return acc;
+            return acc === Infinity || r < acc ? r : acc;
+          }, Infinity);
+          var firstR0 = tradeRankDayMs(filteredTrades[0]);
+          if (minR !== Infinity && !isNaN(firstR0) && firstR0 !== minR) {
+            console.warn('[jn_debug] Sort oldest: top row day-rank', firstR0, '!== min', minR);
           }
         }
       }
@@ -1999,12 +2051,12 @@
         }
 
         if (jnDebugDates()) {
-          console.log('[Jarvis] sort=' + activeFilters.sort + ' first 10 (sortKey → raw → ISO):',
+          console.log('[Jarvis] sort=' + activeFilters.sort + ' first 10 (dayRankMs | sortKey | raw):',
             filteredTrades.slice(0, 10).map(function (t) {
               var sk = tradeDateKeySort(t);
               var raw = resolveTradeDateRaw(t);
-              var d = tradeDate(t);
-              return sk + ' | ' + String(raw).slice(0, 32) + ' | ' + (isNaN(d.getTime()) ? 'INVALID' : d.toISOString().slice(0, 19));
+              var rk = tradeRankDayMs(t);
+              return (isNaN(rk) ? 'NaN' : rk) + ' | ' + sk + ' | ' + String(raw).slice(0, 36);
             }));
         }
 
