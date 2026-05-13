@@ -673,6 +673,13 @@ async function setSyncState(syncKey) {
   }
 }
 
+/**
+ * Auto Notion sync (throttled via sync_state).
+ * — If `notion_connections` + `notion_mappings` exist for user_id, OAuth sync runs (same as POST /api/notion/sync-user).
+ * — Otherwise falls back to env-based syncNotionToSupabase / mum (NOTION_API_KEY).
+ * Same sync_state keys (`notion_aiden` / `notion_mum`) for both paths; OAuth wins when mapping is complete (no double-write).
+ * handleTrades fires this without await — first paint may still show pre-sync Supabase rows (same race as legacy).
+ */
 async function maybeSyncNotion(userId) {
   const syncKey = userId === "spasque70@gmail.com" ? "notion_mum" : "notion_aiden";
   try {
@@ -680,13 +687,35 @@ async function maybeSyncNotion(userId) {
     if (lastSynced && Date.now() - lastSynced.getTime() < NOTION_SYNC_INTERVAL_MS) {
       return; // Data is fresh — skip
     }
-    const syncFn = userId === "spasque70@gmail.com" ? syncNotionToSupabaseMum : syncNotionToSupabase;
-    const result = await syncFn();
-    // Only stamp sync_state after a real successful upsert — never on skipped/failed runs,
-    // or the site thinks it is "fresh" while trades never updated.
-    if (result.ok) {
+
+    const oauthResult = await syncNotionOAuthForUser(userId);
+
+    if (oauthResult.skipped && (oauthResult.reason === "no_connection" || oauthResult.reason === "no_mapping")) {
+      const syncFn = userId === "spasque70@gmail.com" ? syncNotionToSupabaseMum : syncNotionToSupabase;
+      const result = await syncFn();
+      if (result.ok) {
+        await setSyncState(syncKey);
+        console.log(`[auto-sync] ${userId}: fetched ${result.fetched}, upserted ${result.upserted}`);
+      }
+      return;
+    }
+
+    if (oauthResult.ok) {
       await setSyncState(syncKey);
-      console.log(`[auto-sync] ${userId}: fetched ${result.fetched}, upserted ${result.upserted}`);
+      console.log(
+        `[auto-sync] ${userId} (oauth): fetched ${oauthResult.fetched}, upserted ${oauthResult.upserted}`
+      );
+      return;
+    }
+
+    if (oauthResult.oauthAuthError) {
+      console.warn(
+        `[auto-sync] ${userId} (oauth): Notion token rejected (${oauthResult.status ?? "?"}) — reconnect OAuth in onboarding`
+      );
+    } else {
+      console.warn(
+        `[auto-sync] ${userId} (oauth): ${oauthResult.reason || "sync failed"}`
+      );
     }
   } catch (e) {
     console.warn("[auto-sync] Failed:", e instanceof Error ? e.message : e);
@@ -3835,50 +3864,62 @@ function parseDateToIso(raw) {
   return null;
 }
 
-async function handleNotionSyncUser(req, res) {
-  let body;
-  try {
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    body = JSON.parse(Buffer.concat(chunks).toString());
-  } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
-
-  const { user_id } = body ?? {};
-  if (!user_id) { json(res, 400, { error: "user_id required" }); return; }
-
+/**
+ * OAuth + notion_mappings → trades (shared by POST /api/notion/sync-user and maybeSyncNotion).
+ * Notion OAuth access tokens are not refreshed here (schema has no refresh_token); reconnect if Notion invalidates the token.
+ *
+ * @returns { skipped: true, reason: 'no_connection'|'no_mapping' } — use legacy env sync
+ * @returns { ok: true, fetched, upserted, skipped: false }
+ * @returns { ok: false, skipped: false, reason, oauthAuthError?, status? }
+ */
+async function syncNotionOAuthForUser(userId) {
   const { url, tableRaw } = getSupabaseConfig();
   const srKey = getServiceRoleKey();
-  if (!url || !srKey) { json(res, 500, { error: "Supabase not configured" }); return; }
+  if (!url || !srKey) {
+    return { ok: false, skipped: false, reason: "Supabase not configured" };
+  }
 
-  // Read connection and mapping in parallel
-  let accessToken, databaseId, mapping;
+  let accessToken;
+  let databaseId;
+  let mapping;
   try {
     const [connRes, mapRes] = await Promise.all([
-      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(user_id)}&limit=1`,
-        { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }),
-      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(user_id)}&limit=1`,
-        { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }),
+      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+        headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
+      }),
+      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+        headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
+      }),
     ]);
     const connRows = await connRes.json().catch(() => null);
     const mapRows = await mapRes.json().catch(() => null);
     accessToken = Array.isArray(connRows) && connRows.length > 0 ? connRows[0].access_token : null;
-    databaseId  = Array.isArray(mapRows)  && mapRows.length  > 0 ? mapRows[0].database_id  : null;
-    mapping     = Array.isArray(mapRows)  && mapRows.length  > 0 ? mapRows[0].mapping       : null;
+    databaseId = Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].database_id : null;
+    mapping = Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].mapping : null;
   } catch (e) {
-    json(res, 500, { error: `Failed to read connection/mapping: ${String(e.message ?? e)}` }); return;
+    return {
+      ok: false,
+      skipped: false,
+      reason: `Failed to read connection/mapping: ${String(e.message ?? e)}`,
+    };
   }
 
-  if (!accessToken) { json(res, 404, { error: "No Notion connection found" }); return; }
-  if (!databaseId || !mapping) { json(res, 404, { error: "No column mapping found — complete setup first" }); return; }
+  if (!accessToken) return { skipped: true, reason: "no_connection" };
+  if (!databaseId || !mapping || typeof mapping !== "object") {
+    return { skipped: true, reason: "no_mapping" };
+  }
 
-  // For merged databases the mapping stores __data_source_id; use /data_sources/{id}/query.
-  // For standard databases fall back to /databases/{id}/query.
-  const dataSourceId = mapping.__data_source_id ?? null;
+  let dataSourceId = mapping.__data_source_id ?? null;
+  if (dataSourceId != null && String(dataSourceId).trim()) {
+    dataSourceId = String(dataSourceId).replace(/-/g, "");
+  } else {
+    dataSourceId = null;
+  }
+
   const notionQueryUrl = dataSourceId
     ? `https://api.notion.com/v1/data_sources/${dataSourceId}/query`
     : `https://api.notion.com/v1/databases/${databaseId}/query`;
 
-  // Fetch all pages from Notion (paginate)
   const allPages = [];
   let cursor = undefined;
   try {
@@ -3896,19 +3937,24 @@ async function handleNotionSyncUser(req, res) {
       });
       if (!qRes.ok) {
         const err = await qRes.text().catch(() => "unknown");
-        json(res, 502, { error: `Notion query failed: ${err}` }); return;
+        const authFail = qRes.status === 401 || qRes.status === 403;
+        return {
+          ok: false,
+          skipped: false,
+          reason: `Notion query failed: ${err}`,
+          oauthAuthError: authFail,
+          status: qRes.status,
+        };
       }
       const data = await qRes.json();
       allPages.push(...(data.results ?? []));
       cursor = data.has_more ? data.next_cursor : undefined;
     } while (cursor);
   } catch (e) {
-    json(res, 502, { error: `Notion query error: ${String(e.message ?? e)}` }); return;
+    return { ok: false, skipped: false, reason: String(e.message ?? e) };
   }
 
-  // Map pages → trade rows using the user's column mapping
   const tableEnc = encodeURIComponent(tableRaw);
-  let synced = 0;
   const batch = [];
 
   for (const page of allPages) {
@@ -3917,54 +3963,92 @@ async function handleNotionSyncUser(req, res) {
 
     const rrRaw = get("rr");
     const rrNum = rrRaw != null ? Number(String(rrRaw).replace(/[^0-9.\-]/g, "")) : null;
-    // date: mapped column first, fall back to page created_time so NOT NULL is never violated
     const dateVal = parseDateToIso(get("date")) ?? parseDateToIso(page.created_time);
-    if (!dateVal) continue; // no usable date at all — skip
-    const trade = {
-      notion_id:    page.id,
-      user_id,
-      date:         dateVal,
-      outcome:      get("outcome"),
-      rr:           (rrNum != null && !isNaN(rrNum)) ? rrNum : null,
-      session:      get("session"),
-      pair:         get("pair"),
-      direction:    get("direction"),
-      notes:        get("notes"),
-      model:        get("model"),
-      notion_url:   page.url ?? null,
+    if (!dateVal) continue;
+
+    batch.push({
+      notion_id: page.id,
+      user_id: userId,
+      date: dateVal,
+      outcome: get("outcome"),
+      rr: rrNum != null && !isNaN(rrNum) ? rrNum : null,
+      session: get("session"),
+      pair: get("pair"),
+      direction: get("direction"),
+      notes: get("notes"),
+      model: get("model"),
+      notion_url: page.url ?? null,
       trade_images: get("photos") ?? [],
-      updated_at:   new Date().toISOString(),
-    };
-    batch.push(trade);
+      updated_at: new Date().toISOString(),
+    });
   }
+
+  const fetched = allPages.length;
 
   if (batch.length > 0) {
     try {
-      const upsertCols = "notion_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,updated_at";
-      const upsertRes = await fetch(
-        `${url}/rest/v1/${tableEnc}?on_conflict=notion_id&columns=${upsertCols}`,
-        {
-          method: "POST",
-          headers: {
-            apikey: srKey,
-            Authorization: `Bearer ${srKey}`,
-            "Content-Type": "application/json",
-            Prefer: "resolution=merge-duplicates,return=minimal",
-          },
-          body: JSON.stringify(batch),
-        }
-      );
+      const upsertCols =
+        "notion_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,updated_at";
+      const upsertRes = await fetch(`${url}/rest/v1/${tableEnc}?on_conflict=notion_id&columns=${upsertCols}`, {
+        method: "POST",
+        headers: {
+          apikey: srKey,
+          Authorization: `Bearer ${srKey}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(batch),
+      });
       if (!upsertRes.ok) {
         const err = await upsertRes.text().catch(() => "unknown");
-        json(res, 502, { error: `Trades upsert failed: ${err}` }); return;
+        return { ok: false, skipped: false, reason: `Trades upsert failed: ${err}` };
       }
-      synced = batch.length;
     } catch (e) {
-      json(res, 502, { error: `Trades upsert error: ${String(e.message ?? e)}` }); return;
+      return { ok: false, skipped: false, reason: String(e.message ?? e) };
     }
   }
 
-  json(res, 200, { synced });
+  return { ok: true, fetched, upserted: batch.length, skipped: false };
+}
+
+async function handleNotionSyncUser(req, res) {
+  let body;
+  try {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    body = JSON.parse(Buffer.concat(chunks).toString());
+  } catch {
+    json(res, 400, { error: "Invalid JSON body" });
+    return;
+  }
+
+  const { user_id } = body ?? {};
+  if (!user_id) {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+
+  const result = await syncNotionOAuthForUser(user_id);
+
+  if (result.skipped && result.reason === "no_connection") {
+    json(res, 404, { error: "No Notion connection found" });
+    return;
+  }
+  if (result.skipped && result.reason === "no_mapping") {
+    json(res, 404, { error: "No column mapping found — complete setup first" });
+    return;
+  }
+
+  if (!result.ok) {
+    if (result.oauthAuthError) {
+      json(res, 401, { error: result.reason || "Notion token rejected — reconnect OAuth" });
+      return;
+    }
+    json(res, 502, { error: result.reason || "Sync failed" });
+    return;
+  }
+
+  json(res, 200, { synced: result.upserted });
 }
 
 const server = http.createServer(requestListener);

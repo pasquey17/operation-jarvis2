@@ -89,8 +89,9 @@ The nav bar is duplicated inline in `index.html` and `journal.html` — it is no
 
 | Method | Path | Handler | Description |
 |---|---|---|---|
-| `GET` | `/api/trades?user_id=eq.{userId}` | `handleTrades` | Fetch all trades. Triggers Notion sync if stale (default: last sync &gt;60s; override with `NOTION_SYNC_INTERVAL_MS`, min 10000). |
-| `GET` | `/api/snapshot` | `handleSnapshot` | Snapshot stats — same data as `payload.snapshot` inside `/api/trades`. Runs the same stale Notion sync as `/api/trades`. |
+| `GET` | `/api/trades?user_id=eq.{userId}` | `handleTrades` | Fetch all trades. Triggers **throttled** Notion ingest if stale (same `sync_state` keys `notion_aiden` / `notion_mum`; `NOTION_SYNC_INTERVAL_MS`, default 60s, min 10s). **Routing:** if Supabase has both `notion_connections` and `notion_mappings` for that user, **OAuth sync** runs (`syncNotionOAuthForUser` — same as `POST /api/notion/sync-user`); otherwise **env** `syncNotionToSupabase` / mum (`NOTION_API_KEY`). Not awaited before reading Supabase — first response may still be pre-sync rows. |
+| `GET` | `/api/snapshot` | `handleSnapshot` | Snapshot stats — same stale Notion routing as `/api/trades` (`await maybeSyncNotion`). |
+| `POST` | `/api/notion/sync-user` | `handleNotionSyncUser` | Manual OAuth → trades sync (same core as auto-sync). Optional when auto-sync is enough. |
 | `POST` | `/api/chat` | `handleChat` | Jarvis chat. Body: `{ message, history, userId }` |
 | `POST` | `/api/briefing` | `handleBriefing` | Generate morning briefing from recent trades. |
 | `GET` | `/api/sync-notion` | `handleSyncNotion` | Manually trigger Notion → Supabase sync for Aiden. |
