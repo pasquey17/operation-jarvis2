@@ -1156,21 +1156,34 @@
       var JN_YEAR_MIN = 1990;
       var JN_YEAR_MAX = 2100;
 
+      /** Intl year strings may include grouping (e.g. 2,026) — parseInt('2,026',10) === 2 and breaks all sorting. */
+      function sanitizeCalendarYear(raw) {
+        if (raw == null || raw === '') return NaN;
+        var digits = String(raw).replace(/[^\d]/g, '');
+        if (digits.length >= 4) return parseInt(digits.slice(0, 4), 10);
+        return digits.length ? parseInt(digits, 10) : NaN;
+      }
+
       /** Adelaide calendar year — robust across browsers (does not rely on en-CA string shape). */
       function tradeYearAdelaide(d) {
         if (!(d instanceof Date) || isNaN(d.getTime())) return NaN;
         try {
-          var parts = new Intl.DateTimeFormat('en-AU', {
-            timeZone: 'Australia/Adelaide',
-            year: 'numeric'
-          }).formatToParts(d);
-          for (var ip = 0; ip < parts.length; ip++) {
-            if (parts[ip].type === 'year') return parseInt(parts[ip].value, 10);
+          if (typeof Intl.DateTimeFormat.prototype.formatToParts === 'function') {
+            var parts = new Intl.DateTimeFormat('en-AU', {
+              timeZone: 'Australia/Adelaide',
+              year: 'numeric'
+            }).formatToParts(d);
+            for (var ip = 0; ip < parts.length; ip++) {
+              if (parts[ip].type === 'year') {
+                var yy = sanitizeCalendarYear(parts[ip].value);
+                if (!isNaN(yy)) return yy;
+              }
+            }
           }
         } catch (eY) {}
         var fk = dateKeyAdelaide(d);
         if (!fk) return NaN;
-        var mm = String(fk).match(/^(\d{4})/);
+        var mm = String(fk).replace(/\//g, '-').match(/^(\d{4})/);
         return mm ? parseInt(mm[1], 10) : NaN;
       }
 
