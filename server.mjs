@@ -678,7 +678,7 @@ async function setSyncState(syncKey) {
  * — If `notion_connections` + `notion_mappings` exist for user_id, OAuth sync runs (same as POST /api/notion/sync-user).
  * — Otherwise falls back to env-based syncNotionToSupabase / mum (NOTION_API_KEY).
  * Same sync_state keys (`notion_aiden` / `notion_mum`) for both paths; OAuth wins when mapping is complete (no double-write).
- * handleTrades fires this without await — first paint may still show pre-sync Supabase rows (same race as legacy).
+ * handleTrades **awaits** this before reading Supabase so the first response includes data from a completed sync (Vercel timeout still applies for huge DBs).
  */
 async function maybeSyncNotion(userId) {
   const syncKey = userId === "spasque70@gmail.com" ? "notion_mum" : "notion_aiden";
@@ -696,6 +696,12 @@ async function maybeSyncNotion(userId) {
       if (result.ok) {
         await setSyncState(syncKey);
         console.log(`[auto-sync] ${userId}: fetched ${result.fetched}, upserted ${result.upserted}`);
+      } else if (result.skipped) {
+        console.warn(`[auto-sync] ${userId} (env): skipped — ${result.reason ?? "unknown"}`);
+      } else {
+        console.warn(
+          `[auto-sync] ${userId} (env): did not sync — ${result.reason ?? result.error ?? "unknown"}`
+        );
       }
       return;
     }
@@ -1759,7 +1765,7 @@ async function handleTrades(req, res) {
       new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
-    maybeSyncNotion(userId).catch(() => {});
+    await maybeSyncNotion(userId);
     const payload = await fetchTradesFromSupabase(userId);
     if (!payload.records.length) {
       json(res, 200, {
@@ -3896,6 +3902,13 @@ async function syncNotionOAuthForUser(userId) {
     accessToken = Array.isArray(connRows) && connRows.length > 0 ? connRows[0].access_token : null;
     databaseId = Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].database_id : null;
     mapping = Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].mapping : null;
+    if (mapping != null && typeof mapping === "string") {
+      try {
+        mapping = JSON.parse(mapping);
+      } catch {
+        mapping = null;
+      }
+    }
   } catch (e) {
     return {
       ok: false,
@@ -3905,7 +3918,7 @@ async function syncNotionOAuthForUser(userId) {
   }
 
   if (!accessToken) return { skipped: true, reason: "no_connection" };
-  if (!databaseId || !mapping || typeof mapping !== "object") {
+  if (!databaseId || mapping == null || typeof mapping !== "object" || Array.isArray(mapping)) {
     return { skipped: true, reason: "no_mapping" };
   }
 
