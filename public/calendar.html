@@ -13,12 +13,13 @@
     />
     <link rel="stylesheet" href="/css/style.css" />
     <style>
-      /* ── Unlock scroll (global HUD locks overflow) ── */
+      /* ── Page shell (match analytics / journal HUD) ── */
       html,
       body {
         overflow: auto !important;
         height: auto !important;
         min-height: 100dvh !important;
+        background: #050a14 !important;
       }
 
       /* ═══════════════════ NAV BAR (inlined) ═══════════════════ */
@@ -39,8 +40,8 @@
         gap: 0;
       }
       .jv-nav__brand {
-        color: #00d4ff;
-        font-family: "Share Tech Mono", "Courier New", monospace;
+        color: #00d4ff !important;
+        font-family: "Share Tech Mono", "Courier New", monospace !important;
         font-size: 15px;
         letter-spacing: 0.2em;
         text-transform: uppercase;
@@ -57,9 +58,9 @@
         padding: 0;
       }
       .jv-nav__links a {
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(255, 255, 255, 0.5) !important;
         text-decoration: none;
-        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-family: "Share Tech Mono", "Courier New", monospace !important;
         font-size: 11px;
         font-variant: small-caps;
         letter-spacing: 0.12em;
@@ -69,11 +70,11 @@
         transition: color 0.2s, border-color 0.2s;
       }
       .jv-nav__links a:hover {
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(255, 255, 255, 0.85) !important;
       }
       .jv-nav__links a.jv-nav--active,
       .jv-nav__links a[aria-current="page"] {
-        color: #00d4ff;
+        color: #00d4ff !important;
         border-bottom: 1px solid #00d4ff;
       }
       .jv-nav__user {
@@ -90,8 +91,8 @@
         border-radius: 999px;
         border: 1px solid rgba(0, 212, 255, 0.25);
         background: rgba(0, 212, 255, 0.06);
-        color: rgba(0, 212, 255, 0.85);
-        font-family: "Share Tech Mono", "Courier New", monospace;
+        color: rgba(0, 212, 255, 0.85) !important;
+        font-family: "Share Tech Mono", "Courier New", monospace !important;
         font-size: 10px;
         letter-spacing: 0.12em;
         text-transform: uppercase;
@@ -143,9 +144,9 @@
         display: flex;
       }
       .jv-nav__dropdown a {
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(255, 255, 255, 0.5) !important;
         text-decoration: none;
-        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-family: "Share Tech Mono", "Courier New", monospace !important;
         font-size: 12px;
         font-variant: small-caps;
         letter-spacing: 0.12em;
@@ -155,11 +156,11 @@
         transition: color 0.2s, border-color 0.2s;
       }
       .jv-nav__dropdown a:hover {
-        color: rgba(255, 255, 255, 0.85);
+        color: rgba(255, 255, 255, 0.85) !important;
       }
       .jv-nav__dropdown a.jv-nav--active,
       .jv-nav__dropdown a[aria-current="page"] {
-        color: #00d4ff;
+        color: #00d4ff !important;
         border-left-color: #00d4ff;
       }
       @media (max-width: 768px) {
@@ -179,10 +180,10 @@
       .cal-viewport {
         position: relative;
         z-index: 1;
-        padding-top: 70px;
+        padding: 76px 0 80px;
       }
       .cal-shell {
-        width: min(1280px, calc(100vw - 40px));
+        width: min(1320px, calc(100vw - 40px));
         margin: 0 auto;
       }
       @media (max-width: 768px) {
@@ -196,24 +197,60 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
-        margin-bottom: 14px;
+        margin-bottom: 24px;
+        padding-top: 12px;
+      }
+      .cal-header__left {
+        flex: 1;
+        min-width: 0;
+      }
+      .cal-header__right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 12px;
+        flex-shrink: 0;
       }
       .cal-title {
-        margin: 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: clamp(1.55rem, 3.5vw, 2.25rem);
-        color: #00d4ff;
-        letter-spacing: 0.24em;
+        margin: 0 0 6px;
+        font-family: "Outfit", system-ui, sans-serif;
+        font-weight: 200;
+        font-size: clamp(2rem, 5vw, 52px);
+        color: #ffffff;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
-        text-shadow: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 70px rgba(0, 212, 255, 0.18);
+        text-shadow: 0 0 60px rgba(255, 255, 255, 0.12), 0 0 120px rgba(0, 212, 255, 0.08);
       }
       .cal-subtitle {
-        margin: 6px 0 0;
+        margin: 0;
         font-family: "Share Tech Mono", "Courier New", monospace;
         font-size: 11px;
         color: rgba(255, 255, 255, 0.3);
         letter-spacing: 0.14em;
         text-transform: uppercase;
+      }
+      .cal-live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        background: rgba(0, 212, 255, 0.06);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.85);
+        white-space: nowrap;
+      }
+      .cal-live-badge__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(0, 212, 255, 0.9);
+        box-shadow: 0 0 10px rgba(0, 212, 255, 0.7);
+        animation: calPulse 1.7s ease-in-out infinite;
       }
 
       .cal-controls {
@@ -222,31 +259,6 @@
         align-items: center;
         justify-content: flex-end;
         gap: 10px;
-      }
-      .cal-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        background: rgba(0, 212, 255, 0.06);
-        box-shadow: 0 0 0 1px rgba(0, 191, 255, 0.06) inset;
-        color: rgba(0, 212, 255, 0.85);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        white-space: nowrap;
-        user-select: none;
-      }
-      .cal-pill__dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: rgba(0, 212, 255, 0.9);
-        box-shadow: 0 0 12px rgba(0, 212, 255, 0.7);
-        animation: calPulse 1.7s ease-in-out infinite;
       }
       @keyframes calPulse {
         0%,
@@ -305,14 +317,20 @@
       .cal-board {
         position: relative;
         border-radius: 20px;
-        border: 1px solid rgba(0, 212, 255, 0.14);
-        background: rgba(0, 0, 0, 0.78);
+        border: 1px solid rgba(0, 212, 255, 0.13);
+        background: rgba(4, 9, 18, 0.88);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
         overflow: hidden;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 60px rgba(0, 0, 0, 0.5);
+        transition: border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .cal-board:hover {
+        border-color: rgba(0, 212, 255, 0.26);
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.05),
-          0 18px 60px rgba(0, 0, 0, 0.48);
+          0 24px 72px rgba(0, 0, 0, 0.55),
+          0 0 36px rgba(0, 191, 255, 0.05);
       }
       .cal-board__top {
         display: flex;
@@ -320,7 +338,7 @@
         justify-content: space-between;
         gap: 12px;
         padding: 14px 14px 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.08);
       }
       .cal-range {
         font-family: "Share Tech Mono", "Courier New", monospace;
@@ -339,21 +357,21 @@
         display: grid;
         grid-template-columns: repeat(5, 1fr);
         gap: 1px;
-        background: rgba(255, 255, 255, 0.06);
+        background: rgba(0, 212, 255, 0.1);
       }
       .cal-colhead {
         padding: 12px 12px 10px;
-        background: rgba(0, 0, 0, 0.82);
+        background: rgba(2, 6, 12, 0.92);
         font-family: "Share Tech Mono", "Courier New", monospace;
         font-size: 10px;
         letter-spacing: 0.18em;
         text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.8);
+        color: rgba(0, 212, 255, 0.85);
       }
       .cal-cell {
         min-height: 140px;
         padding: 10px 10px 12px;
-        background: rgba(0, 0, 0, 0.82);
+        background: rgba(2, 6, 12, 0.94);
         cursor: pointer;
         transition:
           background 0.25s var(--ease-out),
@@ -367,25 +385,29 @@
         transform: translateY(-1px);
       }
       .cal-cell.cal-cell--muted {
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(2, 6, 12, 0.72);
         opacity: 0.78;
       }
       .cal-cell.cal-cell--selected {
-        outline: 1px solid rgba(0, 212, 255, 0.5);
-        box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.12) inset, 0 0 22px rgba(0, 191, 255, 0.12);
+        outline: 1px solid rgba(0, 212, 255, 0.55);
+        box-shadow:
+          0 0 0 1px rgba(0, 212, 255, 0.12) inset,
+          0 0 24px rgba(0, 191, 255, 0.14);
       }
       .cal-cell.cal-cell--today {
         border: 1px solid rgba(0, 212, 255, 0.55);
-        box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.14) inset, 0 0 28px rgba(0, 212, 255, 0.14);
+        box-shadow:
+          0 0 0 1px rgba(0, 212, 255, 0.14) inset,
+          0 0 28px rgba(0, 212, 255, 0.16);
       }
       .cal-cell.cal-cell--today .cal-date__num {
         color: #00d4ff;
       }
       .cal-cell.cal-cell--has-trades {
-        background: rgba(0, 0, 0, 0.82);
+        background: rgba(2, 6, 12, 0.94);
       }
       .cal-cell.cal-cell--has-trades:not(.cal-cell--muted) {
-        box-shadow: inset 2px 0 0 rgba(0, 212, 255, 0.25);
+        box-shadow: inset 3px 0 0 rgba(0, 212, 255, 0.35);
       }
 
       /* Pill badges for WIN/LOSS count */
@@ -482,34 +504,40 @@
       }
 
       .cal-panel {
-        margin-top: 14px;
+        margin-top: 18px;
         position: relative;
         border-radius: 20px;
-        border: 1px solid rgba(0, 212, 255, 0.12);
-        background: rgba(0, 0, 0, 0.78);
+        border: 1px solid rgba(0, 212, 255, 0.13);
+        background: rgba(4, 9, 18, 0.88);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
         overflow: hidden;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.05),
-          0 18px 60px rgba(0, 0, 0, 0.42);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 60px rgba(0, 0, 0, 0.5);
         opacity: 0;
         transform: translateY(14px);
         transition:
           opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
           transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-          border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+          border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
       }
       .cal-panel.cal-panel--visible {
         opacity: 1;
         transform: translateY(0);
+      }
+      .cal-panel.cal-panel--visible:hover {
+        border-color: rgba(0, 212, 255, 0.24);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 24px 72px rgba(0, 0, 0, 0.55),
+          0 0 36px rgba(0, 191, 255, 0.05);
       }
       .cal-panel.cal-panel--day-loaded {
         border-color: rgba(0, 212, 255, 0.22);
       }
       .cal-panel__top {
         padding: 14px 14px 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.08);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -538,8 +566,8 @@
       }
       .cal-trade {
         border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(0, 212, 255, 0.1);
+        background: rgba(4, 9, 18, 0.55);
         padding: 12px 12px;
         transition:
           transform 0.25s var(--ease-out),
@@ -564,8 +592,8 @@
         gap: 6px;
         padding: 3px 8px;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(0, 212, 255, 0.12);
+        background: rgba(4, 9, 18, 0.65);
         font-family: "Share Tech Mono", "Courier New", monospace;
         font-size: 9px;
         letter-spacing: 0.14em;
@@ -640,7 +668,7 @@
         display: flex;
         flex-direction: column;
         gap: 12px;
-        background: rgba(0, 0, 0, 0.25);
+        background: rgba(4, 9, 18, 0.45);
       }
       .jn-trade-modal .jn-expand-inner {
         background: transparent;
@@ -703,7 +731,7 @@
         border-radius: 10px;
         overflow: hidden;
         cursor: zoom-in;
-        background: rgba(0, 0, 0, 0.35);
+        background: rgba(4, 9, 18, 0.75);
         border: 1px solid rgba(0, 212, 255, 0.18);
         flex: 0 0 auto;
         max-width: 100%;
@@ -737,7 +765,7 @@
       .jn-trade-modal__backdrop {
         position: absolute;
         inset: 0;
-        background: rgba(0, 0, 0, 0.76);
+        background: rgba(5, 10, 20, 0.82);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         cursor: pointer;
@@ -749,12 +777,12 @@
         max-height: min(90vh, 920px);
         display: flex;
         flex-direction: column;
-        border-radius: var(--radius-panel, 14px);
+        border-radius: var(--radius-panel, 20px);
         border: 1px solid rgba(0, 212, 255, 0.2);
         border-left-width: 4px;
-        border-left-color: rgba(255, 255, 255, 0.16);
-        background: rgba(0, 0, 0, 0.93);
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 28px 90px rgba(0, 0, 0, 0.55);
+        border-left-color: rgba(0, 212, 255, 0.25);
+        background: rgba(4, 9, 18, 0.94);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 28px 90px rgba(0, 0, 0, 0.55);
         overflow: hidden;
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
@@ -792,7 +820,7 @@
         height: 38px;
         border: 1px solid rgba(0, 212, 255, 0.35);
         border-radius: var(--radius-soft, 10px);
-        background: rgba(0, 0, 0, 0.45);
+        background: rgba(4, 9, 18, 0.75);
         color: #00d4ff;
         font-size: 22px;
         line-height: 1;
@@ -816,7 +844,7 @@
       .jn-trade-modal__hero {
         width: 100%;
         max-height: min(260px, 36vh);
-        background: rgba(22, 24, 28, 0.98);
+        background: rgba(4, 9, 18, 0.98);
         border-bottom: 1px solid rgba(0, 212, 255, 0.12);
         line-height: 0;
       }
@@ -844,7 +872,7 @@
       .jn-lightbox__backdrop {
         position: absolute;
         inset: 0;
-        background: rgba(0, 0, 0, 0.9);
+        background: rgba(5, 10, 20, 0.92);
         backdrop-filter: blur(10px);
         cursor: zoom-out;
       }
@@ -857,7 +885,7 @@
         height: 44px;
         border: 1px solid rgba(0, 212, 255, 0.35);
         border-radius: 10px;
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(4, 9, 18, 0.85);
         color: #00d4ff;
         font-size: 24px;
         line-height: 1;
@@ -924,6 +952,10 @@
         .cal-header {
           flex-direction: column;
           align-items: stretch;
+          gap: 10px;
+        }
+        .cal-header__right {
+          align-items: stretch;
         }
         .cal-controls {
           justify-content: flex-start;
@@ -940,7 +972,7 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .cal-pill__dot {
+        .cal-live-badge__dot {
           animation: none;
         }
         .cal-cell,
@@ -1037,19 +1069,20 @@
 
         <div class="cal-shell">
           <header class="cal-header">
-            <div>
-              <h1 class="cal-title">CALENDAR</h1>
-              <p class="cal-subtitle">Weekday grid · click day for trades</p>
+            <div class="cal-header__left">
+              <h1 class="cal-title">Calendar</h1>
+              <p class="cal-subtitle">Weekday grid · click a day for trades</p>
             </div>
-
-            <div class="cal-controls" aria-label="Calendar controls">
-              <div class="cal-pill" title="Data stream status">
-                <span class="cal-pill__dot" aria-hidden="true"></span>
-                Streaming
+            <div class="cal-header__right">
+              <div class="cal-live-badge" title="Trades loaded for this account">
+                <span class="cal-live-badge__dot" aria-hidden="true"></span>
+                <span id="cal-badge-text">Loading…</span>
               </div>
-              <button class="cal-btn cal-btn--active" id="view-week" type="button">Week</button>
-              <button class="cal-btn" id="view-month" type="button">Month</button>
-              <button class="cal-btn" id="btn-today" type="button">Today</button>
+              <div class="cal-controls" aria-label="Calendar controls">
+                <button class="cal-btn cal-btn--active" id="view-week" type="button">Week</button>
+                <button class="cal-btn" id="view-month" type="button">Month</button>
+                <button class="cal-btn" id="btn-today" type="button">Today</button>
+              </div>
             </div>
           </header>
 
@@ -2138,6 +2171,11 @@
           }
 
           buildIndex(trades);
+          var badgeEl = document.getElementById("cal-badge-text");
+          if (badgeEl) {
+            badgeEl.textContent = trades.length === 1 ? "1 trade loaded" : trades.length + " trades loaded";
+          }
+
           todayKey = (function () {
             try { return dayKey(new Date()); } catch (e) { return ""; }
           })();
