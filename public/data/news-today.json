@@ -1,0 +1,31 @@
+{
+  "updated": "2026-05-10",
+  "source": "curated",
+  "items": [
+    {
+      "time": "12:30 UTC",
+      "currency": "USD",
+      "headline": "Core CPI — high volatility window"
+    },
+    {
+      "time": "14:00 UTC",
+      "currency": "GBP",
+      "headline": "BOE commentary — watch cable spreads"
+    },
+    {
+      "time": "15:00 UTC",
+      "currency": "USD",
+      "headline": "Fed speaker — headline risk on indices"
+    },
+    {
+      "time": "22:30 UTC",
+      "currency": "AUD",
+      "headline": "Employment change — Asia session liquidity"
+    },
+    {
+      "time": "—",
+      "currency": "XAU",
+      "headline": "Gold: liquidity patch post-New York — manage size"
+    }
+  ]
+}
