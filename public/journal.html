@@ -184,15 +184,6 @@
         font-size: 10px !important; color: #00d4ff !important;
         letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px;
       }
-      .jn-week-range {
-        margin: 14px 0 0;
-        max-width: min(720px, 100%);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.06em;
-        line-height: 1.5;
-        color: rgba(236, 242, 247, 0.42);
-      }
       .jn-filter-hint {
         margin: 0 0 14px;
         padding: 10px 14px;
@@ -802,7 +793,6 @@
               <span class="jn-stat-label">Best RR this week</span>
             </div>
           </div>
-          <p class="jn-week-range" id="jn-week-range" aria-live="polite"></p>
         </div>
         <div class="jn-header__actions">
           <div class="jn-filter-wrap">
@@ -1166,33 +1156,52 @@
       var JN_YEAR_MIN = 1990;
       var JN_YEAR_MAX = 2100;
 
-      /** Adelaide YYYY-MM-DD for sorting, or "" if invalid / absurd year (sort & display last). */
+      /** Adelaide calendar year — robust across browsers (does not rely on en-CA string shape). */
+      function tradeYearAdelaide(d) {
+        if (!(d instanceof Date) || isNaN(d.getTime())) return NaN;
+        try {
+          var parts = new Intl.DateTimeFormat('en-AU', {
+            timeZone: 'Australia/Adelaide',
+            year: 'numeric'
+          }).formatToParts(d);
+          for (var ip = 0; ip < parts.length; ip++) {
+            if (parts[ip].type === 'year') return parseInt(parts[ip].value, 10);
+          }
+        } catch (eY) {}
+        var fk = dateKeyAdelaide(d);
+        if (!fk) return NaN;
+        var mm = String(fk).match(/^(\d{4})/);
+        return mm ? parseInt(mm[1], 10) : NaN;
+      }
+
+      /**
+       * Primary sort key: epoch ms of parsed trade instant, only if Adelaide year is plausible.
+       * Invalid/absurd rows → NaN (sorted last). Uses getTime() so order matches true chronology.
+       */
+      function tradeSortRankMs(t) {
+        var d = tradeDate(t);
+        if (!(d instanceof Date) || isNaN(d.getTime())) return NaN;
+        var y = tradeYearAdelaide(d);
+        if (isNaN(y) || y < JN_YEAR_MIN || y > JN_YEAR_MAX) {
+          if (jnDebugDates()) {
+            console.warn('[journal] Trade date out of range — sorted last:', y, resolveTradeDateRaw(t));
+          }
+          return NaN;
+        }
+        return d.getTime();
+      }
+
+      /** Adelaide YYYY-MM-DD for filters/debug, or "" if invalid / out-of-range year. */
       function tradeDateKeySort(t) {
         var d = tradeDate(t);
         if (!(d instanceof Date) || isNaN(d.getTime())) return '';
-        var key = dateKeyAdelaide(d);
-        if (!key) return '';
-        var y = parseInt(key.slice(0, 4), 10);
-        if (isNaN(y) || y < JN_YEAR_MIN || y > JN_YEAR_MAX) {
-          if (jnDebugDates()) {
-            console.warn('[journal] Absurd/out-of-range trade year — sorted last:', key, resolveTradeDateRaw(t));
-          }
-          return '';
-        }
-        return key;
-      }
-
-      /** UTC midnight rank for calendar day (tie-break uses tradeDateMs*). NaN = invalid/absurd. */
-      function tradeRankDayMs(t) {
-        var k = tradeDateKeySort(t);
-        if (!k) return NaN;
-        var p = k.split('-').map(Number);
-        if (p.length !== 3 || p.some(isNaN)) return NaN;
-        return Date.UTC(p[0], p[1] - 1, p[2]);
+        var y = tradeYearAdelaide(d);
+        if (isNaN(y) || y < JN_YEAR_MIN || y > JN_YEAR_MAX) return '';
+        return dateKeyAdelaide(d);
       }
 
       function tradeDisplayAllowed(t) {
-        return tradeDateKeySort(t) !== '';
+        return !isNaN(tradeSortRankMs(t));
       }
 
       function jnDebugDates() {
@@ -1228,26 +1237,22 @@
       }
 
       function cmpSortNewest(a, b) {
-        var ra = tradeRankDayMs(a);
-        var rb = tradeRankDayMs(b);
+        var ra = tradeSortRankMs(a);
+        var rb = tradeSortRankMs(b);
         if (isNaN(ra) && isNaN(rb)) return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
         if (isNaN(ra)) return 1;
         if (isNaN(rb)) return -1;
         if (rb !== ra) return rb - ra;
-        var d = tradeDateMsNewest(b) - tradeDateMsNewest(a);
-        if (d !== 0) return d;
         return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
       }
 
       function cmpSortOldest(a, b) {
-        var ra = tradeRankDayMs(a);
-        var rb = tradeRankDayMs(b);
+        var ra = tradeSortRankMs(a);
+        var rb = tradeSortRankMs(b);
         if (isNaN(ra) && isNaN(rb)) return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
         if (isNaN(ra)) return 1;
         if (isNaN(rb)) return -1;
         if (ra !== rb) return ra - rb;
-        var d = tradeDateMsOldest(a) - tradeDateMsOldest(b);
-        if (d !== 0) return d;
         return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
       }
 
@@ -1844,37 +1849,11 @@
         requestAnimationFrame(step);
       }
 
-      /** Human-readable week span for the subtitle (Adelaide, hyphenated between dates). */
-      function formatWeekRangeSubtitle(monKey, sunKey) {
-        function parseYmd(k) {
-          var p = String(k || '').split('-').map(Number);
-          if (p.length !== 3 || p.some(isNaN)) return null;
-          return new Date(Date.UTC(p[0], p[1] - 1, p[2], 12, 0, 0));
-        }
-        var a = parseYmd(monKey);
-        var b = parseYmd(sunKey);
-        if (!a || !b) {
-          return String(monKey || '') + ' – ' + String(sunKey || '');
-        }
-        try {
-          var left = a.toLocaleDateString('en-AU', {
-            timeZone: 'Australia/Adelaide', day: 'numeric', month: 'short', year: 'numeric'
-          });
-          var right = b.toLocaleDateString('en-AU', {
-            timeZone: 'Australia/Adelaide', day: 'numeric', month: 'short', year: 'numeric'
-          });
-          return left + ' – ' + right;
-        } catch (e) {
-          return String(monKey || '') + ' – ' + String(sunKey || '');
-        }
-      }
-
       function renderWeeklyStats(stats) {
         var elTotal = document.getElementById('pill-total');
         var elWinrate = document.getElementById('pill-winrate');
         var elNetR = document.getElementById('pill-netr');
         var elBestRR = document.getElementById('pill-bestrr');
-        var elRange = document.getElementById('jn-week-range');
 
         if (elTotal) jnCountUp(elTotal, stats.total, '', '', 0, 600);
         if (elWinrate) {
@@ -1892,12 +1871,6 @@
         if (elBestRR) {
           if (stats.bestRR == null) { elBestRR.textContent = '—'; }
           else jnCountUp(elBestRR, stats.bestRR, '', 'R', 2, 700);
-        }
-        if (elRange && stats.weekMon && stats.weekSun) {
-          elRange.textContent =
-            'Weekly pills count trades dated ' +
-            formatWeekRangeSubtitle(stats.weekMon, stats.weekSun) +
-            ' (Australia/Adelaide, Mon–Sun week). The trade grid can show other dates when Period is All time.';
         }
       }
 
@@ -1986,11 +1959,11 @@
         var sort = activeFilters.sort;
         if (sort === 'newest') {
           var maxR = filteredTrades.reduce(function (acc, t) {
-            var r = tradeRankDayMs(t);
+            var r = tradeSortRankMs(t);
             if (isNaN(r)) return acc;
             return r > acc ? r : acc;
           }, -Infinity);
-          var firstR = tradeRankDayMs(filteredTrades[0]);
+          var firstR = tradeSortRankMs(filteredTrades[0]);
           if (!isNaN(maxR) && !isNaN(firstR) && firstR !== maxR) {
             console.warn('[jn_debug] Sort newest: top row day-rank', firstR, '!== max', maxR);
           }
@@ -2007,11 +1980,11 @@
         }
         if (sort === 'oldest' && filteredTrades.length > 0) {
           var minR = filteredTrades.reduce(function (acc, t) {
-            var r = tradeRankDayMs(t);
+            var r = tradeSortRankMs(t);
             if (isNaN(r)) return acc;
             return acc === Infinity || r < acc ? r : acc;
           }, Infinity);
-          var firstR0 = tradeRankDayMs(filteredTrades[0]);
+          var firstR0 = tradeSortRankMs(filteredTrades[0]);
           if (minR !== Infinity && !isNaN(firstR0) && firstR0 !== minR) {
             console.warn('[jn_debug] Sort oldest: top row day-rank', firstR0, '!== min', minR);
           }
@@ -2055,7 +2028,7 @@
             filteredTrades.slice(0, 10).map(function (t) {
               var sk = tradeDateKeySort(t);
               var raw = resolveTradeDateRaw(t);
-              var rk = tradeRankDayMs(t);
+              var rk = tradeSortRankMs(t);
               return (isNaN(rk) ? 'NaN' : rk) + ' | ' + sk + ' | ' + String(raw).slice(0, 36);
             }));
         }
@@ -2739,6 +2712,8 @@
           renderWeeklyStats(computeWeeklyStats(allTrades));
           buildFilterOptions(allTrades);
           applyFilters();
+          updateAccordionLabels();
+          updateFilterDot();
         } catch(e) { /* silent */ }
       }
 
@@ -2786,6 +2761,8 @@
         renderWeeklyStats(computeWeeklyStats(allTrades));
         buildFilterOptions(allTrades);
         applyFilters();
+        updateAccordionLabels();
+        updateFilterDot();
       }
 
       // ── Premium animation layer ──
