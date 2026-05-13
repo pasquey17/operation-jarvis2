@@ -324,6 +324,13 @@
         overflow: hidden;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 60px rgba(0, 0, 0, 0.5);
         transition: border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        min-height: min(52vh, 560px);
+        display: flex;
+        flex-direction: column;
+      }
+      .cal-board .cal-grid {
+        flex: 1;
+        min-height: 240px;
       }
       .cal-board:hover {
         border-color: rgba(0, 212, 255, 0.26);
@@ -369,8 +376,8 @@
         color: rgba(0, 212, 255, 0.85);
       }
       .cal-cell {
-        min-height: 140px;
-        padding: 10px 10px 12px;
+        min-height: 188px;
+        padding: 12px 12px 14px;
         background: rgba(2, 6, 12, 0.94);
         cursor: pointer;
         transition:
@@ -461,10 +468,19 @@
       }
       .cal-date__num {
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 12px;
+        font-size: clamp(14px, 1.35vw, 17px);
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.75);
+        color: rgba(255, 255, 255, 0.82);
+      }
+      .cal-date__when {
+        margin-top: 6px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.55);
+        line-height: 1.35;
       }
       .cal-date__meta {
         font-family: "Share Tech Mono", "Courier New", monospace;
@@ -664,10 +680,10 @@
 
       /* ── Trade detail modal + charts (match journal.html) ── */
       .jn-expand-inner {
-        padding: 13px 12px 14px;
+        padding: 18px 20px 28px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 14px;
         background: rgba(4, 9, 18, 0.45);
       }
       .jn-trade-modal .jn-expand-inner {
@@ -754,10 +770,10 @@
         inset: 0;
         z-index: 199000;
         display: flex;
-        align-items: center;
+        align-items: stretch;
         justify-content: center;
-        padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
-          max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+        padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+          max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
       }
       .jn-trade-modal[hidden] {
         display: none !important;
@@ -773,11 +789,14 @@
       .jn-trade-modal__panel {
         position: relative;
         z-index: 1;
-        width: min(100%, 580px);
-        max-height: min(90vh, 920px);
+        width: 100%;
+        max-width: min(1100px, 100%);
+        height: min(100dvh, 100%);
+        max-height: min(100dvh, 100%);
+        margin: 0 auto;
         display: flex;
         flex-direction: column;
-        border-radius: var(--radius-panel, 20px);
+        border-radius: 0;
         border: 1px solid rgba(0, 212, 255, 0.2);
         border-left-width: 4px;
         border-left-color: rgba(0, 212, 255, 0.25);
@@ -787,14 +806,36 @@
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
       }
+      @media (min-width: 900px) {
+        .jn-trade-modal__panel {
+          border-radius: 16px;
+          height: min(96dvh, 920px);
+          max-height: min(96dvh, 920px);
+        }
+      }
+      @keyframes jn-modal-in {
+        from {
+          opacity: 0;
+          transform: scale(0.96) translateY(10px);
+          filter: blur(4px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+          filter: blur(0);
+        }
+      }
+      .jn-trade-modal:not([hidden]) .jn-trade-modal__panel {
+        animation: jn-modal-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
       .jn-trade-modal__panel[data-outcome="win"] {
-        border-left-color: #00ff88;
+        border-left-color: #00ff88 !important;
       }
       .jn-trade-modal__panel[data-outcome="loss"] {
-        border-left-color: #ff5050;
+        border-left-color: #ff4466 !important;
       }
       .jn-trade-modal__panel[data-outcome="be"] {
-        border-left-color: rgba(192, 192, 192, 0.35);
+        border-left-color: #8899aa !important;
       }
       .jn-trade-modal__head {
         flex-shrink: 0;
@@ -802,13 +843,19 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 12px 14px;
+        padding: 14px 18px;
         border-bottom: 1px solid rgba(0, 212, 255, 0.14);
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: rgba(4, 9, 18, 0.96);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
       .jn-trade-modal__title {
         margin: 0;
         font-family: "Outfit", system-ui, sans-serif;
-        font-size: 14px;
+        font-size: clamp(15px, 2.2vw, 18px);
         font-weight: 600;
         color: rgba(255, 255, 255, 0.95);
         letter-spacing: 0.02em;
@@ -843,7 +890,7 @@
       }
       .jn-trade-modal__hero {
         width: 100%;
-        max-height: min(260px, 36vh);
+        max-height: min(360px, 42vh);
         background: rgba(4, 9, 18, 0.98);
         border-bottom: 1px solid rgba(0, 212, 255, 0.12);
         line-height: 0;
@@ -852,9 +899,19 @@
         display: block;
         width: 100%;
         height: auto;
-        max-height: min(260px, 36vh);
+        max-height: min(360px, 42vh);
         object-fit: contain;
         object-position: center top;
+      }
+      .cal-notion-link {
+        color: #00d4ff;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(0, 212, 255, 0.35);
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .cal-notion-link:hover {
+        color: #ffffff;
+        border-bottom-color: rgba(0, 212, 255, 0.75);
       }
       .jn-lightbox {
         position: fixed;
@@ -961,7 +1018,7 @@
           justify-content: flex-start;
         }
         .cal-cell {
-          min-height: 110px;
+          min-height: 135px;
         }
         .cal-chip {
           font-size: 8px;
@@ -1403,6 +1460,33 @@
           try { return dayKey(new Date()); } catch (e) { return ""; }
         })();
 
+        function firstTradeDayHint(list) {
+          if (!list || !list.length) return "";
+          var t = list[0];
+          var d = tradeDate(t);
+          if (isNaN(d)) return "";
+          var sess = getField(t, "session", "Session", "SESSION");
+          var timeStr = "";
+          try {
+            timeStr = d.toLocaleTimeString("en-AU", {
+              timeZone: TZ,
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+          } catch (e) {
+            try {
+              timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            } catch (e2) {
+              timeStr = "";
+            }
+          }
+          if (sess && timeStr) return String(sess).toUpperCase() + " · " + timeStr;
+          if (timeStr) return timeStr;
+          if (sess) return String(sess).toUpperCase();
+          return "";
+        }
+
         function buildCell(dUtcLike, muted) {
           var p = partsYMD(dUtcLike);
           var key = p.y + "-" + p.m + "-" + p.d;
@@ -1433,6 +1517,13 @@
           el.appendChild(top);
 
           if (hasTrades) {
+            var dayHint = firstTradeDayHint(list);
+            if (dayHint) {
+              var whenEl = document.createElement("div");
+              whenEl.className = "cal-date__when";
+              whenEl.textContent = dayHint;
+              el.appendChild(whenEl);
+            }
             var wins = 0, losses = 0, bes = 0, netR = 0;
             list.forEach(function (t) {
               var o = normalizeOutcome(getField(t, "outcome", "Outcome", "OUTCOME"));
@@ -1688,7 +1779,7 @@
             }
             if (item && typeof item === "object" && typeof item.url === "string") {
               var u = item.url.trim();
-              if (!/^https?:\/\//i.test(u)) continue;
+              if (!/^https?:\/\//i.test(u) && !/^data:/i.test(u)) continue;
               var lbl = typeof item.label === "string" ? item.label.trim() : "";
               out.push({ url: u, label: lbl });
             }
@@ -1724,6 +1815,7 @@
         function tradePhotosSectionHtml(trade) {
           var items = tradeImageItems(trade);
           if (!items.length) return "";
+          var nid = escAttr(trade.notion_id || "");
           var thumbs = items
             .map(function (it, ix) {
               var cap = it.label ? it.label.replace(/\s*:+\s*$/, "").trim() : "";
@@ -1738,11 +1830,17 @@
                 escAttr(it.url) +
                 '" data-caption="' +
                 escAttr(dataCap) +
+                '" data-notion-id="' +
+                nid +
                 '" aria-label="Expand chart">' +
                 '<img class="jn-photo-thumb" src="' +
                 escAttr(it.url) +
                 '" alt="' +
                 escAttr(lineLabel) +
+                '" data-notion-id="' +
+                nid +
+                '" data-img-idx="' +
+                ix +
                 '" loading="lazy" decoding="async" />' +
                 "</button>" +
                 "</div>"
@@ -1759,24 +1857,94 @@
           );
         }
 
+        function tradeChartsSectionHtml(trade) {
+          var photos = tradePhotosSectionHtml(trade);
+          if (photos) return photos;
+          var nu = getField(trade, "notion_url", "notionUrl", "NOTION_URL") || "";
+          nu = String(nu).trim();
+          if (nu && /^https?:\/\//i.test(nu)) {
+            return (
+              '<div class="jn-detail">' +
+              '<span class="jn-detail__label">Charts</span>' +
+              '<p class="jn-detail__value">' +
+              '<a class="cal-notion-link" href="' +
+              escAttr(nu) +
+              '" target="_blank" rel="noopener noreferrer">Open in Notion for screenshots</a>' +
+              "</p>" +
+              "</div>"
+            );
+          }
+          return "";
+        }
+
         function tradeModalHeroHtml(trade) {
           var imgItems = tradeImageItems(trade);
           var coverItem = tradeCardCoverItem(imgItems);
           if (!coverItem || !coverItem.url) return "";
+          var nid = escAttr(trade.notion_id || "");
           return (
             '<div class="jn-trade-modal__hero">' +
             '<img class="jn-trade-modal__hero-img" src="' +
             escAttr(coverItem.url) +
-            '" alt="" decoding="async" />' +
+            '" alt="" data-notion-id="' +
+            nid +
+            '" data-img-idx="0" decoding="async" />' +
             "</div>"
           );
         }
 
         function tradeDetailPaneCalendarHtml(trade) {
+          var pair = getField(trade, "pair", "Pair", "PAIR", "instrument", "symbol") || "";
+          var session = getField(trade, "session", "Session", "SESSION") || "";
           var model = getField(trade, "model", "Model", "MODEL", "ENTRY MODEL") || "";
           var notes = getField(trade, "notes", "Notes", "NOTE", "TRADE SUMMARY") || "";
+          var account = getField(trade, "account", "Account", "ACCOUNT") || "";
           var dateFull = formatDateFullCal(trade);
+          var outcome = normalizeOutcome(getField(trade, "outcome", "Outcome", "OUTCOME"));
+          var outcomeLabel =
+            outcome === "win" ? "WIN" : outcome === "loss" ? "LOSS" : outcome === "be" ? "BE" : (outcome || "—").toUpperCase();
+          var dir = getTradeDirection(trade);
+          var dirLabel = dir ? dir.toUpperCase() : "—";
+          var rrRaw = parseFloat(getField(trade, "rr", "RR"));
+          var rrDisplay;
+          if (!isNaN(rrRaw)) {
+            rrDisplay = (rrRaw >= 0 ? "+" : "") + rrRaw.toFixed(2) + "R";
+          } else if (outcome === "loss") {
+            rrDisplay = "−1R";
+          } else {
+            rrDisplay = "—";
+          }
+
           var parts = [];
+          if (pair) {
+            parts.push(
+              '<div class="jn-detail"><span class="jn-detail__label">Pair</span><span class="jn-detail__value">' +
+                escAttr(String(pair).toUpperCase()) +
+                "</span></div>"
+            );
+          }
+          parts.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Direction</span><span class="jn-detail__value">' +
+              escAttr(dirLabel) +
+              "</span></div>"
+          );
+          parts.push(
+            '<div class="jn-detail"><span class="jn-detail__label">Outcome</span><span class="jn-detail__value">' +
+              escAttr(outcomeLabel) +
+              "</span></div>"
+          );
+          if (session) {
+            parts.push(
+              '<div class="jn-detail"><span class="jn-detail__label">Session</span><span class="jn-detail__value">' +
+                escAttr(session) +
+                "</span></div>"
+            );
+          }
+          parts.push(
+            '<div class="jn-detail"><span class="jn-detail__label">R multiple</span><span class="jn-detail__value">' +
+              escAttr(rrDisplay) +
+              "</span></div>"
+          );
           if (model) {
             parts.push(
               '<div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' +
@@ -1789,6 +1957,13 @@
               escAttr(dateFull) +
               "</span></div>"
           );
+          if (account) {
+            parts.push(
+              '<div class="jn-detail"><span class="jn-detail__label">Account</span><span class="jn-detail__value">' +
+                escAttr(account) +
+                "</span></div>"
+            );
+          }
           if (notes) {
             parts.push(
               '<div class="jn-detail"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' +
@@ -1796,7 +1971,7 @@
                 "</p></div>"
             );
           }
-          parts.push(tradePhotosSectionHtml(trade));
+          parts.push(tradeChartsSectionHtml(trade));
           parts.push(
             '<button class="jn-ask-btn" type="button" data-cal-ask="1">Ask Jarvis about this trade</button>'
           );
@@ -1934,6 +2109,49 @@
             if (jid && u && String(u.id) === jid) return j;
           }
           return -1;
+        }
+
+        var calendarImgRefreshBound = false;
+        function bindCalendarImageRefreshOnce() {
+          if (calendarImgRefreshBound) return;
+          calendarImgRefreshBound = true;
+          document.addEventListener(
+            "error",
+            function (e) {
+              var img = e.target;
+              if (img.tagName !== "IMG") return;
+              var notionId = img.dataset.notionId;
+              if (!notionId || img.dataset.imgRefreshed) return;
+              document.querySelectorAll('img[data-notion-id="' + notionId + '"]').forEach(function (el) {
+                el.dataset.imgRefreshed = "1";
+              });
+              var uid = currentUserId || DEFAULT_USER_ID;
+              fetch(
+                "/api/refresh-trade-image?notion_id=" +
+                  encodeURIComponent(notionId) +
+                  "&user_id=" +
+                  encodeURIComponent(uid),
+                { cache: "no-store" }
+              )
+                .then(function (r) {
+                  return r.ok ? r.json() : Promise.reject(r.status);
+                })
+                .then(function (data) {
+                  if (!Array.isArray(data.images) || !data.images.length) return;
+                  document.querySelectorAll('img[data-notion-id="' + notionId + '"]').forEach(function (el) {
+                    var idx = parseInt(el.dataset.imgIdx || "0", 10);
+                    var row = data.images[idx] || data.images[0];
+                    var freshUrl = row && row.url;
+                    if (freshUrl) el.src = freshUrl;
+                  });
+                  document.querySelectorAll('[data-notion-id="' + notionId + '"][data-src]').forEach(function (btn, i) {
+                    if (data.images[i]) btn.dataset.src = data.images[i].url;
+                  });
+                })
+                .catch(function () {});
+            },
+            true
+          );
         }
 
         function wireTradeDetailModal() {
@@ -2133,6 +2351,7 @@
           }
 
           wireTradeDetailModal();
+          bindCalendarImageRefreshOnce();
 
           var prev = document.getElementById("btn-prev");
           var next = document.getElementById("btn-next");
