@@ -2,7 +2,7 @@
 
 ## Supabase schema (required once per project)
 
-If the Account page shows an error like **Could not find the table `public.trading_accounts` in the schema cache**, the Postgres table has not been created in that Supabase project yet.
+If the Account page shows an error like **Could not find the table `public.trading_accounts` in the schema cache**, the Postgres table has not been created in that Supabase project yet. The live Account page also surfaces a compact **“Supabase table missing”** panel with the same steps.
 
 1. Open the [Supabase dashboard](https://supabase.com/dashboard) for your project.
 2. Go to **SQL Editor**.

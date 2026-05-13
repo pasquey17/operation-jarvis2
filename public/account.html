@@ -15,7 +15,8 @@
     <style>
       html,
       body {
-        overflow: auto !important;
+        overflow-x: clip;
+        overflow-y: auto;
         height: auto !important;
         min-height: 100dvh !important;
         background: #050a14 !important;
@@ -200,13 +201,10 @@
       .ac-news-ticker__meta {
         flex-shrink: 0;
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         justify-content: center;
-        gap: 4px;
-        padding: 0 12px 0 16px;
+        padding: 0 14px 0 16px;
         border-right: 1px solid rgba(0, 212, 255, 0.12);
-        max-width: min(148px, 34vw);
       }
       .ac-news-ticker__pill {
         display: inline-block;
@@ -214,28 +212,12 @@
         font-size: 9px;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 6px;
         border: 1px solid rgba(0, 212, 255, 0.35);
         color: rgba(0, 212, 255, 0.92);
         line-height: 1.35;
-      }
-      .ac-news-ticker__label {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: rgba(236, 242, 247, 0.55);
-        line-height: 1.35;
-      }
-      .ac-news-ticker__note {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.08em;
-        line-height: 1.4;
-        color: rgba(236, 242, 247, 0.38);
-        text-transform: none;
-        max-width: 11em;
+        cursor: default;
       }
       .ac-news-ticker__track {
         flex: 1;
@@ -360,32 +342,35 @@
         position: relative;
         z-index: 1;
         padding: 120px 0 80px;
+        overflow-x: clip;
+        max-width: 100%;
       }
       .ac-shell {
-        width: min(1440px, calc(100vw - 40px));
-        max-width: 100%;
+        width: 100%;
+        max-width: 1440px;
         margin: 0 auto;
         min-width: 0;
+        padding: 0 20px;
+        box-sizing: border-box;
       }
       .ac-layout {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
         gap: 28px 32px;
         align-items: start;
+        min-width: 0;
       }
       .ac-layout__main {
         min-width: 0;
+        min-height: 0;
       }
       .ac-layout__aside {
         min-width: 0;
+        min-height: 0;
         position: sticky;
         top: var(--ac-sticky-top);
         align-self: start;
-        max-height: calc(100dvh - var(--ac-sticky-top) - 20px);
-        overflow-y: auto;
-        overflow-x: hidden;
         padding-left: 28px;
-        margin-right: -4px;
         border-left: 1px solid rgba(0, 212, 255, 0.14);
         box-shadow: -12px 0 40px rgba(0, 0, 0, 0.25);
       }
@@ -449,16 +434,33 @@
           padding: 112px 0 72px;
         }
         .ac-shell {
-          width: min(1440px, calc(100vw - 24px));
+          width: 100%;
+          max-width: 100%;
+          padding: 0 12px;
         }
       }
       .ac-header {
+        margin-bottom: 12px;
+      }
+      .ac-controls {
         display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 22px;
         flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 20px;
+        margin-bottom: 18px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 212, 255, 0.12);
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .ac-controls__hint {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        color: rgba(236, 242, 247, 0.38);
+        line-height: 1.45;
+        flex: 1 1 200px;
+        min-width: 0;
       }
       .ac-title {
         margin: 0 0 6px;
@@ -477,12 +479,6 @@
         color: rgba(255, 255, 255, 0.32);
         letter-spacing: 0.14em;
         text-transform: uppercase;
-      }
-      .ac-toolbar {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
       }
       .ac-btn {
         padding: 8px 16px;
@@ -540,8 +536,98 @@
         color: rgba(255, 255, 255, 0.42);
         text-transform: none;
       }
-
-      .ac-grid {
+      .ac-status--panel {
+        padding: 14px 16px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 120, 130, 0.35);
+        background: rgba(40, 8, 12, 0.55);
+        color: rgba(236, 242, 247, 0.88);
+        margin-bottom: 16px;
+      }
+      .ac-status--panel.ac-status--err {
+        color: rgba(236, 242, 247, 0.88);
+      }
+      .ac-setup__head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+      .ac-setup__tag {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 8px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 140, 150, 0.45);
+        color: rgba(255, 170, 175, 0.95);
+      }
+      .ac-setup__title {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255, 210, 210, 0.95);
+        font-weight: 500;
+      }
+      .ac-setup__lead {
+        margin: 0 0 10px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        line-height: 1.55;
+        color: rgba(236, 242, 247, 0.72);
+      }
+      .ac-setup__code {
+        font-size: 9px;
+        color: rgba(0, 212, 255, 0.85);
+        letter-spacing: 0.04em;
+      }
+      .ac-setup__toggle {
+        margin-bottom: 10px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.35);
+        color: rgba(236, 242, 247, 0.85);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .ac-setup__toggle:hover {
+        border-color: rgba(0, 212, 255, 0.35);
+        color: #00d4ff;
+      }
+      .ac-setup__steps {
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .ac-setup__ol {
+        margin: 0;
+        padding-left: 1.2em;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.04em;
+        line-height: 1.65;
+        color: rgba(236, 242, 247, 0.78);
+      }
+      .ac-setup__ol li {
+        margin-bottom: 4px;
+      }
+      .ac-setup__raw {
+        margin: 0;
+        font-size: 8px;
+        letter-spacing: 0.04em;
+        color: rgba(255, 200, 200, 0.45);
+        word-break: break-word;
+      }
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
         gap: 20px;
@@ -1180,11 +1266,15 @@
     </script>
 
     <!-- Curated JSON at /data/news-today.json — no RSS/CORS in v1 (see fetchNewsTicker). -->
-    <div class="ac-news-ticker" id="ac-news-ticker" aria-label="Curated session brief" hidden>
+    <div
+      class="ac-news-ticker"
+      id="ac-news-ticker"
+      aria-label="Curated session brief"
+      title="Loads from /data/news-today.json — a manual file in the repo, not a live feed or scrape."
+      hidden
+    >
       <div class="ac-news-ticker__meta">
         <span class="ac-news-ticker__pill">Curated</span>
-        <span class="ac-news-ticker__label">Brief</span>
-        <span class="ac-news-ticker__note">Manual JSON — not a live feed.</span>
       </div>
       <div class="ac-news-ticker__track">
         <div class="ac-news-ticker__inner" id="ac-news-inner"></div>
@@ -1202,12 +1292,13 @@
                 <h1 class="ac-title">Account</h1>
                 <p class="ac-sub">Manual equity · eval / funded / live</p>
               </div>
-              <div class="ac-toolbar">
-                <label class="ac-check"
-                  ><input type="checkbox" id="ac-show-archived" /> Show archived</label
-                >
-              </div>
             </header>
+            <div class="ac-controls">
+              <label class="ac-check"
+                ><input type="checkbox" id="ac-show-archived" /> Show archived</label
+              >
+              <span class="ac-controls__hint">When checked, archived accounts are included in the grid.</span>
+            </div>
             <div class="ac-status" id="ac-status"></div>
 
             <div class="ac-grid" id="ac-grid"></div>
@@ -1775,17 +1866,47 @@
 
         function setStatus(msg, isErr) {
           var el = document.getElementById("ac-status");
-          var hint = "";
-          if (msg && String(msg).toLowerCase().indexOf("schema cache") !== -1) {
-            hint =
-              " Run schema/trading_accounts.sql in the Supabase SQL editor (project root), then reload this page.";
+          if (!msg) {
+            el.innerHTML = "";
+            el.className = "ac-status";
+            return;
           }
-          el.innerHTML = msg
-            ? '<span class="ac-status__text">' +
-              escapeHtml(String(msg)) +
-              "</span>" +
-              (hint ? '<span class="ac-status__hint">' + escapeHtml(hint) + "</span>" : "")
-            : "";
+          var m = String(msg);
+          var low = m.toLowerCase();
+          var isTradingAccounts =
+            isErr &&
+            (low.indexOf("trading_accounts") !== -1 ||
+              (low.indexOf("schema cache") !== -1 && low.indexOf("table") !== -1));
+          if (isTradingAccounts) {
+            el.className = "ac-status ac-status--panel ac-status--err";
+            el.innerHTML =
+              '<div class="ac-setup__head">' +
+              '<span class="ac-setup__tag">Setup</span>' +
+              '<strong class="ac-setup__title">Supabase table missing</strong></div>' +
+              '<p class="ac-setup__lead">The Account page needs <code class="ac-setup__code">public.trading_accounts</code>. ' +
+              "The browser cannot create it — run the SQL once in your Supabase project.</p>" +
+              '<button type="button" class="ac-setup__toggle" id="ac-setup-toggle" aria-expanded="false">Show steps</button>' +
+              '<div class="ac-setup__steps" id="ac-setup-steps" hidden>' +
+              '<ol class="ac-setup__ol">' +
+              "<li>Open Supabase Dashboard → your project → <strong>SQL Editor</strong>.</li>" +
+              '<li>Open <code class="ac-setup__code">schema/trading_accounts.sql</code> in this repo, copy the full file, paste, <strong>Run</strong>.</li>' +
+              "<li>Reload this page. Checklist: <code class=\"ac-setup__code\">DEPLOY.md</code> at repo root.</li>" +
+              "</ol>" +
+              '<p class="ac-setup__raw">' +
+              escapeHtml(m) +
+              "</p></div>";
+            return;
+          }
+          var hint = "";
+          if (low.indexOf("schema cache") !== -1) {
+            hint =
+              " Run schema/trading_accounts.sql in the Supabase SQL editor (see DEPLOY.md), then reload.";
+          }
+          el.innerHTML =
+            '<span class="ac-status__text">' +
+            escapeHtml(m) +
+            "</span>" +
+            (hint ? '<span class="ac-status__hint">' + escapeHtml(hint) + "</span>" : "");
           el.className = "ac-status" + (isErr ? " ac-status--err" : "");
         }
 
@@ -1817,6 +1938,16 @@
         }
 
         document.getElementById("ac-show-archived").addEventListener("change", loadAccounts);
+
+        document.getElementById("ac-status").addEventListener("click", function (e) {
+          var btn = e.target.closest("#ac-setup-toggle");
+          if (!btn) return;
+          var steps = document.getElementById("ac-setup-steps");
+          if (!steps) return;
+          steps.hidden = !steps.hidden;
+          btn.setAttribute("aria-expanded", steps.hidden ? "false" : "true");
+          btn.textContent = steps.hidden ? "Show steps" : "Hide steps";
+        });
 
         document.getElementById("ac-grid").addEventListener("submit", function (e) {
           if (!e.target.classList.contains("ac-snap-form")) return;
