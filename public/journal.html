@@ -1040,13 +1040,51 @@
       }
 
       /**
-       * Trade date parsing for sort + filters.
-       * — ISO / Postgres timestamptz: parsed as instant (space before time normalised to T).
-       * — Plain YYYY-MM-DD (DATE column): UTC noon so calendar day is stable.
-       * — Display strings "DD Mon YYYY"; Unix ms numbers.
+       * Trade date parsing for sort + filters (same anchor as card headline via Adelaide).
+       * Priority: core columns → custom_data (manual journal) → notion_extras.Date-like keys.
+       * Plain YYYY-MM-DD → UTC noon; timestamps keep instant for intraday order.
        */
+      function tradeDateFromExtras(ex) {
+        if (!ex || typeof ex !== 'object') return '';
+        var v =
+          ex.Date ||
+          ex.date ||
+          ex['Trade Date'] ||
+          ex['trade date'] ||
+          ex['DATE'] ||
+          '';
+        return v !== undefined && v !== null && v !== '' ? String(v).trim() : '';
+      }
+
       function tradeDate(t) {
-        var rawIn = getField(t, 'date', 'traded_at', 'Date');
+        var rawIn = getField(t, 'date', 'traded_at', 'Date', 'trade_date');
+        if ((rawIn == null || rawIn === '') && t.custom_data) {
+          var cd = t.custom_data;
+          if (typeof cd === 'string') {
+            try {
+              cd = JSON.parse(cd);
+            } catch (e1) {
+              cd = null;
+            }
+          }
+          if (cd && typeof cd === 'object') {
+            rawIn =
+              cd.date ||
+              cd.traded_at ||
+              cd.Date ||
+              cd.trade_date ||
+              '';
+          }
+        }
+        if ((rawIn == null || rawIn === '') && t.notion_extras) {
+          try {
+            var nx = parsedExtras(t);
+            if (nx && typeof nx === 'object') {
+              var fromEx = tradeDateFromExtras(nx);
+              if (fromEx) rawIn = fromEx;
+            }
+          } catch (e2) {}
+        }
         if (rawIn == null || rawIn === '') return new Date(NaN);
         if (typeof rawIn === 'number' && Number.isFinite(rawIn)) {
           var dn = new Date(rawIn);
@@ -1082,6 +1120,11 @@
         return new Date(NaN);
       }
 
+      /** Adelaide calendar day string — matches formatDateShort headline for sorting. */
+      function tradeDateKeySort(t) {
+        return dateKeyAdelaide(tradeDate(t));
+      }
+
       function jnDebugDates() {
         try {
           return typeof window !== 'undefined' && window.location.search.indexOf('jn_debug=1') !== -1;
@@ -1115,12 +1158,26 @@
       }
 
       function cmpSortNewest(a, b) {
+        var ka = tradeDateKeySort(a);
+        var kb = tradeDateKeySort(b);
+        if (ka !== kb) {
+          if (!ka && kb) return 1;
+          if (ka && !kb) return -1;
+          return kb.localeCompare(ka);
+        }
         var d = tradeDateMsNewest(b) - tradeDateMsNewest(a);
         if (d !== 0) return d;
         return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
       }
 
       function cmpSortOldest(a, b) {
+        var ka = tradeDateKeySort(a);
+        var kb = tradeDateKeySort(b);
+        if (ka !== kb) {
+          if (!ka && kb) return 1;
+          if (ka && !kb) return -1;
+          return ka.localeCompare(kb);
+        }
         var d = tradeDateMsOldest(a) - tradeDateMsOldest(b);
         if (d !== 0) return d;
         return tradeIdTiebreak(a).localeCompare(tradeIdTiebreak(b));
@@ -1245,7 +1302,7 @@
 
       function formatDateShort(t) {
         var d = tradeDate(t);
-        if (isNaN(d)) return '—';
+        if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
         try {
           return d.toLocaleDateString('en-AU', {
             timeZone: 'Australia/Adelaide', day: 'numeric', month: 'short', year: 'numeric'
@@ -1255,7 +1312,7 @@
 
       function formatDateFull(t) {
         var d = tradeDate(t);
-        if (isNaN(d)) return '—';
+        if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
         try {
           return d.toLocaleString('en-AU', {
             timeZone: 'Australia/Adelaide', weekday: 'long',
@@ -1745,7 +1802,7 @@
           elRange.textContent =
             'Weekly pills count trades dated ' +
             stats.weekMon +
-            '–' +
+            ' to ' +
             stats.weekSun +
             ' (Australia/Adelaide, Mon–Sun week). The trade grid can show other dates when Period is All time.';
         }
