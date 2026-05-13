@@ -11,78 +11,33 @@
     <link rel="stylesheet" href="/css/style.css" />
     <style>
       html, body {
-        overflow: auto !important;
-        height: auto !important;
-        min-height: 100dvh !important;
-        background: #050a14 !important;
+        overflow: auto !important; height: auto !important;
+        min-height: 100dvh !important; background: #050a14 !important;
       }
 
       /* ═══ NAV ═══ */
       .jv-nav {
-        position: fixed; top: 0; left: 0; right: 0; height: 52px;
-        z-index: 1000; background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        position: fixed; top: 0; left: 0; right: 0; height: 52px; z-index: 1000;
+        background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         border-bottom: 1px solid rgba(0,212,255,0.2);
         display: flex; align-items: center; padding: 0 24px; gap: 0;
       }
-      .jv-nav__brand {
-        color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important;
-        font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase;
-        white-space: nowrap; flex-shrink: 0; text-decoration: none;
-      }
-      .jv-nav__links {
-        display: flex; align-items: center; gap: 32px; list-style: none;
-        margin: 0 auto; padding: 0;
-      }
-      .jv-nav__links a {
-        color: rgba(255,255,255,0.5) !important; text-decoration: none;
-        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px;
-        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
-        padding-bottom: 2px; border-bottom: 1px solid transparent;
-        transition: color 0.2s, border-color 0.2s;
-      }
+      .jv-nav__brand { color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; text-decoration: none; }
+      .jv-nav__links { display: flex; align-items: center; gap: 32px; list-style: none; margin: 0 auto; padding: 0; }
+      .jv-nav__links a { color: rgba(255,255,255,0.5) !important; text-decoration: none; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
       .jv-nav__links a:hover { color: rgba(255,255,255,0.85) !important; }
-      .jv-nav__links a.jv-nav--active,
-      .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
-      .jv-nav__user {
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px;
-        color: rgba(255,255,255,0.3); letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
-      }
-      .jv-nav__logout {
-        margin-left: 14px; padding: 6px 10px; border-radius: 999px;
-        border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06);
-        color: rgba(0,212,255,0.85) !important; font-family: "Share Tech Mono","Courier New",monospace !important;
-        font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
-        cursor: pointer; transition: background 0.2s, border-color 0.2s;
-      }
+      .jv-nav__links a.jv-nav--active, .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
+      .jv-nav__user { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0; }
+      .jv-nav__logout { margin-left: 14px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.85) !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
       .jv-nav__logout:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.55); }
-      .jv-nav__hamburger {
-        display: none; flex-direction: column; justify-content: center; gap: 5px;
-        background: none; border: none; cursor: pointer; padding: 4px;
-        margin-left: auto; flex-shrink: 0;
-      }
-      .jv-nav__hamburger span {
-        display: block; width: 20px; height: 1.5px;
-        background: rgba(255,255,255,0.6); border-radius: 2px; transition: background 0.2s;
-      }
+      .jv-nav__hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; margin-left: auto; flex-shrink: 0; }
+      .jv-nav__hamburger span { display: block; width: 20px; height: 1.5px; background: rgba(255,255,255,0.6); border-radius: 2px; transition: background 0.2s; }
       .jv-nav__hamburger:hover span { background: #00d4ff; }
-      .jv-nav__dropdown {
-        display: none; position: fixed; top: 52px; left: 0; right: 0;
-        background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,212,255,0.15);
-        z-index: 999; flex-direction: column; padding: 8px 0;
-      }
+      .jv-nav__dropdown { display: none; position: fixed; top: 52px; left: 0; right: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,212,255,0.15); z-index: 999; flex-direction: column; padding: 8px 0; }
       .jv-nav__dropdown.jv-nav--open { display: flex; }
-      .jv-nav__dropdown a {
-        color: rgba(255,255,255,0.5) !important; text-decoration: none;
-        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px;
-        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
-        padding: 12px 24px; border-left: 2px solid transparent;
-        transition: color 0.2s, border-color 0.2s;
-      }
+      .jv-nav__dropdown a { color: rgba(255,255,255,0.5) !important; text-decoration: none; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px; font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase; padding: 12px 24px; border-left: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
       .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85) !important; }
-      .jv-nav__dropdown a.jv-nav--active,
-      .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff !important; border-left-color: #00d4ff; }
+      .jv-nav__dropdown a.jv-nav--active, .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff !important; border-left-color: #00d4ff; }
       @media (max-width: 768px) {
         .jv-nav__links, .jv-nav__user { display: none; }
         .jv-nav__hamburger { display: flex; }
@@ -90,176 +45,142 @@
       }
 
       /* ═══ PAGE ═══ */
-      .an-page {
-        position: relative; z-index: 1;
-        padding: 76px 0 80px;
-      }
-      .an-shell {
-        width: min(1320px, calc(100vw - 40px));
-        margin: 0 auto;
-      }
+      .an-page { position: relative; z-index: 1; padding: 76px 0 80px; }
+      .an-shell { width: min(1320px, calc(100vw - 40px)); margin: 0 auto; }
 
       /* ═══ HEADER ═══ */
-      .an-header {
-        display: flex; align-items: flex-start; justify-content: space-between;
-        gap: 16px; margin-bottom: 24px; padding-top: 12px;
-      }
+      .an-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding-top: 12px; }
       .an-header__left { flex: 1; min-width: 0; }
-      .an-title {
-        margin: 0 0 6px;
-        font-family: "Outfit", system-ui, sans-serif;
-        font-weight: 200;
-        font-size: clamp(2rem, 5vw, 52px);
-        color: #ffffff;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08);
-      }
-      .an-subtitle {
-        margin: 0; font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px; color: rgba(255,255,255,0.3);
-        letter-spacing: 0.14em; text-transform: uppercase;
-      }
-      .an-badge {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 8px 14px; border-radius: 999px;
-        border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06);
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
-        color: rgba(0,212,255,0.85); white-space: nowrap; flex-shrink: 0;
-      }
-      .an-badge__dot {
-        width: 6px; height: 6px; border-radius: 50%;
-        background: rgba(0,212,255,0.9); box-shadow: 0 0 10px rgba(0,212,255,0.7);
-        animation: anPulse 1.7s ease-in-out infinite;
-      }
-      @keyframes anPulse {
-        0%, 100% { transform: scale(1); opacity: 0.65; }
-        50% { transform: scale(1.2); opacity: 1; }
-      }
+      .an-title { margin: 0 0 6px; font-family: "Outfit",system-ui,sans-serif; font-weight: 200; font-size: clamp(2rem,5vw,52px); color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08); }
+      .an-subtitle { margin: 0; font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.14em; text-transform: uppercase; }
+      .an-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06); font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(0,212,255,0.85); white-space: nowrap; flex-shrink: 0; }
+      .an-badge__dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,212,255,0.9); box-shadow: 0 0 10px rgba(0,212,255,0.7); animation: anPulse 1.7s ease-in-out infinite; }
+      @keyframes anPulse { 0%,100%{transform:scale(1);opacity:.65}50%{transform:scale(1.2);opacity:1} }
 
       /* ═══ FILTER BAR ═══ */
-      .an-filter-bar {
-        display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
-        padding: 14px 18px; margin-bottom: 22px;
-        background: rgba(4,9,18,0.9);
-        border: 1px solid rgba(0,212,255,0.12); border-radius: 14px;
-        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      }
-      .an-filter-group {
-        display: flex; align-items: center; gap: 6px;
-      }
-      .an-filter-label {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
-        color: rgba(0,212,255,0.7); white-space: nowrap;
-      }
-      .an-filter-input,
-      .an-filter-select {
-        background: rgba(0,0,0,0.55); border: 1px solid rgba(0,212,255,0.18);
-        border-radius: 7px; color: #fff;
-        font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px;
-        padding: 5px 9px; outline: none; color-scheme: dark;
-        transition: border-color 0.2s;
-        min-width: 0;
-      }
-      .an-filter-input:focus,
-      .an-filter-select:focus { border-color: rgba(0,212,255,0.5); }
+      .an-filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 18px; margin-bottom: 22px; background: rgba(4,9,18,0.9); border: 1px solid rgba(0,212,255,0.12); border-radius: 14px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+      .an-filter-group { display: flex; align-items: center; gap: 6px; }
+      .an-filter-label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,212,255,0.7); white-space: nowrap; }
+      .an-filter-input, .an-filter-select { background: rgba(0,0,0,0.55); border: 1px solid rgba(0,212,255,0.18); border-radius: 7px; color: #fff; font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; padding: 5px 9px; outline: none; color-scheme: dark; transition: border-color 0.2s; min-width: 0; }
+      .an-filter-input:focus, .an-filter-select:focus { border-color: rgba(0,212,255,0.5); }
       .an-filter-select { cursor: pointer; padding-right: 6px; }
       .an-filter-input[type="date"] { max-width: 140px; }
-      .an-filter-select { max-width: 160px; }
-      .an-filter-sep {
-        width: 1px; height: 20px; background: rgba(0,212,255,0.12);
-        flex-shrink: 0;
-      }
-      .an-filter-reset {
-        margin-left: auto; padding: 6px 14px; border-radius: 7px;
-        border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06);
-        color: rgba(0,212,255,0.8); font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
-        cursor: pointer; transition: background 0.2s, border-color 0.2s;
-      }
+      .an-filter-select { max-width: 180px; }
+      .an-filter-sep { width: 1px; height: 20px; background: rgba(0,212,255,0.12); flex-shrink: 0; }
+      .an-filter-reset { margin-left: auto; padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.8); font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
       .an-filter-reset:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.45); }
-      .an-filter-count {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-        color: rgba(255,255,255,0.3);
-      }
+      .an-filter-count { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.28); }
 
-      /* ═══ CHART GRID ═══ */
-      .an-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 18px;
-      }
+      /* ═══ GRID ═══ */
+      .an-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
       .an-card--wide { grid-column: 1 / -1; }
 
-      /* ═══ CHART CARD ═══ */
-      .an-card {
-        position: relative;
-        border-radius: 20px;
-        border: 1px solid rgba(0,212,255,0.13);
-        background: rgba(4,9,18,0.85);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 60px rgba(0,0,0,0.5);
-        overflow: hidden;
-        opacity: 0;
-        transform: translateY(18px);
-        transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1),
-                    transform 0.55s cubic-bezier(0.22,1,0.36,1),
-                    border-color 0.3s, box-shadow 0.3s;
-      }
-      .an-card--visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
-      .an-card:hover {
-        border-color: rgba(0,212,255,0.26);
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 24px 72px rgba(0,0,0,0.55), 0 0 36px rgba(0,191,255,0.05);
-      }
-      .an-card__top {
-        display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-        padding: 16px 18px 10px;
-      }
-      .an-card__eyebrow {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
-        color: rgba(0,212,255,0.85);
-      }
-      .an-card__meta {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-        color: rgba(255,255,255,0.28); white-space: nowrap;
-      }
-      .an-card__body { padding: 0 14px 16px; }
-      .an-canvas {
-        display: block; width: 100%; height: 280px;
-      }
+      /* ═══ CARD ═══ */
+      .an-card { position: relative; border-radius: 20px; border: 1px solid rgba(0,212,255,0.13); background: rgba(4,9,18,0.88); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 60px rgba(0,0,0,0.5); overflow: hidden; opacity: 0; transform: translateY(18px); transition: opacity .55s cubic-bezier(.22,1,.36,1), transform .55s cubic-bezier(.22,1,.36,1), border-color .3s, box-shadow .3s; }
+      .an-card--visible { opacity: 1; transform: translateY(0); }
+      .an-card:hover { border-color: rgba(0,212,255,0.26); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 24px 72px rgba(0,0,0,0.55), 0 0 36px rgba(0,191,255,0.05); }
+      .an-card__top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 18px 10px; }
+      .an-card__eyebrow { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,212,255,0.85); }
+      .an-card__meta { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.28); white-space: nowrap; }
+      .an-card__body { padding: 0 16px 22px; }
+      .an-canvas { display: block; width: 100%; height: 280px; }
       .an-canvas--tall { height: 320px; }
+      .an-canvas--mc { height: min(52vh, 520px); min-height: 380px; }
       .an-canvas--model { height: 380px; }
       .an-canvas--drawdown { height: 220px; }
 
-      /* ═══ FOOTER ═══ */
-      .an-foot {
-        margin-top: 20px; padding-bottom: 16px;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-        color: rgba(255,255,255,0.22); text-align: center;
+      /* ═══ MONTE CARLO — hero card ═══ */
+      #card-monte {
+        border-color: rgba(0, 212, 255, 0.22);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 28px 100px rgba(0, 0, 0, 0.55),
+          0 0 80px rgba(0, 212, 255, 0.06);
+      }
+      #card-monte .an-card__top { padding: 20px 22px 12px; }
+      #card-monte .an-card__eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        color: rgba(0, 212, 255, 0.95);
       }
 
-      /* ═══ LOADING STATE ═══ */
-      .an-loading {
-        display: flex; align-items: center; justify-content: center;
-        height: 280px; color: rgba(255,255,255,0.25);
+      /* ═══ MONTE CARLO EXTRAS ═══ */
+      .mc-sim-params {
+        margin: 0 20px 16px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        background: rgba(0, 212, 255, 0.05);
+        border: 1px solid rgba(0, 212, 255, 0.14);
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px; letter-spacing: 0.14em;
+        font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+        color: rgba(255,255,255,0.5);
+        line-height: 1.75;
       }
+      .mc-sim-params strong { color: #00d4ff; font-weight: 600; }
+
+      .mc-scenarios {
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+        padding: 12px 14px 16px;
+      }
+      .mc-scenario {
+        padding: 14px 16px; border-radius: 12px; border: 1px solid; background: transparent;
+        cursor: pointer; text-align: left; transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+        position: relative;
+      }
+      .mc-scenario--worst  { border-color: rgba(255,68,102,0.28); }
+      .mc-scenario--median { border-color: rgba(0,212,255,0.28); }
+      .mc-scenario--best   { border-color: rgba(0,255,136,0.28); }
+      .mc-scenario--worst:hover  { background: rgba(255,68,102,0.06); border-color: rgba(255,68,102,0.5); }
+      .mc-scenario--median:hover { background: rgba(0,212,255,0.06); border-color: rgba(0,212,255,0.5); }
+      .mc-scenario--best:hover   { background: rgba(0,255,136,0.06); border-color: rgba(0,255,136,0.5); }
+      .mc-scenario--worst.mc-active  { background: rgba(255,68,102,0.1); border-color: rgba(255,68,102,0.75); box-shadow: 0 0 18px rgba(255,68,102,0.2); }
+      .mc-scenario--median.mc-active { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.75); box-shadow: 0 0 18px rgba(0,212,255,0.2); }
+      .mc-scenario--best.mc-active   { background: rgba(0,255,136,0.1); border-color: rgba(0,255,136,0.75); box-shadow: 0 0 18px rgba(0,255,136,0.2); }
+      .mc-scenario__hint {
+        position: absolute; top: 8px; right: 10px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+        color: rgba(255,255,255,0.22);
+      }
+      .mc-active .mc-scenario__hint { color: rgba(255,255,255,0.45); }
+      .mc-scenario__label {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .mc-scenario--worst  .mc-scenario__label { color: rgba(255,68,102,0.8); }
+      .mc-scenario--median .mc-scenario__label { color: rgba(0,212,255,0.8); }
+      .mc-scenario--best   .mc-scenario__label { color: rgba(0,255,136,0.8); }
+      .mc-scenario__balance-label {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase;
+        color: rgba(255,255,255,0.28); margin-bottom: 6px;
+      }
+      .mc-scenario__final {
+        font-family: "Outfit",sans-serif; font-weight: 300;
+        font-size: clamp(1.4rem,2.5vw,1.9rem);
+        line-height: 1; margin-bottom: 12px; letter-spacing: 0.01em;
+      }
+      .mc-scenario--worst  .mc-scenario__final { color: rgba(255,68,102,0.95); }
+      .mc-scenario--median .mc-scenario__final { color: rgba(0,212,255,0.95); }
+      .mc-scenario--best   .mc-scenario__final { color: rgba(0,255,136,0.95); }
+      .mc-scenario__rows { display: flex; flex-direction: column; gap: 5px; }
+      .mc-scenario__row {
+        display: flex; justify-content: space-between;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; color: rgba(255,255,255,0.35); letter-spacing: 0.06em;
+      }
+      .mc-scenario__row span { color: rgba(255,255,255,0.68); }
+
+      /* ═══ FOOT ═══ */
+      .an-foot { margin-top: 20px; padding-bottom: 16px; font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.22); text-align: center; }
 
       /* ═══ RESPONSIVE ═══ */
       @media (max-width: 900px) {
         .an-grid { grid-template-columns: 1fr; }
         .an-card--wide { grid-column: 1; }
         .an-shell { width: min(1320px, calc(100vw - 24px)); }
+        .mc-scenarios { grid-template-columns: 1fr; gap: 8px; }
       }
       @media (max-width: 600px) {
         .an-page { padding-top: 68px; }
@@ -270,11 +191,13 @@
         .an-filter-select { max-width: 130px; }
         .an-canvas { height: 240px; }
         .an-canvas--tall { height: 260px; }
+        .an-canvas--mc { height: min(42vh, 360px); min-height: 280px; }
         .an-canvas--model { height: 320px; }
         .an-canvas--drawdown { height: 180px; }
+        .mc-scenarios { grid-template-columns: 1fr; }
       }
       @media (prefers-reduced-motion: reduce) {
-        .an-card { transition-duration: 0.01ms !important; animation: none !important; }
+        .an-card { transition-duration: 0.01ms !important; }
         .an-badge__dot { animation: none; }
       }
     </style>
@@ -284,12 +207,12 @@
     <nav class="jv-nav" aria-label="Main navigation">
       <a class="jv-nav__brand" href="/index.html">JARVIS</a>
       <ul class="jv-nav__links" role="list">
-        <li><a href="/index.html" id="nav-home">Home</a></li>
-        <li><a href="/journal.html" id="nav-journal">Journal</a></li>
-        <li><a href="/analytics.html" id="nav-analytics" class="jv-nav--active" aria-current="page">Analytics</a></li>
-        <li><a href="/calendar.html" id="nav-calendar">Calendar</a></li>
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/journal.html">Journal</a></li>
+        <li><a href="/analytics.html" class="jv-nav--active" aria-current="page">Analytics</a></li>
+        <li><a href="/calendar.html">Calendar</a></li>
       </ul>
-      <span class="jv-nav__user" id="jv-nav-user" aria-label="Current user"></span>
+      <span class="jv-nav__user" id="jv-nav-user"></span>
       <button class="jv-nav__logout" id="logout-btn" type="button">Logout</button>
       <button class="jv-nav__hamburger" id="jv-nav-hamburger" aria-label="Toggle navigation" aria-expanded="false" aria-controls="jv-nav-dropdown">
         <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
@@ -303,27 +226,24 @@
     </div>
     <script>
       (function () {
-        var user = localStorage.getItem('jarvis_user') || localStorage.getItem('user_id');
-        if (user) document.getElementById('jv-nav-user').textContent = user;
-        var logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', function () {
-            try { localStorage.removeItem('jarvis_user'); localStorage.removeItem('user_id'); } catch (e) {}
-            window.location.href = '/index.html';
-          });
-        }
+        var u = localStorage.getItem('jarvis_user') || localStorage.getItem('user_id');
+        if (u) document.getElementById('jv-nav-user').textContent = u;
+        document.getElementById('logout-btn').addEventListener('click', function () {
+          try { localStorage.removeItem('jarvis_user'); localStorage.removeItem('user_id'); } catch (e) {}
+          window.location.href = '/index.html';
+        });
         var btn = document.getElementById('jv-nav-hamburger');
-        var dropdown = document.getElementById('jv-nav-dropdown');
+        var dd = document.getElementById('jv-nav-dropdown');
         btn.addEventListener('click', function () {
-          var open = dropdown.classList.toggle('jv-nav--open');
+          var open = dd.classList.toggle('jv-nav--open');
           btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-          dropdown.setAttribute('aria-hidden', open ? 'false' : 'true');
+          dd.setAttribute('aria-hidden', open ? 'false' : 'true');
         });
         document.addEventListener('click', function (e) {
-          if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.classList.remove('jv-nav--open');
+          if (!btn.contains(e.target) && !dd.contains(e.target)) {
+            dd.classList.remove('jv-nav--open');
             btn.setAttribute('aria-expanded', 'false');
-            dropdown.setAttribute('aria-hidden', 'true');
+            dd.setAttribute('aria-hidden', 'true');
           }
         });
       })();
@@ -334,20 +254,19 @@
     <div class="an-page">
       <div class="an-shell">
 
-        <!-- Header -->
         <header class="an-header">
           <div class="an-header__left">
             <h1 class="an-title">ANALYTICS</h1>
             <p class="an-subtitle">System-level performance diagnostics</p>
           </div>
-          <div class="an-badge" id="an-badge">
+          <div class="an-badge">
             <span class="an-badge__dot" aria-hidden="true"></span>
             <span id="an-badge-text">Loading…</span>
           </div>
         </header>
 
         <!-- Filter bar -->
-        <div class="an-filter-bar" id="an-filter-bar">
+        <div class="an-filter-bar">
           <div class="an-filter-group">
             <label class="an-filter-label" for="f-from">From</label>
             <input type="date" class="an-filter-input" id="f-from" autocomplete="off">
@@ -359,42 +278,74 @@
           <div class="an-filter-sep" aria-hidden="true"></div>
           <div class="an-filter-group">
             <label class="an-filter-label" for="f-pair">Pair</label>
-            <select class="an-filter-select" id="f-pair">
-              <option value="">All pairs</option>
-            </select>
+            <select class="an-filter-select" id="f-pair"><option value="">All pairs</option></select>
           </div>
           <div class="an-filter-group">
             <label class="an-filter-label" for="f-model">Model</label>
-            <select class="an-filter-select" id="f-model">
-              <option value="">All models</option>
-            </select>
+            <select class="an-filter-select" id="f-model"><option value="">All models</option></select>
           </div>
           <button class="an-filter-reset" id="f-reset" type="button">Reset</button>
           <span class="an-filter-count" id="f-count"></span>
         </div>
 
-        <!-- Charts grid -->
+        <!-- Charts -->
         <div class="an-grid" id="an-grid">
 
-          <!-- 1. Equity Curve -->
+          <!-- 1. MONTE CARLO — full width, first, most prominent -->
+          <article class="an-card an-card--wide" id="card-monte">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Monte Carlo · 500 equity paths</span>
+              <span class="an-card__meta" id="meta-monte">—</span>
+            </div>
+            <div class="mc-sim-params" id="mc-sim-params">Loading simulation parameters…</div>
+            <div class="an-card__body">
+              <canvas class="an-canvas an-canvas--mc" id="chart-monte" aria-label="Monte Carlo simulation"></canvas>
+            </div>
+            <div class="mc-scenarios" id="mc-scenarios">
+              <button class="mc-scenario mc-scenario--worst" id="mc-btn-worst" type="button">
+                <span class="mc-scenario__hint">tap path</span>
+                <div class="mc-scenario__label">WORST</div>
+                <div class="mc-scenario__balance-label">Final balance</div>
+                <div class="mc-scenario__final" id="mc-worst-final">—</div>
+                <div class="mc-scenario__rows">
+                  <div class="mc-scenario__row">Max drawdown <span id="mc-worst-dd">—</span></div>
+                  <div class="mc-scenario__row">Max consec. losses <span id="mc-worst-cl">—</span></div>
+                  <div class="mc-scenario__row">Win rate used <span id="mc-worst-wr">—</span></div>
+                </div>
+              </button>
+              <button class="mc-scenario mc-scenario--median" id="mc-btn-median" type="button">
+                <span class="mc-scenario__hint">tap path</span>
+                <div class="mc-scenario__label">MOST LIKELY</div>
+                <div class="mc-scenario__balance-label">Final balance</div>
+                <div class="mc-scenario__final" id="mc-median-final">—</div>
+                <div class="mc-scenario__rows">
+                  <div class="mc-scenario__row">Max drawdown <span id="mc-median-dd">—</span></div>
+                  <div class="mc-scenario__row">Max consec. losses <span id="mc-median-cl">—</span></div>
+                  <div class="mc-scenario__row">Win rate used <span id="mc-median-wr">—</span></div>
+                </div>
+              </button>
+              <button class="mc-scenario mc-scenario--best" id="mc-btn-best" type="button">
+                <span class="mc-scenario__hint">tap path</span>
+                <div class="mc-scenario__label">BEST</div>
+                <div class="mc-scenario__balance-label">Final balance</div>
+                <div class="mc-scenario__final" id="mc-best-final">—</div>
+                <div class="mc-scenario__rows">
+                  <div class="mc-scenario__row">Max drawdown <span id="mc-best-dd">—</span></div>
+                  <div class="mc-scenario__row">Max consec. losses <span id="mc-best-cl">—</span></div>
+                  <div class="mc-scenario__row">Win rate used <span id="mc-best-wr">—</span></div>
+                </div>
+              </button>
+            </div>
+          </article>
+
+          <!-- 2. Equity Curve -->
           <article class="an-card" id="card-equity">
             <div class="an-card__top">
               <span class="an-card__eyebrow">Equity Curve</span>
               <span class="an-card__meta" id="meta-equity">—</span>
             </div>
             <div class="an-card__body">
-              <canvas class="an-canvas an-canvas--tall" id="chart-equity" aria-label="Equity curve chart"></canvas>
-            </div>
-          </article>
-
-          <!-- 2. Monte Carlo -->
-          <article class="an-card" id="card-monte">
-            <div class="an-card__top">
-              <span class="an-card__eyebrow">Monte Carlo — 500 Paths</span>
-              <span class="an-card__meta" id="meta-monte">—</span>
-            </div>
-            <div class="an-card__body">
-              <canvas class="an-canvas an-canvas--tall" id="chart-monte" aria-label="Monte Carlo simulation chart"></canvas>
+              <canvas class="an-canvas an-canvas--tall" id="chart-equity" aria-label="Equity curve"></canvas>
             </div>
           </article>
 
@@ -405,7 +356,7 @@
               <span class="an-card__meta" id="meta-winrate">20-trade window</span>
             </div>
             <div class="an-card__body">
-              <canvas class="an-canvas" id="chart-winrate" aria-label="Rolling win rate chart"></canvas>
+              <canvas class="an-canvas an-canvas--tall" id="chart-winrate" aria-label="Rolling win rate"></canvas>
             </div>
           </article>
 
@@ -416,33 +367,33 @@
               <span class="an-card__meta" id="meta-rdist">—</span>
             </div>
             <div class="an-card__body">
-              <canvas class="an-canvas" id="chart-rdist" aria-label="R distribution histogram"></canvas>
+              <canvas class="an-canvas" id="chart-rdist" aria-label="R distribution"></canvas>
             </div>
           </article>
 
-          <!-- 5. Performance by Entry Model (full width) -->
-          <article class="an-card an-card--wide" id="card-model">
-            <div class="an-card__top">
-              <span class="an-card__eyebrow">Performance by Entry Model</span>
-              <span class="an-card__meta" id="meta-model">sorted by total R</span>
-            </div>
-            <div class="an-card__body">
-              <canvas class="an-canvas an-canvas--model" id="chart-model" aria-label="Performance by entry model"></canvas>
-            </div>
-          </article>
-
-          <!-- 6. Performance by Day of Week -->
+          <!-- 5. Day of Week -->
           <article class="an-card" id="card-weekday">
             <div class="an-card__top">
               <span class="an-card__eyebrow">Performance by Day</span>
               <span class="an-card__meta" id="meta-weekday">—</span>
             </div>
             <div class="an-card__body">
-              <canvas class="an-canvas" id="chart-weekday" aria-label="Performance by day of week"></canvas>
+              <canvas class="an-canvas" id="chart-weekday" aria-label="Performance by day"></canvas>
             </div>
           </article>
 
-          <!-- 7. Performance by Session -->
+          <!-- 6. Entry Model — full width -->
+          <article class="an-card an-card--wide" id="card-model">
+            <div class="an-card__top">
+              <span class="an-card__eyebrow">Performance by Entry Model</span>
+              <span class="an-card__meta" id="meta-model">sorted by total R</span>
+            </div>
+            <div class="an-card__body">
+              <canvas class="an-canvas an-canvas--model" id="chart-model" aria-label="Performance by model"></canvas>
+            </div>
+          </article>
+
+          <!-- 7. Session -->
           <article class="an-card" id="card-session">
             <div class="an-card__top">
               <span class="an-card__eyebrow">Performance by Session</span>
@@ -453,14 +404,14 @@
             </div>
           </article>
 
-          <!-- 8. Drawdown (full width) -->
-          <article class="an-card an-card--wide" id="card-drawdown">
+          <!-- 8. Drawdown -->
+          <article class="an-card" id="card-drawdown">
             <div class="an-card__top">
               <span class="an-card__eyebrow">Drawdown</span>
               <span class="an-card__meta" id="meta-drawdown">—</span>
             </div>
             <div class="an-card__body">
-              <canvas class="an-canvas an-canvas--drawdown" id="chart-drawdown" aria-label="Drawdown chart"></canvas>
+              <canvas class="an-canvas an-canvas--drawdown" id="chart-drawdown" aria-label="Drawdown"></canvas>
             </div>
           </article>
 
@@ -471,32 +422,23 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-
     <script>
       (function () {
         'use strict';
 
-        /* ═══ USER ═══ */
+        /* ── User ── */
         var DEFAULT_USER = 'aidenpasque11@gmail.com';
         var currentUserId = DEFAULT_USER;
-
         function ensureUserId() {
           var ju = (localStorage.getItem('jarvis_user') || '').trim();
           var uid = (localStorage.getItem('user_id') || '').trim();
-          if (ju) {
-            currentUserId = ju;
-            if (uid !== ju) try { localStorage.setItem('user_id', ju); } catch (e) {}
-          } else if (uid) {
-            currentUserId = uid;
-          } else {
-            currentUserId = DEFAULT_USER;
-            try { localStorage.setItem('user_id', DEFAULT_USER); localStorage.setItem('jarvis_user', DEFAULT_USER); } catch (e) {}
-          }
-          var el = document.getElementById('jv-nav-user');
-          if (el) el.textContent = currentUserId;
+          if (ju) { currentUserId = ju; if (uid !== ju) try { localStorage.setItem('user_id', ju); } catch(e){} }
+          else if (uid) { currentUserId = uid; }
+          else { currentUserId = DEFAULT_USER; try { localStorage.setItem('user_id', DEFAULT_USER); localStorage.setItem('jarvis_user', DEFAULT_USER); } catch(e){} }
+          var el = document.getElementById('jv-nav-user'); if (el) el.textContent = currentUserId;
         }
 
-        /* ═══ HELPERS ═══ */
+        /* ── Helpers ── */
         function getField(obj) {
           for (var i = 1; i < arguments.length; i++) {
             var v = obj[arguments[i]];
@@ -508,18 +450,15 @@
         var _extCache = new WeakMap();
         function parsedExtras(t) {
           if (_extCache.has(t)) return _extCache.get(t);
-          var raw = t.notion_extras, parsed = null;
-          if (raw && typeof raw === 'string') { try { parsed = JSON.parse(raw); } catch (e) {} }
-          else if (raw && typeof raw === 'object') { parsed = raw; }
-          _extCache.set(t, parsed);
-          return parsed;
+          var raw = t.notion_extras, p = null;
+          if (raw && typeof raw === 'string') { try { p = JSON.parse(raw); } catch(e){} }
+          else if (raw && typeof raw === 'object') { p = raw; }
+          _extCache.set(t, p); return p;
         }
         function getExtrasVal(t) {
-          var extras = parsedExtras(t);
-          if (!extras) return '';
+          var extras = parsedExtras(t); if (!extras) return '';
           for (var i = 1; i < arguments.length; i++) {
-            var val = extras[arguments[i]];
-            if (val == null) continue;
+            var val = extras[arguments[i]]; if (val == null) continue;
             if (Array.isArray(val)) { if (val.length > 0 && val[0] != null) return String(val[0]); continue; }
             if (typeof val === 'object') { var n = val.name || (val.select && val.select.name) || ''; if (n) return String(n); continue; }
             var s = String(val); if (s) return s;
@@ -527,865 +466,765 @@
           return '';
         }
 
-        function tradePair(t) {
-          return getField(t, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') ||
-                 getExtrasVal(t, 'PAIR', 'Pair', 'pair', 'instrument', 'symbol');
-        }
-        function tradeModel(t) {
-          return getField(t, 'model', 'Model', 'MODEL', 'ENTRY MODEL') ||
-                 getExtrasVal(t, 'ENTRY MODEL', 'model', 'Model');
-        }
-        function tradeSession(t) {
-          return getField(t, 'session', 'Session', 'SESSION') ||
-                 getExtrasVal(t, 'SESSION', 'Session', 'session');
-        }
-
+        function tradePair(t)    { return getField(t,'pair','Pair','PAIR','instrument','symbol') || getExtrasVal(t,'PAIR','Pair','pair','instrument','symbol'); }
+        function tradeModel(t)   { return getField(t,'model','Model','MODEL','ENTRY MODEL') || getExtrasVal(t,'ENTRY MODEL','model','Model'); }
+        function tradeSession(t) { return getField(t,'session','Session','SESSION') || getExtrasVal(t,'SESSION','Session','session'); }
         function normalizeOutcome(raw) {
-          var v = String(raw || '').trim().toLowerCase();
-          if (v === 'win' || v === 'w') return 'win';
-          if (v === 'loss' || v === 'l') return 'loss';
-          if (v === 'be' || v === 'breakeven' || v === 'break even' || v === 'break-even') return 'be';
+          var v = String(raw||'').trim().toLowerCase();
+          if (v==='win'||v==='w') return 'win';
+          if (v==='loss'||v==='l') return 'loss';
+          if (v==='be'||v==='breakeven'||v==='break even'||v==='break-even') return 'be';
           return v;
         }
-
-        function tradeDate(t) {
-          return new Date(getField(t, 'date', 'traded_at', 'Date') || '');
-        }
-
+        function tradeDate(t) { return new Date(getField(t,'date','traded_at','Date')||''); }
         function dateKeyAdelaide(d) {
-          if (!d || isNaN(d)) return '';
-          try {
-            return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
-          } catch (e) {
-            return d.toISOString().slice(0, 10);
-          }
+          if (!d||isNaN(d)) return '';
+          try { return new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Adelaide',year:'numeric',month:'2-digit',day:'2-digit'}).format(d); }
+          catch(e) { return d.toISOString().slice(0,10); }
         }
-
         function formatDateLabel(t) {
-          var d = tradeDate(t);
-          if (isNaN(d)) return '—';
-          try { return d.toLocaleDateString('en-AU', { timeZone: 'Australia/Adelaide', day: '2-digit', month: 'short' }); }
-          catch (e) { return d.toDateString(); }
+          var d = tradeDate(t); if (isNaN(d)) return '—';
+          try { return d.toLocaleDateString('en-AU',{timeZone:'Australia/Adelaide',day:'2-digit',month:'short'}); }
+          catch(e) { return d.toDateString(); }
         }
-
         function weekdayAdelaide(d) {
-          try { return d.toLocaleDateString('en-AU', { timeZone: 'Australia/Adelaide', weekday: 'short' }); }
-          catch (e) { return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]; }
+          try { return d.toLocaleDateString('en-AU',{timeZone:'Australia/Adelaide',weekday:'short'}); }
+          catch(e) { return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]; }
         }
-
         function rDelta(t) {
-          var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
-          var rr = parseFloat(getField(t, 'rr', 'RR'));
-          if (o === 'win')  return !isNaN(rr) ? rr : 0;
-          if (o === 'loss') return !isNaN(rr) ? -Math.abs(rr) : -1;
+          var o = normalizeOutcome(getField(t,'outcome','Outcome','OUTCOME'));
+          var rr = parseFloat(getField(t,'rr','RR'));
+          if (o==='win')  return !isNaN(rr) ? rr : 0;
+          if (o==='loss') return !isNaN(rr) ? -Math.abs(rr) : -1;
           return 0;
         }
 
-        /* ═══ DATA FETCH ═══ */
+        /* ── Fetch ── */
         function normalizeBody(data) {
-          if (!data || typeof data !== 'object') return [];
-          var inner = (data.payload && typeof data.payload === 'object') ? data.payload : data;
-          var recs = Array.isArray(inner.records) ? inner.records : (Array.isArray(inner.trades) ? inner.trades : null);
-          return recs || [];
+          if (!data||typeof data!=='object') return [];
+          var inner = (data.payload&&typeof data.payload==='object') ? data.payload : data;
+          return Array.isArray(inner.records) ? inner.records : (Array.isArray(inner.trades) ? inner.trades : []);
         }
-
         async function fetchAllTrades() {
-          var uid = currentUserId || DEFAULT_USER;
+          var uid = currentUserId||DEFAULT_USER;
           var res = await Promise.allSettled([
-            fetch('/api/trades?user_id=eq.' + encodeURIComponent(uid), { cache: 'no-store' }).then(function (r) { return r.json(); }),
-            fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(uid), { cache: 'no-store' }).then(function (r) { return r.json(); })
+            fetch('/api/trades?user_id=eq.'+encodeURIComponent(uid),{cache:'no-store'}).then(function(r){return r.json();}),
+            fetch('/api/journal-trades?user_id=eq.'+encodeURIComponent(uid),{cache:'no-store'}).then(function(r){return r.json();})
           ]);
           var merged = [];
-          if (res[0].status === 'fulfilled') merged = merged.concat(normalizeBody(res[0].value));
-          if (res[1].status === 'fulfilled' && Array.isArray(res[1].value)) merged = merged.concat(res[1].value);
-          merged.sort(function (a, b) { return tradeDate(b) - tradeDate(a); });
+          if (res[0].status==='fulfilled') merged = merged.concat(normalizeBody(res[0].value));
+          if (res[1].status==='fulfilled'&&Array.isArray(res[1].value)) merged = merged.concat(res[1].value);
+          merged.sort(function(a,b){return tradeDate(b)-tradeDate(a);});
           return merged;
         }
 
-        /* ═══ FILTER ═══ */
+        /* ── Filter ── */
         var allTrades = [];
-        var activeFilter = { from: '', to: '', pair: '', model: '' };
-
+        var activeFilter = {from:'',to:'',pair:'',model:''};
         function applyFilter(trades) {
-          return trades.filter(function (t) {
+          return trades.filter(function(t) {
             var dk = dateKeyAdelaide(tradeDate(t));
             if (activeFilter.from && dk < activeFilter.from) return false;
             if (activeFilter.to   && dk > activeFilter.to)   return false;
-            if (activeFilter.pair) {
-              var p = tradePair(t).toUpperCase();
-              if (p !== activeFilter.pair.toUpperCase()) return false;
-            }
-            if (activeFilter.model) {
-              var m = tradeModel(t).toLowerCase();
-              if (m !== activeFilter.model.toLowerCase()) return false;
-            }
+            if (activeFilter.pair  && tradePair(t).toUpperCase()  !== activeFilter.pair.toUpperCase())  return false;
+            if (activeFilter.model && tradeModel(t).toLowerCase() !== activeFilter.model.toLowerCase()) return false;
             return true;
           });
         }
-
         function populateFilters(trades) {
           var pairs = new Set(), models = new Set();
-          trades.forEach(function (t) {
-            var p = tradePair(t), m = tradeModel(t);
-            if (p) pairs.add(p.toUpperCase());
-            if (m) models.add(m);
-          });
-          var pairSel = document.getElementById('f-pair');
-          var modelSel = document.getElementById('f-model');
-          var savedPair = pairSel ? pairSel.value : '';
-          var savedModel = modelSel ? modelSel.value : '';
-          if (pairSel) {
-            pairSel.innerHTML = '<option value="">All pairs</option>';
-            Array.from(pairs).sort().forEach(function (p) {
-              var o = document.createElement('option'); o.value = p; o.textContent = p;
-              if (p === savedPair) o.selected = true;
-              pairSel.appendChild(o);
+          trades.forEach(function(t){var p=tradePair(t),m=tradeModel(t);if(p)pairs.add(p.toUpperCase());if(m)models.add(m);});
+          function fillSel(id, vals, prev) {
+            var sel = document.getElementById(id); if(!sel) return;
+            var first = sel.options[0].text;
+            sel.innerHTML = '<option value="">'+first+'</option>';
+            Array.from(vals).sort().forEach(function(v){
+              var o = document.createElement('option'); o.value = v;
+              o.textContent = v.length>36?v.slice(0,36)+'…':v; o.title=v;
+              if (v===prev) o.selected=true;
+              sel.appendChild(o);
             });
           }
-          if (modelSel) {
-            modelSel.innerHTML = '<option value="">All models</option>';
-            Array.from(models).sort().forEach(function (m) {
-              var o = document.createElement('option'); o.value = m;
-              o.textContent = m.length > 32 ? m.slice(0, 32) + '…' : m;
-              o.title = m;
-              if (m === savedModel) o.selected = true;
-              modelSel.appendChild(o);
-            });
-          }
+          var pp = document.getElementById('f-pair'), pm = document.getElementById('f-model');
+          fillSel('f-pair',  pairs,  pp?pp.value:'');
+          fillSel('f-model', models, pm?pm.value:'');
         }
 
-        /* ═══ CHART UTILS ═══ */
+        /* ── Chart utils ── */
         var chartInstances = {};
+        function destroyChart(id) { if(chartInstances[id]){try{chartInstances[id].destroy();}catch(e){}delete chartInstances[id];} }
+        function destroyAll() { Object.keys(chartInstances).forEach(destroyChart); }
 
-        function destroyChart(id) {
-          if (chartInstances[id]) { try { chartInstances[id].destroy(); } catch (e) {} delete chartInstances[id]; }
-        }
-        function destroyAll() {
-          Object.keys(chartInstances).forEach(destroyChart);
-        }
-
-        function tooltipDefaults() {
+        function ttBase() {
           return {
-            backgroundColor: 'rgba(4,9,18,0.96)',
-            borderColor: 'rgba(0,212,255,0.22)',
+            backgroundColor: 'rgba(5,10,20,0.96)',
+            borderColor: 'rgba(0,212,255,0.35)',
             borderWidth: 1,
-            titleColor: 'rgba(255,255,255,0.9)',
-            bodyColor: 'rgba(255,255,255,0.72)',
-            padding: 10,
-            displayColors: false,
+            titleColor: '#ffffff',
+            bodyColor: 'rgba(255,255,255,0.78)',
+            padding: 12,
+            displayColors: true,
+            titleFont: { family: '"Share Tech Mono",monospace', size: 11 },
+            bodyFont: { family: '"Outfit",sans-serif', size: 13 },
+            cornerRadius: 8,
+            boxPadding: 8
           };
         }
-
-        function axisX(opts) {
-          return Object.assign({
-            grid: { color: 'rgba(0,212,255,0.07)' },
-            border: { color: 'rgba(0,212,255,0.15)' },
-            ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 8, font: { size: 10 } }
-          }, opts || {});
-        }
-        function axisY(opts) {
-          return Object.assign({
-            grid: { color: 'rgba(0,212,255,0.07)' },
-            border: { color: 'rgba(0,212,255,0.15)' },
-            ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 7, font: { size: 10 } }
-          }, opts || {});
-        }
-
-        function baseOpts(overrides) {
+        function axX(o) { return Object.assign({ grid: { color: 'rgba(0,212,255,0.06)' }, border: { color: 'rgba(0,212,255,0.12)' }, ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 8, font: { size: 10 } } }, o || {}); }
+        function axY(o) { return Object.assign({ grid: { color: 'rgba(0,212,255,0.06)' }, border: { color: 'rgba(0,212,255,0.12)' }, ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 8, font: { size: 10 } } }, o || {}); }
+        function baseOpts(o) {
           return Object.assign({
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 800, easing: 'easeOutQuart' },
+            animation: { duration: 900, easing: 'easeOutQuart' },
             interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { display: false }, tooltip: tooltipDefaults() }
-          }, overrides || {});
+            layout: { padding: { top: 10, right: 14, bottom: 10, left: 8 } },
+            plugins: { legend: { display: false }, tooltip: ttBase() }
+          }, o || {});
         }
 
-        /* ═══ EQUITY CURVE ═══ */
-        function renderEquity(tradesAsc) {
-          destroyChart('equity');
-          var canvas = document.getElementById('chart-equity');
-          if (!canvas) return;
-          var cum = 0, labels = [], data = [];
-          tradesAsc.forEach(function (t) {
-            cum += rDelta(t);
-            labels.push(formatDateLabel(t));
-            data.push(parseFloat(cum.toFixed(2)));
-          });
-          var final = data.length ? data[data.length - 1] : 0;
-          document.getElementById('meta-equity').textContent = 'CUM ' + final.toFixed(2) + 'R';
-
-          var ctx = canvas.getContext('2d');
-          var grad = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 320);
-          grad.addColorStop(0, 'rgba(0,212,255,0.38)');
-          grad.addColorStop(1, 'rgba(0,212,255,0.02)');
-
-          chartInstances['equity'] = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: labels,
-              datasets: [{
-                data: data,
-                borderColor: 'rgba(0,212,255,0.95)',
-                backgroundColor: grad,
-                fill: true, tension: 0.35,
-                pointRadius: 0, pointHitRadius: 12, borderWidth: 2
-              }]
-            },
-            options: baseOpts({
-              scales: {
-                x: axisX({ ticks: { color: 'rgba(255,255,255,0.35)', maxTicksLimit: 8, font: { size: 10 } } }),
-                y: axisY({ ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 7, font: { size: 10 }, callback: function (v) { return v + 'R'; } } })
-              },
-              plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults(), {
-                  callbacks: {
-                    title: function (items) { return items[0].label; },
-                    label: function (ctx) { return 'Equity: ' + ctx.parsed.y.toFixed(2) + 'R'; }
-                  }
-                })
-              }
-            })
-          });
-        }
-
-        /* ═══ MONTE CARLO ═══ */
-        function runMonteCarlo(tradesAsc, numSims) {
-          numSims = numSims || 500;
-          var deltas = tradesAsc.map(rDelta);
-          if (!deltas.length) return null;
-          var steps = deltas.length;
-          var paths = [];
-          for (var s = 0; s < numSims; s++) {
-            var cum = 0, path = [0];
-            for (var i = 0; i < steps; i++) {
-              cum += deltas[Math.floor(Math.random() * deltas.length)];
-              path.push(parseFloat(cum.toFixed(2)));
+        /* ══════════════════════════════════════════════════
+           MONTE CARLO — 500 paths, empirical win/loss/BE + avg R
+        ══════════════════════════════════════════════════ */
+        function simulateOnePath(winProb, lossProb, avgWin, avgLoss, numSteps) {
+          var cum = 0;
+          var path = [0];
+          var outcomes = [];
+          for (var i = 0; i < numSteps; i++) {
+            var r = Math.random();
+            var delta = 0;
+            var tag = 'B';
+            if (r < winProb) {
+              delta = avgWin;
+              tag = 'W';
+            } else if (r < winProb + lossProb) {
+              delta = -avgLoss;
+              tag = 'L';
             }
-            paths.push(path);
+            outcomes.push(tag);
+            cum += delta;
+            path.push(parseFloat(cum.toFixed(4)));
           }
-          function pctAt(step, pct) {
-            var vals = paths.map(function (p) { return p[step]; }).sort(function (a, b) { return a - b; });
-            return vals[Math.round(pct * (vals.length - 1))];
-          }
-          var p10 = [], p50 = [], p90 = [];
-          for (var i = 0; i <= steps; i++) {
-            p10.push(pctAt(i, 0.10));
-            p50.push(pctAt(i, 0.50));
-            p90.push(pctAt(i, 0.90));
-          }
-          var labels = ['0'].concat(Array.from({ length: steps }, function (_, i) { return String(i + 1); }));
-          return { labels: labels, p10: p10, p50: p50, p90: p90, numSims: numSims, trades: steps };
+          return { path: path, outcomes: outcomes };
         }
+
+        function pathStatsFromSim(sim) {
+          var path = sim.path;
+          var outcomes = sim.outcomes;
+          var peak = 0;
+          var maxDD = 0;
+          var streakL = 0;
+          var maxConsecL = 0;
+          for (var i = 1; i < path.length; i++) {
+            if (path[i] > peak) peak = path[i];
+            var dd = peak - path[i];
+            if (dd > maxDD) maxDD = dd;
+            var o = outcomes[i - 1];
+            if (o === 'L') {
+              streakL++;
+              if (streakL > maxConsecL) maxConsecL = streakL;
+            } else {
+              streakL = 0;
+            }
+          }
+          return {
+            finalR: parseFloat(path[path.length - 1].toFixed(2)),
+            maxDD: parseFloat(maxDD.toFixed(2)),
+            maxConsec: maxConsecL
+          };
+        }
+
+        function buildMCData(tradesAsc) {
+          var NUM_SIMS = 500;
+          var wins = [];
+          var losses = [];
+          var n = tradesAsc.length;
+          if (!n) return null;
+
+          tradesAsc.forEach(function (t) {
+            var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+            var rr = parseFloat(getField(t, 'rr', 'RR'));
+            if (o === 'win') wins.push(!isNaN(rr) && rr > 0 ? rr : 1);
+            if (o === 'loss') losses.push(!isNaN(rr) && rr > 0 ? Math.abs(rr) : 1);
+          });
+
+          var winProb = wins.length / n;
+          var lossProb = losses.length / n;
+          var beProb = Math.max(0, 1 - winProb - lossProb);
+          var avgWin = wins.length ? wins.reduce(function (s, r) { return s + r; }, 0) / wins.length : 1;
+          var avgLoss = losses.length ? losses.reduce(function (s, r) { return s + r; }, 0) / losses.length : 1;
+          var displayWinRatePct = (winProb * 100).toFixed(1);
+
+          var sims = [];
+          for (var s = 0; s < NUM_SIMS; s++) {
+            sims.push(simulateOnePath(winProb, lossProb, avgWin, avgLoss, n));
+          }
+
+          function pctAtStep(step, frac) {
+            var vals = sims.map(function (x) { return x.path[step]; }).sort(function (a, b) { return a - b; });
+            var idx = Math.round(frac * (vals.length - 1));
+            return vals[idx];
+          }
+
+          var p10 = [];
+          var p50 = [];
+          var p90 = [];
+          var labels = [];
+          var i;
+          for (i = 0; i <= n; i++) {
+            labels.push(i === 0 ? '0' : String(i));
+            p10.push(parseFloat(pctAtStep(i, 0.1).toFixed(3)));
+            p50.push(parseFloat(pctAtStep(i, 0.5).toFixed(3)));
+            p90.push(parseFloat(pctAtStep(i, 0.9).toFixed(3)));
+          }
+
+          function findClosestSim(targetFinal) {
+            var bestI = 0;
+            var bestD = Infinity;
+            for (var j = 0; j < sims.length; j++) {
+              var fv = sims[j].path[n];
+              var d = Math.abs(fv - targetFinal);
+              if (d < bestD) {
+                bestD = d;
+                bestI = j;
+              }
+            }
+            return sims[bestI];
+          }
+
+          var f10 = pctAtStep(n, 0.1);
+          var f50 = pctAtStep(n, 0.5);
+          var f90 = pctAtStep(n, 0.9);
+          var worstSim = findClosestSim(f10);
+          var medianSim = findClosestSim(f50);
+          var bestSim = findClosestSim(f90);
+
+          return {
+            labels: labels,
+            p10: p10,
+            p50: p50,
+            p90: p90,
+            worstPath: worstSim.path,
+            medianPath: medianSim.path,
+            bestPath: bestSim.path,
+            worstStats: pathStatsFromSim(worstSim),
+            medianStats: pathStatsFromSim(medianSim),
+            bestStats: pathStatsFromSim(bestSim),
+            winProb: winProb,
+            lossProb: lossProb,
+            beProb: beProb,
+            avgWin: avgWin,
+            avgLoss: avgLoss,
+            displayWinRatePct: displayWinRatePct,
+            total: n,
+            numSims: NUM_SIMS
+          };
+        }
+
+        var ANALYTICS_MC_STATE = null;
 
         function renderMonteCarlo(tradesAsc) {
           destroyChart('monte');
+          var cardMonte = document.getElementById('card-monte');
+          if (cardMonte) {
+            cardMonte.querySelectorAll('.mc-scenario').forEach(function (b) {
+              b.classList.remove('mc-active');
+            });
+          }
           var canvas = document.getElementById('chart-monte');
           if (!canvas) return;
-          var mc = runMonteCarlo(tradesAsc, 500);
-          if (!mc) { document.getElementById('meta-monte').textContent = 'No data'; return; }
-          document.getElementById('meta-monte').textContent = mc.numSims + ' paths · ' + mc.trades + ' trades';
+          var mc = buildMCData(tradesAsc);
 
+          var paramEl = document.getElementById('mc-sim-params');
+          var metaEl = document.getElementById('meta-monte');
+
+          if (!mc) {
+            if (paramEl) paramEl.textContent = 'Not enough data to run simulation.';
+            if (metaEl) metaEl.textContent = 'No data';
+            return;
+          }
+
+          if (paramEl) {
+            paramEl.innerHTML =
+              'Based on <strong>' + mc.total + ' trades</strong> — ' +
+              '<strong>' + mc.displayWinRatePct + '% win rate</strong> — ' +
+              'avg win <strong>+' + mc.avgWin.toFixed(2) + 'R</strong> — ' +
+              'avg loss <strong>−' + mc.avgLoss.toFixed(2) + 'R</strong>';
+          }
+          if (metaEl) metaEl.textContent = mc.numSims + ' paths · ' + mc.total + ' steps each';
+
+          var BLUE = '#00d4ff';
           var ctx = canvas.getContext('2d');
-          chartInstances['monte'] = new Chart(ctx, {
+          var mcChart = new Chart(ctx, {
             type: 'line',
             data: {
               labels: mc.labels,
               datasets: [
                 {
-                  label: 'Best 10%',
-                  data: mc.p90,
-                  borderColor: 'rgba(0,255,136,0.6)',
-                  backgroundColor: 'rgba(0,255,136,0.08)',
-                  fill: '+2',
-                  tension: 0.4, pointRadius: 0, borderWidth: 1.5, borderDash: [4,3]
+                  label: 'Worst 10% (p10)',
+                  data: mc.p10,
+                  borderColor: 'rgba(255,68,102,0.75)',
+                  backgroundColor: 'transparent',
+                  fill: false,
+                  tension: 0.35,
+                  pointRadius: 0,
+                  borderWidth: 1.5,
+                  borderDash: [6, 4],
+                  order: 2
                 },
                 {
                   label: 'Median',
                   data: mc.p50,
-                  borderColor: 'rgba(0,212,255,0.95)',
-                  backgroundColor: 'rgba(0,212,255,0.06)',
-                  fill: false,
-                  tension: 0.4, pointRadius: 0, borderWidth: 2.5
+                  borderColor: BLUE,
+                  backgroundColor: 'rgba(255,68,102,0.12)',
+                  fill: '-1',
+                  tension: 0.35,
+                  pointRadius: 0,
+                  borderWidth: 2.75,
+                  order: 1
                 },
                 {
-                  label: 'Worst 10%',
-                  data: mc.p10,
-                  borderColor: 'rgba(255,68,102,0.6)',
-                  backgroundColor: 'rgba(255,68,102,0.06)',
+                  label: 'Best 10% (p90)',
+                  data: mc.p90,
+                  borderColor: 'rgba(0,255,136,0.75)',
+                  backgroundColor: 'rgba(0,255,136,0.14)',
+                  fill: '-1',
+                  tension: 0.35,
+                  pointRadius: 0,
+                  borderWidth: 1.5,
+                  borderDash: [6, 4],
+                  order: 0
+                },
+                {
+                  label: 'Selected path',
+                  data: mc.medianPath,
+                  borderColor: BLUE,
+                  backgroundColor: 'transparent',
                   fill: false,
-                  tension: 0.4, pointRadius: 0, borderWidth: 1.5, borderDash: [4,3]
+                  tension: 0.32,
+                  pointRadius: 0,
+                  borderWidth: 2.2,
+                  borderDash: [4, 3],
+                  hidden: true,
+                  order: 3
                 }
               ]
             },
-            options: baseOpts({
+            options: Object.assign({}, baseOpts(), {
               scales: {
-                x: axisX({ ticks: { display: false } }),
-                y: axisY({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, callback: function (v) { return v + 'R'; } } })
+                x: axX({
+                  ticks: {
+                    maxTicksLimit: 14,
+                    autoSkip: true,
+                    maxRotation: 0
+                  }
+                }),
+                y: axY({
+                  ticks: {
+                    callback: function (v) {
+                      return v + 'R';
+                    }
+                  }
+                })
               },
               plugins: {
                 legend: {
                   display: true,
                   position: 'top',
-                  align: 'end',
+                  align: 'start',
                   labels: {
-                    color: 'rgba(255,255,255,0.45)', font: { size: 9, family: '"Share Tech Mono",monospace' },
-                    boxWidth: 20, boxHeight: 2, padding: 12
+                    color: 'rgba(255,255,255,0.45)',
+                    font: { size: 10, family: '"Share Tech Mono",monospace' },
+                    boxWidth: 14,
+                    boxHeight: 3,
+                    padding: 12,
+                    filter: function (item) {
+                      return item.datasetIndex !== 3;
+                    }
                   }
                 },
-                tooltip: Object.assign({}, tooltipDefaults(), {
+                tooltip: Object.assign({}, ttBase(), {
                   callbacks: {
-                    title: function (items) { return 'Trade ' + items[0].label + ' / ' + mc.trades + ' (based on ' + mc.trades + ' trades)'; },
-                    label: function (ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + 'R'; }
+                    title: function (items) {
+                      var lbl = items[0] && items[0].label;
+                      if (lbl === '0' || lbl === 'Start') return 'Start';
+                      return 'After trade ' + lbl + ' of ' + mc.total;
+                    },
+                    label: function (ctx) {
+                      if (ctx.datasetIndex === 3) {
+                        if (ctx.chart.data.datasets[3].hidden) return '';
+                        return 'Path: ' + ctx.parsed.y.toFixed(2) + 'R';
+                      }
+                      return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + 'R';
+                    }
                   }
                 })
               }
             })
           });
+          chartInstances['monte'] = mcChart;
+
+          ANALYTICS_MC_STATE = {
+            chart: mcChart,
+            mc: mc,
+            pathMap: {
+              worst: { data: mc.worstPath, color: 'rgba(255,68,102,0.95)' },
+              median: { data: mc.medianPath, color: BLUE },
+              best: { data: mc.bestPath, color: 'rgba(0,255,160,0.95)' }
+            },
+            active: null
+          };
+
+          function fillCard(prefix, stats) {
+            var $ = function (id) { return document.getElementById(id); };
+            var finalEl = $(prefix + '-final');
+            if (finalEl) finalEl.textContent = (stats.finalR >= 0 ? '+' : '') + stats.finalR.toFixed(2) + 'R';
+            var ddEl = $(prefix + '-dd');
+            if (ddEl) ddEl.textContent = '−' + stats.maxDD.toFixed(2) + 'R';
+            var clEl = $(prefix + '-cl');
+            if (clEl) clEl.textContent = stats.maxConsec + ' in a row';
+            var wrEl = $(prefix + '-wr');
+            if (wrEl) wrEl.textContent = mc.displayWinRatePct + '%';
+          }
+          fillCard('mc-worst', mc.worstStats);
+          fillCard('mc-median', mc.medianStats);
+          fillCard('mc-best', mc.bestStats);
         }
 
-        /* ═══ ROLLING WIN RATE ═══ */
+        function bindMonteCarloScenarioClicksOnce() {
+          var card = document.getElementById('card-monte');
+          if (!card || card.dataset.mcDelegate) return;
+          card.dataset.mcDelegate = '1';
+          card.addEventListener('click', function (ev) {
+            var btn = ev.target.closest('.mc-scenario');
+            if (!btn || !ANALYTICS_MC_STATE) return;
+            var key = btn.id === 'mc-btn-worst' ? 'worst' : btn.id === 'mc-btn-median' ? 'median' : btn.id === 'mc-btn-best' ? 'best' : null;
+            if (!key) return;
+            var st = ANALYTICS_MC_STATE;
+            var mcChart = st.chart;
+            var pathMap = st.pathMap;
+            var ds = mcChart.data.datasets[3];
+            if (st.active === key) {
+              st.active = null;
+              ds.hidden = true;
+              card.querySelectorAll('.mc-scenario').forEach(function (b) {
+                b.classList.remove('mc-active');
+              });
+            } else {
+              st.active = key;
+              ds.data = pathMap[key].data;
+              ds.borderColor = pathMap[key].color;
+              ds.hidden = false;
+              card.querySelectorAll('.mc-scenario').forEach(function (b) {
+                b.classList.remove('mc-active');
+              });
+              btn.classList.add('mc-active');
+            }
+            mcChart.update('none');
+          });
+        }
+
+        /* ══════════════════════════════════════════════════
+           OTHER CHARTS
+        ══════════════════════════════════════════════════ */
+
+        function renderEquity(tradesAsc) {
+          destroyChart('equity');
+          var canvas = document.getElementById('chart-equity'); if (!canvas) return;
+          var cum=0, labels=[], data=[];
+          tradesAsc.forEach(function(t){ cum+=rDelta(t); labels.push(formatDateLabel(t)); data.push(parseFloat(cum.toFixed(2))); });
+          var final = data.length ? data[data.length-1] : 0;
+          document.getElementById('meta-equity').textContent = 'CUM '+(final>=0?'+':'')+final.toFixed(2)+'R';
+          var ctx = canvas.getContext('2d');
+          var grad = ctx.createLinearGradient(0,0,0,canvas.offsetHeight||320);
+          grad.addColorStop(0,'rgba(0,212,255,0.38)'); grad.addColorStop(1,'rgba(0,212,255,0.02)');
+          chartInstances['equity'] = new Chart(ctx, {
+            type:'line',
+            data:{labels:labels,datasets:[{data:data,borderColor:'rgba(0,212,255,0.95)',backgroundColor:grad,fill:true,tension:0.35,pointRadius:0,pointHitRadius:12,borderWidth:2}]},
+            options: Object.assign({},baseOpts(),{
+              scales:{ x:axX({ticks:{maxTicksLimit:8}}), y:axY({ticks:{callback:function(v){return v+'R';}}}) },
+              plugins:{legend:{display:false},tooltip:Object.assign({},ttBase(),{callbacks:{title:function(i){return i[0].label;},label:function(c){return 'Equity: '+c.parsed.y.toFixed(2)+'R';}}})}
+            })
+          });
+        }
+
         function renderRollingWR(tradesAsc, stats) {
           destroyChart('winrate');
-          var canvas = document.getElementById('chart-winrate');
-          if (!canvas) return;
-          var window_ = 20;
-          var labels = [], data = [];
-          for (var i = window_ - 1; i < tradesAsc.length; i++) {
-            var slice = tradesAsc.slice(i - window_ + 1, i + 1);
-            var wins = slice.filter(function (t) { return normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win'; }).length;
+          var canvas = document.getElementById('chart-winrate'); if (!canvas) return;
+          var W=20, labels=[], data=[];
+          for (var i=W-1;i<tradesAsc.length;i++) {
+            var slice=tradesAsc.slice(i-W+1,i+1);
+            var wins=slice.filter(function(t){return normalizeOutcome(getField(t,'outcome','Outcome','OUTCOME'))==='win';}).length;
             labels.push(formatDateLabel(tradesAsc[i]));
-            data.push(parseFloat(((wins / window_) * 100).toFixed(1)));
+            data.push(parseFloat(((wins/W)*100).toFixed(1)));
           }
-          var avgWR = stats.winRate != null ? parseFloat(stats.winRate.toFixed(1)) : null;
-          document.getElementById('meta-winrate').textContent = data.length ? data.length + ' pts · avg ' + (avgWR != null ? avgWR.toFixed(1) + '%' : '—') : 'Need 20+ trades';
-
-          var ctx = canvas.getContext('2d');
-          var datasets = [{
-            label: 'Rolling WR',
-            data: data,
-            borderColor: 'rgba(0,212,255,0.95)',
-            backgroundColor: 'rgba(0,212,255,0.1)',
-            fill: true, tension: 0.4, pointRadius: 0, pointHitRadius: 12, borderWidth: 2
-          }];
-          if (avgWR != null && labels.length > 0) {
-            datasets.push({
-              label: 'Avg WR',
-              data: labels.map(function () { return avgWR; }),
-              borderColor: 'rgba(255,200,0,0.5)',
-              backgroundColor: 'transparent',
-              fill: false, tension: 0, pointRadius: 0, borderWidth: 1.5,
-              borderDash: [6, 4]
-            });
-          }
-
-          chartInstances['winrate'] = new Chart(ctx, {
-            type: 'line',
-            data: { labels: labels, datasets: datasets },
-            options: baseOpts({
-              scales: {
-                x: axisX({ ticks: { color: 'rgba(255,255,255,0.35)', maxTicksLimit: 7, font: { size: 10 } } }),
-                y: axisY({
-                  min: 0, max: 100,
-                  ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 6, font: { size: 10 }, callback: function (v) { return v + '%'; } }
-                })
-              },
-              plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults(), {
-                  callbacks: {
-                    label: function (ctx) {
-                      if (ctx.datasetIndex === 1) return 'Avg: ' + ctx.parsed.y.toFixed(1) + '%';
-                      return 'WR: ' + ctx.parsed.y.toFixed(1) + '%';
-                    }
-                  }
-                })
-              }
+          var avgWR = stats.winRate!=null ? parseFloat(stats.winRate.toFixed(1)) : null;
+          document.getElementById('meta-winrate').textContent = data.length ? data.length+' pts'+( avgWR!=null ? ' · avg '+avgWR.toFixed(1)+'%' : '') : 'Need 20+ trades';
+          var datasets = [{label:'Rolling WR %',data:data,borderColor:'rgba(0,212,255,0.95)',backgroundColor:'rgba(0,212,255,0.1)',fill:true,tension:0.4,pointRadius:0,pointHitRadius:12,borderWidth:2}];
+          if (avgWR!=null&&labels.length>0) datasets.push({label:'Avg',data:labels.map(function(){return avgWR;}),borderColor:'rgba(255,200,0,0.55)',backgroundColor:'transparent',fill:false,tension:0,pointRadius:0,borderWidth:1.5,borderDash:[6,4]});
+          chartInstances['winrate'] = new Chart(canvas.getContext('2d'), {
+            type:'line', data:{labels:labels,datasets:datasets},
+            options: Object.assign({},baseOpts(),{
+              scales:{ x:axX({ticks:{maxTicksLimit:7}}), y:axY({min:0,max:100,ticks:{callback:function(v){return v+'%';}}}) },
+              plugins:{legend:{display:false},tooltip:Object.assign({},ttBase(),{callbacks:{label:function(c){return c.datasetIndex===1?'Avg: '+c.parsed.y.toFixed(1)+'%':'WR: '+c.parsed.y.toFixed(1)+'%';}}})}
             })
           });
         }
 
-        /* ═══ R DISTRIBUTION ═══ */
         function renderRDist(trades) {
           destroyChart('rdist');
-          var canvas = document.getElementById('chart-rdist');
-          if (!canvas) return;
-          var bins = [
-            { label: '≤-3R', min: -Infinity, max: -2.5 },
-            { label: '-2R',  min: -2.5, max: -1.5 },
-            { label: '-1R',  min: -1.5, max: -0.5 },
-            { label: '0R',   min: -0.5, max: 0.5  },
-            { label: '+1R',  min: 0.5,  max: 1.5  },
-            { label: '+2R',  min: 1.5,  max: 2.5  },
-            { label: '+3R',  min: 2.5,  max: 3.5  },
-            { label: '+4R',  min: 3.5,  max: 4.5  },
-            { label: '≥+5R', min: 4.5,  max: Infinity }
+          var canvas = document.getElementById('chart-rdist'); if (!canvas) return;
+          var bins=[
+            {label:'≤-3R',min:-Infinity,max:-2.5},{label:'-2R',min:-2.5,max:-1.5},
+            {label:'-1R',min:-1.5,max:-0.5},{label:'0R',min:-0.5,max:0.5},
+            {label:'+1R',min:0.5,max:1.5},{label:'+2R',min:1.5,max:2.5},
+            {label:'+3R',min:2.5,max:3.5},{label:'+4R',min:3.5,max:4.5},
+            {label:'≥+5R',min:4.5,max:Infinity}
           ];
-          var counts = new Array(bins.length).fill(0);
-          trades.forEach(function (t) {
-            var r = rDelta(t);
-            for (var i = 0; i < bins.length; i++) {
-              if (r >= bins[i].min && r < bins[i].max) { counts[i]++; break; }
-            }
+          var counts=new Array(bins.length).fill(0);
+          trades.forEach(function(t){
+            var r=rDelta(t);
+            for(var i=0;i<bins.length;i++){if(r>=bins[i].min&&r<bins[i].max){counts[i]++;break;}}
           });
-          var colors = bins.map(function (b) {
-            if (b.max <= 0.5 && b.min < 0) return 'rgba(255,68,102,0.7)';
-            if (b.min < 0.5 && b.max <= 0.5) return 'rgba(136,153,170,0.6)';
-            return 'rgba(0,220,120,0.7)';
-          });
-          document.getElementById('meta-rdist').textContent = trades.length + ' trades';
-
-          chartInstances['rdist'] = new Chart(document.getElementById('chart-rdist').getContext('2d'), {
-            type: 'bar',
-            data: {
-              labels: bins.map(function (b) { return b.label; }),
-              datasets: [{
-                data: counts,
-                backgroundColor: colors,
-                borderColor: colors.map(function (c) { return c.replace('0.7','0.95').replace('0.6','0.85'); }),
-                borderWidth: 1, borderRadius: 6, borderSkipped: false
-              }]
-            },
-            options: baseOpts({
-              scales: {
-                x: axisX({ ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 10 } } }),
-                y: axisY({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, stepSize: 1 } })
-              },
-              plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults(), {
-                  callbacks: {
-                    title: function (items) { return items[0].label; },
-                    label: function (ctx) { return ctx.parsed.y + ' trade' + (ctx.parsed.y !== 1 ? 's' : ''); }
-                  }
-                })
-              }
+          var colors=bins.map(function(b){ return (b.max<=0.5&&b.min<0)?'rgba(255,68,102,0.72)':(b.min<0.5&&b.max<=0.5)?'rgba(136,153,170,0.55)':'rgba(0,212,255,0.65)'; });
+          document.getElementById('meta-rdist').textContent = trades.length+' trades';
+          chartInstances['rdist'] = new Chart(canvas.getContext('2d'), {
+            type:'bar',
+            data:{labels:bins.map(function(b){return b.label;}),datasets:[{data:counts,backgroundColor:colors,borderColor:colors.map(function(c){return c.replace(/[\d.]+\)$/,'0.95)');}),borderWidth:1,borderRadius:6,borderSkipped:false}]},
+            options: Object.assign({},baseOpts(),{
+              interaction:{mode:'index',intersect:false},
+              scales:{ x:axX({ticks:{font:{size:10}}}), y:axY({ticks:{stepSize:1}}) },
+              plugins:{legend:{display:false},tooltip:Object.assign({},ttBase(),{callbacks:{title:function(i){return i[0].label;},label:function(c){return c.parsed.y+' trade'+(c.parsed.y!==1?'s':'');}}})}
             })
           });
         }
 
-        /* ═══ PERFORMANCE BY MODEL ═══ */
         function renderModel(trades) {
           destroyChart('model');
-          var canvas = document.getElementById('chart-model');
-          if (!canvas) return;
-          var map = {};
-          trades.forEach(function (t) {
-            var m = tradeModel(t).trim();
-            if (!m) return;
-            if (!map[m]) map[m] = { total: 0, wins: 0, netR: 0 };
+          var canvas = document.getElementById('chart-model'); if (!canvas) return;
+          var map={};
+          trades.forEach(function(t){
+            var m=tradeModel(t).trim(); if(!m) return;
+            if(!map[m]) map[m]={total:0,wins:0,netR:0};
             map[m].total++;
-            if (normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win') map[m].wins++;
-            map[m].netR += rDelta(t);
+            if(normalizeOutcome(getField(t,'outcome','Outcome','OUTCOME'))==='win') map[m].wins++;
+            map[m].netR+=rDelta(t);
           });
-          var keys = Object.keys(map).sort(function (a, b) { return map[b].netR - map[a].netR; });
-          if (!keys.length) { document.getElementById('meta-model').textContent = 'No data'; return; }
-          document.getElementById('meta-model').textContent = keys.length + ' models · sorted by total R';
-
-          var labels = keys.map(function (k) { return k.length > 30 ? k.slice(0, 30) + '…' : k; });
-          var netRs = keys.map(function (k) { return parseFloat(map[k].netR.toFixed(2)); });
-          var bgColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.55)' : 'rgba(255,68,102,0.55)'; });
-          var bdrColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.9)' : 'rgba(255,68,102,0.9)'; });
-
+          var keys=Object.keys(map).sort(function(a,b){return map[b].netR-map[a].netR;});
+          if(!keys.length){document.getElementById('meta-model').textContent='No data';return;}
+          document.getElementById('meta-model').textContent=keys.length+' models';
+          var labels=keys.map(function(k){return k.length>32?k.slice(0,32)+'…':k;});
+          var netRs=keys.map(function(k){return parseFloat(map[k].netR.toFixed(2));});
+          var bg=netRs.map(function(r){return r>=0?'rgba(0,212,255,0.52)':'rgba(255,68,102,0.52)';});
+          var bd=netRs.map(function(r){return r>=0?'rgba(0,212,255,0.9)':'rgba(255,68,102,0.9)';});
           chartInstances['model'] = new Chart(canvas.getContext('2d'), {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                data: netRs,
-                backgroundColor: bgColors,
-                borderColor: bdrColors,
-                borderWidth: 1, borderRadius: 5, borderSkipped: false
-              }]
-            },
-            options: baseOpts({
-              indexAxis: 'y',
-              scales: {
-                x: axisX({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, callback: function (v) { return v + 'R'; } } }),
-                y: axisY({ ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 10 } } })
-              },
-              plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults(), {
-                  callbacks: {
-                    title: function (items) { return keys[items[0].dataIndex]; },
-                    label: function (ctx) {
-                      var k = keys[ctx.dataIndex], b = map[k];
-                      var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : '—';
-                      return ['Net: ' + ctx.parsed.x.toFixed(2) + 'R', 'WR: ' + wr + '%  N: ' + b.total];
-                    }
-                  }
-                })
-              }
+            type:'bar',
+            data:{labels:labels,datasets:[{data:netRs,backgroundColor:bg,borderColor:bd,borderWidth:1,borderRadius:5,borderSkipped:false}]},
+            options: Object.assign({},baseOpts(),{
+              indexAxis:'y',
+              scales:{ x:axX({ticks:{callback:function(v){return v+'R';}}}), y:axY({ticks:{color:'rgba(255,255,255,0.55)',font:{size:10}}}) },
+              plugins:{legend:{display:false},tooltip:Object.assign({},ttBase(),{callbacks:{title:function(i){return keys[i[0].dataIndex];},label:function(c){var k=keys[c.dataIndex],b=map[k],wr=b.total?((b.wins/b.total)*100).toFixed(1):'—';return['Net: '+c.parsed.x.toFixed(2)+'R','WR: '+wr+'%  ·  N: '+b.total];}}})}
             })
           });
         }
 
-        /* ═══ PERFORMANCE BY DAY ═══ */
         function renderWeekday(trades) {
           destroyChart('weekday');
-          var canvas = document.getElementById('chart-weekday');
-          if (!canvas) return;
-          var ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-          var map = {};
-          ORDER.forEach(function (d) { map[d] = { total: 0, wins: 0, netR: 0 }; });
-          trades.forEach(function (t) {
-            var d = tradeDate(t); if (isNaN(d)) return;
-            var wd = weekdayAdelaide(d);
-            if (!map[wd]) return;
+          var canvas = document.getElementById('chart-weekday'); if (!canvas) return;
+          var ORDER=['Mon','Tue','Wed','Thu','Fri'], map={};
+          ORDER.forEach(function(d){map[d]={total:0,wins:0,netR:0};});
+          trades.forEach(function(t){
+            var d=tradeDate(t); if(isNaN(d)) return;
+            var wd=weekdayAdelaide(d); if(!map[wd]) return;
             map[wd].total++;
-            if (normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win') map[wd].wins++;
-            map[wd].netR += rDelta(t);
+            if(normalizeOutcome(getField(t,'outcome','Outcome','OUTCOME'))==='win') map[wd].wins++;
+            map[wd].netR+=rDelta(t);
           });
-          var activeDays = ORDER.filter(function (d) { return map[d].total > 0; });
-          if (!activeDays.length) { document.getElementById('meta-weekday').textContent = 'No data'; return; }
-          document.getElementById('meta-weekday').textContent = activeDays.length + ' days';
-
-          var wrData = activeDays.map(function (d) { return parseFloat(((map[d].wins / map[d].total) * 100).toFixed(1)); });
-          var netRData = activeDays.map(function (d) { return parseFloat(map[d].netR.toFixed(2)); });
-
+          var active=ORDER.filter(function(d){return map[d].total>0;});
+          if(!active.length){document.getElementById('meta-weekday').textContent='No data';return;}
+          document.getElementById('meta-weekday').textContent=active.length+' days';
+          var wrData=active.map(function(d){return parseFloat(((map[d].wins/map[d].total)*100).toFixed(1));});
+          var netRData=active.map(function(d){return parseFloat(map[d].netR.toFixed(2));});
           chartInstances['weekday'] = new Chart(canvas.getContext('2d'), {
-            type: 'bar',
-            data: {
-              labels: activeDays,
-              datasets: [
-                {
-                  label: 'Win Rate %',
-                  data: wrData,
-                  backgroundColor: 'rgba(0,212,255,0.45)',
-                  borderColor: 'rgba(0,212,255,0.85)',
-                  borderWidth: 1, borderRadius: 5, yAxisID: 'yWR'
-                },
-                {
-                  label: 'Net R',
-                  data: netRData,
-                  backgroundColor: netRData.map(function (r) { return r >= 0 ? 'rgba(0,220,120,0.4)' : 'rgba(255,68,102,0.4)'; }),
-                  borderColor: netRData.map(function (r) { return r >= 0 ? 'rgba(0,220,120,0.85)' : 'rgba(255,68,102,0.85)'; }),
-                  borderWidth: 1, borderRadius: 5, yAxisID: 'yR'
-                }
-              ]
-            },
-            options: baseOpts({
-              interaction: { mode: 'index', intersect: false },
-              scales: {
-                x: axisX({ ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 } } }),
-                yWR: Object.assign({}, axisY(), {
-                  position: 'left', min: 0, max: 100,
-                  ticks: { color: 'rgba(0,212,255,0.6)', font: { size: 10 }, maxTicksLimit: 6, callback: function (v) { return v + '%'; } }
-                }),
-                yR: Object.assign({}, axisY(), {
-                  position: 'right', grid: { drawOnChartArea: false },
-                  ticks: { color: 'rgba(0,220,120,0.6)', font: { size: 10 }, maxTicksLimit: 6, callback: function (v) { return v + 'R'; } }
-                })
+            type:'bar',
+            data:{labels:active,datasets:[
+              {label:'Win Rate %',data:wrData,backgroundColor:'rgba(0,212,255,0.45)',borderColor:'rgba(0,212,255,0.85)',borderWidth:1,borderRadius:5,yAxisID:'yWR'},
+              {label:'Net R',data:netRData,backgroundColor:netRData.map(function(r){return r>=0?'rgba(0,220,120,0.4)':'rgba(255,68,102,0.4)';}),borderColor:netRData.map(function(r){return r>=0?'rgba(0,220,120,0.85)':'rgba(255,68,102,0.85)';}),borderWidth:1,borderRadius:5,yAxisID:'yR'}
+            ]},
+            options: Object.assign({},baseOpts(),{
+              interaction:{mode:'index',intersect:false},
+              scales:{
+                x:axX({ticks:{color:'rgba(255,255,255,0.55)',font:{size:11}}}),
+                yWR:Object.assign({},axY(),{position:'left',min:0,max:100,ticks:{color:'rgba(0,212,255,0.6)',maxTicksLimit:6,font:{size:10},callback:function(v){return v+'%';}}}),
+                yR:Object.assign({},axY(),{position:'right',grid:{drawOnChartArea:false},ticks:{color:'rgba(0,220,120,0.6)',maxTicksLimit:6,font:{size:10},callback:function(v){return v+'R';}}})
               },
-              plugins: {
-                legend: {
-                  display: true, position: 'top', align: 'end',
-                  labels: { color: 'rgba(255,255,255,0.42)', font: { size: 9, family: '"Share Tech Mono",monospace' }, boxWidth: 14, boxHeight: 10, padding: 10 }
-                },
-                tooltip: Object.assign({}, tooltipDefaults(), {
-                  callbacks: {
-                    label: function (ctx) {
-                      var d = activeDays[ctx.dataIndex], b = map[d];
-                      if (ctx.datasetIndex === 0) return 'Win rate: ' + ctx.parsed.y.toFixed(1) + '%  (N=' + b.total + ')';
-                      return 'Net R: ' + ctx.parsed.y.toFixed(2) + 'R';
-                    }
-                  }
-                })
+              plugins:{
+                legend:{display:true,position:'top',align:'end',labels:{color:'rgba(255,255,255,0.38)',font:{size:9,family:'"Share Tech Mono",monospace'},boxWidth:14,boxHeight:10,padding:10}},
+                tooltip:Object.assign({},ttBase(),{callbacks:{label:function(c){var d=active[c.dataIndex],b=map[d];return c.datasetIndex===0?'WR: '+c.parsed.y.toFixed(1)+'%  (N='+b.total+')':'Net R: '+c.parsed.y.toFixed(2)+'R';}}})
               }
             })
           });
         }
 
-        /* ═══ PERFORMANCE BY SESSION ═══ */
         function normalizeSession(raw) {
-          var v = String(raw || '').trim().toUpperCase();
-          if (v.includes('LONDON') && v.includes('NEW')) return 'LDN/NY';
-          if (v.includes('LONDON') && v.includes('NY'))  return 'LDN/NY';
-          if (v.includes('LONDON')) return 'London';
-          if (v.includes('NEW YORK') || v === 'NY' || v === 'NEW YORK') return 'New York';
-          if (v.includes('ASIA')) return 'Asia';
-          return raw.trim() || null;
+          var v=String(raw||'').trim().toUpperCase();
+          if((v.includes('LONDON')&&(v.includes('NEW')||v.includes('NY')))||v.includes('LDN/NY')) return 'LDN/NY';
+          if(v.includes('LONDON')||v==='LDN') return 'London';
+          if(v.includes('NEW YORK')||v==='NY') return 'New York';
+          if(v.includes('ASIA')) return 'Asia';
+          return raw.trim()||null;
         }
 
         function renderSession(trades) {
           destroyChart('session');
-          var canvas = document.getElementById('chart-session');
-          if (!canvas) return;
-          var map = {};
-          trades.forEach(function (t) {
-            var s = normalizeSession(tradeSession(t));
-            if (!s) return;
-            if (!map[s]) map[s] = { total: 0, wins: 0, netR: 0 };
+          var canvas = document.getElementById('chart-session'); if (!canvas) return;
+          var map={};
+          trades.forEach(function(t){
+            var s=normalizeSession(tradeSession(t)); if(!s) return;
+            if(!map[s]) map[s]={total:0,wins:0,netR:0};
             map[s].total++;
-            if (normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME')) === 'win') map[s].wins++;
-            map[s].netR += rDelta(t);
+            if(normalizeOutcome(getField(t,'outcome','Outcome','OUTCOME'))==='win') map[s].wins++;
+            map[s].netR+=rDelta(t);
           });
-          var keys = Object.keys(map).sort(function (a, b) { return map[b].netR - map[a].netR; });
-          if (!keys.length) { document.getElementById('meta-session').textContent = 'No data'; return; }
-          document.getElementById('meta-session').textContent = keys.length + ' sessions';
-
-          var netRs = keys.map(function (k) { return parseFloat(map[k].netR.toFixed(2)); });
-          var wrData = keys.map(function (k) { return parseFloat(((map[k].wins / map[k].total) * 100).toFixed(1)); });
-          var bgColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.5)' : 'rgba(255,68,102,0.5)'; });
-          var bdrColors = netRs.map(function (r) { return r >= 0 ? 'rgba(0,212,255,0.9)' : 'rgba(255,68,102,0.9)'; });
-
+          var keys=Object.keys(map).sort(function(a,b){return map[b].netR-map[a].netR;});
+          if(!keys.length){document.getElementById('meta-session').textContent='No data';return;}
+          document.getElementById('meta-session').textContent=keys.length+' sessions';
+          var netRs=keys.map(function(k){return parseFloat(map[k].netR.toFixed(2));});
+          var bg=netRs.map(function(r){return r>=0?'rgba(0,212,255,0.52)':'rgba(255,68,102,0.52)';});
+          var bd=netRs.map(function(r){return r>=0?'rgba(0,212,255,0.9)':'rgba(255,68,102,0.9)';});
           chartInstances['session'] = new Chart(canvas.getContext('2d'), {
-            type: 'bar',
-            data: {
-              labels: keys,
-              datasets: [{
-                label: 'Net R',
-                data: netRs,
-                backgroundColor: bgColors,
-                borderColor: bdrColors,
-                borderWidth: 1, borderRadius: 6, borderSkipped: false
-              }]
-            },
-            options: baseOpts({
-              indexAxis: 'y',
-              scales: {
-                x: axisX({ ticks: { color: 'rgba(255,255,255,0.42)', font: { size: 10 }, callback: function (v) { return v + 'R'; } } }),
-                y: axisY({ ticks: { color: 'rgba(255,255,255,0.55)', font: { size: 11 } } })
-              },
-              plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults(), {
-                  callbacks: {
-                    label: function (ctx) {
-                      var k = keys[ctx.dataIndex], b = map[k];
-                      var wr = b.total ? ((b.wins / b.total) * 100).toFixed(1) : '—';
-                      return ['Net: ' + ctx.parsed.x.toFixed(2) + 'R', 'WR: ' + wr + '%  N: ' + b.total];
-                    }
-                  }
-                })
-              }
+            type:'bar',
+            data:{labels:keys,datasets:[{data:netRs,backgroundColor:bg,borderColor:bd,borderWidth:1,borderRadius:6,borderSkipped:false}]},
+            options: Object.assign({},baseOpts(),{
+              indexAxis:'y',
+              scales:{ x:axX({ticks:{callback:function(v){return v+'R';}}}), y:axY({ticks:{color:'rgba(255,255,255,0.55)',font:{size:11}}}) },
+              plugins:{legend:{display:false},tooltip:Object.assign({},ttBase(),{callbacks:{label:function(c){var k=keys[c.dataIndex],b=map[k],wr=b.total?((b.wins/b.total)*100).toFixed(1):'—';return['Net: '+c.parsed.x.toFixed(2)+'R','WR: '+wr+'%  ·  N: '+b.total];}}})}
             })
           });
         }
 
-        /* ═══ DRAWDOWN ═══ */
         function renderDrawdown(tradesAsc) {
           destroyChart('drawdown');
-          var canvas = document.getElementById('chart-drawdown');
-          if (!canvas) return;
-          var cum = 0, peak = 0, labels = [], data = [];
-          tradesAsc.forEach(function (t) {
-            cum += rDelta(t);
-            if (cum > peak) peak = cum;
-            labels.push(formatDateLabel(t));
-            data.push(parseFloat((cum - peak).toFixed(2)));
-          });
-          var maxDD = data.length ? Math.min.apply(null, data) : 0;
-          document.getElementById('meta-drawdown').textContent = 'Max drawdown ' + maxDD.toFixed(2) + 'R';
-
-          var ctx = canvas.getContext('2d');
-          var grad = ctx.createLinearGradient(0, 0, 0, canvas.offsetHeight || 220);
-          grad.addColorStop(0, 'rgba(255,68,102,0.35)');
-          grad.addColorStop(1, 'rgba(255,68,102,0.03)');
-
+          var canvas = document.getElementById('chart-drawdown'); if (!canvas) return;
+          var cum=0, peak=0, labels=[], data=[];
+          tradesAsc.forEach(function(t){ cum+=rDelta(t); if(cum>peak)peak=cum; labels.push(formatDateLabel(t)); data.push(parseFloat((cum-peak).toFixed(2))); });
+          var maxDD=data.length?Math.min.apply(null,data):0;
+          document.getElementById('meta-drawdown').textContent='Max '+maxDD.toFixed(2)+'R';
+          var ctx=canvas.getContext('2d');
+          var grad=ctx.createLinearGradient(0,0,0,canvas.offsetHeight||220);
+          grad.addColorStop(0,'rgba(255,68,102,0.35)'); grad.addColorStop(1,'rgba(255,68,102,0.02)');
           chartInstances['drawdown'] = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: labels,
-              datasets: [{
-                data: data,
-                borderColor: 'rgba(255,68,102,0.9)',
-                backgroundColor: grad,
-                fill: true, tension: 0.25,
-                pointRadius: 0, pointHitRadius: 12, borderWidth: 1.5
-              }]
-            },
-            options: baseOpts({
-              scales: {
-                x: axisX({ ticks: { color: 'rgba(255,255,255,0.35)', maxTicksLimit: 8, font: { size: 10 } } }),
-                y: axisY({
-                  max: 0,
-                  ticks: { color: 'rgba(255,68,102,0.65)', maxTicksLimit: 6, font: { size: 10 }, callback: function (v) { return v + 'R'; } }
-                })
-              },
-              plugins: {
-                legend: { display: false },
-                tooltip: Object.assign({}, tooltipDefaults(), {
-                  borderColor: 'rgba(255,68,102,0.3)',
-                  callbacks: {
-                    label: function (ctx) { return 'Drawdown: ' + ctx.parsed.y.toFixed(2) + 'R'; }
-                  }
-                })
-              }
+            type:'line',
+            data:{labels:labels,datasets:[{data:data,borderColor:'rgba(255,68,102,0.9)',backgroundColor:grad,fill:true,tension:0.25,pointRadius:0,pointHitRadius:12,borderWidth:1.5}]},
+            options: Object.assign({},baseOpts(),{
+              scales:{ x:axX({ticks:{maxTicksLimit:8}}), y:axY({max:0,ticks:{color:'rgba(255,68,102,0.6)',callback:function(v){return v+'R';}}}) },
+              plugins:{legend:{display:false},tooltip:Object.assign({},ttBase(),{borderColor:'rgba(255,68,102,0.3)',callbacks:{label:function(c){return 'DD: '+c.parsed.y.toFixed(2)+'R';}}})}
             })
           });
         }
 
-        /* ═══ RENDER ALL ═══ */
+        /* ── Render all ── */
         function renderAll(trades) {
           if (!window.Chart) return;
           Chart.defaults.color = 'rgba(255,255,255,0.65)';
-          Chart.defaults.font.family = '"Outfit", system-ui, sans-serif';
+          Chart.defaults.font.family = '"Outfit",system-ui,sans-serif';
 
-          var tradesAsc = trades.slice().sort(function (a, b) { return tradeDate(a) - tradeDate(b); }).filter(function (t) { return !isNaN(tradeDate(t)); });
-
-          var total = trades.length, wins = 0, netR = 0;
-          trades.forEach(function (t) {
-            var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
-            if (o === 'win') wins++;
-            netR += rDelta(t);
+          var tradesAsc = trades.slice().sort(function(a,b){return tradeDate(a)-tradeDate(b);}).filter(function(t){return !isNaN(tradeDate(t));});
+          var total=trades.length, wins=0, netR=0;
+          trades.forEach(function(t){
+            if(normalizeOutcome(getField(t,'outcome','Outcome','OUTCOME'))==='win') wins++;
+            netR+=rDelta(t);
           });
-          var stats = {
-            total: total,
-            wins: wins,
-            winRate: total > 0 ? (wins / total) * 100 : null,
-            netR: netR
-          };
+          var stats = { total:total, wins:wins, winRate:total>0?(wins/total)*100:null, netR:netR };
 
-          document.getElementById('an-badge-text').textContent =
-            total + ' trades · ' + (stats.winRate != null ? stats.winRate.toFixed(1) + '% WR' : '—') + ' · ' + netR.toFixed(2) + 'R';
-          document.getElementById('f-count').textContent = total + ' trades';
+          document.getElementById('an-badge-text').textContent = total+' trades · '+(stats.winRate!=null?stats.winRate.toFixed(1)+'% WR':'—')+' · '+netR.toFixed(2)+'R';
+          document.getElementById('f-count').textContent = total+' trades';
+          var foot=document.getElementById('an-foot');
+          if(foot) foot.textContent = 'Trades: '+total+'  ·  Win rate: '+(stats.winRate!=null?stats.winRate.toFixed(1)+'%':'—')+'  ·  Net R: '+netR.toFixed(2)+'R';
 
-          var foot = document.getElementById('an-foot');
-          if (foot) foot.textContent = 'Trades: ' + total + '  ·  Win rate: ' + (stats.winRate != null ? stats.winRate.toFixed(1) + '%' : '—') + '  ·  Net R: ' + netR.toFixed(2) + 'R';
-
-          renderEquity(tradesAsc);
           renderMonteCarlo(tradesAsc);
+          renderEquity(tradesAsc);
           renderRollingWR(tradesAsc, stats);
           renderRDist(trades);
-          renderModel(trades);
           renderWeekday(trades);
+          renderModel(trades);
           renderSession(trades);
           renderDrawdown(tradesAsc);
         }
 
-        /* ═══ SCROLL ANIMATION ═══ */
+        /* ── Scroll animation ── */
         function initScrollAnim() {
-          if (!window.IntersectionObserver) {
-            document.querySelectorAll('.an-card').forEach(function (c) { c.classList.add('an-card--visible'); });
-            return;
-          }
-          var observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('an-card--visible');
-                observer.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.06, rootMargin: '0px 0px -30px 0px' });
-          document.querySelectorAll('.an-card').forEach(function (c) { observer.observe(c); });
+          if (!window.IntersectionObserver) { document.querySelectorAll('.an-card').forEach(function(c){c.classList.add('an-card--visible');}); return; }
+          var obs = new IntersectionObserver(function(entries){
+            entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('an-card--visible'); obs.unobserve(e.target); } });
+          },{threshold:0.04,rootMargin:'0px 0px -20px 0px'});
+          document.querySelectorAll('.an-card').forEach(function(c){obs.observe(c);});
         }
 
-        /* ═══ PARTICLES ═══ */
+        /* ── Particles ── */
         function initParticles() {
-          var canvas = document.getElementById('particle-canvas');
-          if (!canvas) return;
-          var ctx = canvas.getContext('2d');
-          function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-          resize();
-          window.addEventListener('resize', resize);
-          var particles = [];
-          for (var i = 0; i < 300; i++) {
-            var r = Math.random();
-            particles.push({
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-              vx: (Math.random() - 0.5) * 0.22,
-              vy: (Math.random() - 0.5) * 0.22,
-              size: Math.random() * 0.8 + 0.2,
-              base: Math.random() * 0.45 + 0.06,
-              tw: Math.random() * Math.PI * 2,
-              cr: r < 0.65 ? 0 : r < 0.93 ? 192 : 255,
-              cg: r < 0.65 ? 191 : r < 0.93 ? 192 : 255,
-              cb: r < 0.65 ? 255 : r < 0.93 ? 192 : 255
-            });
+          var canvas=document.getElementById('particle-canvas'); if(!canvas) return;
+          var ctx=canvas.getContext('2d');
+          function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+          resize(); window.addEventListener('resize',resize);
+          var particles=[];
+          for(var i=0;i<300;i++){
+            var r=Math.random();
+            particles.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,size:Math.random()*.8+.2,base:Math.random()*.45+.06,tw:Math.random()*Math.PI*2,cr:r<.65?0:r<.93?192:255,cg:r<.65?191:r<.93?192:255,cb:255});
           }
-          (function loop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (var j = 0; j < particles.length; j++) {
-              var p = particles[j];
-              p.tw += 0.018;
-              var a = p.base * (0.72 + 0.28 * Math.sin(p.tw));
-              p.x += p.vx; p.y += p.vy;
-              var W = window.innerWidth, H = window.innerHeight;
-              if (p.x < -20) p.x = W + 20; if (p.x > W + 20) p.x = -20;
-              if (p.y < -20) p.y = H + 20; if (p.y > H + 20) p.y = -20;
-              ctx.beginPath();
-              ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-              ctx.fillStyle = 'rgba(' + p.cr + ',' + p.cg + ',' + p.cb + ',' + a + ')';
-              ctx.fill();
+          (function loop(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            for(var j=0;j<particles.length;j++){
+              var p=particles[j];p.tw+=.018;var a=p.base*(.72+.28*Math.sin(p.tw));
+              p.x+=p.vx;p.y+=p.vy;
+              var W=window.innerWidth,H=window.innerHeight;
+              if(p.x<-20)p.x=W+20;if(p.x>W+20)p.x=-20;if(p.y<-20)p.y=H+20;if(p.y>H+20)p.y=-20;
+              ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+              ctx.fillStyle='rgba('+p.cr+','+p.cg+','+p.cb+','+a+')';ctx.fill();
             }
             requestAnimationFrame(loop);
           })();
         }
 
-        /* ═══ DEBOUNCE ═══ */
-        function debounce(fn, ms) {
-          var t; return function () { var args = arguments; clearTimeout(t); t = setTimeout(function () { fn.apply(null, args); }, ms); };
-        }
+        function debounce(fn,ms){var t;return function(){var a=arguments;clearTimeout(t);t=setTimeout(function(){fn.apply(null,a);},ms);};}
 
-        /* ═══ BOOT ═══ */
+        /* ── Boot ── */
         async function boot() {
           ensureUserId();
           initParticles();
-
-          var foot = document.getElementById('an-foot');
-          if (foot) foot.textContent = 'Loading trades…';
-
-          if (!window.Chart) {
-            if (foot) foot.textContent = 'Charts offline. CDN may be blocked.';
-            return;
-          }
-
-          try { allTrades = await fetchAllTrades(); } catch (e) { allTrades = []; }
-
+          if (!window.Chart) { document.getElementById('an-foot').textContent='Charts offline. CDN blocked.'; return; }
+          try { allTrades = await fetchAllTrades(); } catch(e){ allTrades=[]; }
           if (!allTrades.length) {
             document.getElementById('an-badge-text').textContent = 'No trades found';
-            if (foot) foot.textContent = 'No trades found for ' + currentUserId;
-            document.querySelectorAll('.an-card').forEach(function (c) { c.classList.add('an-card--visible'); });
+            document.getElementById('an-foot').textContent = 'No trades found for '+currentUserId;
+            document.querySelectorAll('.an-card').forEach(function(c){c.classList.add('an-card--visible');});
             return;
           }
-
           populateFilters(allTrades);
-
-          var filtered = applyFilter(allTrades);
-          renderAll(filtered);
+          renderAll(applyFilter(allTrades));
+          bindMonteCarloScenarioClicksOnce();
           initScrollAnim();
 
-          /* Filter inputs */
-          function onFilterChange() {
-            activeFilter.from  = (document.getElementById('f-from')  || {}).value || '';
-            activeFilter.to    = (document.getElementById('f-to')    || {}).value || '';
-            activeFilter.pair  = (document.getElementById('f-pair')  || {}).value || '';
-            activeFilter.model = (document.getElementById('f-model') || {}).value || '';
+          function onFilterChange(){
+            activeFilter.from  = (document.getElementById('f-from') ||{}).value||'';
+            activeFilter.to    = (document.getElementById('f-to')   ||{}).value||'';
+            activeFilter.pair  = (document.getElementById('f-pair') ||{}).value||'';
+            activeFilter.model = (document.getElementById('f-model')||{}).value||'';
             var f = applyFilter(allTrades);
-            document.getElementById('f-count').textContent = f.length + ' trades';
+            document.getElementById('f-count').textContent = f.length+' trades';
             renderAll(f);
           }
-          var debouncedFilter = debounce(onFilterChange, 180);
-
-          ['f-from', 'f-to', 'f-pair', 'f-model'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('change', debouncedFilter);
+          var dbFilter = debounce(onFilterChange,200);
+          ['f-from','f-to','f-pair','f-model'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('change',dbFilter);});
+          ['f-from','f-to'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('input',dbFilter);});
+          document.getElementById('f-reset').addEventListener('click',function(){
+            ['f-from','f-to'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+            ['f-pair','f-model'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+            activeFilter={from:'',to:'',pair:'',model:''};
+            document.getElementById('f-count').textContent=allTrades.length+' trades';
+            renderAll(allTrades);
           });
-          ['f-from', 'f-to'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('input', debouncedFilter);
-          });
-
-          var resetBtn = document.getElementById('f-reset');
-          if (resetBtn) {
-            resetBtn.addEventListener('click', function () {
-              ['f-from', 'f-to'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
-              ['f-pair', 'f-model'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
-              activeFilter = { from: '', to: '', pair: '', model: '' };
-              document.getElementById('f-count').textContent = allTrades.length + ' trades';
-              renderAll(allTrades);
-            });
-          }
-
-          /* Re-render on resize (debounced) */
-          window.addEventListener('resize', debounce(function () {
-            var f = applyFilter(allTrades);
-            renderAll(f);
-          }, 300));
+          window.addEventListener('resize',debounce(function(){renderAll(applyFilter(allTrades));},320));
         }
 
         boot();
