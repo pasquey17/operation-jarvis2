@@ -1188,16 +1188,32 @@
       }
 
       /**
-       * Primary sort key: epoch ms of parsed trade instant, only if Adelaide year is plausible.
-       * Invalid/absurd rows → NaN (sorted last). Uses getTime() so order matches true chronology.
+       * True if trade instant falls in a plausible calendar year (Adelaide preferred; UTC fallback).
+       * Avoids all-NaN tradeSortRankMs when Intl/dateKey fails but tradeDate parsed correctly.
+       */
+      function tradeHasPlausibleCalendarYear(d) {
+        if (!(d instanceof Date) || isNaN(d.getTime())) return false;
+        var yA = tradeYearAdelaide(d);
+        if (!isNaN(yA)) return yA >= JN_YEAR_MIN && yA <= JN_YEAR_MAX;
+        var yU = d.getUTCFullYear();
+        return yU >= JN_YEAR_MIN && yU <= JN_YEAR_MAX;
+      }
+
+      /**
+       * Sort key: epoch ms from tradeDate(t). Invalid Date → NaN. Year gate uses Adelaide
+       * or UTC fallback so newest/oldest never degenerate to notion_id-only order for normal rows.
        */
       function tradeSortRankMs(t) {
         var d = tradeDate(t);
         if (!(d instanceof Date) || isNaN(d.getTime())) return NaN;
-        var y = tradeYearAdelaide(d);
-        if (isNaN(y) || y < JN_YEAR_MIN || y > JN_YEAR_MAX) {
+        if (!tradeHasPlausibleCalendarYear(d)) {
           if (jnDebugDates()) {
-            console.warn('[journal] Trade date out of range — sorted last:', y, resolveTradeDateRaw(t));
+            console.warn(
+              '[journal] Trade year out of range — sorted last:',
+              tradeYearAdelaide(d),
+              d.getUTCFullYear(),
+              resolveTradeDateRaw(t)
+            );
           }
           return NaN;
         }
@@ -1208,13 +1224,12 @@
       function tradeDateKeySort(t) {
         var d = tradeDate(t);
         if (!(d instanceof Date) || isNaN(d.getTime())) return '';
-        var y = tradeYearAdelaide(d);
-        if (isNaN(y) || y < JN_YEAR_MIN || y > JN_YEAR_MAX) return '';
+        if (!tradeHasPlausibleCalendarYear(d)) return '';
         return dateKeyAdelaide(d);
       }
 
       function tradeDisplayAllowed(t) {
-        return !isNaN(tradeSortRankMs(t));
+        return tradeHasPlausibleCalendarYear(tradeDate(t));
       }
 
       function jnDebugDates() {
@@ -2037,13 +2052,24 @@
         }
 
         if (jnDebugDates()) {
-          console.log('[Jarvis] sort=' + activeFilters.sort + ' first 10 (dayRankMs | sortKey | raw):',
-            filteredTrades.slice(0, 10).map(function (t) {
-              var sk = tradeDateKeySort(t);
-              var raw = resolveTradeDateRaw(t);
-              var rk = tradeSortRankMs(t);
-              return (isNaN(rk) ? 'NaN' : rk) + ' | ' + sk + ' | ' + String(raw).slice(0, 36);
-            }));
+          var slice = filteredTrades.slice(0, 15);
+          console.table(
+            slice.map(function (t, idx) {
+              var d = tradeDate(t);
+              return {
+                idx: idx,
+                rankMs: tradeSortRankMs(t),
+                getTime: isNaN(d.getTime()) ? 'INVALID' : d.getTime(),
+                raw: String(resolveTradeDateRaw(t)).slice(0, 48),
+                sort: activeFilters.sort
+              };
+            })
+          );
+          var nanN = 0;
+          for (var zi = 0; zi < filteredTrades.length; zi++) {
+            if (isNaN(tradeSortRankMs(filteredTrades[zi]))) nanN++;
+          }
+          console.log('[jn_debug] tradeSortRankMs NaN:', nanN, '/', filteredTrades.length, '| sort=', activeFilters.sort);
         }
 
         jnDebugRegressionSort();
