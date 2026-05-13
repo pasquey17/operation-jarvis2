@@ -2542,6 +2542,485 @@ async function handleLogTrade(req, res) {
   }
 }
 
+function parseSupabaseUserIdParam(req) {
+  const u = new URL(req.url, `http://localhost:${PORT}`);
+  let raw = (u.searchParams.get("user_id") || "").trim();
+  if (raw.startsWith("eq.")) raw = raw.slice(3);
+  try {
+    raw = decodeURIComponent(raw);
+  } catch {
+    /* keep raw */
+  }
+  return raw || "aidenpasque11@gmail.com";
+}
+
+/** GET /api/accounts?user_id=eq.{email}&include_archived=true */
+async function handleTradingAccountsGet(req, res) {
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  const u = new URL(req.url, `http://localhost:${PORT}`);
+  const userId = parseSupabaseUserIdParam(req);
+  const includeArchived =
+    u.searchParams.get("include_archived") === "true" || u.searchParams.get("include_archived") === "1";
+
+  let q = `${url}/rest/v1/trading_accounts?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`;
+  if (!includeArchived) q += "&archived=eq.false";
+
+  try {
+    const r = await fetch(q, {
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status, { error: formatSupabaseError(text, r.status) });
+      return;
+    }
+    let accounts = JSON.parse(text);
+    if (!Array.isArray(accounts)) accounts = [];
+
+    if (accounts.length) {
+      const ids = accounts.map((a) => a.id).join(",");
+      const r2 = await fetch(
+        `${url}/rest/v1/account_equity_snapshots?user_id=eq.${encodeURIComponent(userId)}&account_id=in.(${ids})&select=id,account_id,equity,recorded_at,note&order=recorded_at.asc`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+      );
+      const t2 = await r2.text();
+      if (r2.ok) {
+        let snaps = [];
+        try {
+          snaps = JSON.parse(t2);
+        } catch {
+          snaps = [];
+        }
+        if (Array.isArray(snaps)) {
+          const by = new Map();
+          for (const s of snaps) {
+            if (!by.has(s.account_id)) by.set(s.account_id, []);
+            by.get(s.account_id).push(s);
+          }
+          for (const row of accounts) {
+            const arr = by.get(row.id) || [];
+            row.recent_snapshots = arr.length > 60 ? arr.slice(-60) : [...arr];
+            row.latest_snapshot = arr.length ? arr[arr.length - 1] : null;
+          }
+        }
+      }
+    }
+
+    json(res, 200, { accounts });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/accounts */
+async function handleTradingAccountsPost(req, res) {
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  const userId = String(body.user_id || "aidenpasque11@gmail.com").trim();
+  const name = String(body.name || "Account").trim().slice(0, 200);
+  const accountType = String(body.account_type || "eval").toLowerCase();
+  if (!["eval", "funded", "live"].includes(accountType)) {
+    json(res, 400, { error: "account_type must be eval, funded, or live" });
+    return;
+  }
+  const profitTarget = Number(body.profit_target);
+  const maxLoss = Number(body.max_loss_limit);
+  if (!Number.isFinite(profitTarget) || profitTarget < 0) {
+    json(res, 400, { error: "profit_target must be a non-negative number" });
+    return;
+  }
+  if (!Number.isFinite(maxLoss) || maxLoss < 0) {
+    json(res, 400, { error: "max_loss_limit must be a non-negative number" });
+    return;
+  }
+
+  let startingBalance = null;
+  if (body.starting_balance != null && body.starting_balance !== "") {
+    const sb = Number(body.starting_balance);
+    if (!Number.isFinite(sb)) {
+      json(res, 400, { error: "starting_balance must be a number" });
+      return;
+    }
+    startingBalance = sb;
+  }
+
+  let dailyLoss = null;
+  if (body.daily_loss_limit != null && body.daily_loss_limit !== "") {
+    const dl = Number(body.daily_loss_limit);
+    if (!Number.isFinite(dl) || dl < 0) {
+      json(res, 400, { error: "daily_loss_limit must be a non-negative number" });
+      return;
+    }
+    dailyLoss = dl;
+  }
+
+  const row = {
+    user_id: userId,
+    name,
+    account_type: accountType,
+    starting_balance: startingBalance,
+    profit_target: profitTarget,
+    max_loss_limit: maxLoss,
+    daily_loss_limit: dailyLoss,
+    archived: false,
+  };
+
+  try {
+    const r = await fetch(`${url}/rest/v1/trading_accounts`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(row),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = [];
+    }
+    const acc = Array.isArray(data) ? data[0] : data;
+    acc.recent_snapshots = [];
+    acc.latest_snapshot = null;
+    json(res, 201, { account: acc });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** PATCH /api/accounts/:id */
+async function handleTradingAccountsPatch(req, res) {
+  const pathname = req.url.split("?")[0];
+  const m = pathname.match(/^\/api\/accounts\/([^/]+)\/?$/);
+  if (!m) {
+    json(res, 400, { error: "Invalid path" });
+    return;
+  }
+  const id = m[1];
+
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const userId = String(body.user_id || "").trim();
+  if (!userId) {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  try {
+    const check = await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    const checkText = await check.text();
+    if (!check.ok) {
+      json(res, check.status, { error: formatSupabaseError(checkText, check.status) });
+      return;
+    }
+    const found = JSON.parse(checkText);
+    if (!Array.isArray(found) || found.length === 0) {
+      json(res, 404, { error: "Account not found" });
+      return;
+    }
+
+    const patch = { updated_at: new Date().toISOString() };
+    if (body.name != null) patch.name = String(body.name).trim().slice(0, 200);
+    if (body.account_type != null) {
+      const t = String(body.account_type).toLowerCase();
+      if (!["eval", "funded", "live"].includes(t)) {
+        json(res, 400, { error: "account_type must be eval, funded, or live" });
+        return;
+      }
+      patch.account_type = t;
+    }
+    if (body.profit_target != null) {
+      const v = Number(body.profit_target);
+      if (!Number.isFinite(v) || v < 0) {
+        json(res, 400, { error: "profit_target must be a non-negative number" });
+        return;
+      }
+      patch.profit_target = v;
+    }
+    if (body.max_loss_limit != null) {
+      const v = Number(body.max_loss_limit);
+      if (!Number.isFinite(v) || v < 0) {
+        json(res, 400, { error: "max_loss_limit must be a non-negative number" });
+        return;
+      }
+      patch.max_loss_limit = v;
+    }
+    if (body.daily_loss_limit !== undefined) {
+      if (body.daily_loss_limit === null || body.daily_loss_limit === "") patch.daily_loss_limit = null;
+      else {
+        const v = Number(body.daily_loss_limit);
+        if (!Number.isFinite(v) || v < 0) {
+          json(res, 400, { error: "daily_loss_limit must be a non-negative number or empty" });
+          return;
+        }
+        patch.daily_loss_limit = v;
+      }
+    }
+    if (body.starting_balance !== undefined) {
+      if (body.starting_balance === null || body.starting_balance === "") patch.starting_balance = null;
+      else {
+        const v = Number(body.starting_balance);
+        if (!Number.isFinite(v)) {
+          json(res, 400, { error: "starting_balance must be a number or empty" });
+          return;
+        }
+        patch.starting_balance = v;
+      }
+    }
+    if (body.archived != null) {
+      patch.archived = Boolean(body.archived);
+    }
+
+    if (Object.keys(patch).length <= 1) {
+      json(res, 400, { error: "No updatable fields" });
+      return;
+    }
+
+    const r = await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(patch),
+      }
+    );
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = [];
+    }
+    json(res, 200, { account: Array.isArray(data) ? data[0] : data });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** GET /api/account-snapshots?user_id=...&account_id=...&limit= */
+async function handleAccountSnapshotsGet(req, res) {
+  const u = new URL(req.url, `http://localhost:${PORT}`);
+  const userId = parseSupabaseUserIdParam(req);
+
+  const accountId = (u.searchParams.get("account_id") || "").trim();
+  if (!accountId) {
+    json(res, 400, { error: "account_id required" });
+    return;
+  }
+  let limit = Number(u.searchParams.get("limit") || 120);
+  if (!Number.isFinite(limit) || limit < 1) limit = 120;
+  limit = Math.min(500, Math.floor(limit));
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  try {
+    const verify = await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(accountId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    const vText = await verify.text();
+    if (!verify.ok) {
+      json(res, verify.status, { error: formatSupabaseError(vText, verify.status) });
+      return;
+    }
+    const v = JSON.parse(vText);
+    if (!Array.isArray(v) || v.length === 0) {
+      json(res, 404, { error: "Account not found" });
+      return;
+    }
+
+    const r = await fetch(
+      `${url}/rest/v1/account_equity_snapshots?user_id=eq.${encodeURIComponent(userId)}&account_id=eq.${encodeURIComponent(accountId)}&order=recorded_at.desc&limit=${limit}`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status, { error: formatSupabaseError(text, r.status) });
+      return;
+    }
+    let snaps = JSON.parse(text);
+    if (!Array.isArray(snaps)) snaps = [];
+    json(res, 200, { snapshots: snaps });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/account-snapshots */
+async function handleAccountSnapshotsPost(req, res) {
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const userId = String(body.user_id || "").trim();
+  const accountId = String(body.account_id || "").trim();
+  const equity = Number(body.equity);
+
+  if (!userId) {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+  if (!accountId) {
+    json(res, 400, { error: "account_id required" });
+    return;
+  }
+  if (!Number.isFinite(equity)) {
+    json(res, 400, { error: "equity must be a number" });
+    return;
+  }
+
+  const note =
+    body.note != null && body.note !== "" ? String(body.note).trim().slice(0, 500) : null;
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  try {
+    const verify = await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(accountId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    const vText = await verify.text();
+    if (!verify.ok) {
+      json(res, verify.status, { error: formatSupabaseError(vText, verify.status) });
+      return;
+    }
+    const v = JSON.parse(vText);
+    if (!Array.isArray(v) || v.length === 0) {
+      json(res, 404, { error: "Account not found" });
+      return;
+    }
+
+    const row = {
+      user_id: userId,
+      account_id: accountId,
+      equity,
+      note,
+    };
+    if (body.recorded_at) {
+      const t = new Date(String(body.recorded_at));
+      if (!isNaN(t.getTime())) row.recorded_at = t.toISOString();
+    }
+
+    const r = await fetch(`${url}/rest/v1/account_equity_snapshots`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(row),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = [];
+    }
+    json(res, 201, { snapshot: Array.isArray(data) ? data[0] : data });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 /** Extract file URLs from Notion page properties (files-type columns). */
 function extractFilesFromNotionProps(props) {
   const urls = [];
@@ -2740,7 +3219,7 @@ async function requestListener(req, res) {
   if (req.method === "OPTIONS") {
     send(res, 204, "", {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
     });
     return;
@@ -2844,6 +3323,31 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/log-trade")) {
     await handleLogTrade(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/accounts")) {
+    await handleTradingAccountsGet(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/accounts")) {
+    await handleTradingAccountsPost(req, res);
+    return;
+  }
+
+  if (req.method === "PATCH" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/?$/)) {
+    await handleTradingAccountsPatch(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/account-snapshots")) {
+    await handleAccountSnapshotsGet(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/account-snapshots")) {
+    await handleAccountSnapshotsPost(req, res);
     return;
   }
 
