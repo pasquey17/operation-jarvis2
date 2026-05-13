@@ -324,13 +324,13 @@
         overflow: hidden;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 60px rgba(0, 0, 0, 0.5);
         transition: border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-        min-height: min(52vh, 560px);
+        min-height: min(36vh, 420px);
         display: flex;
         flex-direction: column;
       }
       .cal-board .cal-grid {
         flex: 1;
-        min-height: 240px;
+        min-height: min(120px, 18vh);
       }
       .cal-board:hover {
         border-color: rgba(0, 212, 255, 0.26);
@@ -376,8 +376,8 @@
         color: rgba(0, 212, 255, 0.85);
       }
       .cal-cell {
-        min-height: 188px;
-        padding: 12px 12px 14px;
+        min-height: 132px;
+        padding: 10px 10px 12px;
         background: rgba(2, 6, 12, 0.94);
         cursor: pointer;
         transition:
@@ -421,18 +421,18 @@
       .cal-pills {
         display: flex;
         flex-wrap: wrap;
-        gap: 5px;
-        margin-top: 8px;
+        gap: 6px;
+        margin-top: 6px;
       }
       .cal-chip {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        padding: 2px 7px;
+        padding: 3px 9px;
         border-radius: 999px;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.1em;
+        font-size: 10px;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         border: 1px solid transparent;
         white-space: nowrap;
@@ -474,20 +474,20 @@
         color: rgba(255, 255, 255, 0.82);
       }
       .cal-date__when {
-        margin-top: 6px;
+        margin-top: 5px;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.1em;
+        font-size: 10px;
+        letter-spacing: 0.09em;
         text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.55);
+        color: rgba(0, 212, 255, 0.72);
         line-height: 1.35;
       }
       .cal-date__meta {
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.12em;
+        font-size: 11px;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.28);
+        color: rgba(255, 255, 255, 0.52);
         white-space: nowrap;
       }
 
@@ -715,6 +715,141 @@
         white-space: pre-wrap;
         word-break: break-word;
         margin: 0;
+      }
+      .jn-trade-modal .jn-detail__notes {
+        font-size: 12px;
+        line-height: 1.7;
+        color: rgba(255, 255, 255, 0.62);
+      }
+      .cal-modal-fields-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      @media (min-width: 700px) {
+        .cal-modal-fields-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px 20px;
+          align-items: start;
+        }
+      }
+      .jn-notion-extras {
+        border: 1px solid rgba(0, 212, 255, 0.18);
+        border-radius: 12px;
+        padding: 12px 12px 10px;
+        background: rgba(0, 191, 255, 0.05);
+      }
+      .jn-notion-extras__head {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #00d4ff;
+        margin-bottom: 10px;
+      }
+      .jn-notion-extras__grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .jn-notion-row {
+        display: grid;
+        grid-template-columns: minmax(72px, 34%) 1fr;
+        gap: 8px 12px;
+        align-items: start;
+      }
+      .jn-notion-row__k {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(192, 192, 192, 0.85);
+        word-break: break-word;
+      }
+      .jn-notion-row__v {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .jn-notion-section {
+        margin-bottom: 14px;
+      }
+      .jn-notion-section:last-child {
+        margin-bottom: 0;
+      }
+      .jn-notion-section__title {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 8px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.55);
+        margin: 0 0 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+      }
+      .jn-notion-long {
+        margin: 0;
+        width: 100%;
+      }
+      .jn-notion-long__sum {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.72);
+        cursor: pointer;
+        list-style: none;
+      }
+      .jn-notion-long__sum::-webkit-details-marker {
+        display: none;
+      }
+      .jn-notion-long__full {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 212, 255, 0.15);
+        background: rgba(0, 0, 0, 0.4);
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.78);
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 240px;
+        overflow-y: auto;
+      }
+      .jn-notion-row__v-chips {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 0;
+        max-width: 100%;
+      }
+      .jn-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        margin: 0 6px 4px 0;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 212, 255, 0.28);
+        background: rgba(0, 0, 0, 0.35);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.82);
+        max-width: 100%;
+        word-break: break-word;
+      }
+      .cal-cell__pairs {
+        margin-top: 6px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.38);
+        line-height: 1.3;
+        word-break: break-word;
       }
       .jn-trade-photos {
         display: flex;
@@ -1018,11 +1153,11 @@
           justify-content: flex-start;
         }
         .cal-cell {
-          min-height: 135px;
+          min-height: 118px;
         }
         .cal-chip {
-          font-size: 8px;
-          padding: 2px 5px;
+          font-size: 9px;
+          padding: 3px 7px;
         }
         .cal-list {
           grid-template-columns: 1fr;
@@ -1487,6 +1622,19 @@
           return "";
         }
 
+        function cellDayPairSummary(list) {
+          if (!list || !list.length) return "";
+          var map = Object.create(null);
+          list.forEach(function (t) {
+            var pr = getField(t, "pair", "Pair", "PAIR", "instrument", "symbol");
+            if (pr) map[String(pr).toUpperCase()] = 1;
+          });
+          var ks = Object.keys(map);
+          if (!ks.length) return "";
+          if (ks.length === 1) return ks[0];
+          return "Mixed pairs";
+        }
+
         function buildCell(dUtcLike, muted) {
           var p = partsYMD(dUtcLike);
           var key = p.y + "-" + p.m + "-" + p.d;
@@ -1511,7 +1659,13 @@
           left.textContent = p.d;
           var right = document.createElement("div");
           right.className = "cal-date__meta";
-          right.textContent = isToday ? "TODAY" : (list.length ? list.length + " trades" : "—");
+          right.textContent = isToday
+            ? "TODAY"
+            : list.length === 0
+              ? "—"
+              : list.length === 1
+                ? "1 trade"
+                : list.length + " trades";
           top.appendChild(left);
           top.appendChild(right);
           el.appendChild(top);
@@ -1565,6 +1719,13 @@
             pills.appendChild(netChip);
 
             el.appendChild(pills);
+            var pairLine = cellDayPairSummary(list);
+            if (pairLine) {
+              var pairRow = document.createElement("div");
+              pairRow.className = "cal-cell__pairs";
+              pairRow.textContent = pairLine;
+              el.appendChild(pairRow);
+            }
           }
 
           return el;
@@ -1691,6 +1852,212 @@
 
         function escAttr(s) {
           return escapeHtml(s);
+        }
+
+        function truncate(s, n) {
+          var str = String(s || "");
+          return str.length > n ? str.slice(0, n) + "…" : str;
+        }
+
+        /** Keys already shown as core columns — hide from Notion extras (case-insensitive). */
+        var EXTRAS_CORE_NAMES = {
+          date: 1,
+          session: 1,
+          outcome: 1,
+          rr: 1,
+          model: 1,
+          notes: 1,
+          pair: 1,
+          direction: 1,
+          trade_images: 1,
+          "entry model": 1,
+          "trade summary": 1,
+          "position type": 1,
+        };
+        function normalizeExtraKeyName(k) {
+          return String(k)
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+        function isDuplicateExtraKey(k) {
+          return !!EXTRAS_CORE_NAMES[normalizeExtraKeyName(k)];
+        }
+        function parseNotionExtrasFromTrade(trade) {
+          if (!trade || typeof trade !== "object") return null;
+          var raw = trade.notion_extras;
+          if (raw == null || raw === "") return null;
+          if (typeof raw === "object" && raw !== null && !Array.isArray(raw)) return raw;
+          if (typeof raw === "string") {
+            var s = raw.trim();
+            if (!s || s === "{}") return null;
+            try {
+              var o = JSON.parse(s);
+              return typeof o === "object" && o !== null && !Array.isArray(o) ? o : null;
+            } catch (e0) {
+              return null;
+            }
+          }
+          return null;
+        }
+        function formatNotionExtraValue(v) {
+          if (v === null || v === undefined) return "";
+          if (typeof v === "boolean") return v ? "Yes" : "No";
+          if (typeof v === "number" && !isNaN(v)) return String(v);
+          if (typeof v === "string") return v;
+          if (Array.isArray(v)) {
+            return v
+              .map(function (x) {
+                if (x !== null && typeof x === "object") {
+                  try {
+                    return JSON.stringify(x);
+                  } catch (e1) {
+                    return "";
+                  }
+                }
+                return String(x);
+              })
+              .join(", ");
+          }
+          if (typeof v === "object") {
+            try {
+              return JSON.stringify(v);
+            } catch (e2) {
+              return "";
+            }
+          }
+          return String(v);
+        }
+        function notionExtraSectionBucket(key) {
+          var k = normalizeExtraKeyName(key);
+          if (/psychology|mindset|emotion|tilt|narrative/.test(k)) return "psych";
+          if (/htf|ltf|mtf|bias|timeframe|confluence|volume|liquidity|premarket|vp\b/.test(k)) return "context";
+          if (/execution|mistake|plan|checklist|grade/.test(k)) return "execution";
+          return "other";
+        }
+        function compareExtraKeysNotion(a, b) {
+          function score(k) {
+            var n = normalizeExtraKeyName(k);
+            if (n.indexOf("session") >= 0) return 0;
+            if (n.indexOf("model") >= 0 || n.indexOf("entry") >= 0) return 1;
+            if (n.indexOf("psych") >= 0 || n.indexOf("mindset") >= 0) return 2;
+            if (n.indexOf("htf") >= 0 || n.indexOf("ltf") >= 0 || n.indexOf("bias") >= 0) return 3;
+            return 40;
+          }
+          var sa = score(a);
+          var sb = score(b);
+          if (sa !== sb) return sa - sb;
+          return String(a).localeCompare(String(b));
+        }
+        function renderNotionExtraValueCells(val) {
+          if (val === null || val === undefined) return "";
+          if (typeof val === "boolean") {
+            return '<span class="jn-chip">' + escAttr(val ? "Yes" : "No") + "</span>";
+          }
+          if (typeof val === "number" && !isNaN(val)) {
+            return '<span class="jn-chip">' + escAttr(String(val)) + "</span>";
+          }
+          if (typeof val === "string") {
+            var t = val.trim();
+            if (!t) return "";
+            if (t.length <= 56 && t.indexOf("\n") < 0) {
+              return '<div class="jn-notion-row__v-chips"><span class="jn-chip">' + escAttr(t) + "</span></div>";
+            }
+            var prev = escAttr(truncate(t, 200));
+            var full = escAttr(t);
+            return (
+              '<details class="jn-notion-long"><summary class="jn-notion-long__sum">' +
+              prev +
+              '</summary><div class="jn-notion-long__full">' +
+              full +
+              "</div></details>"
+            );
+          }
+          if (Array.isArray(val)) {
+            var chips = [];
+            for (var i = 0; i < val.length; i++) {
+              var x = val[i];
+              var s = x !== null && typeof x === "object" ? JSON.stringify(x) : String(x);
+              if (s.trim()) chips.push('<span class="jn-chip">' + escAttr(truncate(s, 64)) + "</span>");
+            }
+            return chips.length ? '<div class="jn-notion-row__v-chips">' + chips.join("") + "</div>" : "";
+          }
+          if (typeof val === "object") {
+            try {
+              var json = JSON.stringify(val);
+              var shortJ = truncate(json, 180);
+              return (
+                '<details class="jn-notion-long"><summary class="jn-notion-long__sum">' +
+                escAttr(shortJ) +
+                '</summary><div class="jn-notion-long__full">' +
+                escAttr(json) +
+                "</div></details>"
+              );
+            } catch (e3) {
+              return "";
+            }
+          }
+          return "";
+        }
+        function notionExtrasSectionHtml(trade) {
+          var extras = parseNotionExtrasFromTrade(trade);
+          if (!extras) return "";
+          var keys = Object.keys(extras).filter(function (k) {
+            return !isDuplicateExtraKey(k);
+          }).sort(compareExtraKeysNotion);
+          if (!keys.length) return "";
+
+          var buckets = { context: [], psych: [], execution: [], other: [] };
+          for (var ki = 0; ki < keys.length; ki++) {
+            var kk = keys[ki];
+            buckets[notionExtraSectionBucket(kk)].push(kk);
+          }
+
+          var titles = {
+            context: "Setup & context",
+            psych: "Psychology",
+            execution: "Execution & risk",
+            other: "Other fields",
+          };
+          var order = ["context", "psych", "execution", "other"];
+
+          var sectionsOut = [];
+          for (var si = 0; si < order.length; si++) {
+            var bid = order[si];
+            var klist = buckets[bid];
+            if (!klist.length) continue;
+            var rows = [];
+            for (var ri = 0; ri < klist.length; ri++) {
+              var key = klist[ri];
+              var cells = renderNotionExtraValueCells(extras[key]);
+              if (!cells) continue;
+              rows.push(
+                '<div class="jn-notion-row">' +
+                  '<span class="jn-notion-row__k">' +
+                  escAttr(key) +
+                  '</span><span class="jn-notion-row__v">' +
+                  cells +
+                  "</span></div>"
+              );
+            }
+            if (!rows.length) continue;
+            sectionsOut.push(
+              '<div class="jn-notion-section">' +
+                '<h4 class="jn-notion-section__title">' +
+                escAttr(titles[bid]) +
+                '</h4><div class="jn-notion-extras__grid">' +
+                rows.join("") +
+                "</div></div>"
+            );
+          }
+
+          if (!sectionsOut.length) return "";
+          return (
+            '<section class="jn-notion-extras" aria-label="Notion fields">' +
+            '<div class="jn-notion-extras__head">Notion fields</div>' +
+            sectionsOut.join("") +
+            "</section>"
+          );
         }
 
         function normalizeDirection(raw) {
@@ -1848,7 +2215,7 @@
             })
             .join("");
           return (
-            '<div class="jn-detail">' +
+            '<div class="jn-detail jn-detail--span-full">' +
             '<span class="jn-detail__label">Charts</span>' +
             '<div class="jn-trade-photos">' +
             thumbs +
@@ -1864,7 +2231,7 @@
           nu = String(nu).trim();
           if (nu && /^https?:\/\//i.test(nu)) {
             return (
-              '<div class="jn-detail">' +
+              '<div class="jn-detail jn-detail--span-full">' +
               '<span class="jn-detail__label">Charts</span>' +
               '<p class="jn-detail__value">' +
               '<a class="cal-notion-link" href="' +
@@ -1915,67 +2282,78 @@
             rrDisplay = "—";
           }
 
-          var parts = [];
+          var core = [];
           if (pair) {
-            parts.push(
+            core.push(
               '<div class="jn-detail"><span class="jn-detail__label">Pair</span><span class="jn-detail__value">' +
                 escAttr(String(pair).toUpperCase()) +
                 "</span></div>"
             );
           }
-          parts.push(
+          core.push(
             '<div class="jn-detail"><span class="jn-detail__label">Direction</span><span class="jn-detail__value">' +
               escAttr(dirLabel) +
               "</span></div>"
           );
-          parts.push(
+          core.push(
             '<div class="jn-detail"><span class="jn-detail__label">Outcome</span><span class="jn-detail__value">' +
               escAttr(outcomeLabel) +
               "</span></div>"
           );
           if (session) {
-            parts.push(
+            core.push(
               '<div class="jn-detail"><span class="jn-detail__label">Session</span><span class="jn-detail__value">' +
                 escAttr(session) +
                 "</span></div>"
             );
           }
-          parts.push(
+          core.push(
             '<div class="jn-detail"><span class="jn-detail__label">R multiple</span><span class="jn-detail__value">' +
               escAttr(rrDisplay) +
               "</span></div>"
           );
           if (model) {
-            parts.push(
+            core.push(
               '<div class="jn-detail"><span class="jn-detail__label">Entry Model</span><span class="jn-detail__value">' +
                 escAttr(model) +
                 "</span></div>"
             );
           }
-          parts.push(
+          core.push(
             '<div class="jn-detail"><span class="jn-detail__label">Date &amp; Time</span><span class="jn-detail__value">' +
               escAttr(dateFull) +
               "</span></div>"
           );
           if (account) {
-            parts.push(
+            core.push(
               '<div class="jn-detail"><span class="jn-detail__label">Account</span><span class="jn-detail__value">' +
                 escAttr(account) +
                 "</span></div>"
             );
           }
+
+          var tail = [];
           if (notes) {
-            parts.push(
-              '<div class="jn-detail"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' +
+            tail.push(
+              '<div class="jn-detail jn-detail--span-full"><span class="jn-detail__label">Notes</span><p class="jn-detail__notes">' +
                 escAttr(notes) +
                 "</p></div>"
             );
           }
-          parts.push(tradeChartsSectionHtml(trade));
-          parts.push(
+          tail.push(notionExtrasSectionHtml(trade));
+          tail.push(tradeChartsSectionHtml(trade));
+          tail.push(
             '<button class="jn-ask-btn" type="button" data-cal-ask="1">Ask Jarvis about this trade</button>'
           );
-          return '<div class="jn-expand-inner">' + parts.join("") + "</div>";
+
+          return (
+            '<div class="jn-expand-inner">' +
+            '<div class="cal-modal-fields-grid">' +
+            core.join("") +
+            "</div>" +
+            tail.join("") +
+            "</div>"
+          );
         }
 
         function openJnLightbox(src, caption) {
