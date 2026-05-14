@@ -7,6 +7,7 @@
     <title>ANALYTICS · JARVIS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/style.css" />
     <style>
@@ -396,7 +397,7 @@
           <!-- 1. MONTE CARLO — full width, first, most prominent -->
           <article class="an-card an-card--wide" id="card-monte">
             <div class="an-card__top">
-              <span class="an-card__eyebrow">Monte Carlo · 400 equity paths</span>
+              <span class="an-card__eyebrow">Monte Carlo · 300 equity paths</span>
               <span class="an-card__meta" id="meta-monte">—</span>
             </div>
             <div class="mc-sim-params" id="mc-sim-params">Loading simulation parameters…</div>
@@ -529,8 +530,8 @@
       </div>
     </div>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <script defer>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
       (function () {
         'use strict';
 
@@ -647,7 +648,7 @@
 
         /* ── Trades (full merged list; no client-side filter) ── */
         var allTrades = [];
-        var ANALYTICS_MC_NUM_SIMS = 400;
+        var ANALYTICS_MC_NUM_SIMS = 300;
         var ANALYTICS_MC_RISK_KEY = 'jarvis_analytics_mc_risk_pct';
         var __anLastTradesAsc = [];
         var __anLastStats = null;
@@ -1469,15 +1470,11 @@
           raf(function () {
             renderEquity(tradesAsc);
             renderRollingWR(tradesAsc, stats);
-            raf(function () {
-              renderRDist(trades);
-              renderWeekday(trades);
-              raf(function () {
-                renderModel(trades);
-                renderSession(trades);
-                renderDrawdown(tradesAsc);
-              });
-            });
+            renderRDist(trades);
+            renderWeekday(trades);
+            renderModel(trades);
+            renderSession(trades);
+            renderDrawdown(tradesAsc);
           });
         }
 
