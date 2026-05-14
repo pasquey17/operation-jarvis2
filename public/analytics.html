@@ -61,54 +61,137 @@
       /* ═══ Period reports (weekly / monthly) ═══ */
       .an-reports { margin-bottom: 22px; }
       .an-reports-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
       }
       .an-report {
-        border-radius: 16px;
-        border: 1px solid rgba(0,212,255,0.14);
-        background: rgba(4,9,18,0.92);
-        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-        padding: 16px 18px 18px;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        border-radius: 18px;
+        border: 1px solid rgba(0,212,255,0.16);
+        background: linear-gradient(165deg, rgba(8,18,32,0.97) 0%, rgba(2,6,14,0.94) 100%);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        padding: 18px 18px 16px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 40px rgba(0,0,0,0.45);
       }
       .an-report__top {
         display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .an-report__title {
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
-        color: rgba(0,212,255,0.9); margin: 0;
+        font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+        color: rgba(0,212,255,0.95); margin: 0;
       }
       .an-report__meta {
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
-        color: rgba(255,255,255,0.28); white-space: nowrap;
+        font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: rgba(192,192,192,0.55);
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0,212,255,0.2);
+        background: rgba(0,212,255,0.06);
+        white-space: nowrap;
       }
       .an-report__cap {
-        margin: 0 0 12px;
+        margin: 0 0 14px;
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 9px; letter-spacing: 0.06em;
-        color: rgba(255,255,255,0.28); line-height: 1.45;
+        color: rgba(255,255,255,0.32); line-height: 1.45;
+        max-width: 62ch;
       }
-      .an-report__stats {
-        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px;
+      .an-report__kpi {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
       }
-      @media (max-width: 700px) {
-        .an-report__stats { grid-template-columns: 1fr 1fr; }
+      @media (max-width: 640px) {
+        .an-report__kpi { grid-template-columns: 1fr; }
       }
-      .an-report__stat {
-        display: flex; flex-direction: column; gap: 3px;
+      .an-report__kpi-cell {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(0,212,255,0.12);
+        background: rgba(0,0,0,0.35);
       }
-      .an-report__stat-k {
+      .an-report__kpi-k {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase;
+        color: rgba(0,212,255,0.55); margin-bottom: 4px;
+      }
+      .an-report__kpi-v {
+        font-family: "Outfit",system-ui,sans-serif;
+        font-weight: 500;
+        font-size: clamp(1.15rem, 2.6vw, 1.45rem);
+        color: rgba(255,255,255,0.95);
+        letter-spacing: 0.02em;
+      }
+      .an-report__kpi-v--pos { color: rgba(0,255,136,0.92); }
+      .an-report__kpi-v--neg { color: rgba(255,100,120,0.95); }
+      .an-report__grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 12px;
+        margin-bottom: 12px;
+      }
+      @media (max-width: 520px) {
+        .an-report__grid2 { grid-template-columns: 1fr; }
+      }
+      .an-report__cell {
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.06);
+        background: rgba(0,0,0,0.22);
+      }
+      .an-report__cell-k {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: rgba(0,212,255,0.5); margin-bottom: 3px;
+      }
+      .an-report__cell-v {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; color: rgba(220,228,240,0.92); line-height: 1.35;
+      }
+      .an-report__rules {
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px dashed rgba(0,212,255,0.22);
+        background: rgba(0,191,255,0.04);
+      }
+      .an-report__rules-k {
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
-        color: rgba(0,212,255,0.55);
+        color: rgba(0,212,255,0.65); margin-bottom: 6px;
       }
-      .an-report__stat-v {
-        font-family: "Outfit",system-ui,sans-serif;
-        font-weight: 500; font-size: 1.05rem;
-        color: rgba(255,255,255,0.92); letter-spacing: 0.02em;
+      .an-report__rules-v {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; color: rgba(192,192,192,0.88); line-height: 1.45;
+      }
+      .an-report__charts {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 4px;
+      }
+      .an-report__charts.an-report__charts--hidden { display: none; }
+      .an-report__chart-cell {
+        border-radius: 12px;
+        border: 1px solid rgba(0,212,255,0.1);
+        background: rgba(0,0,0,0.28);
+        padding: 8px 8px 4px;
+      }
+      .an-report__chart-label {
+        display: block;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: rgba(255,255,255,0.35);
+        margin-bottom: 4px;
+        padding-left: 2px;
+      }
+      .an-report__canvas {
+        display: block;
+        width: 100% !important;
+        height: 88px !important;
+        max-height: 88px;
       }
       .an-report__line {
         margin-top: 12px; padding-top: 12px;
@@ -116,6 +199,29 @@
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 10px; line-height: 1.55;
         color: rgba(192,192,192,0.82);
+      }
+      .an-report__empty {
+        padding: 14px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(0,212,255,0.1);
+        background: rgba(0,0,0,0.2);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: rgba(192,192,192,0.62);
+        text-align: center;
+        line-height: 1.5;
+      }
+      .an-report__streak {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .an-report__streak-fire {
+        font-size: 12px;
+        line-height: 1;
+        user-select: none;
       }
 
       /* ═══ Monte risk control ═══ */
@@ -368,24 +474,44 @@
           </div>
         </header>
 
-        <section class="an-reports" id="an-reports" aria-label="Weekly and monthly summaries">
+        <section class="an-reports" id="an-reports" aria-label="Weekly and monthly reports">
           <div class="an-reports-grid">
             <article class="an-report">
               <div class="an-report__top">
-                <h2 class="an-report__title">Weekly snapshot</h2>
+                <h2 class="an-report__title">Weekly report</h2>
                 <span class="an-report__meta" id="an-rep-week-meta">—</span>
               </div>
-              <p class="an-report__cap">Rolling last 7 Adelaide calendar days (including today). Trade rows dated in Australia/Adelaide.</p>
+              <p class="an-report__cap">Last 7 Adelaide calendar days (rolling, incl. today). Rows use each trade’s date in Australia/Adelaide.</p>
               <div class="an-report__body" id="an-rep-week-body"></div>
+              <div class="an-report__charts an-report__charts--hidden" id="an-rep-week-charts">
+                <div class="an-report__chart-cell">
+                  <span class="an-report__chart-label">Outcomes</span>
+                  <canvas id="chart-rep-week-outcomes" class="an-report__canvas" width="220" height="88" aria-label="Weekly outcome mix"></canvas>
+                </div>
+                <div class="an-report__chart-cell">
+                  <span class="an-report__chart-label">Cumulative R</span>
+                  <canvas id="chart-rep-week-equity" class="an-report__canvas" width="220" height="88" aria-label="Weekly cumulative R"></canvas>
+                </div>
+              </div>
               <p class="an-report__line" id="an-rep-week-line"></p>
             </article>
             <article class="an-report">
               <div class="an-report__top">
-                <h2 class="an-report__title">Monthly snapshot</h2>
+                <h2 class="an-report__title">Monthly report</h2>
                 <span class="an-report__meta" id="an-rep-month-meta">—</span>
               </div>
-              <p class="an-report__cap">Current calendar month in Australia/Adelaide (partial month if not month-end).</p>
+              <p class="an-report__cap">Current calendar month (Adelaide). Partial month until month-end.</p>
               <div class="an-report__body" id="an-rep-month-body"></div>
+              <div class="an-report__charts an-report__charts--hidden" id="an-rep-month-charts">
+                <div class="an-report__chart-cell">
+                  <span class="an-report__chart-label">Outcomes</span>
+                  <canvas id="chart-rep-month-outcomes" class="an-report__canvas" width="220" height="88" aria-label="Monthly outcome mix"></canvas>
+                </div>
+                <div class="an-report__chart-cell">
+                  <span class="an-report__chart-label">Cumulative R</span>
+                  <canvas id="chart-rep-month-equity" class="an-report__canvas" width="220" height="88" aria-label="Monthly cumulative R"></canvas>
+                </div>
+              </div>
               <p class="an-report__line" id="an-rep-month-line"></p>
             </article>
           </div>
@@ -1282,11 +1408,225 @@
           return String(s == null ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
-        function reportStatHtml(k, v) {
+        function reportKpiHtml(k, v, modClass) {
           return (
-            '<div class="an-report__stat">' +
-            '<span class="an-report__stat-k">' + escAn(k) + '</span>' +
-            '<span class="an-report__stat-v">' + escAn(v) + '</span>' +
+            '<div class="an-report__kpi-cell">' +
+            '<div class="an-report__kpi-k">' +
+            escAn(k) +
+            '</div>' +
+            '<div class="an-report__kpi-v' +
+            (modClass ? ' ' + modClass : '') +
+            '">' +
+            escAn(v) +
+            '</div></div>'
+          );
+        }
+        function reportGridCellHtml(k, innerV) {
+          return (
+            '<div class="an-report__cell">' +
+            '<div class="an-report__cell-k">' +
+            escAn(k) +
+            '</div>' +
+            '<div class="an-report__cell-v">' +
+            innerV +
+            '</div></div>'
+          );
+        }
+        function reportGridPlain(k, v) {
+          return reportGridCellHtml(k, escAn(v));
+        }
+        function reportStreakInner(value, ariaKind) {
+          var n = parseInt(value, 10) || 0;
+          if (n >= 2) {
+            return (
+              '<span class="an-report__streak" aria-label="' +
+              escAn(ariaKind + ' ' + n) +
+              '">' +
+              '<span class="an-report__streak-fire" aria-hidden="true">🔥</span>' +
+              '<span>' +
+              n +
+              '</span></span>'
+            );
+          }
+          return escAn(String(n));
+        }
+        function rulesNameScore(key) {
+          var k = String(key || '').toLowerCase();
+          if (!k) return 0;
+          var s = 0;
+          if (/plan|rule|follow|adher|check|criter|discipline|execution|journal/.test(k)) s += 8;
+          if (/rating|^grade|tier|quality|setup/.test(k)) s += 2;
+          if (/mistake|error|breach|broke/.test(k)) s -= 3;
+          return s;
+        }
+        function parseAdherenceFromString(s, keyHint) {
+          s = String(s).trim().toLowerCase();
+          if (!s) return null;
+          if (/^(y|yes|true|followed|on|ok|pass|met|clear|green|adhered)$/.test(s)) return true;
+          if (/^(n|no|false|off|miss|broke|broken|fail|red)$/.test(s)) return false;
+          if (s === 'a+' || s === 'a +') {
+            var kh = String(keyHint || '').toLowerCase();
+            if (/(criteria|rating|grade|quality|setup|plan)/.test(kh)) return true;
+            return null;
+          }
+          if (/partial|somewhat|mixed/.test(s)) return false;
+          if (s.includes('not follow') || s.includes('no plan') || s.includes('violated')) return false;
+          if (s.includes('follow') && (s.includes('yes') || s.includes('did'))) return true;
+          return null;
+        }
+        function parseAdherenceValue(raw, keyHint) {
+          if (raw == null) return null;
+          if (typeof raw === 'boolean') return raw ? true : false;
+          if (typeof raw === 'number') {
+            if (raw === 1) return true;
+            if (raw === 0) return false;
+            return null;
+          }
+          if (typeof raw === 'string') return parseAdherenceFromString(raw, keyHint);
+          if (typeof raw === 'object') {
+            if ('checkbox' in raw) {
+              if (raw.checkbox === true) return true;
+              if (raw.checkbox === false) return false;
+            }
+            if (raw.type === 'checkbox' && 'checkbox' in raw) {
+              if (raw.checkbox === true) return true;
+              if (raw.checkbox === false) return false;
+            }
+            if (raw.select && raw.select.name != null) return parseAdherenceFromString(String(raw.select.name), keyHint);
+            if (Array.isArray(raw.multi_select) && raw.multi_select[0] && raw.multi_select[0].name != null) {
+              return parseAdherenceFromString(String(raw.multi_select[0].name), keyHint);
+            }
+            if (Array.isArray(raw.rich_text) && raw.rich_text[0]) {
+              var rt = raw.rich_text[0].plain_text != null ? raw.rich_text[0].plain_text : '';
+              var o = parseAdherenceFromString(String(rt), keyHint);
+              if (o !== null) return o;
+            }
+            if (Array.isArray(raw.title) && raw.title[0]) {
+              var tt = raw.title[0].plain_text != null ? raw.title[0].plain_text : '';
+              var o2 = parseAdherenceFromString(String(tt), keyHint);
+              if (o2 !== null) return o2;
+            }
+            if (raw.formula) {
+              var f = raw.formula;
+              if (typeof f.boolean === 'boolean') return f.boolean;
+              if (f.string != null) return parseAdherenceFromString(String(f.string), keyHint);
+              if (f.number != null) {
+                if (f.number === 1) return true;
+                if (f.number === 0) return false;
+              }
+            }
+            if (raw.status && raw.status.name) return parseAdherenceFromString(String(raw.status.name), keyHint);
+            if (typeof raw.name === 'string' && raw.name) return parseAdherenceFromString(raw.name, keyHint);
+            return null;
+          }
+          return null;
+        }
+        function readTradeAdherenceCore(t) {
+          var v = getField(
+            t,
+            'plan_followed',
+            'Plan followed',
+            'rules_followed',
+            'Rules followed',
+            'rule_checklist',
+            'Rule checklist',
+            'checklist',
+            'Checklist',
+            'adherence',
+            'Adherence',
+            'Plan adherence',
+            'plan adherence'
+          );
+          if (v === '' || v == null) return null;
+          return parseAdherenceValue(v, 'plan');
+        }
+        function readTradeAdherenceExtras(t, extrasKey) {
+          var ex = parsedExtras(t);
+          if (!ex || typeof ex !== 'object' || !extrasKey) return null;
+          if (!Object.prototype.hasOwnProperty.call(ex, extrasKey)) return null;
+          return parseAdherenceValue(ex[extrasKey], extrasKey);
+        }
+        function detectRulesSource(slice) {
+          var n = slice.length;
+          var coreHits = 0;
+          for (var a = 0; a < n; a++) {
+            if (readTradeAdherenceCore(slice[a]) != null) coreHits++;
+          }
+          var keyVotes = {};
+          for (var i = 0; i < n; i++) {
+            var ex = parsedExtras(slice[i]);
+            if (!ex || typeof ex !== 'object') continue;
+            for (var k in ex) {
+              if (!Object.prototype.hasOwnProperty.call(ex, k)) continue;
+              if (rulesNameScore(k) <= 0) continue;
+              var pv = parseAdherenceValue(ex[k], k);
+              if (pv === null) continue;
+              keyVotes[k] = (keyVotes[k] || 0) + 1;
+            }
+          }
+          var bestKey = null;
+          var bestN = 0;
+          var bestSc = -999;
+          for (var kk in keyVotes) {
+            if (!Object.prototype.hasOwnProperty.call(keyVotes, kk)) continue;
+            var cnt = keyVotes[kk];
+            var sc = rulesNameScore(kk);
+            if (cnt > bestN || (cnt === bestN && sc > bestSc)) {
+              bestN = cnt;
+              bestKey = kk;
+              bestSc = sc;
+            }
+          }
+          if (bestKey && bestN > coreHits) return { kind: 'extras', key: bestKey, label: bestKey };
+          if (coreHits > 0) return { kind: 'core', key: null, label: 'Plan / rules (logged field)' };
+          if (bestKey && bestN > 0) return { kind: 'extras', key: bestKey, label: bestKey };
+          return null;
+        }
+        function computeRulesStreaks(sortedAsc, src) {
+          function rv(t) {
+            if (!src) return null;
+            if (src.kind === 'core') return readTradeAdherenceCore(t);
+            return readTradeAdherenceExtras(t, src.key);
+          }
+          var best = 0;
+          var run = 0;
+          for (var i = 0; i < sortedAsc.length; i++) {
+            var x = rv(sortedAsc[i]);
+            if (x === true) {
+              run++;
+              if (run > best) best = run;
+            } else {
+              run = 0;
+            }
+          }
+          var current = 0;
+          for (var j = sortedAsc.length - 1; j >= 0; j--) {
+            var y = rv(sortedAsc[j]);
+            if (y === true) current++;
+            else break;
+          }
+          return { best: best, current: current };
+        }
+        function buildRulesBlock(stats) {
+          var r = stats.rules;
+          if (!r || !r.hasData) {
+            return (
+              '<div class="an-report__rules">' +
+              '<div class="an-report__rules-k">Rules streak</div>' +
+              '<div class="an-report__rules-v">N/A — Map a Notion checkbox/select to surface this.</div>' +
+              '</div>'
+            );
+          }
+          return (
+            '<div class="an-report__rules">' +
+            '<div class="an-report__rules-k">Rules streak · ' +
+            escAn(r.label) +
+            '</div>' +
+            '<div class="an-report__rules-v">Current: ' +
+            r.current +
+            ' · Best in period: ' +
+            r.best +
+            '</div>' +
             '</div>'
           );
         }
@@ -1294,12 +1634,16 @@
           var n = slice.length;
           if (!n) return null;
           var wins = 0;
+          var losses = 0;
+          var be = 0;
           var netR = 0;
           var byDay = {};
           for (var i = 0; i < n; i++) {
             var t = slice[i];
             var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
             if (o === 'win') wins++;
+            else if (o === 'loss') losses++;
+            else if (o === 'be') be++;
             var rd = rDelta(t);
             netR += rd;
             var dk = dateKeyAdelaide(tradeDate(t));
@@ -1345,6 +1689,14 @@
               cl = 0;
             }
           }
+          var cum = 0;
+          var cumLabels = [];
+          var cumData = [];
+          for (var cj = 0; cj < sorted.length; cj++) {
+            cum += rDelta(sorted[cj]);
+            cumLabels.push(String(cj + 1));
+            cumData.push(parseFloat(cum.toFixed(2)));
+          }
           var pairMap = {};
           for (var p = 0; p < slice.length; p++) {
             var pr = tradePair(slice[p]);
@@ -1361,9 +1713,23 @@
               topPair = pk;
             }
           });
+          var rulesSrc = detectRulesSource(slice);
+          var rulesMeta = { hasData: false };
+          if (rulesSrc) {
+            var st = computeRulesStreaks(sorted, rulesSrc);
+            rulesMeta = {
+              hasData: true,
+              label: rulesSrc.label,
+              current: st.current,
+              best: st.best,
+              kind: rulesSrc.kind
+            };
+          }
           return {
             n: n,
             wins: wins,
+            losses: losses,
+            be: be,
             netR: netR,
             wr: wr,
             bestK: bestK,
@@ -1372,11 +1738,124 @@
             worstV: worstV,
             maxWs: maxWs,
             maxLs: maxLs,
+            curWinStreak: cw,
             topPair: topPair,
-            topPairR: topPair != null ? topPr : null
+            topPairR: topPair != null ? topPr : null,
+            cumRLabels: cumLabels,
+            cumRData: cumData,
+            rules: rulesMeta
           };
         }
+        function destroyReportCharts() {
+          ['rep-week-outcomes', 'rep-week-equity', 'rep-month-outcomes', 'rep-month-equity'].forEach(destroyChart);
+        }
+        function renderReportCharts(period, stats) {
+          if (!window.Chart) return;
+          var pfx = period === 'month' ? 'month' : 'week';
+          destroyChart('rep-' + pfx + '-outcomes');
+          destroyChart('rep-' + pfx + '-equity');
+          if (!stats || !stats.n) return;
+          var w = stats.wins || 0;
+          var l = stats.losses || 0;
+          var b = stats.be || 0;
+          var cOut = document.getElementById('chart-rep-' + pfx + '-outcomes');
+          var cEq = document.getElementById('chart-rep-' + pfx + '-equity');
+          if (!cOut || !cEq) return;
+          chartInstances['rep-' + pfx + '-outcomes'] = new Chart(cOut.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+              labels: ['Wins', 'Losses', 'BE'],
+              datasets: [
+                {
+                  data: [w, l, b],
+                  backgroundColor: ['rgba(0,255,136,0.72)', 'rgba(255,68,102,0.76)', 'rgba(192,192,192,0.42)'],
+                  borderColor: 'rgba(0,0,0,0.45)',
+                  borderWidth: 1,
+                  hoverOffset: 0
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: { duration: 0 },
+              cutout: '58%',
+              layout: { padding: { top: 4, right: 4, bottom: 4, left: 4 } },
+              plugins: {
+                legend: {
+                  display: true,
+                  position: 'right',
+                  labels: {
+                    color: 'rgba(255,255,255,0.42)',
+                    boxWidth: 10,
+                    boxHeight: 10,
+                    font: { size: 8, family: '"Share Tech Mono",monospace' },
+                    padding: 4
+                  }
+                },
+                tooltip: Object.assign({}, ttBase(), {
+                  callbacks: {
+                    label: function (ctx) {
+                      var lab = ctx.label || '';
+                      var v =
+                        typeof ctx.parsed === 'number'
+                          ? ctx.parsed
+                          : ctx.parsed && typeof ctx.parsed === 'object' && ctx.parsed.x != null
+                            ? ctx.parsed.x
+                            : ctx.raw;
+                      return lab + ': ' + v;
+                    }
+                  }
+                })
+              }
+            }
+          });
+          var labs = stats.cumRLabels && stats.cumRLabels.length ? stats.cumRLabels : ['0'];
+          var dat = stats.cumRData && stats.cumRData.length ? stats.cumRData : [0];
+          var ctx2 = cEq.getContext('2d');
+          var h = cEq.height || 88;
+          var grad = ctx2.createLinearGradient(0, 0, 0, h);
+          grad.addColorStop(0, 'rgba(0,212,255,0.2)');
+          grad.addColorStop(1, 'rgba(0,212,255,0.02)');
+          chartInstances['rep-' + pfx + '-equity'] = new Chart(ctx2, {
+            type: 'line',
+            data: {
+              labels: labs,
+              datasets: [
+                {
+                  data: dat,
+                  borderColor: 'rgba(0,212,255,0.92)',
+                  backgroundColor: grad,
+                  fill: true,
+                  tension: 0.2,
+                  pointRadius: 0,
+                  pointHitRadius: 6,
+                  borderWidth: 1.5
+                }
+              ]
+            },
+            options: Object.assign({}, baseOpts(), {
+              animation: { duration: 0 },
+              layout: { padding: { top: 6, right: 8, bottom: 2, left: 2 } },
+              scales: {
+                x: axX({ ticks: { maxTicksLimit: 6, font: { size: 8 } } }),
+                y: axY({ ticks: { maxTicksLimit: 5, font: { size: 8 }, callback: function (v) { return v + 'R'; } } })
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, ttBase(), {
+                  callbacks: {
+                    label: function (c) {
+                      return 'Cum R: ' + c.parsed.y.toFixed(2) + 'R';
+                    }
+                  }
+                })
+              }
+            })
+          });
+        }
         function renderReports(trades) {
+          destroyReportCharts();
           var wSet = last7AdelaideDayKeySet();
           var mBounds = adelaideMonthStartEndKeys();
           function inWeek(t) {
@@ -1391,39 +1870,53 @@
           var monthT = trades.filter(inMonth);
           var ws = summarizeSlice(weekT);
           var ms = summarizeSlice(monthT);
-          function fill(idMeta, idBody, idLine, stats, labelEmpty) {
+          function fill(idMeta, idBody, idLine, idCharts, stats, labelEmpty, periodKey) {
             var meta = document.getElementById(idMeta);
             var body = document.getElementById(idBody);
             var line = document.getElementById(idLine);
+            var charts = document.getElementById(idCharts);
             if (!body || !line || !meta) return;
+            if (charts) charts.classList.add('an-report__charts--hidden');
             if (!stats || !stats.n) {
-              meta.textContent = '0 trades';
-              body.innerHTML = reportStatHtml('Status', labelEmpty);
+              if (meta) meta.textContent = '0 trades';
+              body.innerHTML = '<div class="an-report__empty">' + escAn(labelEmpty) + '</div>';
               line.textContent = '';
               return;
             }
+            if (charts) charts.classList.remove('an-report__charts--hidden');
             meta.textContent = stats.n + ' trades';
-            body.innerHTML = [
-              reportStatHtml('Win rate', stats.wr.toFixed(1) + '%'),
-              reportStatHtml('Net R', (stats.netR >= 0 ? '+' : '') + stats.netR.toFixed(2) + 'R'),
-              reportStatHtml('Wins', String(stats.wins)),
-              reportStatHtml(
-                'Best day',
-                stats.bestK ? stats.bestK + ' (' + (stats.bestV >= 0 ? '+' : '') + stats.bestV.toFixed(2) + 'R)' : '—'
-              ),
-              reportStatHtml(
-                'Worst day',
-                stats.worstK ? stats.worstK + ' (' + (stats.worstV >= 0 ? '+' : '') + stats.worstV.toFixed(2) + 'R)' : '—'
-              ),
-              reportStatHtml('Max win streak', String(stats.maxWs)),
-              reportStatHtml('Max loss streak', String(stats.maxLs)),
-              reportStatHtml(
-                'Top pair (net R)',
-                stats.topPair
-                  ? stats.topPair + ' (' + (stats.topPairR >= 0 ? '+' : '') + stats.topPairR.toFixed(2) + 'R)'
-                  : '—'
-              )
-            ].join('');
+            var netStr = (stats.netR >= 0 ? '+' : '') + stats.netR.toFixed(2) + 'R';
+            var netClass =
+              stats.netR > 0 ? 'an-report__kpi-v--pos' : stats.netR < 0 ? 'an-report__kpi-v--neg' : '';
+            var kpi =
+              reportKpiHtml('Net R', netStr, netClass) +
+              reportKpiHtml('Win rate', stats.wr.toFixed(1) + '%', '') +
+              reportKpiHtml('Trades', String(stats.n), '');
+            var bestDay =
+              stats.bestK
+                ? stats.bestK + ' (' + (stats.bestV >= 0 ? '+' : '') + stats.bestV.toFixed(2) + 'R)'
+                : '—';
+            var worstDay =
+              stats.worstK
+                ? stats.worstK + ' (' + (stats.worstV >= 0 ? '+' : '') + stats.worstV.toFixed(2) + 'R)'
+                : '—';
+            var topPairStr =
+              stats.topPair
+                ? stats.topPair + ' (' + (stats.topPairR >= 0 ? '+' : '') + stats.topPairR.toFixed(2) + 'R)'
+                : '—';
+            var grid =
+              reportGridPlain('Best day (net R)', bestDay) +
+              reportGridPlain('Worst day (net R)', worstDay) +
+              reportGridPlain('Top pair (net R)', topPairStr) +
+              reportGridPlain('Max loss streak', String(stats.maxLs)) +
+              reportGridCellHtml('Max win streak', reportStreakInner(stats.maxWs, 'Max win streak')) +
+              reportGridCellHtml('Current win streak', reportStreakInner(stats.curWinStreak, 'Current win streak'));
+            body.innerHTML =
+              '<div class="an-report__kpi">' + kpi + '</div>' +
+              '<div class="an-report__grid2">' +
+              grid +
+              '</div>' +
+              buildRulesBlock(stats);
             var parts = [];
             if (stats.netR >= 0) {
               parts.push('Net +' + stats.netR.toFixed(2) + 'R over ' + stats.n + ' trades at ' + stats.wr.toFixed(1) + '% WR.');
@@ -1434,9 +1927,26 @@
               parts.push('Loss streak hit ' + stats.maxLs + ' — worth a quick review of rules after clusters of reds.');
             }
             line.textContent = parts.join(' ');
+            renderReportCharts(periodKey, stats);
           }
-          fill('an-rep-week-meta', 'an-rep-week-body', 'an-rep-week-line', ws, 'No trades dated in the last 7 Adelaide days.');
-          fill('an-rep-month-meta', 'an-rep-month-body', 'an-rep-month-line', ms, 'No trades dated this Adelaide month.');
+          fill(
+            'an-rep-week-meta',
+            'an-rep-week-body',
+            'an-rep-week-line',
+            'an-rep-week-charts',
+            ws,
+            'No trades dated in the last 7 Adelaide days.',
+            'week'
+          );
+          fill(
+            'an-rep-month-meta',
+            'an-rep-month-body',
+            'an-rep-month-line',
+            'an-rep-month-charts',
+            ms,
+            'No trades dated this Adelaide month.',
+            'month'
+          );
         }
 
         /* ── Render all ── */
@@ -1524,11 +2034,18 @@
             document.getElementById('an-badge-text').textContent = 'No trades found';
             document.getElementById('an-foot').textContent = 'No trades found for '+currentUserId;
             document.querySelectorAll('.an-card').forEach(function(c){c.classList.add('an-card--visible');});
-            ['an-rep-week-body','an-rep-month-body'].forEach(function(id){
+            try {
+              destroyReportCharts();
+            } catch (eRep) {}
+            ['an-rep-week-body', 'an-rep-month-body'].forEach(function (id) {
               var el = document.getElementById(id);
               if (el) el.innerHTML = '';
             });
-            ['an-rep-week-meta','an-rep-month-meta','an-rep-week-line','an-rep-month-line'].forEach(function(id){
+            ['an-rep-week-charts', 'an-rep-month-charts'].forEach(function (id) {
+              var ch = document.getElementById(id);
+              if (ch) ch.classList.add('an-report__charts--hidden');
+            });
+            ['an-rep-week-meta', 'an-rep-month-meta', 'an-rep-week-line', 'an-rep-month-line'].forEach(function (id) {
               var el = document.getElementById(id);
               if (el) el.textContent = id.indexOf('line') >= 0 ? '' : '—';
             });
