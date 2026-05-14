@@ -18,11 +18,21 @@ import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
 import { fetchTradeImagesFromNotionPageBlocks } from './notion-page-images.mjs';
 import { syncJournalFieldsFromNotion } from "./sync-journal-fields-notion.mjs";
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
+import { serializeNotionProperties } from "./notion-serialize-props.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Static assets live under `public/` (Vercel convention + predictable Lambda layout). On Vercel, bundled files sit under `cwd`; locally `__dirname` is the repo root next to `server.mjs`. */
 const STATIC_ROOT = path.join(process.env.VERCEL ? process.cwd() : __dirname, "public");
 const PORT = Number(process.env.PORT) || 8787;
+
+/** OAuth trade upsert chunk size (avoids huge single POST bodies when notion_extras is large). */
+const OAUTH_TRADE_UPSERT_BATCH = 80;
+
+/**
+ * When true, /api/trades and getRecentTrades exclude rows with archived=true.
+ * Set SKIP_TRADE_ARCHIVED_FILTER=1 until `schema/trade_source_archive.sql` is applied.
+ */
+const TRADE_ARCHIVED_ACTIVE = process.env.SKIP_TRADE_ARCHIVED_FILTER !== "1";
 
 /** Local dev only: SSE clients that receive a ping when `public/` files change → auto-refresh browser. */
 const liveReloadClients = new Set();
@@ -1561,7 +1571,7 @@ function buildProfileEvidenceBundle(allTradesSlimmed, maxExamples = 30) {
  * Rows from Jarvis_data_source, newest `date` first (PostgREST).
  * Uses the same table as fetchTradesFromSupabase so snapshot and chat stats match.
  * @param {string} userId
- * @param {{ limit?: number }} [options]
+ * @param {{ limit?: number, includeArchived?: boolean }} [options]
  */
 async function getRecentTrades(userId, options = {}) {
   const { url, key, tableRaw } = getSupabaseConfig();
@@ -1578,7 +1588,10 @@ async function getRecentTrades(userId, options = {}) {
     MAX_SUPABASE_ROWS
   );
   const tableEnc = encodeURIComponent(tableRaw);
-  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}&order=date.desc&limit=${limit}`;
+  const includeArchived = options.includeArchived === true;
+  const archQ =
+    TRADE_ARCHIVED_ACTIVE && !includeArchived ? "&archived=is.false" : "";
+  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}&order=date.desc&limit=${limit}${archQ}`;
   const res = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -1661,8 +1674,10 @@ function rowsToTradesPayload(rows) {
 
 /**
  * Fetches trading rows from Supabase REST (anon key, server-side only).
+ * @param {string} userId
+ * @param {{ includeArchived?: boolean }} [options]
  */
-async function fetchTradesFromSupabase(userId) {
+async function fetchTradesFromSupabase(userId, options = {}) {
   const { url, key, tableRaw } = getSupabaseConfig();
   if (!url || !key) {
     const err = new Error(
@@ -1673,7 +1688,10 @@ async function fetchTradesFromSupabase(userId) {
   }
 
   const tableEnc = encodeURIComponent(tableRaw);
-  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}`;
+  const includeArchived = options.includeArchived === true;
+  const archQ =
+    TRADE_ARCHIVED_ACTIVE && !includeArchived ? "&archived=is.false" : "";
+  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}${archQ}`;
   const res = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -1761,12 +1779,12 @@ async function handleSyncNotion(req, res) {
 
 async function handleTrades(req, res) {
   try {
-    const userIdRaw =
-      new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
-      "aidenpasque11@gmail.com";
+    const u = new URL(req.url, `http://localhost:${PORT}`);
+    const userIdRaw = u.searchParams.get("user_id") || "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+    const includeArchived = u.searchParams.get("include_archived") === "1";
     await maybeSyncNotion(userId);
-    const payload = await fetchTradesFromSupabase(userId);
+    const payload = await fetchTradesFromSupabase(userId, { includeArchived });
     if (!payload.records.length) {
       json(res, 200, {
         ...payload,
@@ -3369,6 +3387,11 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "POST" && req.url.startsWith("/api/notion/reconcile-archive")) {
+    await handleNotionReconcileArchive(req, res);
+    return;
+  }
+
   if (req.method === "GET" && req.url.startsWith("/api/ping")) {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ status: "ok" }));
@@ -3915,18 +3938,83 @@ function parseDateToIso(raw) {
 }
 
 /**
- * OAuth + notion_mappings → trades (shared by POST /api/notion/sync-user and maybeSyncNotion).
- * Notion OAuth access tokens are not refreshed here (schema has no refresh_token); reconnect if Notion invalidates the token.
+ * Trade `date` for OAuth sync: prefer real Notion **date** properties (especially "Date")
+ * before the user-mapped column — mappings often point at the DB **title**, which may be a
+ * display string (e.g. 21/06/2026) that disagrees with the Date property.
  *
- * @returns { skipped: true, reason: 'no_connection'|'no_mapping' } — use legacy env sync
- * @returns { ok: true, fetched, upserted, skipped: false }
- * @returns { ok: false, skipped: false, reason, oauthAuthError?, status? }
+ * Order: canonical date props → mapped column if type date → any other date prop →
+ * mapped non-date (text/title/formula string) → first title property text → created_time.
  */
-async function syncNotionOAuthForUser(userId) {
-  const { url, tableRaw } = getSupabaseConfig();
+function resolveNotionTradeDateIso(page, mapping, get) {
+  const props = page?.properties;
+  if (!props || typeof props !== "object") {
+    return parseDateToIso(page?.created_time);
+  }
+
+  const usedKeys = new Set();
+
+  const tryDatePropKey = (key) => {
+    if (!key || !Object.prototype.hasOwnProperty.call(props, key)) return null;
+    const prop = props[key];
+    if (!prop || prop.type !== "date" || !prop.date?.start) return null;
+    const iso = parseDateToIso(prop.date.start);
+    if (!iso) return null;
+    usedKeys.add(key);
+    return iso;
+  };
+
+  const canonicalDateNames = ["Date", "date", "Trade Date", "trade date", "DATE", "Day", "Trade date"];
+  for (let i = 0; i < canonicalDateNames.length; i++) {
+    const iso = tryDatePropKey(canonicalDateNames[i]);
+    if (iso) return iso;
+  }
+
+  const mapDateName =
+    mapping && typeof mapping.date === "string" && mapping.date.trim() ? mapping.date.trim() : "";
+  if (mapDateName) {
+    const iso = tryDatePropKey(mapDateName);
+    if (iso) return iso;
+  }
+
+  const sortedKeys = Object.keys(props).sort();
+  for (let si = 0; si < sortedKeys.length; si++) {
+    const k = sortedKeys[si];
+    if (usedKeys.has(k)) continue;
+    const iso = tryDatePropKey(k);
+    if (iso) return iso;
+  }
+
+  const mappedProp = mapDateName ? props[mapDateName] : null;
+  if (!mappedProp || mappedProp.type !== "date") {
+    const raw = get("date");
+    if (raw != null && String(raw).trim()) {
+      const iso = parseDateToIso(raw);
+      if (iso) return iso;
+    }
+  }
+
+  for (let ti = 0; ti < sortedKeys.length; ti++) {
+    const k = sortedKeys[ti];
+    const prop = props[k];
+    if (!prop || prop.type !== "title" || !Array.isArray(prop.title)) continue;
+    const t = prop.title.map((b) => (typeof b?.plain_text === "string" ? b.plain_text : "")).join("").trim();
+    if (!t) continue;
+    const iso = parseDateToIso(t);
+    if (iso) return iso;
+  }
+
+  return parseDateToIso(page.created_time);
+}
+
+/**
+ * Load OAuth token + mapping and fetch all pages from the mapped Notion database / data source.
+ * @returns {{ ok: true, skipped: false, pages: object[] } | { ok: false, skipped: true, reason: string, pages: [] } | { ok: false, skipped: false, reason: string, oauthAuthError?: boolean, status?: number, pages: [] }}
+ */
+async function notionOAuthFetchAllPages(userId) {
+  const { url } = getSupabaseConfig();
   const srKey = getServiceRoleKey();
   if (!url || !srKey) {
-    return { ok: false, skipped: false, reason: "Supabase not configured" };
+    return { ok: false, skipped: false, reason: "Supabase not configured", pages: [] };
   }
 
   let accessToken;
@@ -3958,12 +4046,13 @@ async function syncNotionOAuthForUser(userId) {
       ok: false,
       skipped: false,
       reason: `Failed to read connection/mapping: ${String(e.message ?? e)}`,
+      pages: [],
     };
   }
 
-  if (!accessToken) return { skipped: true, reason: "no_connection" };
+  if (!accessToken) return { ok: false, skipped: true, reason: "no_connection", pages: [] };
   if (!databaseId || mapping == null || typeof mapping !== "object" || Array.isArray(mapping)) {
-    return { skipped: true, reason: "no_mapping" };
+    return { ok: false, skipped: true, reason: "no_mapping", pages: [] };
   }
 
   let dataSourceId = mapping.__data_source_id ?? null;
@@ -4001,6 +4090,7 @@ async function syncNotionOAuthForUser(userId) {
           reason: `Notion query failed: ${err}`,
           oauthAuthError: authFail,
           status: qRes.status,
+          pages: [],
         };
       }
       const data = await qRes.json();
@@ -4008,9 +4098,223 @@ async function syncNotionOAuthForUser(userId) {
       cursor = data.has_more ? data.next_cursor : undefined;
     } while (cursor);
   } catch (e) {
-    return { ok: false, skipped: false, reason: String(e.message ?? e) };
+    return { ok: false, skipped: false, reason: String(e.message ?? e), pages: [] };
   }
 
+  return { ok: true, skipped: false, pages: allPages, mapping };
+}
+
+async function patchTradesArchivedByNotionIds(supabaseUrl, tableEnc, srKey, userId, notionIds, archived) {
+  if (!notionIds.length) return { ok: true, patched: 0 };
+  const encUser = encodeURIComponent(userId);
+  const CH = 40;
+  let patched = 0;
+  for (let i = 0; i < notionIds.length; i += CH) {
+    const chunk = notionIds.slice(i, i + CH);
+    const inList = chunk.map((id) => encodeURIComponent(id)).join(",");
+    const patchUrl = `${supabaseUrl}/rest/v1/${tableEnc}?user_id=eq.${encUser}&notion_id=in.(${inList})`;
+    const pr = await fetch(patchUrl, {
+      method: "PATCH",
+      headers: {
+        apikey: srKey,
+        Authorization: `Bearer ${srKey}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ archived, updated_at: new Date().toISOString() }),
+    });
+    if (!pr.ok) {
+      const err = await pr.text().catch(() => "unknown");
+      return { ok: false, patched, error: err };
+    }
+    patched += chunk.length;
+  }
+  return { ok: true, patched };
+}
+
+async function fetchTradeRowsNotionIdArchived(supabaseUrl, tableEnc, srKey, userId) {
+  const encUser = encodeURIComponent(userId);
+  const archSelect = TRADE_ARCHIVED_ACTIVE ? "notion_id,archived" : "notion_id";
+  const all = [];
+  const pageSize = 1000;
+  for (let start = 0; ; start += pageSize) {
+    const end = start + pageSize - 1;
+    const endpoint = `${supabaseUrl}/rest/v1/${tableEnc}?user_id=eq.${encUser}&select=${archSelect}&notion_id=not.is.null`;
+    const res = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        apikey: srKey,
+        Authorization: `Bearer ${srKey}`,
+        Accept: "application/json",
+        Range: `${start}-${end}`,
+      },
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      return { ok: false, rows: [], error: text.slice(0, 400) };
+    }
+    let rows;
+    try {
+      rows = JSON.parse(text);
+    } catch {
+      return { ok: false, rows: [], error: "Invalid JSON from Supabase" };
+    }
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return { ok: true, rows: all };
+}
+
+/**
+ * Mark trades archived when their notion_id is not in the current OAuth-mapped Notion database.
+ * Requires service role + `schema/trade_source_archive.sql` (archived column).
+ */
+async function reconcileTradesArchiveForOAuthUser(userId, dryRun) {
+  const ctx = await notionOAuthFetchAllPages(userId);
+  if (ctx.skipped) {
+    return { ok: false, reason: ctx.reason, skipped: true };
+  }
+  if (!ctx.ok) {
+    return {
+      ok: false,
+      reason: ctx.reason,
+      oauthAuthError: ctx.oauthAuthError,
+      status: ctx.status,
+    };
+  }
+  const liveIds = (ctx.pages ?? []).map((p) => p?.id).filter(Boolean);
+  if (liveIds.length === 0) {
+    return { ok: false, reason: "empty_notion_database" };
+  }
+
+  const live = new Set(liveIds);
+  const { url, tableRaw } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) {
+    return { ok: false, reason: "Supabase not configured" };
+  }
+  if (!TRADE_ARCHIVED_ACTIVE) {
+    return {
+      ok: false,
+      reason: "Set SKIP_TRADE_ARCHIVED_FILTER unset and run schema/trade_source_archive.sql before reconcile.",
+    };
+  }
+
+  const tableEnc = encodeURIComponent(tableRaw);
+  const { ok, rows, error } = await fetchTradeRowsNotionIdArchived(url, tableEnc, srKey, userId);
+  if (!ok) {
+    return { ok: false, reason: error || "fetch_trades_failed" };
+  }
+
+  const toArchive = [];
+  const toUnarchive = [];
+  for (const row of rows) {
+    const nid = row.notion_id;
+    if (!nid) continue;
+    const isLive = live.has(nid);
+    const ar = row.archived === true;
+    if (isLive && ar) toUnarchive.push(nid);
+    if (!isLive && !ar) toArchive.push(nid);
+  }
+
+  if (dryRun) {
+    return {
+      ok: true,
+      dry_run: true,
+      live_notion_pages: liveIds.length,
+      trades_with_notion_id: rows.length,
+      would_archive: toArchive.length,
+      would_unarchive: toUnarchive.length,
+    };
+  }
+
+  const a1 = await patchTradesArchivedByNotionIds(url, tableEnc, srKey, userId, toArchive, true);
+  if (!a1.ok) return { ok: false, reason: `archive_patch: ${a1.error}` };
+  const a2 = await patchTradesArchivedByNotionIds(url, tableEnc, srKey, userId, toUnarchive, false);
+  if (!a2.ok) return { ok: false, reason: `unarchive_patch: ${a2.error}` };
+
+  return {
+    ok: true,
+    live_notion_pages: liveIds.length,
+    archived: toArchive.length,
+    unarchived: toUnarchive.length,
+  };
+}
+
+async function handleNotionReconcileArchive(req, res) {
+  const expected = process.env.JARVIS_RECONCILE_SECRET?.trim();
+  if (!expected) {
+    json(res, 503, {
+      error:
+        "JARVIS_RECONCILE_SECRET is not set. Add it to .env / Vercel to enable POST /api/notion/reconcile-archive.",
+    });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(await readBody(req));
+  } catch {
+    json(res, 400, { error: "Invalid JSON body" });
+    return;
+  }
+  if (body.secret !== expected) {
+    json(res, 403, { error: "Invalid secret" });
+    return;
+  }
+  const user_id = body.user_id;
+  if (!user_id || typeof user_id !== "string") {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+  const dry_run = Boolean(body.dry_run);
+  try {
+    const result = await reconcileTradesArchiveForOAuthUser(user_id, dry_run);
+    if (result.skipped) {
+      json(res, 400, { error: result.reason || "OAuth mapping not available" });
+      return;
+    }
+    if (!result.ok) {
+      json(res, 502, { error: result.reason || "reconcile_failed" });
+      return;
+    }
+    json(res, 200, result);
+  } catch (e) {
+    json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/**
+ * OAuth + notion_mappings → trades (shared by POST /api/notion/sync-user and maybeSyncNotion).
+ * Notion OAuth access tokens are not refreshed here (schema has no refresh_token); reconnect if Notion invalidates the token.
+ *
+ * @returns { skipped: true, reason: 'no_connection'|'no_mapping' } — use legacy env sync
+ * @returns { ok: true, fetched, upserted, skipped: false }
+ * @returns { ok: false, skipped: false, reason, oauthAuthError?, status? }
+ */
+async function syncNotionOAuthForUser(userId) {
+  const { url, tableRaw } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) {
+    return { ok: false, skipped: false, reason: "Supabase not configured" };
+  }
+
+  const ctx = await notionOAuthFetchAllPages(userId);
+  if (ctx.skipped) {
+    return { skipped: true, reason: ctx.reason };
+  }
+  if (!ctx.ok) {
+    return {
+      ok: false,
+      skipped: false,
+      reason: ctx.reason,
+      oauthAuthError: ctx.oauthAuthError,
+      status: ctx.status,
+    };
+  }
+
+  const allPages = ctx.pages;
+  const mapping = ctx.mapping;
   const tableEnc = encodeURIComponent(tableRaw);
   const batch = [];
 
@@ -4020,9 +4324,10 @@ async function syncNotionOAuthForUser(userId) {
 
     const rrRaw = get("rr");
     const rrNum = rrRaw != null ? Number(String(rrRaw).replace(/[^0-9.\-]/g, "")) : null;
-    const dateVal = parseDateToIso(get("date")) ?? parseDateToIso(page.created_time);
+    const dateVal = resolveNotionTradeDateIso(page, mapping, get);
     if (!dateVal) continue;
 
+    const notionExtras = serializeNotionProperties(props);
     batch.push({
       notion_id: page.id,
       user_id: userId,
@@ -4036,6 +4341,9 @@ async function syncNotionOAuthForUser(userId) {
       model: get("model"),
       notion_url: page.url ?? null,
       trade_images: get("photos") ?? [],
+      notion_extras: notionExtras,
+      notion_sync_source: "oauth",
+      archived: false,
       updated_at: new Date().toISOString(),
     });
   }
@@ -4043,22 +4351,25 @@ async function syncNotionOAuthForUser(userId) {
   const fetched = allPages.length;
 
   if (batch.length > 0) {
+    const upsertCols =
+      "notion_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,notion_extras,notion_sync_source,archived,updated_at";
     try {
-      const upsertCols =
-        "notion_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,updated_at";
-      const upsertRes = await fetch(`${url}/rest/v1/${tableEnc}?on_conflict=notion_id&columns=${upsertCols}`, {
-        method: "POST",
-        headers: {
-          apikey: srKey,
-          Authorization: `Bearer ${srKey}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=minimal",
-        },
-        body: JSON.stringify(batch),
-      });
-      if (!upsertRes.ok) {
-        const err = await upsertRes.text().catch(() => "unknown");
-        return { ok: false, skipped: false, reason: `Trades upsert failed: ${err}` };
+      for (let i = 0; i < batch.length; i += OAUTH_TRADE_UPSERT_BATCH) {
+        const slice = batch.slice(i, i + OAUTH_TRADE_UPSERT_BATCH);
+        const upsertRes = await fetch(`${url}/rest/v1/${tableEnc}?on_conflict=notion_id&columns=${upsertCols}`, {
+          method: "POST",
+          headers: {
+            apikey: srKey,
+            Authorization: `Bearer ${srKey}`,
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates,return=minimal",
+          },
+          body: JSON.stringify(slice),
+        });
+        if (!upsertRes.ok) {
+          const err = await upsertRes.text().catch(() => "unknown");
+          return { ok: false, skipped: false, reason: `Trades upsert failed: ${err}` };
+        }
       }
     } catch (e) {
       return { ok: false, skipped: false, reason: String(e.message ?? e) };

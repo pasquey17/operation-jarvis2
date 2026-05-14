@@ -21,6 +21,25 @@ function normalizeDate(iso) {
   return d.toISOString();
 }
 
+/** Parse title / free-text (e.g. DD/MM/YYYY) when no Notion date property is set. */
+function tryTextToIsoForNotionSync(s) {
+  if (!s || !String(s).trim()) return null;
+  const cleaned = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(cleaned)) return normalizeDate(cleaned);
+  const dmy = cleaned.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const mon = parseInt(dmy[2], 10);
+    let yr = parseInt(dmy[3], 10);
+    if (yr < 100) yr += 2000;
+    if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31) {
+      const d = new Date(Date.UTC(yr, mon - 1, day, 12, 0, 0));
+      if (!Number.isNaN(d.getTime()) && d.getUTCMonth() === mon - 1) return d.toISOString();
+    }
+  }
+  return normalizeDate(cleaned);
+}
+
 /**
  * Trade row requires a date: use explicit "Date" if set, else any date-type property,
  * else page created_time so new Notion rows still upsert when Date is blank or renamed.
@@ -38,6 +57,7 @@ function extractTradeDateIso(page) {
     p["Trade Date"]?.date?.start,
     p["trade date"]?.date?.start,
     p["DATE"]?.date?.start,
+    p.Day?.date?.start,
   ];
   for (const raw of namedCandidates) {
     if (raw != null && String(raw).trim()) {
@@ -53,6 +73,15 @@ function extractTradeDateIso(page) {
       const iso = normalizeDate(start);
       if (iso) return iso;
     }
+  }
+
+  for (const k of Object.keys(p).sort()) {
+    const prop = p[k];
+    if (!prop || prop.type !== "title" || !Array.isArray(prop.title)) continue;
+    const t = prop.title.map((b) => (typeof b?.plain_text === "string" ? b.plain_text : "")).join("").trim();
+    if (!t) continue;
+    const iso = tryTextToIsoForNotionSync(t);
+    if (iso) return iso;
   }
 
   if (page.created_time) {
@@ -119,6 +148,8 @@ function notionPageToTrade(page) {
     direction,
     notion_extras: serializeNotionProperties(p),
     trade_images,
+    notion_sync_source: "env",
+    archived: false,
     updated_at: new Date().toISOString(),
   };
 }
@@ -248,7 +279,7 @@ async function upsertTradeBatch(supabaseUrl, supabaseKey, rows) {
 
   // Explicit column list ensures ON CONFLICT DO UPDATE overwrites every field.
   const columns =
-    "notion_id,date,user_id,session,outcome,rr,model,notes,pair,direction,trade_images,notion_extras,updated_at";
+    "notion_id,date,user_id,session,outcome,rr,model,notes,pair,direction,trade_images,notion_extras,notion_sync_source,archived,updated_at";
   const res = await fetch(
     `${supabaseUrl}/rest/v1/trades?on_conflict=notion_id&columns=${columns}`,
     {

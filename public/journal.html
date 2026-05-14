@@ -504,6 +504,26 @@
       }
       .jn-card__extras-k { color: rgba(0,212,255,0.65) !important; letter-spacing: 0.08em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
       .jn-card__extras-v { color: rgba(192,192,192,0.85) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+      .jn-card__extras-preview--scroll {
+        max-height: 148px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0,212,255,0.35) rgba(0,0,0,0.4);
+      }
+      .jn-card__extras-preview--scroll::-webkit-scrollbar { width: 5px; }
+      .jn-card__extras-preview--scroll::-webkit-scrollbar-thumb {
+        background: rgba(0,212,255,0.35);
+        border-radius: 4px;
+      }
+      .jn-source-check-row { display: flex; flex-direction: column; gap: 10px; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; color: rgba(255,255,255,0.78); }
+      .jn-source-check-row label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; line-height: 1.35; }
+      .jn-source-check-row input { margin-top: 2px; accent-color: #00d4ff; }
+      .jn-source-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .jn-source-hint { font-size: 10px; color: rgba(136,153,170,0.95); line-height: 1.45; margin-top: 2px; }
+      .jn-source-mini { font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+        padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(0,212,255,0.28); background: rgba(0,0,0,0.45); color: rgba(0,212,255,0.85); cursor: pointer; }
+      .jn-source-mini:hover { border-color: rgba(0,212,255,0.5); color: #00d4ff; }
       .jn-card__photo-hit {
         display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 6px;
         border-radius: 4px; border: 1px solid rgba(0,212,255,0.22);
@@ -905,6 +925,23 @@
                     </div>
                   </div></div>
                 </div>
+                <div class="jn-filter-row" id="filter-source">
+                  <button class="jn-acc-head" type="button" aria-expanded="false">
+                    <span class="jn-acc-label">Data sources</span>
+                    <span class="jn-acc-right"><span class="jn-acc-active-val" id="acc-val-source"></span><span class="jn-acc-arrow">&#8250;</span></span>
+                  </button>
+                  <div class="jn-acc-body"><div class="jn-acc-body-inner">
+                    <div class="jn-source-check-row">
+                      <label><input type="checkbox" id="jn-src-manual" /> Show LOG TRADE (manual) entries</label>
+                      <label><input type="checkbox" id="jn-src-legacy" /> Show legacy / env-synced Notion rows</label>
+                    </div>
+                    <p class="jn-source-hint">Default: only OAuth-synced rows from <code style="color:rgba(0,212,255,0.75)">trades</code>. Run SQL in <code>schema/trade_source_archive.sql</code> first, then use reconcile to soft-archive pages not in your current Notion database.</p>
+                    <div class="jn-source-actions">
+                      <button type="button" class="jn-source-mini" id="jn-reconcile-dry">Preview archive cleanup</button>
+                      <button type="button" class="jn-source-mini" id="jn-reconcile-run">Run archive cleanup</button>
+                    </div>
+                  </div></div>
+                </div>
               </div>
               <div class="jn-acc-footer">
                 <button class="jn-filter-clear-btn" id="jn-filter-clear" type="button">CLEAR ALL</button>
@@ -971,6 +1008,51 @@
         customFrom: '',
         customTo: ''
       };
+
+      function jnReadLsBool(key, defaultVal) {
+        try {
+          var v = localStorage.getItem(key);
+          if (v === null) return defaultVal;
+          return v === '1' || v === 'true';
+        } catch (e) {
+          return defaultVal;
+        }
+      }
+      function jnWriteLsBool(key, val) {
+        try {
+          localStorage.setItem(key, val ? '1' : '0');
+        } catch (e) {}
+      }
+
+      /** Journal list: default strict — OAuth trades table only; optional manual + legacy env rows. */
+      var jnSourceFilters = {
+        includeManualJournal: jnReadLsBool('jn_include_manual_journal', false),
+        includeLegacyNotion: jnReadLsBool('jn_include_legacy_notion', false)
+      };
+
+      function syncSourceFilterUi() {
+        var m = document.getElementById('jn-src-manual');
+        var l = document.getElementById('jn-src-legacy');
+        if (m) m.checked = !!jnSourceFilters.includeManualJournal;
+        if (l) l.checked = !!jnSourceFilters.includeLegacyNotion;
+      }
+
+      async function jnPostNotionReconcile(dryRun, secret) {
+        var userId = currentUserId || 'aidenpasque11@gmail.com';
+        var r = await fetch('/api/notion/reconcile-archive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify({ user_id: userId, secret: secret, dry_run: !!dryRun })
+        });
+        var data = {};
+        try {
+          data = await r.json();
+        } catch (e1) {
+          data = {};
+        }
+        return { ok: r.ok, status: r.status, data: data };
+      }
 
       /* ── Helpers ── */
       function getField(obj) {
@@ -1617,19 +1699,19 @@
         }).sort(compareExtraKeysNotion);
         if (!keys.length) return '';
         var lines = [];
-        for (var j = 0; j < Math.min(3, keys.length); j++) {
+        for (var j = 0; j < keys.length; j++) {
           var kk = keys[j];
-          var vv = truncate(formatNotionExtraValue(extras[kk]), 52);
+          var vv = truncate(formatNotionExtraValue(extras[kk]), 120);
           if (!vv) continue;
           lines.push(
             '<div class="jn-card__extras-line">' +
-              '<span class="jn-card__extras-k">' + esc(truncate(kk, 18)) + '</span>' +
+              '<span class="jn-card__extras-k">' + esc(truncate(kk, 22)) + '</span>' +
               '<span class="jn-card__extras-v">' + esc(vv) + '</span>' +
             '</div>'
           );
         }
         if (!lines.length) return '';
-        return '<div class="jn-card__extras-preview">' + lines.join('') + '</div>';
+        return '<div class="jn-card__extras-preview jn-card__extras-preview--scroll">' + lines.join('') + '</div>';
       }
 
       function readApiError(data) {
@@ -1797,29 +1879,52 @@
       /* ── Data fetching ── */
       async function fetchAllTrades() {
         var userId = currentUserId || 'aidenpasque11@gmail.com';
-        var [tradesRes, journalRes] = await Promise.allSettled([
-          fetch('/api/trades?user_id=eq.' + encodeURIComponent(userId), { cache: 'no-store' }).then(function (r) { return r.json(); }),
-          fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(userId), { cache: 'no-store' }).then(function (r) { return r.json(); })
-        ]);
+        var tradesUrl = '/api/trades?user_id=eq.' + encodeURIComponent(userId);
+        var promises = [
+          fetch(tradesUrl, { cache: 'no-store' }).then(function (r) { return r.json(); })
+        ];
+        if (jnSourceFilters.includeManualJournal) {
+          promises.push(
+            fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(userId), { cache: 'no-store' }).then(function (r) {
+              return r.json();
+            })
+          );
+        }
+        var results = await Promise.allSettled(promises);
+        var tradesRes = results[0];
+        var journalRes = jnSourceFilters.includeManualJournal ? results[1] : { status: 'skipped', value: [] };
+
         var merged = [];
         if (tradesRes.status === 'fulfilled') {
           var data = tradesRes.value;
           var norm = normalizeTradesApiBody(data);
           var recs = norm.records;
-          merged = merged.concat(recs);
+          for (var ri = 0; ri < recs.length; ri++) {
+            merged.push(Object.assign({}, recs[ri], { _jarvis_trade_source: 'notion_table' }));
+          }
         }
-        if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value)) {
-          merged = merged.concat(journalRes.value);
+        if (jnSourceFilters.includeManualJournal && journalRes.status === 'fulfilled' && Array.isArray(journalRes.value)) {
+          for (var ji = 0; ji < journalRes.value.length; ji++) {
+            merged.push(Object.assign({}, journalRes.value[ji], { _jarvis_trade_source: 'journal_log' }));
+          }
         }
+
+        if (!jnSourceFilters.includeLegacyNotion) {
+          merged = merged.filter(function (t) {
+            if (t._jarvis_trade_source === 'journal_log') return true;
+            var src = String(getField(t, 'notion_sync_source', 'NOTION_SYNC_SOURCE') || '').toLowerCase();
+            return src === 'oauth';
+          });
+        }
+
         merged.sort(cmpSortNewest);
 
-        /* Debug: log first trade from each source so we can see exact field names */
         if (tradesRes.status === 'fulfilled') {
           var data = tradesRes.value;
           var n = normalizeTradesApiBody(data);
           if (n.records.length > 0) console.log('[JARVIS] First /api/trades record:', n.records[0]);
         }
-        if (journalRes.status === 'fulfilled' && Array.isArray(journalRes.value) && journalRes.value.length > 0) {
+        if (jnSourceFilters.includeManualJournal && journalRes.status === 'fulfilled' && Array.isArray(journalRes.value) && journalRes.value.length > 0) {
           console.log('[JARVIS] First /api/journal-trades record:', journalRes.value[0]);
         }
 
@@ -2594,7 +2699,9 @@
                         activeFilters.account   !== 'all'    ||
                         activeFilters.sort      !== 'newest' ||
                         activeFilters.customFrom !== ''      ||
-                        activeFilters.customTo   !== '';
+                        activeFilters.customTo   !== ''       ||
+                        jnSourceFilters.includeManualJournal ||
+                        jnSourceFilters.includeLegacyNotion;
         var dot = document.getElementById('jn-filter-dot');
         if (dot) dot.classList.toggle('jn-filter-dot--visible', hasActive);
       }
@@ -2622,6 +2729,17 @@
         if (sortEl) {
           var sortLabels = { newest: 'Newest', oldest: 'Oldest', highestrr: 'Highest RR', lowestrr: 'Lowest RR' };
           sortEl.textContent = sortLabels[activeFilters.sort] || String(activeFilters.sort || '').toUpperCase();
+        }
+        var srcEl = document.getElementById('acc-val-source');
+        if (srcEl) {
+          if (!jnSourceFilters.includeManualJournal && !jnSourceFilters.includeLegacyNotion) {
+            srcEl.textContent = 'STRICT';
+          } else {
+            var bits = [];
+            if (jnSourceFilters.includeManualJournal) bits.push('MANUAL');
+            if (jnSourceFilters.includeLegacyNotion) bits.push('LEGACY');
+            srcEl.textContent = bits.join(' + ') || 'CUSTOM';
+          }
         }
       }
 
@@ -2680,6 +2798,11 @@
             pair: 'all', model: 'all', account: 'all',
             sort: 'newest', customFrom: '', customTo: ''
           };
+          jnSourceFilters.includeManualJournal = false;
+          jnSourceFilters.includeLegacyNotion = false;
+          jnWriteLsBool('jn_include_manual_journal', false);
+          jnWriteLsBool('jn_include_legacy_notion', false);
+          syncSourceFilterUi();
           document.querySelectorAll('#jn-filters .jn-filter-pill').forEach(function (p) {
             var isDefault = p.dataset.value === 'all' ||
                             (p.dataset.group === 'sort' && p.dataset.value === 'newest');
@@ -2693,8 +2816,63 @@
           if (cr) cr.hidden = true;
           updateFilterDot();
           updateAccordionLabels();
-          applyFilters();
+          void refreshJournalData();
         });
+      })();
+
+      (function () {
+        var m = document.getElementById('jn-src-manual');
+        var l = document.getElementById('jn-src-legacy');
+        if (m) {
+          m.addEventListener('change', function (e) {
+            jnSourceFilters.includeManualJournal = !!e.target.checked;
+            jnWriteLsBool('jn_include_manual_journal', jnSourceFilters.includeManualJournal);
+            updateFilterDot();
+            updateAccordionLabels();
+            void refreshJournalData();
+          });
+        }
+        if (l) {
+          l.addEventListener('change', function (e) {
+            jnSourceFilters.includeLegacyNotion = !!e.target.checked;
+            jnWriteLsBool('jn_include_legacy_notion', jnSourceFilters.includeLegacyNotion);
+            updateFilterDot();
+            updateAccordionLabels();
+            void refreshJournalData();
+          });
+        }
+        async function jnRunReconcile(dry) {
+          var secret = window.prompt(
+            dry
+              ? 'Enter JARVIS_RECONCILE_SECRET (preview only — no writes)'
+              : 'Enter JARVIS_RECONCILE_SECRET to archive trades not in your current Notion DB'
+          );
+          if (!secret) return;
+          var res = await jnPostNotionReconcile(dry, secret.trim());
+          var d = res.data || {};
+          if (res.ok) {
+            if (dry) {
+              showToast(
+                'Dry run: live pages ' +
+                  (d.live_notion_pages || 0) +
+                  ', would archive ' +
+                  (d.would_archive || 0) +
+                  ', would unarchive ' +
+                  (d.would_unarchive || 0),
+                false
+              );
+            } else {
+              showToast('Archived ' + (d.archived || 0) + ', unarchived ' + (d.unarchived || 0), false);
+              await refreshJournalData();
+            }
+          } else {
+            showToast(d.error || d.message || 'Reconcile failed (' + res.status + ')', true);
+          }
+        }
+        var dryBtn = document.getElementById('jn-reconcile-dry');
+        var runBtn = document.getElementById('jn-reconcile-run');
+        if (dryBtn) dryBtn.addEventListener('click', function () { void jnRunReconcile(true); });
+        if (runBtn) runBtn.addEventListener('click', function () { void jnRunReconcile(false); });
       })();
 
       /* ── Load more ── */
@@ -2790,12 +2968,13 @@
       async function boot() {
         initParticles();
         await ensureUserId();
+        syncSourceFilterUi();
         var list = document.getElementById('jn-list');
         list.innerHTML = '<div class="jn-state">Loading trades…</div>';
         try { allTrades = await fetchAllTrades(); }
         catch(e) { list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>'; return; }
         if (allTrades.length === 0) {
-          list.innerHTML = '<div class="jn-state">No trades found. Log your first trade above.</div>'; return;
+          list.innerHTML = '<div class="jn-state">No trades to show. Open FILTER + → Data sources if you expect manual LOG TRADE rows or legacy Notion sync, or log a trade above.</div>'; return;
         }
         renderWeeklyStats(computeWeeklyStats(allTrades));
         buildFilterOptions(allTrades);
