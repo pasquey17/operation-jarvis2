@@ -494,27 +494,39 @@
       .jn-card__extras-preview {
         grid-column: 1 / -1; margin-top: 6px; padding-top: 8px;
         border-top: 1px solid rgba(0,212,255,0.12);
+        display: flex; flex-direction: column; gap: 5px;
+      }
+      .jn-card__extras-summary {
         display: flex; flex-direction: column; gap: 4px;
       }
       .jn-card__extras-line {
-        display: grid; grid-template-columns: minmax(52px, 32%) 1fr;
-        gap: 6px 10px; align-items: baseline;
+        display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
+        gap: 6px 10px; align-items: start;
         font-family: "Share Tech Mono","Courier New",monospace !important;
-        font-size: 9px; line-height: 1.35;
+        font-size: 9px; line-height: 1.45;
       }
-      .jn-card__extras-k { color: rgba(0,212,255,0.65) !important; letter-spacing: 0.08em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-      .jn-card__extras-v { color: rgba(192,192,192,0.85) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-      .jn-card__extras-preview--scroll {
-        max-height: 148px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0,212,255,0.35) rgba(0,0,0,0.4);
+      .jn-card__extras-k {
+        color: rgba(0,212,255,0.72) !important; letter-spacing: 0.06em; text-transform: uppercase;
+        min-width: 0; word-break: break-word; white-space: normal;
       }
-      .jn-card__extras-preview--scroll::-webkit-scrollbar { width: 5px; }
-      .jn-card__extras-preview--scroll::-webkit-scrollbar-thumb {
-        background: rgba(0,212,255,0.35);
-        border-radius: 4px;
+      .jn-card__extras-v {
+        color: rgba(192,192,192,0.9) !important; min-width: 0;
+        word-break: break-word; overflow-wrap: anywhere; white-space: normal;
+      }
+      .jn-card__extras-more { margin-top: 2px; }
+      .jn-card__extras-more-sum {
+        cursor: pointer;
+        font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: rgba(0,212,255,0.78) !important; list-style: none;
+      }
+      .jn-card__extras-more-sum::-webkit-details-marker { display: none; }
+      .jn-card__extras-more-sum::before { content: "+ "; color: rgba(0,212,255,0.45); }
+      .jn-card__extras-more[open] > .jn-card__extras-more-sum::before { content: "− "; }
+      .jn-card__extras-more-body {
+        margin-top: 6px; padding-top: 6px;
+        border-top: 1px solid rgba(0,212,255,0.1);
+        display: flex; flex-direction: column; gap: 4px;
       }
       .jn-source-check-row { display: flex; flex-direction: column; gap: 10px; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; color: rgba(255,255,255,0.78); }
       .jn-source-check-row label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; line-height: 1.35; }
@@ -1520,6 +1532,7 @@
       /** Keys already shown as core columns — hide from Notion extras (case-insensitive). */
       var EXTRAS_CORE_NAMES = {
         date: 1, session: 1, outcome: 1, rr: 1, model: 1, notes: 1, pair: 1, direction: 1, trade_images: 1,
+        photos: 1,
         'entry model': 1, 'trade summary': 1, 'position type': 1
       };
       function normalizeExtraKeyName(k) {
@@ -1691,6 +1704,17 @@
         );
       }
 
+      var CARD_EXTRAS_SUMMARY_LINES = 4;
+
+      function jnCardExtrasLineHtml(kk, vv) {
+        return (
+          '<div class="jn-card__extras-line">' +
+            '<span class="jn-card__extras-k">' + esc(kk) + '</span>' +
+            '<span class="jn-card__extras-v">' + esc(vv) + '</span>' +
+          '</div>'
+        );
+      }
+
       function notionExtrasCardPreviewHtml(trade) {
         var extras = parseNotionExtrasFromTrade(trade);
         if (!extras) return '';
@@ -1698,20 +1722,34 @@
           return !isDuplicateExtraKey(k);
         }).sort(compareExtraKeysNotion);
         if (!keys.length) return '';
-        var lines = [];
+        var rows = [];
         for (var j = 0; j < keys.length; j++) {
           var kk = keys[j];
-          var vv = truncate(formatNotionExtraValue(extras[kk]), 120);
-          if (!vv) continue;
-          lines.push(
-            '<div class="jn-card__extras-line">' +
-              '<span class="jn-card__extras-k">' + esc(truncate(kk, 22)) + '</span>' +
-              '<span class="jn-card__extras-v">' + esc(vv) + '</span>' +
-            '</div>'
-          );
+          var raw = formatNotionExtraValue(extras[kk]);
+          if (!String(raw).trim()) continue;
+          rows.push({ k: kk, v: raw });
         }
-        if (!lines.length) return '';
-        return '<div class="jn-card__extras-preview jn-card__extras-preview--scroll">' + lines.join('') + '</div>';
+        if (!rows.length) return '';
+        var summary = rows.slice(0, CARD_EXTRAS_SUMMARY_LINES);
+        var more = rows.slice(CARD_EXTRAS_SUMMARY_LINES);
+        var summaryHtml = summary.map(function (r) {
+          return jnCardExtrasLineHtml(r.k, truncate(r.v, 200));
+        }).join('');
+        var out =
+          '<div class="jn-card__extras-preview">' +
+          '<div class="jn-card__extras-summary">' + summaryHtml + '</div>';
+        if (more.length) {
+          var moreHtml = more.map(function (r) {
+            return jnCardExtrasLineHtml(r.k, truncate(r.v, 420));
+          }).join('');
+          out +=
+            '<details class="jn-card__extras-more">' +
+            '<summary class="jn-card__extras-more-sum">Show all fields (' + rows.length + ')</summary>' +
+            '<div class="jn-card__extras-more-body">' + moreHtml + '</div>' +
+            '</details>';
+        }
+        out += '</div>';
+        return out;
       }
 
       function readApiError(data) {
@@ -2608,6 +2646,10 @@
           e.stopPropagation();
           var tAsk = filteredTrades[parseInt(askBtn.dataset.idx, 10)];
           if (tAsk) askJarvisAboutTrade(tAsk);
+          return;
+        }
+
+        if (inList && e.target.closest('.jn-card__extras-more')) {
           return;
         }
 

@@ -4008,7 +4008,7 @@ function resolveNotionTradeDateIso(page, mapping, get) {
 
 /**
  * Load OAuth token + mapping and fetch all pages from the mapped Notion database / data source.
- * @returns {{ ok: true, skipped: false, pages: object[] } | { ok: false, skipped: true, reason: string, pages: [] } | { ok: false, skipped: false, reason: string, oauthAuthError?: boolean, status?: number, pages: [] }}
+ * @returns {{ ok: true, skipped: false, pages: object[], mapping: object, accessToken: string } | { ok: false, skipped: true, reason: string, pages: [] } | { ok: false, skipped: false, reason: string, oauthAuthError?: boolean, status?: number, pages: [] }}
  */
 async function notionOAuthFetchAllPages(userId) {
   const { url } = getSupabaseConfig();
@@ -4101,7 +4101,117 @@ async function notionOAuthFetchAllPages(userId) {
     return { ok: false, skipped: false, reason: String(e.message ?? e), pages: [] };
   }
 
-  return { ok: true, skipped: false, pages: allPages, mapping };
+  return { ok: true, skipped: false, pages: allPages, mapping, accessToken };
+}
+
+/** Same shape as `extractTradeImagesFromProps` in notion-sync.mjs — every `files` property on the page. */
+function oauthExtractTradeImageUrlsFromProps(props) {
+  const urls = [];
+  if (!props || typeof props !== "object") return urls;
+  for (const prop of Object.values(props)) {
+    if (!prop || prop.type !== "files" || !Array.isArray(prop.files)) continue;
+    for (const f of prop.files) {
+      if (!f) continue;
+      const u =
+        f.type === "external" && f.external?.url
+          ? String(f.external.url).trim()
+          : f.type === "file" && f.file?.url
+            ? String(f.file.url).trim()
+            : "";
+      if (u && /^https?:\/\//i.test(u)) urls.push(u);
+    }
+  }
+  return urls;
+}
+
+function oauthNormalizeTradeImageEntry(x) {
+  if (typeof x === "string") {
+    const u = x.trim();
+    if (!/^https?:\/\//i.test(u)) return null;
+    return { url: u, label: "" };
+  }
+  if (x && typeof x === "object" && typeof x.url === "string") {
+    const u = x.url.trim();
+    if (!/^https?:\/\//i.test(u)) return null;
+    return {
+      url: u,
+      label: typeof x.label === "string" ? x.label.trim() : "",
+    };
+  }
+  return null;
+}
+
+/** Match notion-sync `mergeTradeImages`: second argument’s URLs are emitted first (page-body captions win). */
+function oauthMergeTradeImages(baseList, fromBlocks) {
+  const merged = [];
+  const seen = new Set();
+  for (const raw of fromBlocks || []) {
+    const n = oauthNormalizeTradeImageEntry(raw);
+    if (n && !seen.has(n.url)) {
+      seen.add(n.url);
+      merged.push(n);
+    }
+  }
+  for (const raw of baseList || []) {
+    const n = oauthNormalizeTradeImageEntry(raw);
+    if (n && !seen.has(n.url)) {
+      seen.add(n.url);
+      merged.push(n);
+    }
+  }
+  return merged;
+}
+
+/** `get("photos")` from column mapping — string[], url string, or {url,label}[]. */
+function oauthCoerceMappedPhotos(raw) {
+  if (raw == null || raw === "") return [];
+  if (typeof raw === "string") {
+    const u = raw.trim();
+    if (/^https?:\/\//i.test(u)) return [{ url: u, label: "" }];
+    return [];
+  }
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    const n = oauthNormalizeTradeImageEntry(item);
+    if (n) out.push(n);
+  }
+  return out;
+}
+
+async function enrichOAuthSyncTradeImages(accessToken, rows, pages, mapping) {
+  if (!Array.isArray(rows) || !Array.isArray(pages) || rows.length !== pages.length || !mapping) return;
+  const conc = Math.min(
+    8,
+    Math.max(1, Number(process.env.NOTION_BODY_IMAGE_CONCURRENCY) || 6)
+  );
+
+  const runOne = async (row, page) => {
+    const props = page.properties ?? {};
+    const get = (field) => notionPropValue(props[mapping[field]]);
+    const mapped = oauthCoerceMappedPhotos(get("photos"));
+    const fileEntries = oauthExtractTradeImageUrlsFromProps(props).map((url) => ({ url, label: "" }));
+    const propBase = oauthMergeTradeImages(fileEntries, mapped);
+    let fromBlocks = [];
+    if (accessToken) {
+      try {
+        fromBlocks = await fetchTradeImagesFromNotionPageBlocks(accessToken, page.id, {
+          maxUrls: 48,
+          maxBlockRequests: 150,
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(`[notion-oauth-sync] page body images ${page?.id}: ${msg}`);
+      }
+    }
+    row.trade_images = oauthMergeTradeImages(propBase, fromBlocks);
+  };
+
+  for (let i = 0; i < rows.length; i += conc) {
+    const rChunk = rows.slice(i, i + conc);
+    const pChunk = pages.slice(i, i + conc);
+    await Promise.all(rChunk.map((row, j) => runOne(row, pChunk[j])));
+  }
 }
 
 async function patchTradesArchivedByNotionIds(supabaseUrl, tableEnc, srKey, userId, notionIds, archived) {
@@ -4315,8 +4425,10 @@ async function syncNotionOAuthForUser(userId) {
 
   const allPages = ctx.pages;
   const mapping = ctx.mapping;
+  const accessToken = ctx.accessToken;
   const tableEnc = encodeURIComponent(tableRaw);
   const batch = [];
+  const batchPages = [];
 
   for (const page of allPages) {
     const props = page.properties ?? {};
@@ -4328,6 +4440,7 @@ async function syncNotionOAuthForUser(userId) {
     if (!dateVal) continue;
 
     const notionExtras = serializeNotionProperties(props);
+    batchPages.push(page);
     batch.push({
       notion_id: page.id,
       user_id: userId,
@@ -4340,13 +4453,15 @@ async function syncNotionOAuthForUser(userId) {
       notes: get("notes"),
       model: get("model"),
       notion_url: page.url ?? null,
-      trade_images: get("photos") ?? [],
+      trade_images: [],
       notion_extras: notionExtras,
       notion_sync_source: "oauth",
       archived: false,
       updated_at: new Date().toISOString(),
     });
   }
+
+  await enrichOAuthSyncTradeImages(accessToken, batch, batchPages, mapping);
 
   const fetched = allPages.length;
 
