@@ -526,6 +526,21 @@
       .jn-badge--long  { background: rgba(0,212,255,0.12) !important; color: #00d4ff !important; border-color: rgba(0,212,255,0.35) !important; }
       .jn-badge--short { background: rgba(255,100,100,0.12) !important; color: #ff8888 !important; border-color: rgba(255,100,100,0.35) !important; }
       .jn-badge--acct  { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.38) !important; border-color: rgba(255,255,255,0.1) !important; font-weight: 400; font-size: 9px; }
+      .jn-badge--log   { background: rgba(0,212,255,0.1) !important; color: #00d4ff !important; border-color: rgba(0,212,255,0.45) !important; font-size: 8px; letter-spacing: 0.14em; }
+
+      .jn-modal-log-strip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 12px;
+      }
+      .jn-modal-log-strip__txt {
+        font-family: "Share Tech Mono", "Courier New", monospace !important;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        color: rgba(255, 255, 255, 0.55);
+        text-transform: uppercase;
+      }
 
       .jn-source-check-row { display: flex; flex-direction: column; gap: 10px; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; color: rgba(255,255,255,0.78); }
       .jn-source-check-row label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; line-height: 1.35; }
@@ -946,7 +961,7 @@
                       <label><input type="checkbox" id="jn-src-manual" /> Show LOG TRADE (manual) entries</label>
                       <label><input type="checkbox" id="jn-src-legacy" /> Show legacy / env-synced Notion rows</label>
                     </div>
-                    <p class="jn-source-hint">Default: only OAuth-synced rows from <code style="color:rgba(0,212,255,0.75)">trades</code>. Run SQL in <code>schema/trade_source_archive.sql</code> first, then use reconcile to soft-archive pages not in your current Notion database.</p>
+                    <p class="jn-source-hint">By default, OAuth-synced rows from <code style="color:rgba(0,212,255,0.75)">trades</code> plus manual <strong>LOG TRADE</strong> rows are shown. Turn off manual to hide <code style="color:rgba(0,212,255,0.75)">journal_trades</code>. Run SQL in <code>schema/trade_source_archive.sql</code> first, then use reconcile to soft-archive pages not in your current Notion database.</p>
                     <div class="jn-source-actions">
                       <button type="button" class="jn-source-mini" id="jn-reconcile-dry">Preview archive cleanup</button>
                       <button type="button" class="jn-source-mini" id="jn-reconcile-run">Run archive cleanup</button>
@@ -1035,9 +1050,9 @@
         } catch (e) {}
       }
 
-      /** Journal list: default strict — OAuth trades table only; optional manual + legacy env rows. */
+      /** Journal list: OAuth trades + manual LOG TRADE rows by default; optional legacy env rows. */
       var jnSourceFilters = {
-        includeManualJournal: jnReadLsBool('jn_include_manual_journal', false),
+        includeManualJournal: jnReadLsBool('jn_include_manual_journal', true),
         includeLegacyNotion: jnReadLsBool('jn_include_legacy_notion', false)
       };
 
@@ -2359,6 +2374,14 @@
         }
 
         var parts = [];
+        if (trade._jarvis_trade_source === 'journal_log') {
+          parts.push(
+            '<div class="jn-modal-log-strip">' +
+              '<span class="jn-badge jn-badge--log">LOG</span>' +
+              '<span class="jn-modal-log-strip__txt">Jarvis log entry</span>' +
+            '</div>'
+          );
+        }
         parts.push('<div class="cal-modal-fields-grid">' + core.join('') + '</div>');
         if (notes) {
           parts.push(
@@ -2456,6 +2479,10 @@
 
         var modelDisplay  = model ? truncate(model, 26) : '';
         var acctBadge     = account ? '<span class="jn-badge jn-badge--acct">' + esc(account) + '</span>' : '';
+        var logBadge =
+          trade._jarvis_trade_source === 'journal_log'
+            ? '<span class="jn-badge jn-badge--log" title="Logged in Jarvis">LOG</span>'
+            : '';
         var pairHtml      = pair ? '<span class="jn-card__pair">' + esc(pair.toUpperCase()) + '</span>' : '';
         var imgItems = tradeImageItems(trade);
         var chartHint = imgItems.length ? '<span class="jn-card__photo-hit" title="' + imgItems.length + ' chart(s)">IMG</span>' : '';
@@ -2490,6 +2517,7 @@
           '      <div class="jn-card__left">',
           '      ' + outcomeBadgeHtml(outcome),
           '      ' + directionBadgeHtml(trade),
+          '      ' + logBadge,
           '      ' + pairHtml + chartHint,
           modelDisplay ? '      <span class="jn-card__model">' + esc(modelDisplay) + '</span>' : '',
           '      </div>',
@@ -2775,7 +2803,7 @@
         var srcEl = document.getElementById('acc-val-source');
         if (srcEl) {
           if (!jnSourceFilters.includeManualJournal && !jnSourceFilters.includeLegacyNotion) {
-            srcEl.textContent = 'STRICT';
+            srcEl.textContent = 'OAUTH ONLY';
           } else {
             var bits = [];
             if (jnSourceFilters.includeManualJournal) bits.push('MANUAL');
@@ -2840,9 +2868,9 @@
             pair: 'all', model: 'all', account: 'all',
             sort: 'newest', customFrom: '', customTo: ''
           };
-          jnSourceFilters.includeManualJournal = false;
+          jnSourceFilters.includeManualJournal = true;
           jnSourceFilters.includeLegacyNotion = false;
-          jnWriteLsBool('jn_include_manual_journal', false);
+          jnWriteLsBool('jn_include_manual_journal', true);
           jnWriteLsBool('jn_include_legacy_notion', false);
           syncSourceFilterUi();
           document.querySelectorAll('#jn-filters .jn-filter-pill').forEach(function (p) {
@@ -3052,7 +3080,7 @@
         try { allTrades = await fetchAllTrades(); }
         catch(e) { list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>'; return; }
         if (allTrades.length === 0) {
-          list.innerHTML = '<div class="jn-state">No trades to show. Open FILTER + → Data sources if you expect manual LOG TRADE rows or legacy Notion sync, or log a trade above.</div>'; return;
+          list.innerHTML = '<div class="jn-state">No trades to show. Adjust filters in FILTER +, or log a trade above.</div>'; return;
         }
         renderWeeklyStats(computeWeeklyStats(allTrades));
         buildFilterOptions(allTrades);
