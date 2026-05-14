@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 export function Card({
   eyebrow,
@@ -11,10 +11,9 @@ export function Card({
   meta?: string;
   hover?: boolean;
 }>) {
-  const Comp: any = hover ? motion.section : "section";
-  const hoverProps = hover
-    ? { whileHover: { y: -2 }, transition: { duration: 0.25 } }
-    : {};
+  const reduce = useReducedMotion();
+  const Comp: any = hover && !reduce ? motion.section : "section";
+  const hoverProps = hover && !reduce ? { whileHover: { y: -2 }, transition: { duration: 0.25 } } : {};
 
   return (
     <Comp

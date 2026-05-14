@@ -19,7 +19,7 @@ export function Button({
 }>) {
   const Tag: any = as === "a" || href ? "a" : "button";
   const base =
-    "inline-flex items-center justify-center rounded-[14px] border font-mono tracking-[0.18em] transition select-none " +
+    "inline-flex items-center justify-center rounded-[14px] border font-mono tracking-[0.18em] transition select-none outline-none focus-visible:ring-2 focus-visible:ring-[color:rgba(0,212,255,0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070a] " +
     (size === "sm" ? "px-4 py-2 text-[10px]" : "px-5 py-3 text-[11px]");
   const cls =
     base +

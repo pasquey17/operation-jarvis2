@@ -24,11 +24,12 @@ function useCountUp(target: number | null | undefined, duration = 800) {
   const frame = useRef<number>(0);
   useEffect(() => {
     if (target == null) return;
+    const tgt = target;
     const start = performance.now();
     function step(now: number) {
       const t = Math.min((now - start) / duration, 1);
       const ease = 1 - Math.pow(1 - t, 3);
-      setValue(target * ease);
+      setValue(tgt * ease);
       if (t < 1) frame.current = requestAnimationFrame(step);
     }
     frame.current = requestAnimationFrame(step);

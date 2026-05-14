@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -94,7 +94,6 @@ export function PricingPage() {
           tone="neutral"
           cta={plans.core.cta}
           items={plans.core.items}
-          isYearly={plans.isYearly}
         />
         <PlanCard
           tone="primary"
@@ -108,7 +107,6 @@ export function PricingPage() {
           cta={plans.edge.cta}
           items={plans.edge.items}
           savingsBadge={plans.isYearly ? "Save 20%" : undefined}
-          isYearly={plans.isYearly}
         />
       </motion.section>
 
@@ -180,7 +178,7 @@ function BillingToggle({
           aria-label="Toggle billing period"
           onClick={() => setBilling(isYearly ? "monthly" : "yearly")}
           className={
-            "relative h-9 w-[86px] rounded-full border backdrop-blur-2xl transition " +
+            "relative h-9 w-[86px] rounded-full border backdrop-blur-2xl transition outline-none focus-visible:ring-2 focus-visible:ring-[color:rgba(0,212,255,0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070a] " +
             (isYearly
               ? "border-[color:rgba(0,255,136,0.26)] bg-[color:rgba(0,255,136,0.08)]"
               : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8")
@@ -220,7 +218,6 @@ function PlanCard({
   badge,
   tone,
   savingsBadge,
-  isYearly,
 }: {
   name: string;
   positioning: string;
@@ -233,12 +230,12 @@ function PlanCard({
   badge?: string;
   tone: "primary" | "neutral";
   savingsBadge?: string;
-  isYearly: boolean;
 }) {
+  const reduce = useReducedMotion();
   const primary = tone === "primary";
   return (
     <motion.article
-      whileHover={{ y: primary ? -4 : -2, scale: primary ? 1.005 : 1 }}
+      whileHover={reduce ? undefined : { y: primary ? -4 : -2, scale: primary ? 1.005 : 1 }}
       transition={{ duration: 0.25, ease }}
       className={
         "relative overflow-hidden rounded-[22px] border bg-[color:var(--panel)] p-7 backdrop-blur-2xl " +
@@ -340,7 +337,7 @@ function FaqAccordion({ q, a }: { q: string; a: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 p-5 text-left"
+        className="flex w-full items-center justify-between gap-4 p-5 text-left outline-none focus-visible:ring-2 focus-visible:ring-[color:rgba(0,212,255,0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#05070a]"
       >
         <p className="font-mono text-[10px] tracking-[0.2em] text-white/72">{q}</p>
         <motion.span

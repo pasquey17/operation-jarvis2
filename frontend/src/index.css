@@ -1,14 +1,25 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Share Tech Mono", ui-monospace, "Courier New", monospace;
+}
+
+/*
+ * Jarvis OS marketing tokens (Option A) — 8 core surfaces + accents.
+ * Use var(--*) in components; Tailwind arbitrary values may reference these.
+ */
 :root {
+  --bg-deep: #020308;
   --bg: #07070a;
-  --panel: rgba(10, 10, 14, 0.68);
-  --panel2: rgba(10, 10, 14, 0.42);
-  --border: rgba(255, 255, 255, 0.10);
+  --panel: rgba(10, 12, 18, 0.72);
+  --panel2: rgba(8, 10, 16, 0.52);
+  --border: rgba(255, 255, 255, 0.1);
   --border2: rgba(255, 255, 255, 0.06);
-  --text: rgba(255, 255, 255, 0.86);
-  --muted: rgba(255, 255, 255, 0.58);
-  --faint: rgba(255, 255, 255, 0.34);
+  --text: rgba(255, 255, 255, 0.9);
+  --muted: rgba(255, 255, 255, 0.62);
+  --faint: rgba(255, 255, 255, 0.38);
+  --silver: #c0c0c0;
 
   --blue: #00d4ff;
   --blue2: rgba(0, 212, 255, 0.16);
@@ -37,20 +48,15 @@ body {
 body {
   margin: 0;
   color: var(--text);
-  background: radial-gradient(1200px 800px at 20% 0%, rgba(0, 212, 255, 0.10), transparent 55%),
-    radial-gradient(900px 700px at 85% 15%, rgba(120, 80, 255, 0.10), transparent 60%),
-    linear-gradient(180deg, #050507, #07070a 36%, #07070a);
-  font-family: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  background-color: var(--bg-deep);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+/* Respect reduced motion without breaking Framer Motion layout props */
 @media (prefers-reduced-motion: reduce) {
-  * {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+  html {
+    scroll-behavior: auto;
   }
 }
-
