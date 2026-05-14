@@ -2547,6 +2547,154 @@ async function handleJournalFields(req, res) {
   }
 }
 
+/** Shared row shape for POST /api/log-trade and PATCH /api/journal-trades/:id (no user_id). */
+function journalTradePayloadFromBody(body) {
+  const rrVal = body.rr != null && body.rr !== "" ? Number(body.rr) : null;
+  const pairTrim = body.pair != null ? String(body.pair).trim() : "";
+  const acctTrim = body.account != null ? String(body.account).trim() : "";
+  return {
+    traded_at: body.traded_at || new Date().toISOString(),
+    pair: pairTrim || null,
+    outcome: body.outcome || null,
+    rr: Number.isFinite(rrVal) ? rrVal : null,
+    session: body.session || null,
+    account: acctTrim || null,
+    custom_data: body.custom_data && typeof body.custom_data === "object" ? body.custom_data : {},
+  };
+}
+
+const JOURNAL_TRADE_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function journalTradeIdFromPath(pathname) {
+  const base = pathname.split("?")[0].replace(/\/$/, "");
+  const m = base.match(/^\/api\/journal-trades\/([^/]+)$/);
+  if (!m) return null;
+  return JOURNAL_TRADE_ID_RE.test(m[1]) ? m[1] : null;
+}
+
+/** PATCH /api/journal-trades/:id — update manual row (must match user_id). */
+async function handleJournalTradePatch(req, res, tradeId) {
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  const userId = (body.user_id && String(body.user_id).trim()) || parseSupabaseUserIdParam(req);
+  if (!userId) {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+
+  const patch = journalTradePayloadFromBody(body);
+
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(tradeId)}&user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify(patch),
+      }
+    );
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      json(res, 502, { error: "Invalid JSON from Supabase" });
+      return;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row || typeof row !== "object") {
+      json(res, 404, { error: "Trade not found or access denied" });
+      return;
+    }
+    json(res, 200, { trade: row });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** DELETE /api/journal-trades/:id?user_id=eq.{email} — delete manual row. */
+async function handleJournalTradeDelete(req, res, tradeId) {
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+  const userId = parseSupabaseUserIdParam(req);
+  if (!userId) {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(tradeId)}&user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: "DELETE",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          Accept: "application/json",
+          Prefer: "return=representation",
+        },
+      }
+    );
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      json(res, 502, { error: "Invalid JSON from Supabase" });
+      return;
+    }
+    if (!Array.isArray(data) || !data.length) {
+      json(res, 404, { error: "Trade not found or access denied" });
+      return;
+    }
+    json(res, 200, { ok: true, deleted: data[0] });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 /** GET /api/journal-trades?user_id=eq.{email} — manual LOG TRADE rows (journal_trades). */
 async function handleJournalTradesGet(req, res) {
   const { url, key } = getSupabaseConfig();
@@ -2596,17 +2744,11 @@ async function handleLogTrade(req, res) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
   if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
 
-  const rrVal = body.rr != null && body.rr !== "" ? Number(body.rr) : null;
   const row = {
     user_id: body.user_id || "aidenpasque11@gmail.com",
-    traded_at: body.traded_at || new Date().toISOString(),
-    pair: body.pair || "XAU/USD",
-    outcome: body.outcome || null,
-    rr: Number.isFinite(rrVal) ? rrVal : null,
-    session: body.session || null,
-    account: body.account || null,
-    custom_data: body.custom_data && typeof body.custom_data === "object" ? body.custom_data : {},
+    ...journalTradePayloadFromBody(body),
   };
+  if (!row.pair) row.pair = "XAU/USD";
 
   try {
     const r = await fetch(`${url}/rest/v1/journal_trades`, {
@@ -3418,7 +3560,22 @@ async function requestListener(req, res) {
     return;
   }
 
-  if (req.method === "GET" && req.url.startsWith("/api/journal-trades")) {
+  {
+    const jtPath = req.url.split("?")[0].replace(/\/$/, "") || "/";
+    const jtId = journalTradeIdFromPath(jtPath);
+    if (jtId) {
+      if (req.method === "PATCH") {
+        await handleJournalTradePatch(req, res, jtId);
+        return;
+      }
+      if (req.method === "DELETE") {
+        await handleJournalTradeDelete(req, res, jtId);
+        return;
+      }
+    }
+  }
+
+  if (req.method === "GET" && req.url.split("?")[0].replace(/\/$/, "") === "/api/journal-trades") {
     await handleJournalTradesGet(req, res);
     return;
   }
