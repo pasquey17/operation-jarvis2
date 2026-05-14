@@ -53,18 +53,123 @@
       .an-header__left { flex: 1; min-width: 0; }
       .an-title { margin: 0 0 6px; font-family: "Outfit",system-ui,sans-serif; font-weight: 200; font-size: clamp(2rem,5vw,52px); color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08); }
       .an-subtitle { margin: 0; font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.14em; text-transform: uppercase; }
-      .an-scope {
-        margin: 8px 0 0;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px;
-        letter-spacing: 0.08em;
-        color: rgba(255,255,255,0.32);
-        line-height: 1.5;
-        max-width: min(56ch, 100%);
-      }
       .an-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06); font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(0,212,255,0.85); white-space: nowrap; flex-shrink: 0; }
       .an-badge__dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,212,255,0.9); box-shadow: 0 0 10px rgba(0,212,255,0.7); animation: anPulse 1.7s ease-in-out infinite; }
       @keyframes anPulse { 0%,100%{transform:scale(1);opacity:.65}50%{transform:scale(1.2);opacity:1} }
+
+      /* ═══ Period reports (weekly / monthly) ═══ */
+      .an-reports { margin-bottom: 22px; }
+      .an-reports-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      }
+      .an-report {
+        border-radius: 16px;
+        border: 1px solid rgba(0,212,255,0.14);
+        background: rgba(4,9,18,0.92);
+        backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+        padding: 16px 18px 18px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+      .an-report__top {
+        display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+        margin-bottom: 8px;
+      }
+      .an-report__title {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+        color: rgba(0,212,255,0.9); margin: 0;
+      }
+      .an-report__meta {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+        color: rgba(255,255,255,0.28); white-space: nowrap;
+      }
+      .an-report__cap {
+        margin: 0 0 12px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.06em;
+        color: rgba(255,255,255,0.28); line-height: 1.45;
+      }
+      .an-report__stats {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px;
+      }
+      @media (max-width: 700px) {
+        .an-report__stats { grid-template-columns: 1fr 1fr; }
+      }
+      .an-report__stat {
+        display: flex; flex-direction: column; gap: 3px;
+      }
+      .an-report__stat-k {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: rgba(0,212,255,0.55);
+      }
+      .an-report__stat-v {
+        font-family: "Outfit",system-ui,sans-serif;
+        font-weight: 500; font-size: 1.05rem;
+        color: rgba(255,255,255,0.92); letter-spacing: 0.02em;
+      }
+      .an-report__line {
+        margin-top: 12px; padding-top: 12px;
+        border-top: 1px solid rgba(0,212,255,0.1);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; line-height: 1.55;
+        color: rgba(192,192,192,0.82);
+      }
+
+      /* ═══ Monte risk control ═══ */
+      .mc-risk-bar {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+        margin: 0 20px 14px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(0,212,255,0.16);
+        background: rgba(0,0,0,0.35);
+      }
+      .mc-risk-label {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: rgba(0,212,255,0.75);
+      }
+      .mc-risk-input {
+        width: 5.5rem;
+        padding: 5px 8px;
+        border-radius: 7px;
+        border: 1px solid rgba(0,212,255,0.22);
+        background: rgba(0,0,0,0.5);
+        color: #fff;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        outline: none;
+        color-scheme: dark;
+      }
+      .mc-risk-input:focus { border-color: rgba(0,212,255,0.5); }
+      .mc-risk-apply {
+        padding: 6px 14px;
+        border-radius: 7px;
+        border: 1px solid rgba(0,212,255,0.35);
+        background: rgba(0,212,255,0.08);
+        color: rgba(0,212,255,0.92);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .mc-risk-apply:hover {
+        background: rgba(0,212,255,0.16);
+        border-color: rgba(0,212,255,0.55);
+      }
+      .mc-risk-hint {
+        flex: 1 1 180px;
+        min-width: 0;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px;
+        letter-spacing: 0.06em;
+        color: rgba(255,255,255,0.28);
+        line-height: 1.4;
+      }
 
       /* ═══ GRID ═══ */
       .an-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -172,6 +277,7 @@
 
       /* ═══ RESPONSIVE ═══ */
       @media (max-width: 900px) {
+        .an-reports-grid { grid-template-columns: 1fr; }
         .an-grid { grid-template-columns: 1fr; }
         .an-card--wide { grid-column: 1; }
         .an-shell { width: min(1320px, calc(100vw - 24px)); }
@@ -254,7 +360,6 @@
           <div class="an-header__left">
             <h1 class="an-title">ANALYTICS</h1>
             <p class="an-subtitle">System-level performance diagnostics</p>
-            <p class="an-scope">Notion + journal trades · each row uses its trade date field · calendar grouping uses Australia/Adelaide (same as charts below).</p>
           </div>
           <div class="an-badge">
             <span class="an-badge__dot" aria-hidden="true"></span>
@@ -262,16 +367,45 @@
           </div>
         </header>
 
+        <section class="an-reports" id="an-reports" aria-label="Weekly and monthly summaries">
+          <div class="an-reports-grid">
+            <article class="an-report">
+              <div class="an-report__top">
+                <h2 class="an-report__title">Weekly snapshot</h2>
+                <span class="an-report__meta" id="an-rep-week-meta">—</span>
+              </div>
+              <p class="an-report__cap">Rolling last 7 Adelaide calendar days (including today). Trade rows dated in Australia/Adelaide.</p>
+              <div class="an-report__body" id="an-rep-week-body"></div>
+              <p class="an-report__line" id="an-rep-week-line"></p>
+            </article>
+            <article class="an-report">
+              <div class="an-report__top">
+                <h2 class="an-report__title">Monthly snapshot</h2>
+                <span class="an-report__meta" id="an-rep-month-meta">—</span>
+              </div>
+              <p class="an-report__cap">Current calendar month in Australia/Adelaide (partial month if not month-end).</p>
+              <div class="an-report__body" id="an-rep-month-body"></div>
+              <p class="an-report__line" id="an-rep-month-line"></p>
+            </article>
+          </div>
+        </section>
+
         <!-- Charts -->
         <div class="an-grid" id="an-grid">
 
           <!-- 1. MONTE CARLO — full width, first, most prominent -->
           <article class="an-card an-card--wide" id="card-monte">
             <div class="an-card__top">
-              <span class="an-card__eyebrow">Monte Carlo · 500 equity paths</span>
+              <span class="an-card__eyebrow">Monte Carlo · 400 equity paths</span>
               <span class="an-card__meta" id="meta-monte">—</span>
             </div>
             <div class="mc-sim-params" id="mc-sim-params">Loading simulation parameters…</div>
+            <div class="mc-risk-bar" id="mc-risk-bar">
+              <label class="mc-risk-label" for="mc-risk-pct">Risk / 1R (% account)</label>
+              <input type="number" class="mc-risk-input" id="mc-risk-pct" min="0.01" max="100" step="0.05" value="1" autocomplete="off" aria-describedby="mc-risk-hint" />
+              <button type="button" class="mc-risk-apply" id="mc-risk-apply">Recalc</button>
+              <span class="mc-risk-hint" id="mc-risk-hint">Each simulated step applies your logged R outcome × this % as cumulative account return. 1R = this % of account at risk per trade.</span>
+            </div>
             <div class="an-card__body">
               <canvas class="an-canvas an-canvas--mc" id="chart-monte" aria-label="Monte Carlo simulation"></canvas>
             </div>
@@ -279,7 +413,7 @@
               <button class="mc-scenario mc-scenario--worst" id="mc-btn-worst" type="button">
                 <span class="mc-scenario__hint">tap path</span>
                 <div class="mc-scenario__label">WORST</div>
-                <div class="mc-scenario__balance-label">Final balance</div>
+                <div class="mc-scenario__balance-label">Final cum. %</div>
                 <div class="mc-scenario__final" id="mc-worst-final">—</div>
                 <div class="mc-scenario__rows">
                   <div class="mc-scenario__row">Max drawdown <span id="mc-worst-dd">—</span></div>
@@ -290,7 +424,7 @@
               <button class="mc-scenario mc-scenario--median" id="mc-btn-median" type="button">
                 <span class="mc-scenario__hint">tap path</span>
                 <div class="mc-scenario__label">MOST LIKELY</div>
-                <div class="mc-scenario__balance-label">Final balance</div>
+                <div class="mc-scenario__balance-label">Final cum. %</div>
                 <div class="mc-scenario__final" id="mc-median-final">—</div>
                 <div class="mc-scenario__rows">
                   <div class="mc-scenario__row">Max drawdown <span id="mc-median-dd">—</span></div>
@@ -301,7 +435,7 @@
               <button class="mc-scenario mc-scenario--best" id="mc-btn-best" type="button">
                 <span class="mc-scenario__hint">tap path</span>
                 <div class="mc-scenario__label">BEST</div>
-                <div class="mc-scenario__balance-label">Final balance</div>
+                <div class="mc-scenario__balance-label">Final cum. %</div>
                 <div class="mc-scenario__final" id="mc-best-final">—</div>
                 <div class="mc-scenario__rows">
                   <div class="mc-scenario__row">Max drawdown <span id="mc-best-dd">—</span></div>
@@ -395,8 +529,8 @@
       </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script defer>
       (function () {
         'use strict';
 
@@ -456,6 +590,25 @@
           try { return new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Adelaide',year:'numeric',month:'2-digit',day:'2-digit'}).format(d); }
           catch(e) { return d.toISOString().slice(0,10); }
         }
+        /** Rolling 7 Adelaide calendar days (approx. via UTC day steps from now). */
+        function last7AdelaideDayKeySet() {
+          var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' });
+          var set = {};
+          for (var i = 0; i < 7; i++) {
+            set[fmt.format(new Date(Date.now() - i * 86400000))] = true;
+          }
+          return set;
+        }
+        function adelaideMonthStartEndKeys() {
+          var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' });
+          var today = fmt.format(new Date());
+          var y = today.slice(0, 4);
+          var m = today.slice(5, 7);
+          var start = y + '-' + m + '-01';
+          var lastD = new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
+          var end = y + '-' + m + '-' + String(lastD).padStart(2, '0');
+          return { start: start, end: end };
+        }
         function formatDateLabel(t) {
           var d = tradeDate(t); if (isNaN(d)) return '—';
           try { return d.toLocaleDateString('en-AU',{timeZone:'Australia/Adelaide',day:'2-digit',month:'short'}); }
@@ -494,6 +647,10 @@
 
         /* ── Trades (full merged list; no client-side filter) ── */
         var allTrades = [];
+        var ANALYTICS_MC_NUM_SIMS = 400;
+        var ANALYTICS_MC_RISK_KEY = 'jarvis_analytics_mc_risk_pct';
+        var __anLastTradesAsc = [];
+        var __anLastStats = null;
 
         /* ── Chart utils ── */
         var chartInstances = {};
@@ -536,9 +693,11 @@
         }
 
         /* ══════════════════════════════════════════════════
-           MONTE CARLO — 500 paths, empirical win/loss/BE + avg R
+           MONTE CARLO — ANALYTICS_MC_NUM_SIMS paths, empirical win/loss/BE + avg R
+           Y-axis: cumulative **account %** where each outcome applies (signed R) × (risk% / 100).
         ══════════════════════════════════════════════════ */
-        function simulateOnePath(winProb, lossProb, avgWin, avgLoss, numSteps) {
+        function simulateOnePath(winProb, lossProb, avgWin, avgLoss, numSteps, riskFrac) {
+          var rf = typeof riskFrac === 'number' && isFinite(riskFrac) && riskFrac > 0 ? riskFrac : 0.01;
           var cum = 0;
           var path = [0];
           var outcomes = [];
@@ -547,10 +706,10 @@
             var delta = 0;
             var tag = 'B';
             if (r < winProb) {
-              delta = avgWin;
+              delta = avgWin * rf;
               tag = 'W';
             } else if (r < winProb + lossProb) {
-              delta = -avgLoss;
+              delta = -avgLoss * rf;
               tag = 'L';
             }
             outcomes.push(tag);
@@ -586,8 +745,11 @@
           };
         }
 
-        function buildMCData(tradesAsc) {
-          var NUM_SIMS = 500;
+        function buildMCData(tradesAsc, riskPctPerTrade) {
+          var NUM_SIMS = ANALYTICS_MC_NUM_SIMS;
+          var rp = typeof riskPctPerTrade === 'number' ? riskPctPerTrade : parseFloat(String(riskPctPerTrade));
+          if (!isFinite(rp) || rp <= 0 || rp > 100) rp = 1;
+          var riskFrac = rp / 100;
           var wins = [];
           var losses = [];
           var n = tradesAsc.length;
@@ -609,7 +771,7 @@
 
           var sims = [];
           for (var s = 0; s < NUM_SIMS; s++) {
-            sims.push(simulateOnePath(winProb, lossProb, avgWin, avgLoss, n));
+            sims.push(simulateOnePath(winProb, lossProb, avgWin, avgLoss, n, riskFrac));
           }
 
           function pctAtStep(step, frac) {
@@ -669,13 +831,15 @@
             avgLoss: avgLoss,
             displayWinRatePct: displayWinRatePct,
             total: n,
-            numSims: NUM_SIMS
+            numSims: NUM_SIMS,
+            riskPctPerTrade: rp,
+            riskFrac: riskFrac
           };
         }
 
         var ANALYTICS_MC_STATE = null;
 
-        function renderMonteCarlo(tradesAsc) {
+        function renderMonteCarlo(tradesAsc, riskPctOpt) {
           destroyChart('monte');
           var cardMonte = document.getElementById('card-monte');
           if (cardMonte) {
@@ -685,7 +849,15 @@
           }
           var canvas = document.getElementById('chart-monte');
           if (!canvas) return;
-          var mc = buildMCData(tradesAsc);
+          var inpRisk = document.getElementById('mc-risk-pct');
+          var riskPct =
+            typeof riskPctOpt === 'number' && isFinite(riskPctOpt) && riskPctOpt > 0
+              ? riskPctOpt
+              : inpRisk
+                ? parseFloat(inpRisk.value)
+                : NaN;
+          if (!isFinite(riskPct) || riskPct <= 0 || riskPct > 100) riskPct = 1;
+          var mc = buildMCData(tradesAsc, riskPct);
 
           var paramEl = document.getElementById('mc-sim-params');
           var metaEl = document.getElementById('meta-monte');
@@ -698,12 +870,19 @@
 
           if (paramEl) {
             paramEl.innerHTML =
-              'Based on <strong>' + mc.total + ' trades</strong> — ' +
-              '<strong>' + mc.displayWinRatePct + '% win rate</strong> — ' +
-              'avg win <strong>+' + mc.avgWin.toFixed(2) + 'R</strong> — ' +
-              'avg loss <strong>−' + mc.avgLoss.toFixed(2) + 'R</strong>';
+              'Based on <strong>' +
+              mc.total +
+              ' trades</strong> — <strong>' +
+              mc.displayWinRatePct +
+              '% win rate</strong> — risk <strong>' +
+              mc.riskPctPerTrade.toFixed(2) +
+              '% of account per 1R</strong> — avg win <strong>+' +
+              mc.avgWin.toFixed(2) +
+              'R</strong> — avg loss <strong>−' +
+              mc.avgLoss.toFixed(2) +
+              'R</strong>';
           }
-          if (metaEl) metaEl.textContent = mc.total + ' trades · ' + mc.numSims + ' paths';
+          if (metaEl) metaEl.textContent = mc.total + ' trades · ' + mc.numSims + ' paths · account %';
 
           var BLUE = '#00d4ff';
           var ctx = canvas.getContext('2d');
@@ -774,7 +953,7 @@
                 y: axY({
                   ticks: {
                     callback: function (v) {
-                      return v + 'R';
+                      return v + '%';
                     }
                   }
                 })
@@ -805,9 +984,9 @@
                     label: function (ctx) {
                       if (ctx.datasetIndex === 3) {
                         if (ctx.chart.data.datasets[3].hidden) return '';
-                        return 'Path: ' + ctx.parsed.y.toFixed(2) + 'R';
+                        return 'Path: ' + ctx.parsed.y.toFixed(2) + '%';
                       }
-                      return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + 'R';
+                      return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(2) + '%';
                     }
                   }
                 })
@@ -830,9 +1009,9 @@
           function fillCard(prefix, stats) {
             var $ = function (id) { return document.getElementById(id); };
             var finalEl = $(prefix + '-final');
-            if (finalEl) finalEl.textContent = (stats.finalR >= 0 ? '+' : '') + stats.finalR.toFixed(2) + 'R';
+            if (finalEl) finalEl.textContent = (stats.finalR >= 0 ? '+' : '') + stats.finalR.toFixed(2) + '%';
             var ddEl = $(prefix + '-dd');
-            if (ddEl) ddEl.textContent = '−' + stats.maxDD.toFixed(2) + 'R';
+            if (ddEl) ddEl.textContent = '−' + stats.maxDD.toFixed(2) + '%';
             var clEl = $(prefix + '-cl');
             if (clEl) clEl.textContent = stats.maxConsec + ' in a row';
             var wrEl = $(prefix + '-wr');
@@ -841,6 +1020,29 @@
           fillCard('mc-worst', mc.worstStats);
           fillCard('mc-median', mc.medianStats);
           fillCard('mc-best', mc.bestStats);
+        }
+
+        function bindMonteCarloRiskControlsOnce() {
+          var btn = document.getElementById('mc-risk-apply');
+          var inp = document.getElementById('mc-risk-pct');
+          if (!btn || !inp || btn.dataset.mcRiskBound) return;
+          btn.dataset.mcRiskBound = '1';
+          try {
+            var s = sessionStorage.getItem(ANALYTICS_MC_RISK_KEY);
+            if (s != null) {
+              var v = parseFloat(s);
+              if (isFinite(v) && v > 0 && v <= 100) inp.value = String(v);
+            }
+          } catch (e0) {}
+          btn.addEventListener('click', function () {
+            var raw = inp ? parseFloat(inp.value) : NaN;
+            if (!isFinite(raw) || raw <= 0 || raw > 100) raw = 1;
+            inp.value = String(raw);
+            try {
+              sessionStorage.setItem(ANALYTICS_MC_RISK_KEY, String(raw));
+            } catch (e1) {}
+            if (__anLastTradesAsc && __anLastTradesAsc.length) renderMonteCarlo(__anLastTradesAsc, raw);
+          });
         }
 
         function bindMonteCarloScenarioClicksOnce() {
@@ -1075,6 +1277,167 @@
           });
         }
 
+        function escAn(s) {
+          return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function reportStatHtml(k, v) {
+          return (
+            '<div class="an-report__stat">' +
+            '<span class="an-report__stat-k">' + escAn(k) + '</span>' +
+            '<span class="an-report__stat-v">' + escAn(v) + '</span>' +
+            '</div>'
+          );
+        }
+        function summarizeSlice(slice) {
+          var n = slice.length;
+          if (!n) return null;
+          var wins = 0;
+          var netR = 0;
+          var byDay = {};
+          for (var i = 0; i < n; i++) {
+            var t = slice[i];
+            var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+            if (o === 'win') wins++;
+            var rd = rDelta(t);
+            netR += rd;
+            var dk = dateKeyAdelaide(tradeDate(t));
+            if (!dk) continue;
+            if (!byDay[dk]) byDay[dk] = 0;
+            byDay[dk] += rd;
+          }
+          var wr = (wins / n) * 100;
+          var bestK = null;
+          var worstK = null;
+          var bestV = -Infinity;
+          var worstV = Infinity;
+          Object.keys(byDay).forEach(function (k) {
+            var v = byDay[k];
+            if (v > bestV) {
+              bestV = v;
+              bestK = k;
+            }
+            if (v < worstV) {
+              worstV = v;
+              worstK = k;
+            }
+          });
+          var sorted = slice.slice().sort(function (a, b) {
+            return tradeDate(a) - tradeDate(b);
+          });
+          var maxWs = 0;
+          var maxLs = 0;
+          var cw = 0;
+          var cl = 0;
+          for (var j = 0; j < sorted.length; j++) {
+            var o2 = normalizeOutcome(getField(sorted[j], 'outcome', 'Outcome', 'OUTCOME'));
+            if (o2 === 'win') {
+              cw++;
+              if (cw > maxWs) maxWs = cw;
+              cl = 0;
+            } else if (o2 === 'loss') {
+              cl++;
+              if (cl > maxLs) maxLs = cl;
+              cw = 0;
+            } else {
+              cw = 0;
+              cl = 0;
+            }
+          }
+          var pairMap = {};
+          for (var p = 0; p < slice.length; p++) {
+            var pr = tradePair(slice[p]);
+            if (!pr) continue;
+            var pk = pr.toUpperCase();
+            if (!pairMap[pk]) pairMap[pk] = 0;
+            pairMap[pk] += rDelta(slice[p]);
+          }
+          var topPair = null;
+          var topPr = -Infinity;
+          Object.keys(pairMap).forEach(function (pk) {
+            if (pairMap[pk] > topPr) {
+              topPr = pairMap[pk];
+              topPair = pk;
+            }
+          });
+          return {
+            n: n,
+            wins: wins,
+            netR: netR,
+            wr: wr,
+            bestK: bestK,
+            bestV: bestV,
+            worstK: worstK,
+            worstV: worstV,
+            maxWs: maxWs,
+            maxLs: maxLs,
+            topPair: topPair,
+            topPairR: topPair != null ? topPr : null
+          };
+        }
+        function renderReports(trades) {
+          var wSet = last7AdelaideDayKeySet();
+          var mBounds = adelaideMonthStartEndKeys();
+          function inWeek(t) {
+            var k = dateKeyAdelaide(tradeDate(t));
+            return !!k && wSet[k];
+          }
+          function inMonth(t) {
+            var k = dateKeyAdelaide(tradeDate(t));
+            return k && k >= mBounds.start && k <= mBounds.end;
+          }
+          var weekT = trades.filter(inWeek);
+          var monthT = trades.filter(inMonth);
+          var ws = summarizeSlice(weekT);
+          var ms = summarizeSlice(monthT);
+          function fill(idMeta, idBody, idLine, stats, labelEmpty) {
+            var meta = document.getElementById(idMeta);
+            var body = document.getElementById(idBody);
+            var line = document.getElementById(idLine);
+            if (!body || !line || !meta) return;
+            if (!stats || !stats.n) {
+              meta.textContent = '0 trades';
+              body.innerHTML = reportStatHtml('Status', labelEmpty);
+              line.textContent = '';
+              return;
+            }
+            meta.textContent = stats.n + ' trades';
+            body.innerHTML = [
+              reportStatHtml('Win rate', stats.wr.toFixed(1) + '%'),
+              reportStatHtml('Net R', (stats.netR >= 0 ? '+' : '') + stats.netR.toFixed(2) + 'R'),
+              reportStatHtml('Wins', String(stats.wins)),
+              reportStatHtml(
+                'Best day',
+                stats.bestK ? stats.bestK + ' (' + (stats.bestV >= 0 ? '+' : '') + stats.bestV.toFixed(2) + 'R)' : '—'
+              ),
+              reportStatHtml(
+                'Worst day',
+                stats.worstK ? stats.worstK + ' (' + (stats.worstV >= 0 ? '+' : '') + stats.worstV.toFixed(2) + 'R)' : '—'
+              ),
+              reportStatHtml('Max win streak', String(stats.maxWs)),
+              reportStatHtml('Max loss streak', String(stats.maxLs)),
+              reportStatHtml(
+                'Top pair (net R)',
+                stats.topPair
+                  ? stats.topPair + ' (' + (stats.topPairR >= 0 ? '+' : '') + stats.topPairR.toFixed(2) + 'R)'
+                  : '—'
+              )
+            ].join('');
+            var parts = [];
+            if (stats.netR >= 0) {
+              parts.push('Net +' + stats.netR.toFixed(2) + 'R over ' + stats.n + ' trades at ' + stats.wr.toFixed(1) + '% WR.');
+            } else {
+              parts.push('Net ' + stats.netR.toFixed(2) + 'R over ' + stats.n + ' trades; WR ' + stats.wr.toFixed(1) + '%.');
+            }
+            if (stats.maxLs >= 3) {
+              parts.push('Loss streak hit ' + stats.maxLs + ' — worth a quick review of rules after clusters of reds.');
+            }
+            line.textContent = parts.join(' ');
+          }
+          fill('an-rep-week-meta', 'an-rep-week-body', 'an-rep-week-line', ws, 'No trades dated in the last 7 Adelaide days.');
+          fill('an-rep-month-meta', 'an-rep-month-body', 'an-rep-month-line', ms, 'No trades dated this Adelaide month.');
+        }
+
         /* ── Render all ── */
         function renderAll(trades) {
           if (!window.Chart) return;
@@ -1082,26 +1445,40 @@
           Chart.defaults.font.family = '"Outfit",system-ui,sans-serif';
 
           var tradesAsc = trades.slice().sort(function(a,b){return tradeDate(a)-tradeDate(b);}).filter(function(t){return !isNaN(tradeDate(t));});
+          __anLastTradesAsc = tradesAsc;
           var total=trades.length, wins=0, netR=0;
           trades.forEach(function(t){
             if(normalizeOutcome(getField(t,'outcome','Outcome','OUTCOME'))==='win') wins++;
             netR+=rDelta(t);
           });
           var stats = { total:total, wins:wins, winRate:total>0?(wins/total)*100:null, netR:netR };
+          __anLastStats = stats;
 
           document.getElementById('an-badge-text').textContent =
             total + ' trades · full dataset · ' + (stats.winRate != null ? stats.winRate.toFixed(1) + '% WR' : '—') + ' · ' + netR.toFixed(2) + 'R';
           var foot=document.getElementById('an-foot');
           if(foot) foot.textContent = 'Full dataset: '+total+' trades  ·  Win rate: '+(stats.winRate!=null?stats.winRate.toFixed(1)+'%':'—')+'  ·  Net R: '+netR.toFixed(2)+'R';
 
-          renderMonteCarlo(tradesAsc);
-          renderEquity(tradesAsc);
-          renderRollingWR(tradesAsc, stats);
-          renderRDist(trades);
-          renderWeekday(trades);
-          renderModel(trades);
-          renderSession(trades);
-          renderDrawdown(tradesAsc);
+          renderReports(trades);
+
+          var raf = window.requestAnimationFrame || function (fn) { setTimeout(fn, 16); };
+          var inpRisk = document.getElementById('mc-risk-pct');
+          var riskPct = inpRisk ? parseFloat(inpRisk.value) : NaN;
+          if (!isFinite(riskPct) || riskPct <= 0 || riskPct > 100) riskPct = 1;
+          renderMonteCarlo(tradesAsc, riskPct);
+          raf(function () {
+            renderEquity(tradesAsc);
+            renderRollingWR(tradesAsc, stats);
+            raf(function () {
+              renderRDist(trades);
+              renderWeekday(trades);
+              raf(function () {
+                renderModel(trades);
+                renderSession(trades);
+                renderDrawdown(tradesAsc);
+              });
+            });
+          });
         }
 
         /* ── Scroll animation ── */
@@ -1119,8 +1496,9 @@
           var ctx=canvas.getContext('2d');
           function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
           resize(); window.addEventListener('resize',resize);
+          var N = (typeof window.innerWidth === 'number' && window.innerWidth <= 768) ? 120 : 280;
           var particles=[];
-          for(var i=0;i<300;i++){
+          for(var i=0;i<N;i++){
             var r=Math.random();
             particles.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,size:Math.random()*.8+.2,base:Math.random()*.45+.06,tw:Math.random()*Math.PI*2,cr:r<.65?0:r<.93?192:255,cg:r<.65?191:r<.93?192:255,cb:255});
           }
@@ -1143,20 +1521,37 @@
         /* ── Boot ── */
         async function boot() {
           ensureUserId();
-          initParticles();
           if (!window.Chart) { document.getElementById('an-foot').textContent='Charts offline. CDN blocked.'; return; }
           try { allTrades = await fetchAllTrades(); } catch(e){ allTrades=[]; }
           if (!allTrades.length) {
             document.getElementById('an-badge-text').textContent = 'No trades found';
             document.getElementById('an-foot').textContent = 'No trades found for '+currentUserId;
             document.querySelectorAll('.an-card').forEach(function(c){c.classList.add('an-card--visible');});
+            ['an-rep-week-body','an-rep-month-body'].forEach(function(id){
+              var el = document.getElementById(id);
+              if (el) el.innerHTML = '';
+            });
+            ['an-rep-week-meta','an-rep-month-meta','an-rep-week-line','an-rep-month-line'].forEach(function(id){
+              var el = document.getElementById(id);
+              if (el) el.textContent = id.indexOf('line') >= 0 ? '' : '—';
+            });
             return;
           }
+          bindMonteCarloRiskControlsOnce();
           renderAll(allTrades);
           bindMonteCarloScenarioClicksOnce();
           initScrollAnim();
 
           window.addEventListener('resize', debounce(function () { renderAll(allTrades); }, 320));
+
+          function runParticles() {
+            try { initParticles(); } catch (e2) {}
+          }
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(runParticles, { timeout: 2200 });
+          } else {
+            setTimeout(runParticles, 380);
+          }
         }
 
         boot();
