@@ -73,7 +73,7 @@
       }
       .an-report__top {
         display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-        margin-bottom: 6px;
+        margin-bottom: 12px;
       }
       .an-report__title {
         font-family: "Share Tech Mono","Courier New",monospace;
@@ -89,13 +89,6 @@
         border: 1px solid rgba(0,212,255,0.2);
         background: rgba(0,212,255,0.06);
         white-space: nowrap;
-      }
-      .an-report__cap {
-        margin: 0 0 14px;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px; letter-spacing: 0.06em;
-        color: rgba(255,255,255,0.32); line-height: 1.45;
-        max-width: 62ch;
       }
       .an-report__kpi {
         display: grid;
@@ -187,6 +180,35 @@
         font-size: clamp(1.1rem, 2.4vw, 1.35rem);
         line-height: 1;
         user-select: none;
+      }
+      .an-report__win-streak--loss {
+        border-color: rgba(255,100,120,0.28);
+        background: rgba(255,68,102,0.07);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+      }
+      .an-report__loss-streak-ice {
+        font-size: clamp(1.1rem, 2.4vw, 1.35rem);
+        line-height: 1;
+        user-select: none;
+      }
+      .an-report__loss-streak-num {
+        font-family: "Outfit",system-ui,sans-serif;
+        font-weight: 500;
+        font-size: clamp(1.2rem, 2.8vw, 1.55rem);
+        letter-spacing: 0.02em;
+        color: rgba(255,150,160,0.96);
+        line-height: 1.1;
+      }
+      .an-report__win-streak--flat {
+        border-style: dashed;
+        border-color: rgba(255,255,255,0.12);
+        background: rgba(0,0,0,0.2);
+      }
+      .an-report__win-streak-v--flat {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        color: rgba(192,192,192,0.65);
+        line-height: 1.45;
       }
       .an-report__rules {
         margin-bottom: 12px;
@@ -522,7 +544,6 @@
                 <h2 class="an-report__title">Weekly report</h2>
                 <span class="an-report__meta" id="an-rep-week-meta">—</span>
               </div>
-              <p class="an-report__cap">Last 7 Adelaide calendar days (rolling, incl. today). Rows use each trade’s date in Australia/Adelaide.</p>
               <div class="an-report__body" id="an-rep-week-body"></div>
               <div class="an-report__charts an-report__charts--hidden" id="an-rep-week-charts">
                 <div class="an-report__chart-cell">
@@ -541,7 +562,6 @@
                 <h2 class="an-report__title">Monthly report</h2>
                 <span class="an-report__meta" id="an-rep-month-meta">—</span>
               </div>
-              <p class="an-report__cap">Current calendar month (Adelaide). Partial month until month-end.</p>
               <div class="an-report__body" id="an-rep-month-body"></div>
               <div class="an-report__charts an-report__charts--hidden" id="an-rep-month-charts">
                 <div class="an-report__chart-cell">
@@ -758,14 +778,35 @@
           try { return new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Adelaide',year:'numeric',month:'2-digit',day:'2-digit'}).format(d); }
           catch(e) { return d.toISOString().slice(0,10); }
         }
-        /** Rolling 7 Adelaide calendar days (approx. via UTC day steps from now). */
-        function last7AdelaideDayKeySet() {
-          var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' });
-          var set = {};
+        /**
+         * Adelaide calendar week containing "now": Monday–Friday date keys only (weekends excluded).
+         * Day stepping uses 86400000 ms like other Adelaide helpers (approximate across DST).
+         */
+        function adelaideWeekMonFriWindow() {
+          var fmt = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Australia/Adelaide',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          });
+          var wdFmt = new Intl.DateTimeFormat('en', { timeZone: 'Australia/Adelaide', weekday: 'short' });
+          var monD = null;
           for (var i = 0; i < 7; i++) {
-            set[fmt.format(new Date(Date.now() - i * 86400000))] = true;
+            var d = new Date(Date.now() - i * 86400000);
+            if (wdFmt.format(d) === 'Mon') {
+              monD = d;
+              break;
+            }
           }
-          return set;
+          if (!monD) monD = new Date();
+          var set = {};
+          var keys = [];
+          for (var j = 0; j < 5; j++) {
+            var key = fmt.format(new Date(monD.getTime() + j * 86400000));
+            set[key] = true;
+            keys.push(key);
+          }
+          return { set: set, start: keys[0], end: keys[keys.length - 1] };
         }
         function adelaideMonthStartEndKeys() {
           var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -1651,31 +1692,48 @@
           }
           return { best: best, current: current };
         }
-        function buildCurrentWinStreakCallout(stats) {
-          var n = parseInt(stats.curWinStreak, 10) || 0;
-          var inner;
-          if (n >= 2) {
-            inner =
+        function buildCurrentStreakCallout(stats) {
+          var cw = parseInt(stats.curWinStreak, 10) || 0;
+          var cl = parseInt(stats.curLossStreak, 10) || 0;
+          if (cw >= 1) {
+            var inner =
               '<span class="an-report__win-streak-inner" aria-label="' +
-              escAn('Current win streak ' + n) +
+              escAn('Current win streak ' + cw) +
               '">' +
               '<span class="an-report__win-streak-fire" aria-hidden="true">🔥</span>' +
               '<span class="an-report__win-streak-num">' +
-              n +
+              cw +
               '</span></span>';
-          } else {
-            inner =
+            return (
+              '<div class="an-report__win-streak">' +
+              '<div class="an-report__win-streak-k">Current win streak</div>' +
+              '<div class="an-report__win-streak-v">' +
+              inner +
+              '</div></div>'
+            );
+          }
+          if (cl >= 1) {
+            var innerL =
               '<span class="an-report__win-streak-inner" aria-label="' +
-              escAn('Current win streak ' + n) +
-              '"><span class="an-report__win-streak-num">' +
-              escAn(String(n)) +
+              escAn('Current loss streak ' + cl) +
+              '">' +
+              '<span class="an-report__loss-streak-ice" aria-hidden="true">🧊</span>' +
+              '<span class="an-report__loss-streak-num">' +
+              cl +
               '</span></span>';
+            return (
+              '<div class="an-report__win-streak an-report__win-streak--loss">' +
+              '<div class="an-report__win-streak-k">Current loss streak</div>' +
+              '<div class="an-report__win-streak-v">' +
+              innerL +
+              '</div></div>'
+            );
           }
           return (
-            '<div class="an-report__win-streak">' +
-            '<div class="an-report__win-streak-k">Current win streak</div>' +
-            '<div class="an-report__win-streak-v">' +
-            inner +
+            '<div class="an-report__win-streak an-report__win-streak--flat">' +
+            '<div class="an-report__win-streak-k">Current streak</div>' +
+            '<div class="an-report__win-streak-v an-report__win-streak-v--flat">' +
+            escAn('No active win or loss streak (BE resets both).') +
             '</div></div>'
           );
         }
@@ -1811,6 +1869,7 @@
             maxWs: maxWs,
             maxLs: maxLs,
             curWinStreak: cw,
+            curLossStreak: cl,
             topPair: topPair,
             topPairR: topPair != null ? topPr : null,
             cumRLabels: cumLabels,
@@ -1928,11 +1987,11 @@
         }
         function renderReports(trades) {
           destroyReportCharts();
-          var wSet = last7AdelaideDayKeySet();
+          var weekWin = adelaideWeekMonFriWindow();
           var mBounds = adelaideMonthStartEndKeys();
           function inWeek(t) {
             var k = dateKeyAdelaide(tradeDate(t));
-            return !!k && wSet[k];
+            return !!k && weekWin.set[k];
           }
           function inMonth(t) {
             var k = dateKeyAdelaide(tradeDate(t));
@@ -1942,21 +2001,32 @@
           var monthT = trades.filter(inMonth);
           var ws = summarizeSlice(weekT);
           var ms = summarizeSlice(monthT);
-          function fill(idMeta, idBody, idLine, idCharts, stats, labelEmpty, periodKey) {
+          function fill(idMeta, idBody, idLine, idCharts, stats, labelEmpty, periodKey, weekMeta) {
             var meta = document.getElementById(idMeta);
             var body = document.getElementById(idBody);
             var line = document.getElementById(idLine);
             var charts = document.getElementById(idCharts);
             if (!body || !line || !meta) return;
             if (charts) charts.classList.add('an-report__charts--hidden');
+            var rangeStr =
+              weekMeta && weekMeta.start && weekMeta.end ? weekMeta.start + '–' + weekMeta.end : '';
             if (!stats || !stats.n) {
-              if (meta) meta.textContent = '0 trades';
+              if (meta) {
+                meta.textContent =
+                  rangeStr && periodKey === 'week'
+                    ? '0 trades · ' + rangeStr
+                    : '0 trades';
+              }
               body.innerHTML = '<div class="an-report__empty">' + escAn(labelEmpty) + '</div>';
               line.textContent = '';
               return;
             }
             if (charts) charts.classList.remove('an-report__charts--hidden');
-            meta.textContent = stats.n + ' trades';
+            if (rangeStr && periodKey === 'week') {
+              meta.textContent = stats.n + ' trades · ' + rangeStr;
+            } else {
+              meta.textContent = stats.n + ' trades';
+            }
             var netStr = (stats.netR >= 0 ? '+' : '') + stats.netR.toFixed(2) + 'R';
             var netClass =
               stats.netR > 0 ? 'an-report__kpi-v--pos' : stats.netR < 0 ? 'an-report__kpi-v--neg' : '';
@@ -1987,7 +2057,7 @@
               '<div class="an-report__grid2">' +
               grid +
               '</div>' +
-              buildCurrentWinStreakCallout(stats) +
+              buildCurrentStreakCallout(stats) +
               buildRulesBlock(stats);
             var parts = [];
             if (stats.netR >= 0) {
@@ -2007,8 +2077,9 @@
             'an-rep-week-line',
             'an-rep-week-charts',
             ws,
-            'No trades dated in the last 7 Adelaide days.',
-            'week'
+            'No trades Monday–Friday this week (Adelaide).',
+            'week',
+            weekWin
           );
           fill(
             'an-rep-month-meta',
@@ -2017,7 +2088,8 @@
             'an-rep-month-charts',
             ms,
             'No trades dated this Adelaide month.',
-            'month'
+            'month',
+            null
           );
         }
 
