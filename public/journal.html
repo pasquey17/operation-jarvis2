@@ -476,42 +476,6 @@
       .jn-card[data-outcome="loss"] .jn-card__rr { color: #ff4466 !important; }
       .jn-card__chevron { font-size: 10px; color: rgba(255,255,255,0.18); flex-shrink: 0; }
 
-      .jn-card__journal-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid rgba(0,212,255,0.08);
-      }
-      .jn-journal-btn {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        padding: 5px 10px;
-        border: 1px solid rgba(0,212,255,0.28);
-        background: rgba(0,0,0,0.45);
-        color: rgba(255,255,255,0.88);
-        cursor: pointer;
-        border-radius: 4px;
-        transition: border-color 0.2s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .jn-journal-btn:hover {
-        border-color: #00d4ff;
-        color: #00d4ff;
-      }
-      .jn-journal-btn--danger:hover {
-        border-color: rgba(255,102,102,0.85);
-        color: #ff8888;
-      }
-      .jn-journal-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin: 14px 0 10px;
-      }
-
       /* ── Badges ── */
       .jn-badge {
         display: inline-flex; align-items: center;
@@ -2369,18 +2333,6 @@
         }
         parts.push(notionExtrasSectionHtml(trade));
         parts.push(tradePhotosSectionHtml(trade));
-        if (trade._jarvis_trade_source === 'journal_log' && trade.id) {
-          parts.push(
-            '<div class="jn-journal-actions">' +
-              '<button type="button" class="jn-journal-btn" data-journal-edit data-idx="' +
-              idx +
-              '">Edit</button>' +
-              '<button type="button" class="jn-journal-btn jn-journal-btn--danger" data-journal-del data-idx="' +
-              idx +
-              '">Delete</button>' +
-            '</div>'
-          );
-        }
         parts.push(
           '<button class="jn-ask-btn" data-idx="' + idx + '" type="button">Ask Jarvis about this trade</button>'
         );
@@ -2468,19 +2420,6 @@
             '  </div>';
         }
 
-        var journalRow = '';
-        if (trade._jarvis_trade_source === 'journal_log' && trade.id) {
-          journalRow =
-            '<div class="jn-card__journal-row">' +
-            '<button type="button" class="jn-journal-btn" data-journal-edit data-idx="' +
-            idx +
-            '">Edit</button>' +
-            '<button type="button" class="jn-journal-btn jn-journal-btn--danger" data-journal-del data-idx="' +
-            idx +
-            '">Delete</button>' +
-            '</div>';
-        }
-
         return [
           '<article class="jn-card" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
           coverPiece,
@@ -2499,7 +2438,6 @@
           '      <span class="jn-card__chevron">&#9660;</span>',
           '      </div>',
           '    </div>',
-          journalRow,
           '  </div>',
           '</article>'
         ].join('');
@@ -2614,34 +2552,6 @@
             photoBtn.getAttribute('data-src') || '',
             photoBtn.getAttribute('data-caption') || ''
           );
-          return;
-        }
-
-        var journalEdit = e.target.closest('[data-journal-edit]');
-        if (journalEdit && (inList || inModal)) {
-          e.preventDefault();
-          e.stopPropagation();
-          var ej = parseInt(journalEdit.getAttribute('data-idx'), 10);
-          if (!isNaN(ej)) {
-            var tEdit = filteredTrades[ej];
-            if (tEdit && tEdit._jarvis_trade_source === 'journal_log' && tEdit.id) {
-              void openJournalTradeModal(tEdit);
-            }
-          }
-          return;
-        }
-
-        var journalDel = e.target.closest('[data-journal-del]');
-        if (journalDel && (inList || inModal)) {
-          e.preventDefault();
-          e.stopPropagation();
-          var dj = parseInt(journalDel.getAttribute('data-idx'), 10);
-          if (!isNaN(dj)) {
-            var tDel = filteredTrades[dj];
-            if (tDel && tDel._jarvis_trade_source === 'journal_log' && tDel.id) {
-              void deleteJournalTrade(tDel);
-            }
-          }
           return;
         }
 
@@ -2923,67 +2833,31 @@
         renderNextPage();
       });
 
-      /* ── LOG TRADE / EDIT (shared: /js/log-trade-modal.js) ── */
-      function getJournalUserId() {
-        return (
-          currentUserId ||
-          localStorage.getItem('jarvis_user') ||
-          localStorage.getItem('user_id') ||
-          'aidenpasque11@gmail.com'
-        );
-      }
-
-      async function openJournalTradeModal(editTrade) {
+      /* ── LOG TRADE modal (shared: /js/log-trade-modal.js) ── */
+      async function openTradeForm() {
         try {
           var mod = await import('/js/log-trade-modal.js');
           await mod.openLogTradeModal({
-            getUserId: getJournalUserId,
+            getUserId: function () {
+              return (
+                currentUserId ||
+                localStorage.getItem('jarvis_user') ||
+                localStorage.getItem('user_id') ||
+                'aidenpasque11@gmail.com'
+              );
+            },
             fetchTradeRowsForPrefill: async function () {
               return Array.isArray(allTrades) ? allTrades : [];
             },
             readApiErrorMessage: readApiError,
             showToast: showToast,
-            editTrade: editTrade || undefined,
             onTradeSaved: async function () {
               await refreshJournalData();
-              closeTradeModal();
             },
           });
         } catch (e) {
           console.warn('[journal] log-trade modal', e);
         }
-      }
-
-      async function deleteJournalTrade(trade) {
-        if (!trade || !trade.id) return;
-        if (!window.confirm('Delete this logged trade? This cannot be undone.')) return;
-        var uid = getJournalUserId();
-        try {
-          var res = await fetch(
-            '/api/journal-trades/' +
-              encodeURIComponent(trade.id) +
-              '?user_id=' +
-              encodeURIComponent('eq.' + uid),
-            { method: 'DELETE', cache: 'no-store' }
-          );
-          var d = {};
-          try {
-            d = await res.json();
-          } catch (eJ) {}
-          if (!res.ok) {
-            showToast(readApiError(d) || 'Delete failed (' + res.status + ')', true);
-            return;
-          }
-          showToast('Trade deleted.');
-          closeTradeModal();
-          await refreshJournalData();
-        } catch (e) {
-          showToast('Delete failed.', true);
-        }
-      }
-
-      async function openTradeForm() {
-        await openJournalTradeModal(null);
       }
 
       function showToast(message, isError) {
