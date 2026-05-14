@@ -150,6 +150,44 @@
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 11px; color: rgba(220,228,240,0.92); line-height: 1.35;
       }
+      .an-report__cell--full {
+        grid-column: 1 / -1;
+      }
+      .an-report__win-streak {
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(0,212,255,0.2);
+        background: rgba(0,212,255,0.05);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+      .an-report__win-streak-k {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: rgba(0,212,255,0.65); margin-bottom: 6px;
+      }
+      .an-report__win-streak-v {
+        min-height: 1.35em;
+      }
+      .an-report__win-streak-inner {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .an-report__win-streak-num {
+        font-family: "Outfit",system-ui,sans-serif;
+        font-weight: 500;
+        font-size: clamp(1.2rem, 2.8vw, 1.55rem);
+        letter-spacing: 0.02em;
+        color: rgba(255,255,255,0.96);
+        line-height: 1.1;
+      }
+      .an-report__win-streak-fire {
+        font-size: clamp(1.1rem, 2.4vw, 1.35rem);
+        line-height: 1;
+        user-select: none;
+      }
       .an-report__rules {
         margin-bottom: 12px;
         padding: 10px 12px;
@@ -164,13 +202,16 @@
       }
       .an-report__rules-v {
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px; color: rgba(192,192,192,0.88); line-height: 1.45;
+        font-size: 11px; color: rgba(192,192,192,0.88); line-height: 1.45;
       }
       .an-report__charts {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
         margin-top: 4px;
+      }
+      @media (max-width: 480px) {
+        .an-report__charts { grid-template-columns: 1fr; }
       }
       .an-report__charts.an-report__charts--hidden { display: none; }
       .an-report__chart-cell {
@@ -1421,9 +1462,12 @@
             '</div></div>'
           );
         }
-        function reportGridCellHtml(k, innerV) {
+        function reportGridCellHtml(k, innerV, cellClass) {
+          var cc = cellClass ? ' ' + cellClass : '';
           return (
-            '<div class="an-report__cell">' +
+            '<div class="an-report__cell' +
+            cc +
+            '">' +
             '<div class="an-report__cell-k">' +
             escAn(k) +
             '</div>' +
@@ -1432,8 +1476,8 @@
             '</div></div>'
           );
         }
-        function reportGridPlain(k, v) {
-          return reportGridCellHtml(k, escAn(v));
+        function reportGridPlain(k, v, cellClass) {
+          return reportGridCellHtml(k, escAn(v), cellClass);
         }
         function reportStreakInner(value, ariaKind) {
           var n = parseInt(value, 10) || 0;
@@ -1606,6 +1650,34 @@
             else break;
           }
           return { best: best, current: current };
+        }
+        function buildCurrentWinStreakCallout(stats) {
+          var n = parseInt(stats.curWinStreak, 10) || 0;
+          var inner;
+          if (n >= 2) {
+            inner =
+              '<span class="an-report__win-streak-inner" aria-label="' +
+              escAn('Current win streak ' + n) +
+              '">' +
+              '<span class="an-report__win-streak-fire" aria-hidden="true">🔥</span>' +
+              '<span class="an-report__win-streak-num">' +
+              n +
+              '</span></span>';
+          } else {
+            inner =
+              '<span class="an-report__win-streak-inner" aria-label="' +
+              escAn('Current win streak ' + n) +
+              '"><span class="an-report__win-streak-num">' +
+              escAn(String(n)) +
+              '</span></span>';
+          }
+          return (
+            '<div class="an-report__win-streak">' +
+            '<div class="an-report__win-streak-k">Current win streak</div>' +
+            '<div class="an-report__win-streak-v">' +
+            inner +
+            '</div></div>'
+          );
         }
         function buildRulesBlock(stats) {
           var r = stats.rules;
@@ -1908,14 +1980,14 @@
               reportGridPlain('Best day (net R)', bestDay) +
               reportGridPlain('Worst day (net R)', worstDay) +
               reportGridPlain('Top pair (net R)', topPairStr) +
-              reportGridPlain('Max loss streak', String(stats.maxLs)) +
               reportGridCellHtml('Max win streak', reportStreakInner(stats.maxWs, 'Max win streak')) +
-              reportGridCellHtml('Current win streak', reportStreakInner(stats.curWinStreak, 'Current win streak'));
+              reportGridPlain('Max loss streak', String(stats.maxLs), 'an-report__cell--full');
             body.innerHTML =
               '<div class="an-report__kpi">' + kpi + '</div>' +
               '<div class="an-report__grid2">' +
               grid +
               '</div>' +
+              buildCurrentWinStreakCallout(stats) +
               buildRulesBlock(stats);
             var parts = [];
             if (stats.netR >= 0) {
