@@ -22,14 +22,19 @@
         background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
         border-bottom: 1px solid rgba(0,212,255,0.2);
         display: flex; align-items: center; padding: 0 24px; gap: 0;
+        overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
       }
+      .jv-nav::-webkit-scrollbar { height: 3px; }
+      .jv-nav::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 3px; }
       .jv-nav__brand { color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; text-decoration: none; }
-      .jv-nav__links { display: flex; align-items: center; gap: 32px; list-style: none; margin: 0 auto; padding: 0; }
+      .jv-nav__links { display: flex; align-items: center; gap: 32px; list-style: none; margin: 0 auto; padding: 0; flex-shrink: 0; }
       .jv-nav__links a { color: rgba(255,255,255,0.5) !important; text-decoration: none; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
       .jv-nav__links a:hover { color: rgba(255,255,255,0.85) !important; }
       .jv-nav__links a.jv-nav--active, .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
       .jv-nav__user { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0; }
-      .jv-nav__logout { margin-left: 14px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.85) !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+      .jv-nav__logout { margin-left: 14px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.85) !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, border-color 0.2s; flex-shrink: 0; }
       .jv-nav__logout:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.55); }
       .jv-nav__hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; margin-left: auto; flex-shrink: 0; }
       .jv-nav__hamburger span { display: block; width: 20px; height: 1.5px; background: rgba(255,255,255,0.6); border-radius: 2px; transition: background 0.2s; }
@@ -39,18 +44,20 @@
       .jv-nav__dropdown a { color: rgba(255,255,255,0.5) !important; text-decoration: none; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px; font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase; padding: 12px 24px; border-left: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
       .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85) !important; }
       .jv-nav__dropdown a.jv-nav--active, .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff !important; border-left-color: #00d4ff; }
-      @media (max-width: 768px) {
-        .jv-nav__links, .jv-nav__user { display: none; }
-        .jv-nav__hamburger { display: flex; }
-        .jv-nav__brand { font-size: 13px; }
-      }
+      /* Keep full desktop nav on all viewports (scroll nav if needed). Hamburger unused on this page. */
+      .jv-nav__hamburger { display: none !important; }
+      .jv-nav__dropdown { display: none !important; }
 
       /* ═══ PAGE ═══ */
       .an-page { position: relative; z-index: 1; padding: 76px 0 80px; }
       .an-shell { width: min(1320px, calc(100vw - 40px)); margin: 0 auto; }
 
       /* ═══ HEADER ═══ */
-      .an-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 24px; padding-top: 12px; }
+      .an-header {
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+        margin-bottom: 24px; padding-top: 12px;
+        flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      }
       .an-header__left { flex: 1; min-width: 0; }
       .an-title { margin: 0 0 6px; font-family: "Outfit",system-ui,sans-serif; font-weight: 200; font-size: clamp(2rem,5vw,52px); color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08); }
       .an-subtitle { margin: 0; font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.14em; text-transform: uppercase; }
@@ -74,6 +81,7 @@
       .an-report__top {
         display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
         margin-bottom: 12px;
+        flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
       }
       .an-report__title {
         font-family: "Share Tech Mono","Courier New",monospace;
@@ -95,9 +103,6 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
         margin-bottom: 14px;
-      }
-      @media (max-width: 640px) {
-        .an-report__kpi { grid-template-columns: 1fr; }
       }
       .an-report__kpi-cell {
         padding: 10px 12px;
@@ -124,9 +129,6 @@
         grid-template-columns: 1fr 1fr;
         gap: 10px 12px;
         margin-bottom: 12px;
-      }
-      @media (max-width: 520px) {
-        .an-report__grid2 { grid-template-columns: 1fr; }
       }
       .an-report__cell {
         padding: 8px 10px;
@@ -231,9 +233,6 @@
         grid-template-columns: 1fr 1fr;
         gap: 12px;
         margin-top: 4px;
-      }
-      @media (max-width: 480px) {
-        .an-report__charts { grid-template-columns: 1fr; }
       }
       .an-report__charts.an-report__charts--hidden { display: none; }
       .an-report__chart-cell {
@@ -445,26 +444,6 @@
       /* ═══ FOOT ═══ */
       .an-foot { margin-top: 20px; padding-bottom: 16px; font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.22); text-align: center; }
 
-      /* ═══ RESPONSIVE ═══ */
-      @media (max-width: 900px) {
-        .an-reports-grid { grid-template-columns: 1fr; }
-        .an-grid { grid-template-columns: 1fr; }
-        .an-card--wide { grid-column: 1; }
-        .an-shell { width: min(1320px, calc(100vw - 24px)); }
-        .mc-scenarios { grid-template-columns: 1fr; gap: 8px; }
-      }
-      @media (max-width: 600px) {
-        .an-page { padding-top: 68px; }
-        .an-header { flex-direction: column; gap: 10px; align-items: stretch; }
-        .an-title { font-size: 1.9rem !important; }
-        .an-badge { white-space: normal; max-width: 100%; text-align: left; }
-        .an-canvas { height: 240px; }
-        .an-canvas--tall { height: 260px; }
-        .an-canvas--mc { height: min(42vh, 360px); min-height: 280px; }
-        .an-canvas--model { height: 320px; }
-        .an-canvas--drawdown { height: 180px; }
-        .mc-scenarios { grid-template-columns: 1fr; }
-      }
       @media (prefers-reduced-motion: reduce) {
         .an-card { transition-duration: 0.01ms !important; }
         .an-badge__dot { animation: none; }
@@ -2147,7 +2126,7 @@
           var ctx=canvas.getContext('2d');
           function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
           resize(); window.addEventListener('resize',resize);
-          var N = (typeof window.innerWidth === 'number' && window.innerWidth <= 768) ? 120 : 280;
+          var N = 280;
           var particles=[];
           for(var i=0;i<N;i++){
             var r=Math.random();
