@@ -458,7 +458,8 @@
       .jn-card__model {
         flex-basis: 100%;
         font-family: "Share Tech Mono","Courier New",monospace !important;
-        font-size: 10px; color: rgba(255,255,255,0.38) !important;
+        font-size: 11px; font-weight: 600 !important;
+        color: rgba(255,255,255,0.88) !important;
         letter-spacing: 0.04em; overflow: hidden;
         text-overflow: ellipsis; white-space: nowrap; min-width: 0;
       }
@@ -490,44 +491,6 @@
       .jn-badge--short { background: rgba(255,100,100,0.12) !important; color: #ff8888 !important; border-color: rgba(255,100,100,0.35) !important; }
       .jn-badge--acct  { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.38) !important; border-color: rgba(255,255,255,0.1) !important; font-weight: 400; font-size: 9px; }
 
-      /* ── Card extras (Notion fields preview) ── */
-      .jn-card__extras-preview {
-        grid-column: 1 / -1; margin-top: 6px; padding-top: 8px;
-        border-top: 1px solid rgba(0,212,255,0.12);
-        display: flex; flex-direction: column; gap: 5px;
-      }
-      .jn-card__extras-summary {
-        display: flex; flex-direction: column; gap: 4px;
-      }
-      .jn-card__extras-line {
-        display: grid; grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
-        gap: 6px 10px; align-items: start;
-        font-family: "Share Tech Mono","Courier New",monospace !important;
-        font-size: 9px; line-height: 1.45;
-      }
-      .jn-card__extras-k {
-        color: rgba(0,212,255,0.72) !important; letter-spacing: 0.06em; text-transform: uppercase;
-        min-width: 0; word-break: break-word; white-space: normal;
-      }
-      .jn-card__extras-v {
-        color: rgba(192,192,192,0.9) !important; min-width: 0;
-        word-break: break-word; overflow-wrap: anywhere; white-space: normal;
-      }
-      .jn-card__extras-more { margin-top: 2px; }
-      .jn-card__extras-more-sum {
-        cursor: pointer;
-        font-family: "Share Tech Mono","Courier New",monospace !important;
-        font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
-        color: rgba(0,212,255,0.78) !important; list-style: none;
-      }
-      .jn-card__extras-more-sum::-webkit-details-marker { display: none; }
-      .jn-card__extras-more-sum::before { content: "+ "; color: rgba(0,212,255,0.45); }
-      .jn-card__extras-more[open] > .jn-card__extras-more-sum::before { content: "− "; }
-      .jn-card__extras-more-body {
-        margin-top: 6px; padding-top: 6px;
-        border-top: 1px solid rgba(0,212,255,0.1);
-        display: flex; flex-direction: column; gap: 4px;
-      }
       .jn-source-check-row { display: flex; flex-direction: column; gap: 10px; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; color: rgba(255,255,255,0.78); }
       .jn-source-check-row label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; line-height: 1.35; }
       .jn-source-check-row input { margin-top: 2px; accent-color: #00d4ff; }
@@ -1704,54 +1667,6 @@
         );
       }
 
-      var CARD_EXTRAS_SUMMARY_LINES = 4;
-
-      function jnCardExtrasLineHtml(kk, vv) {
-        return (
-          '<div class="jn-card__extras-line">' +
-            '<span class="jn-card__extras-k">' + esc(kk) + '</span>' +
-            '<span class="jn-card__extras-v">' + esc(vv) + '</span>' +
-          '</div>'
-        );
-      }
-
-      function notionExtrasCardPreviewHtml(trade) {
-        var extras = parseNotionExtrasFromTrade(trade);
-        if (!extras) return '';
-        var keys = Object.keys(extras).filter(function (k) {
-          return !isDuplicateExtraKey(k);
-        }).sort(compareExtraKeysNotion);
-        if (!keys.length) return '';
-        var rows = [];
-        for (var j = 0; j < keys.length; j++) {
-          var kk = keys[j];
-          var raw = formatNotionExtraValue(extras[kk]);
-          if (!String(raw).trim()) continue;
-          rows.push({ k: kk, v: raw });
-        }
-        if (!rows.length) return '';
-        var summary = rows.slice(0, CARD_EXTRAS_SUMMARY_LINES);
-        var more = rows.slice(CARD_EXTRAS_SUMMARY_LINES);
-        var summaryHtml = summary.map(function (r) {
-          return jnCardExtrasLineHtml(r.k, truncate(r.v, 200));
-        }).join('');
-        var out =
-          '<div class="jn-card__extras-preview">' +
-          '<div class="jn-card__extras-summary">' + summaryHtml + '</div>';
-        if (more.length) {
-          var moreHtml = more.map(function (r) {
-            return jnCardExtrasLineHtml(r.k, truncate(r.v, 420));
-          }).join('');
-          out +=
-            '<details class="jn-card__extras-more">' +
-            '<summary class="jn-card__extras-more-sum">Show all fields (' + rows.length + ')</summary>' +
-            '<div class="jn-card__extras-more-body">' + moreHtml + '</div>' +
-            '</details>';
-        }
-        out += '</div>';
-        return out;
-      }
-
       function readApiError(data) {
         if (!data || typeof data !== 'object') return '';
         var e = data.error;
@@ -2523,7 +2438,6 @@
           '      <span class="jn-card__chevron">&#9660;</span>',
           '      </div>',
           '    </div>',
-          notionExtrasCardPreviewHtml(trade),
           '  </div>',
           '</article>'
         ].join('');
@@ -2646,10 +2560,6 @@
           e.stopPropagation();
           var tAsk = filteredTrades[parseInt(askBtn.dataset.idx, 10)];
           if (tAsk) askJarvisAboutTrade(tAsk);
-          return;
-        }
-
-        if (inList && e.target.closest('.jn-card__extras-more')) {
           return;
         }
 
