@@ -53,23 +53,18 @@
       .an-header__left { flex: 1; min-width: 0; }
       .an-title { margin: 0 0 6px; font-family: "Outfit",system-ui,sans-serif; font-weight: 200; font-size: clamp(2rem,5vw,52px); color: #ffffff; letter-spacing: 0.08em; text-transform: uppercase; text-shadow: 0 0 60px rgba(255,255,255,0.12), 0 0 120px rgba(0,212,255,0.08); }
       .an-subtitle { margin: 0; font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.14em; text-transform: uppercase; }
+      .an-scope {
+        margin: 8px 0 0;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        color: rgba(255,255,255,0.32);
+        line-height: 1.5;
+        max-width: min(56ch, 100%);
+      }
       .an-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06); font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(0,212,255,0.85); white-space: nowrap; flex-shrink: 0; }
       .an-badge__dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(0,212,255,0.9); box-shadow: 0 0 10px rgba(0,212,255,0.7); animation: anPulse 1.7s ease-in-out infinite; }
       @keyframes anPulse { 0%,100%{transform:scale(1);opacity:.65}50%{transform:scale(1.2);opacity:1} }
-
-      /* ═══ FILTER BAR ═══ */
-      .an-filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 18px; margin-bottom: 22px; background: rgba(4,9,18,0.9); border: 1px solid rgba(0,212,255,0.12); border-radius: 14px; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-      .an-filter-group { display: flex; align-items: center; gap: 6px; }
-      .an-filter-label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,212,255,0.7); white-space: nowrap; }
-      .an-filter-input, .an-filter-select { background: rgba(0,0,0,0.55); border: 1px solid rgba(0,212,255,0.18); border-radius: 7px; color: #fff; font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; padding: 5px 9px; outline: none; color-scheme: dark; transition: border-color 0.2s; min-width: 0; }
-      .an-filter-input:focus, .an-filter-select:focus { border-color: rgba(0,212,255,0.5); }
-      .an-filter-select { cursor: pointer; padding-right: 6px; }
-      .an-filter-input[type="date"] { max-width: 140px; }
-      .an-filter-select { max-width: 180px; }
-      .an-filter-sep { width: 1px; height: 20px; background: rgba(0,212,255,0.12); flex-shrink: 0; }
-      .an-filter-reset { margin-left: auto; padding: 6px 14px; border-radius: 7px; border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.8); font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
-      .an-filter-reset:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.45); }
-      .an-filter-count { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.28); }
 
       /* ═══ GRID ═══ */
       .an-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
@@ -186,9 +181,7 @@
         .an-page { padding-top: 68px; }
         .an-header { flex-direction: column; gap: 10px; align-items: stretch; }
         .an-title { font-size: 1.9rem !important; }
-        .an-filter-bar { gap: 8px; padding: 12px 14px; }
-        .an-filter-input[type="date"] { max-width: 120px; }
-        .an-filter-select { max-width: 130px; }
+        .an-badge { white-space: normal; max-width: 100%; text-align: left; }
         .an-canvas { height: 240px; }
         .an-canvas--tall { height: 260px; }
         .an-canvas--mc { height: min(42vh, 360px); min-height: 280px; }
@@ -200,6 +193,7 @@
         .an-card { transition-duration: 0.01ms !important; }
         .an-badge__dot { animation: none; }
       }
+      /* Chart.js duration is set in JS from prefers-reduced-motion */
     </style>
   </head>
   <body>
@@ -260,35 +254,13 @@
           <div class="an-header__left">
             <h1 class="an-title">ANALYTICS</h1>
             <p class="an-subtitle">System-level performance diagnostics</p>
+            <p class="an-scope">Notion + journal trades · each row uses its trade date field · calendar grouping uses Australia/Adelaide (same as charts below).</p>
           </div>
           <div class="an-badge">
             <span class="an-badge__dot" aria-hidden="true"></span>
             <span id="an-badge-text">Loading…</span>
           </div>
         </header>
-
-        <!-- Filter bar -->
-        <div class="an-filter-bar">
-          <div class="an-filter-group">
-            <label class="an-filter-label" for="f-from">From</label>
-            <input type="date" class="an-filter-input" id="f-from" autocomplete="off">
-          </div>
-          <div class="an-filter-group">
-            <label class="an-filter-label" for="f-to">To</label>
-            <input type="date" class="an-filter-input" id="f-to" autocomplete="off">
-          </div>
-          <div class="an-filter-sep" aria-hidden="true"></div>
-          <div class="an-filter-group">
-            <label class="an-filter-label" for="f-pair">Pair</label>
-            <select class="an-filter-select" id="f-pair"><option value="">All pairs</option></select>
-          </div>
-          <div class="an-filter-group">
-            <label class="an-filter-label" for="f-model">Model</label>
-            <select class="an-filter-select" id="f-model"><option value="">All models</option></select>
-          </div>
-          <button class="an-filter-reset" id="f-reset" type="button">Reset</button>
-          <span class="an-filter-count" id="f-count"></span>
-        </div>
 
         <!-- Charts -->
         <div class="an-grid" id="an-grid">
@@ -520,42 +492,20 @@
           return merged;
         }
 
-        /* ── Filter ── */
+        /* ── Trades (full merged list; no client-side filter) ── */
         var allTrades = [];
-        var activeFilter = {from:'',to:'',pair:'',model:''};
-        function applyFilter(trades) {
-          return trades.filter(function(t) {
-            var dk = dateKeyAdelaide(tradeDate(t));
-            if (activeFilter.from && dk < activeFilter.from) return false;
-            if (activeFilter.to   && dk > activeFilter.to)   return false;
-            if (activeFilter.pair  && tradePair(t).toUpperCase()  !== activeFilter.pair.toUpperCase())  return false;
-            if (activeFilter.model && tradeModel(t).toLowerCase() !== activeFilter.model.toLowerCase()) return false;
-            return true;
-          });
-        }
-        function populateFilters(trades) {
-          var pairs = new Set(), models = new Set();
-          trades.forEach(function(t){var p=tradePair(t),m=tradeModel(t);if(p)pairs.add(p.toUpperCase());if(m)models.add(m);});
-          function fillSel(id, vals, prev) {
-            var sel = document.getElementById(id); if(!sel) return;
-            var first = sel.options[0].text;
-            sel.innerHTML = '<option value="">'+first+'</option>';
-            Array.from(vals).sort().forEach(function(v){
-              var o = document.createElement('option'); o.value = v;
-              o.textContent = v.length>36?v.slice(0,36)+'…':v; o.title=v;
-              if (v===prev) o.selected=true;
-              sel.appendChild(o);
-            });
-          }
-          var pp = document.getElementById('f-pair'), pm = document.getElementById('f-model');
-          fillSel('f-pair',  pairs,  pp?pp.value:'');
-          fillSel('f-model', models, pm?pm.value:'');
-        }
 
         /* ── Chart utils ── */
         var chartInstances = {};
         function destroyChart(id) { if(chartInstances[id]){try{chartInstances[id].destroy();}catch(e){}delete chartInstances[id];} }
         function destroyAll() { Object.keys(chartInstances).forEach(destroyChart); }
+
+        function chartAnimationDurationMs() {
+          try {
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 0;
+          } catch (e) {}
+          return 900;
+        }
 
         function ttBase() {
           return {
@@ -578,7 +528,7 @@
           return Object.assign({
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 900, easing: 'easeOutQuart' },
+            animation: { duration: chartAnimationDurationMs(), easing: 'easeOutQuart' },
             interaction: { mode: 'index', intersect: false },
             layout: { padding: { top: 10, right: 14, bottom: 10, left: 8 } },
             plugins: { legend: { display: false }, tooltip: ttBase() }
@@ -753,7 +703,7 @@
               'avg win <strong>+' + mc.avgWin.toFixed(2) + 'R</strong> — ' +
               'avg loss <strong>−' + mc.avgLoss.toFixed(2) + 'R</strong>';
           }
-          if (metaEl) metaEl.textContent = mc.numSims + ' paths · ' + mc.total + ' steps each';
+          if (metaEl) metaEl.textContent = mc.total + ' trades · ' + mc.numSims + ' paths';
 
           var BLUE = '#00d4ff';
           var ctx = canvas.getContext('2d');
@@ -1139,10 +1089,10 @@
           });
           var stats = { total:total, wins:wins, winRate:total>0?(wins/total)*100:null, netR:netR };
 
-          document.getElementById('an-badge-text').textContent = total+' trades · '+(stats.winRate!=null?stats.winRate.toFixed(1)+'% WR':'—')+' · '+netR.toFixed(2)+'R';
-          document.getElementById('f-count').textContent = total+' trades';
+          document.getElementById('an-badge-text').textContent =
+            total + ' trades · full dataset · ' + (stats.winRate != null ? stats.winRate.toFixed(1) + '% WR' : '—') + ' · ' + netR.toFixed(2) + 'R';
           var foot=document.getElementById('an-foot');
-          if(foot) foot.textContent = 'Trades: '+total+'  ·  Win rate: '+(stats.winRate!=null?stats.winRate.toFixed(1)+'%':'—')+'  ·  Net R: '+netR.toFixed(2)+'R';
+          if(foot) foot.textContent = 'Full dataset: '+total+' trades  ·  Win rate: '+(stats.winRate!=null?stats.winRate.toFixed(1)+'%':'—')+'  ·  Net R: '+netR.toFixed(2)+'R';
 
           renderMonteCarlo(tradesAsc);
           renderEquity(tradesAsc);
@@ -1202,31 +1152,11 @@
             document.querySelectorAll('.an-card').forEach(function(c){c.classList.add('an-card--visible');});
             return;
           }
-          populateFilters(allTrades);
-          renderAll(applyFilter(allTrades));
+          renderAll(allTrades);
           bindMonteCarloScenarioClicksOnce();
           initScrollAnim();
 
-          function onFilterChange(){
-            activeFilter.from  = (document.getElementById('f-from') ||{}).value||'';
-            activeFilter.to    = (document.getElementById('f-to')   ||{}).value||'';
-            activeFilter.pair  = (document.getElementById('f-pair') ||{}).value||'';
-            activeFilter.model = (document.getElementById('f-model')||{}).value||'';
-            var f = applyFilter(allTrades);
-            document.getElementById('f-count').textContent = f.length+' trades';
-            renderAll(f);
-          }
-          var dbFilter = debounce(onFilterChange,200);
-          ['f-from','f-to','f-pair','f-model'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('change',dbFilter);});
-          ['f-from','f-to'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('input',dbFilter);});
-          document.getElementById('f-reset').addEventListener('click',function(){
-            ['f-from','f-to'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-            ['f-pair','f-model'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-            activeFilter={from:'',to:'',pair:'',model:''};
-            document.getElementById('f-count').textContent=allTrades.length+' trades';
-            renderAll(allTrades);
-          });
-          window.addEventListener('resize',debounce(function(){renderAll(applyFilter(allTrades));},320));
+          window.addEventListener('resize', debounce(function () { renderAll(allTrades); }, 320));
         }
 
         boot();
