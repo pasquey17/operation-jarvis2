@@ -228,6 +228,25 @@
         gap: 8px;
         align-items: stretch;
       }
+      .jn-action-stack .jn-edit-toolbar-btn {
+        align-self: flex-end;
+      }
+      #jn-notion-panel .trade-form-header {
+        justify-content: flex-start;
+        gap: 12px;
+      }
+      #jn-notion-panel .trade-form-body {
+        max-height: min(72vh, 560px);
+        overflow-y: auto;
+      }
+      .jn-notion-edit-extras-hint {
+        margin: 0 0 12px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.06em;
+        line-height: 1.45;
+        color: rgba(136, 153, 170, 0.78);
+      }
       .jn-edit-toolbar-btn {
         flex-shrink: 0;
         box-sizing: border-box;
@@ -1701,6 +1720,78 @@
         return String(a).localeCompare(String(b));
       }
 
+      function mergeNotionExtraWriteback(oldVal, newStr) {
+        var s = String(newStr == null ? '' : newStr).trim();
+        if (s === '') return '';
+        if (oldVal == null || typeof oldVal === 'string') return s;
+        if (typeof oldVal === 'number') {
+          var n = parseFloat(s);
+          return isNaN(n) ? s : n;
+        }
+        if (typeof oldVal === 'boolean') {
+          var lo = s.toLowerCase();
+          if (lo === 'yes' || lo === 'true' || lo === '1') return true;
+          if (lo === 'no' || lo === 'false' || lo === '0') return false;
+          return s;
+        }
+        if (typeof oldVal === 'object' && oldVal !== null && !Array.isArray(oldVal)) {
+          if (Object.prototype.hasOwnProperty.call(oldVal, 'start')) {
+            var o = {};
+            for (var kk in oldVal) {
+              if (Object.prototype.hasOwnProperty.call(oldVal, kk)) o[kk] = oldVal[kk];
+            }
+            o.start = s;
+            return o;
+          }
+        }
+        if (Array.isArray(oldVal) && oldVal.length > 0 && typeof oldVal[0] === 'string' && s.indexOf(',') >= 0) {
+          return s
+            .split(',')
+            .map(function (p) {
+              return p.trim();
+            })
+            .filter(Boolean);
+        }
+        try {
+          if ((s.charAt(0) === '{' || s.charAt(0) === '[') && s.length > 1) return JSON.parse(s);
+        } catch (eM) {}
+        return s;
+      }
+
+      function buildNotionExtrasEditorHtml(trade) {
+        var ex = parseNotionExtrasFromTrade(trade);
+        if (!ex) return '';
+        var keys = Object.keys(ex)
+          .filter(function (k) {
+            return !isDuplicateExtraKey(k);
+          })
+          .sort(compareExtraKeysNotion);
+        if (!keys.length) return '';
+        var chunks = [
+          '<div class="ltm-section-label" style="margin-top:18px">Notion fields</div>',
+          '<p class="jn-notion-edit-extras-hint">Extra dimensions from your Notion page. Edits are saved on this row; the next Notion sync may overwrite them if the source page still exists.</p>'
+        ];
+        for (var i = 0; i < keys.length; i++) {
+          var k = keys[i];
+          var displayVal = formatNotionExtraValue(ex[k]);
+          chunks.push(
+            '<label class="trade-label ltm-label" for="jn-ne-x-' +
+              i +
+              '">' +
+              esc(k) +
+              '</label>' +
+              '<textarea id="jn-ne-x-' +
+              i +
+              '" class="trade-input ltm-input ltm-textarea jn-ne-extra" rows="2" data-notion-extra-key="' +
+              esc(k) +
+              '">' +
+              esc(displayVal) +
+              '</textarea>'
+          );
+        }
+        return chunks.join('');
+      }
+
       function renderNotionExtraValueCells(val) {
         if (val === null || val === undefined) return '';
         if (typeof val === 'boolean') {
@@ -2898,13 +2989,15 @@
         var notes = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
         var direction = getField(trade, 'direction', 'Direction', 'DIRECTION') || '';
 
+        var extrasEditorHtml = buildNotionExtrasEditorHtml(trade);
+
         var wrap = document.createElement('div');
         wrap.id = 'jn-notion-edit';
         wrap.className = 'trade-form-overlay';
         wrap.setAttribute('role', 'dialog');
         wrap.setAttribute('aria-modal', 'true');
         wrap.innerHTML =
-          '<div class="trade-form-panel ltm-panel" id="jn-notion-panel" style="max-width:520px;width:min(520px,96vw);">' +
+          '<div class="trade-form-panel ltm-panel" id="jn-notion-panel" style="max-width:640px;width:min(640px,96vw);">' +
           '<div class="trade-form-header">' +
           '<span class="trade-form-title">EDIT TRADE</span>' +
           '<button type="button" class="trade-form-close" id="jn-notion-close" aria-label="Close">&#x2715;</button>' +
@@ -2952,6 +3045,7 @@
           '<textarea id="jn-ne-notes" class="trade-input ltm-input ltm-textarea" rows="3">' +
           esc(notes) +
           '</textarea>' +
+          extrasEditorHtml +
           '<div class="trade-form-actions trade-form-actions--split" style="margin-top:18px">' +
           '<button type="button" class="trade-delete-btn" id="jn-ne-delete">Delete</button>' +
           '<button type="button" class="trade-submit-btn" id="jn-ne-save">SAVE</button>' +
@@ -2960,6 +3054,9 @@
           '</div></div>';
 
         document.body.appendChild(wrap);
+        var baseEx = parseNotionExtrasFromTrade(trade);
+        wrap._jnBaseExtras =
+          baseEx && typeof baseEx === 'object' ? JSON.parse(JSON.stringify(baseEx)) : {};
         wrap._jnEsc = function (ev) {
           if (ev.key === 'Escape') closeNotionTradeEditor();
         };
@@ -3000,6 +3097,18 @@
               model: document.getElementById('jn-ne-model').value.trim() || '',
               notes: document.getElementById('jn-ne-notes').value.trim() || '',
             };
+            var extraTa = wrap.querySelectorAll('textarea.jn-ne-extra');
+            if (extraTa && extraTa.length) {
+              var mergedX = JSON.parse(JSON.stringify(wrap._jnBaseExtras || {}));
+              for (var xi = 0; xi < extraTa.length; xi++) {
+                var ta = extraTa[xi];
+                var kx = ta.getAttribute('data-notion-extra-key');
+                if (!kx) continue;
+                var prev = Object.prototype.hasOwnProperty.call(mergedX, kx) ? mergedX[kx] : undefined;
+                mergedX[kx] = mergeNotionExtraWriteback(prev, ta.value);
+              }
+              payload.notion_extras = mergedX;
+            }
             var res = await fetch('/api/trades-row', {
               method: 'PATCH',
               cache: 'no-store',

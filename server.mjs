@@ -2875,6 +2875,7 @@ const TRADE_ROW_PATCH_KEYS = new Set([
   "model",
   "notes",
   "direction",
+  "notion_extras",
 ]);
 
 /** PATCH /api/trades-row — update one `trades` row (id + user_id). Notion may re-sync later. */
@@ -2920,6 +2921,10 @@ async function handleTradeRowPatch(req, res) {
     }
     if (k === "date") {
       if (typeof v === "string" && v.trim()) patch[k] = v.trim();
+      continue;
+    }
+    if (k === "notion_extras") {
+      if (v != null && typeof v === "object" && !Array.isArray(v)) patch[k] = v;
       continue;
     }
     patch[k] = v == null || v === "" ? "" : String(v);
