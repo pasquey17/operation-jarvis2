@@ -290,6 +290,14 @@ let chatUiMessages = [];
 let tradeData = null;
 let tradesLoaded = false;
 
+/**
+ * Cold-open = each full page load: one ledger-grounded Jarvis line in-thread.
+ * `coldOpen` rows are not persisted (see persistChatMessages) so reload always gets a fresh opener.
+ * `boot()` clears `COLD_OPEN_GREETING_SESSION_KEY` so each reload can mark completion again; `coldOpenGreetingDoneThisPage` prevents double-fire in one load.
+ */
+const COLD_OPEN_GREETING_SESSION_KEY = "jarvis_cold_open_greeting_v1";
+let coldOpenGreetingDoneThisPage = false;
+
 let orbMode = "idle";
 
 function readApiErrorMessage(data) {
@@ -331,7 +339,18 @@ function truncateChatContent(text) {
 }
 
 function filterChatForApi(msgs) {
-  return msgs.filter((m) => m.role === "user" || m.role === "assistant");
+  return msgs
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({ role: m.role, content: m.content }));
+}
+
+/** Anthropic path expects history to start with `user`; strip session-only openers. */
+function stripLeadingAssistantsUntilUser(msgs) {
+  const out = Array.isArray(msgs) ? [...msgs] : [];
+  while (out.length > 0 && out[0].role === "assistant") {
+    out.shift();
+  }
+  return out;
 }
 
 function trimChatMessagesForApi(msgs) {
@@ -378,7 +397,10 @@ function loadChatMessagesFromStorage() {
 
 function persistChatMessages() {
   try {
-    const trimmed = chatMessages.slice(-MAX_CHAT_MESSAGES_STORED);
+    const trimmed = chatMessages
+      .filter((m) => !m.coldOpen)
+      .slice(-MAX_CHAT_MESSAGES_STORED)
+      .map(({ role, content }) => ({ role, content }));
     localStorage.setItem(STORAGE_KEY_CHAT, JSON.stringify(trimmed));
   } catch (e) {
     console.warn("Could not save chat", e);
@@ -553,17 +575,21 @@ function jarvisReplyProbablyHasDisplayableUrl(txt) {
 }
 
 /**
- * @param {{ animateLast?: boolean, streamLast?: boolean }} [options]
+ * @param {{ animateLast?: boolean, streamLast?: boolean, streamIdx?: number, scrollToTop?: boolean }} [options]
  */
 function renderChatHistory(options) {
   const animateLast = Boolean(options?.animateLast);
   const streamLast = Boolean(options?.streamLast);
+  const streamIdx = typeof options?.streamIdx === "number" ? options.streamIdx : -1;
   if (!els.chatHistory) return;
   els.chatHistory.innerHTML = "";
   const frag = document.createDocumentFragment();
   for (let i = 0; i < chatUiMessages.length; i++) {
     const m = chatUiMessages[i];
     const isLast = i === chatUiMessages.length - 1;
+    const streamThisRow =
+      m.role === "assistant" &&
+      (streamIdx >= 0 ? i === streamIdx : streamLast && isLast);
     const row = document.createElement("div");
     row.className =
       m.role === "user"
@@ -572,13 +598,13 @@ function renderChatHistory(options) {
           ? "msg msg--error"
           : "msg msg--jarvis";
     if (m.role === "assistant") {
-      if (streamLast && isLast) {
+      if (streamThisRow) {
         row.textContent = "";
       } else {
         fillJarvisMessageElement(row, m.content);
       }
     } else {
-      row.textContent = streamLast && isLast ? "" : m.content;
+      row.textContent = streamThisRow ? "" : m.content;
     }
     frag.appendChild(row);
   }
@@ -588,7 +614,7 @@ function renderChatHistory(options) {
   if (standby) standby.classList.toggle("hidden", chatUiMessages.length > 0);
 
   const last = els.chatHistory.lastElementChild;
-  if (animateLast && last && !streamLast) {
+  if (animateLast && last && !streamLast && streamIdx < 0) {
     requestAnimationFrame(() => {
       last.classList.add("msg--enter");
       last.addEventListener("animationend", () => last.classList.remove("msg--enter"), {
@@ -597,11 +623,16 @@ function renderChatHistory(options) {
     });
   }
 
-  scrollChatToBottom();
+  if (options?.scrollToTop && els.chatScroll) {
+    els.chatScroll.scrollTop = 0;
+  } else {
+    scrollChatToBottom();
+  }
 }
 
 /** Stream text into an element word-by-word at ~40ms per word. */
-function streamWords(text, element) {
+function streamWords(text, element, opts) {
+  const scrollEachWord = opts?.scrollEachWord !== false;
   return new Promise((resolve) => {
     const words = text.split(" ");
     let i = 0;
@@ -612,7 +643,7 @@ function streamWords(text, element) {
       }
       element.textContent += (i === 0 ? "" : " ") + words[i];
       i++;
-      scrollChatToBottom();
+      if (scrollEachWord) scrollChatToBottom();
       setTimeout(next, 40);
     }
     next();
@@ -846,19 +877,40 @@ function buildSmartOpenGreeting(td) {
   return out;
 }
 
-async function showGreeting() {
-  if (chatMessages.length > 0) return;
+async function showColdOpenGreeting() {
+  if (coldOpenGreetingDoneThisPage || chatSending) return;
+  coldOpenGreetingDoneThisPage = true;
+
   const text = buildSmartOpenGreeting(tradeData);
-  chatUiMessages.push({ role: "assistant", content: text });
+  const msg = { role: "assistant", content: text, coldOpen: true };
+  const hadHistory = chatMessages.length > 0;
+
+  if (hadHistory) {
+    chatMessages.unshift(msg);
+    chatUiMessages.unshift(msg);
+  } else {
+    chatMessages.push(msg);
+    chatUiMessages.push(msg);
+  }
+  persistChatMessages();
+
   setUIMode("chat");
-  renderChatHistory({ streamLast: true });
-  const lastEl = els.chatHistory?.lastElementChild;
-  if (lastEl && jarvisReplyProbablyHasDisplayableUrl(text)) {
-    fillJarvisMessageElement(lastEl, text);
-    scrollChatToBottom();
-  } else if (lastEl) {
-    // speakText(text);
-    await streamWords(text, lastEl);
+  const streamIdx = hadHistory ? 0 : chatUiMessages.length - 1;
+  renderChatHistory({ streamIdx, scrollToTop: hadHistory });
+
+  const targetEl = els.chatHistory?.children[streamIdx] ?? null;
+  if (targetEl && jarvisReplyProbablyHasDisplayableUrl(text)) {
+    fillJarvisMessageElement(targetEl, text);
+    if (!hadHistory) scrollChatToBottom();
+  } else if (targetEl) {
+    await streamWords(text, targetEl, { scrollEachWord: !hadHistory });
+    if (!hadHistory) scrollChatToBottom();
+  }
+
+  try {
+    sessionStorage.setItem(COLD_OPEN_GREETING_SESSION_KEY, "1");
+  } catch {
+    /* ignore */
   }
 }
 
@@ -1312,7 +1364,9 @@ async function sendChatMessage(text) {
 
   showTypingIndicator();
 
-  const apiMessages = trimChatMessagesForApi(filterChatForApi(chatMessages));
+  const apiMessages = trimChatMessagesForApi(
+    stripLeadingAssistantsUntilUser(filterChatForApi(chatMessages))
+  );
 
   try {
     const res = await fetch(API_CHAT, {
@@ -2033,10 +2087,17 @@ function initLogTradeBtn() {
 async function boot() {
   await ensureUserId();
 
+  try {
+    sessionStorage.removeItem(COLD_OPEN_GREETING_SESSION_KEY);
+  } catch {
+    /* private mode */
+  }
+  coldOpenGreetingDoneThisPage = false;
+
   initChatRotatingPlaceholder();
 
   chatMessages = loadChatMessagesFromStorage();
-  chatUiMessages = [];
+  chatUiMessages = chatMessages.map((m) => ({ role: m.role, content: m.content }));
   setUIMode("idle");
   renderSnapshot();
   updateSendEnabled();
@@ -2052,8 +2113,14 @@ async function boot() {
   void loadTrades()
     .then(async () => {
       updateSendEnabled();
-      const flushed = await maybeFlushPendingJournalAsk();
-      if (!flushed) void showGreeting();
+      let flushed = false;
+      try {
+        flushed = await maybeFlushPendingJournalAsk();
+      } catch (e) {
+        console.warn("[boot] journal pending ask failed", e);
+      }
+      // Journal handoff owns the first turn — skip cold-open so we don't stack two openers.
+      if (!flushed) await showColdOpenGreeting();
     })
     .finally(() => setOrbMode("idle"));
   els.chatInput?.focus();
