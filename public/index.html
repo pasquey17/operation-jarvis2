@@ -289,18 +289,38 @@
                   </div>
                   <div id="chat-history" class="chat-history" aria-live="polite"></div>
                 </div>
-                <form class="chat-form" id="chat-form" autocomplete="off">
-                  <button type="button" id="chat-log-trade-btn" class="chat-log-trade-btn">LOG TRADE</button>
-                  <input
-                    type="text"
-                    id="chat-input"
-                    name="message"
-                    placeholder="Transmit to Jarvis..."
-                    autocomplete="off"
-                    enterkeyhint="send"
-                  />
-                  <button type="submit" id="chat-send" class="chat-send">Send</button>
-                </form>
+                <div class="chat-form-wrap">
+                  <form class="chat-form" id="chat-form" autocomplete="off">
+                    <button type="button" id="chat-log-trade-btn" class="chat-log-trade-btn">LOG TRADE</button>
+                    <input
+                      type="text"
+                      id="chat-input"
+                      name="message"
+                      placeholder="Ask anything — tap an example below…"
+                      autocomplete="off"
+                      enterkeyhint="send"
+                    />
+                    <button type="submit" id="chat-send" class="chat-send">Send</button>
+                  </form>
+                  <div class="chat-suggest" id="chat-suggest" aria-label="Example questions">
+                    <span class="chat-suggest__label">Examples</span>
+                    <button type="button" class="chat-suggest__chip" data-ask="Why did I lose my last trade?">
+                      Last loss — why
+                    </button>
+                    <button type="button" class="chat-suggest__chip" data-ask="Walk me through my last trade.">
+                      Walk last trade
+                    </button>
+                    <button type="button" class="chat-suggest__chip" data-ask="Am I overtrading on Fridays?">
+                      Friday overtrade
+                    </button>
+                    <button type="button" class="chat-suggest__chip" data-ask="Where is my edge breaking down this month?">
+                      Edge check
+                    </button>
+                    <button type="button" class="chat-suggest__chip" data-ask="What was my worst trade this week?">
+                      Worst trade week
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -653,10 +673,64 @@
         100% { top: 100%; opacity: 0; }
       }
 
-      /* ── Input bar: pinned to bottom, never shrinks ── */
+      /* ── Input bar + example chips (STEP 3) ── */
+      .jarvis-home .chat-form-wrap {
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        position: relative;
+        z-index: 1;
+      }
       .jarvis-home .chat-form {
         flex-shrink: 0;
-        padding: 16px 20px;
+        padding: 16px 20px 8px;
+      }
+      .jarvis-home .chat-suggest {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 8px;
+        padding: 0 20px 14px;
+        margin-top: -2px;
+      }
+      .jarvis-home .chat-suggest__label {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 8px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(136, 153, 170, 0.55);
+        flex-shrink: 0;
+        width: 100%;
+        margin-bottom: 2px;
+      }
+      .jarvis-home .chat-suggest__chip {
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.42);
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(0, 212, 255, 0.12);
+        border-radius: 999px;
+        padding: 5px 11px;
+        cursor: pointer;
+        max-width: 100%;
+        line-height: 1.25;
+        transition: color 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+          border-color 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+          background 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .jarvis-home .chat-suggest__chip:hover,
+      .jarvis-home .chat-suggest__chip:focus-visible {
+        color: rgba(0, 212, 255, 0.92);
+        border-color: rgba(0, 212, 255, 0.42);
+        background: rgba(0, 212, 255, 0.07);
+        outline: none;
+      }
+      .jarvis-home .chat-suggest--disabled {
+        opacity: 0.38;
+        pointer-events: none;
       }
       .jarvis-home .chat-form input[type="text"] {
         height: 60px;
@@ -731,6 +805,8 @@
         .jarvis-home #orb-canvas { width: 280px !important; height: 280px !important; }
         .jarvis-home .metric-cell .snapshot-value { font-size: 28px !important; -webkit-text-stroke: 0; }
         .jarvis-home .chat-form input[type="text"] { height: 52px; font-size: 16px; }
+        .jarvis-home .chat-suggest { padding: 0 12px 12px; gap: 5px 6px; }
+        .jarvis-home .chat-suggest__chip { font-size: 8px; padding: 5px 9px; }
         .jarvis-home .chat-send { height: 52px; padding: 0 24px; }
         .jarvis-home .metric-strip { grid-template-columns: repeat(2, 1fr); }
         .jarvis-home .comm-dock { min-height: 420px; }
@@ -757,24 +833,5 @@
     </div>
 
     <script type="module" src="/js/app.js"></script>
-    <script>
-      (function () {
-        var hints = [
-          "Ask about your best performing model...",
-          "What was my worst trade this week?",
-          "Am I overtrading on Fridays?",
-          "Where is my edge breaking down?"
-        ];
-        var idx = 0;
-        var input = document.getElementById("chat-input");
-        if (!input) return;
-        setInterval(function () {
-          if (document.activeElement !== input && !input.value) {
-            idx = (idx + 1) % hints.length;
-            input.placeholder = hints[idx];
-          }
-        }, 4000);
-      })();
-    </script>
   </body>
 </html>

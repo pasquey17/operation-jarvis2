@@ -1211,6 +1211,25 @@ function updateSendEnabled() {
   if (els.chatInput) {
     els.chatInput.disabled = chatSending;
   }
+  const suggest = document.getElementById("chat-suggest");
+  if (suggest) {
+    const dis = chatSending || Boolean(tradeData?.loadError) || !tradesLoaded;
+    suggest.classList.toggle("chat-suggest--disabled", dis);
+  }
+}
+
+/** STEP 3: tap example chips to prefill the chat input (no auto-send). */
+function initChatSuggestChips() {
+  const root = document.getElementById("chat-suggest");
+  if (!root) return;
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-ask]");
+    if (!btn) return;
+    const q = btn.getAttribute("data-ask");
+    if (!els.chatInput || !q) return;
+    els.chatInput.value = q;
+    els.chatInput.focus();
+  });
 }
 
 const SESSION_PENDING_JARVIS = "jarvis_pending_message";
@@ -2003,6 +2022,7 @@ async function boot() {
   initLogTradeBtn();
   initLogoutButton();
   initChatImageLightbox();
+  initChatSuggestChips();
   setOrbMode("active");
   void loadTrades()
     .then(async () => {
