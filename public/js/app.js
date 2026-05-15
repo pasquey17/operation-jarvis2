@@ -790,20 +790,20 @@ function lossStreakFromNewest(sortedDesc) {
 }
 
 /**
- * One open-screen line set: weekday + snapshot + newest row + one grounded "watch it".
- * Uses only `tradeData` already returned from GET /api/trades (no Anthropic call).
+ * Cold-open copy: one grounded, human-sounding read of the ledger (no API call).
+ * Uses only `tradeData` already returned from GET /api/trades.
  */
 function buildSmartOpenGreeting(td) {
   const { weekday, daypart } = getAdelaideDayContext();
   const capDay = weekday.charAt(0).toUpperCase() + weekday.slice(1);
 
   if (!td || td.loadError) {
-    return `${capDay} ${daypart} — core online, but the ledger did not load. Refresh once; if it persists, check sync.`;
+    return `${capDay} ${daypart} — I couldn't pull your ledger just now. Try a refresh once; if it still won't load, it's usually sync or access, not you.`;
   }
 
   const recs = Array.isArray(td.records) ? td.records : [];
   if (!recs.length) {
-    return `${capDay} ${daypart} — core online. Book is empty on this profile; log a trade or sync Notion, then we anchor to it.`;
+    return `${capDay} ${daypart} — nothing on the book for this profile yet. Log a trade or run a Notion sync and we'll anchor to real lines.`;
   }
 
   const snap = td.snapshot != null && typeof td.snapshot === "object" ? td.snapshot : null;
@@ -825,15 +825,12 @@ function buildSmartOpenGreeting(td) {
       : null;
   const bestSession = snap && snap.bestSession ? String(snap.bestSession).trim() : "";
 
-  const lines = [];
-  lines.push(`${capDay} ${daypart} — core online.`);
+  const bookBit =
+    winRate != null
+      ? `You've got ${total} trades in the book and win rate is sitting near ${winRate.toFixed(1)}%.`
+      : `You've got ${total} trades in the book.`;
 
-  if (winRate != null) {
-    lines.push(`Book: ${total} trades · win rate ${winRate.toFixed(1)}%.`);
-  } else {
-    lines.push(`Book: ${total} trades.`);
-  }
-
+  let latestBit = "";
   if (latest) {
     const o = normOutcomeGreeting(latest.outcome ?? latest.Outcome);
     const pair = String(latest.pair ?? latest.Pair ?? "")
@@ -841,36 +838,45 @@ function buildSmartOpenGreeting(td) {
       .toUpperCase() || "—";
     const sess = String(latest.session ?? latest.Session ?? "").trim();
     const oLabel = o === "WIN" ? "WIN" : o === "LOSS" ? "LOSS" : o === "BE" ? "BE" : o || "—";
-    lines.push(
-      sess ? `Newest line: ${sess} · ${pair} → ${oLabel}.` : `Newest line: ${pair} → ${oLabel}.`
-    );
+    const outcomeTail =
+      o === "WIN"
+        ? ", and that one was a win."
+        : o === "LOSS"
+          ? ", and that one was a loss."
+          : o === "BE"
+            ? ", flat / break-even on the sheet."
+            : oLabel
+              ? `, logged as ${oLabel}.`
+              : ".";
+    latestBit = sess
+      ? ` Last on the tape: ${sess}, ${pair}${outcomeTail}`
+      : ` Last on the tape: ${pair}${outcomeTail}`;
   }
 
-  let watch = "";
+  let nudge = "";
   if (streak >= 2 && total >= 2) {
-    watch = `Watch it: ${streak} losses at the top of the book — size down or restate the rule before the next entry.`;
+    nudge = `You've got ${streak} losses stacked at the top of the book — size down and restate the rule before the next entry.`;
   } else if (expectancy != null && expectancy < 0 && total >= 8) {
-    watch =
-      "Watch it: expectancy is negative across the sample — fewer trades until one leak is fixed.";
+    nudge =
+      "Expectancy is negative across this sample — trade a little less until you fix one clear leak.";
   } else if (winRate != null && winRate < 40 && total >= 6) {
-    watch = "Watch it: win rate is soft on this volume — A+ setups only until the stats lift.";
+    nudge = "Win rate's soft on this volume — A+ setups only until the stats lift.";
   } else if (weekday.toLowerCase() === "friday" && total >= 5) {
-    watch =
-      "Watch it: Friday — match size to focus; sloppy execution shows up fast in the log.";
+    nudge =
+      "It's Friday — match size to how sharp you actually feel; sloppy execution shows up fast when you read the log back.";
   } else if (bestSession && total >= 8) {
-    watch = `Context: most trades sit in ${bestSession} — confirm that's edge, not autopilot volume.`;
+    nudge = `Most of your trades sit in ${bestSession} — make sure that's real edge, not autopilot volume.`;
   } else {
-    watch =
-      "Pick one lane — last loss, session, or a single stat — and we'll run it tight to the numbers.";
+    nudge = "Pick one lane — last loss, a session, or one stat — and we'll run it tight to what you logged.";
   }
 
-  lines.push(watch);
+  let out = `${capDay} ${daypart} — I'm on your book. ${bookBit}${latestBit} ${nudge}`;
 
   if (typeof td.warning === "string" && td.warning.trim()) {
-    lines.push(`Note: ${td.warning.trim()}`);
+    out = `${out.trim()} — heads up: ${td.warning.trim()}`;
   }
 
-  let out = lines.join(" ");
+  out = out.replace(/\s+/g, " ").trim();
   if (out.length > MAX_OPEN_GREETING_CHARS) {
     out = `${out.slice(0, MAX_OPEN_GREETING_CHARS - 1).trimEnd()}…`;
   }
