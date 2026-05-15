@@ -680,20 +680,158 @@ function getRecentTradesForChat(records) {
   return records.slice(-CHAT_RECENT_TRADES);
 }
 
-/* ═══════════ Greeting ═══════════ */
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) {
-    return "Core online — good morning. Telemetry is live on your ledger whenever you need it.";
+/* ═══════════ Open greeting (STEP 1 — stats from loaded ledger only; no extra API calls) ═══════════ */
+
+const MAX_OPEN_GREETING_CHARS = 720;
+
+/** Adelaide weekday + daypart — matches server/journal date tone. */
+function getAdelaideDayContext() {
+  const now = new Date();
+  let weekday = "Day";
+  let hour = 12;
+  try {
+    const dtf = new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Adelaide",
+      weekday: "long",
+      hour: "numeric",
+      hour12: false,
+    });
+    const parts = dtf.formatToParts(now);
+    for (const p of parts) {
+      if (p.type === "weekday") weekday = p.value;
+      if (p.type === "hour") hour = parseInt(p.value, 10) || 12;
+    }
+  } catch {
+    weekday = now.toLocaleDateString(undefined, { weekday: "long" });
+    hour = now.getHours();
   }
-  if (h < 17) {
-    return "Core online — good afternoon. Your stats are streaming; ask anything or keep watching the board.";
+  const daypart = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  return { weekday, daypart, hour };
+}
+
+function parseRecordDateMs(rec) {
+  if (!rec || typeof rec !== "object") return NaN;
+  const raw = rec.date || rec.Date || rec.traded_at || rec.TRADE_DATE || "";
+  if (!raw) return NaN;
+  const t = new Date(String(raw).trim().replace(/\s+/, "T"));
+  const ms = t.getTime();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+function normOutcomeGreeting(val) {
+  const s = String(val || "").trim().toUpperCase();
+  if (!s) return "";
+  if (s === "WIN" || s === "W") return "WIN";
+  if (s === "LOSS" || s === "L") return "LOSS";
+  if (s === "BE" || s.includes("BREAK")) return "BE";
+  return s;
+}
+
+function sortedTradeRecordsDesc(records) {
+  return [...records].sort((a, b) => parseRecordDateMs(b) - parseRecordDateMs(a));
+}
+
+/** Consecutive losses from the newest trade backward (requires date sort). */
+function lossStreakFromNewest(sortedDesc) {
+  let n = 0;
+  for (const r of sortedDesc) {
+    if (normOutcomeGreeting(r.outcome ?? r.Outcome) === "LOSS") n += 1;
+    else break;
   }
-  return "Core online — good evening. Ready to decompress the session or tighten tomorrow’s plan.";
+  return n;
+}
+
+/**
+ * One open-screen line set: weekday + snapshot + newest row + one grounded "watch it".
+ * Uses only `tradeData` already returned from GET /api/trades (no Anthropic call).
+ */
+function buildSmartOpenGreeting(td) {
+  const { weekday, daypart } = getAdelaideDayContext();
+  const capDay = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
+  if (!td || td.loadError) {
+    return `${capDay} ${daypart} — core online, but the ledger did not load. Refresh once; if it persists, check sync.`;
+  }
+
+  const recs = Array.isArray(td.records) ? td.records : [];
+  if (!recs.length) {
+    return `${capDay} ${daypart} — core online. Book is empty on this profile; log a trade or sync Notion, then we anchor to it.`;
+  }
+
+  const snap = td.snapshot != null && typeof td.snapshot === "object" ? td.snapshot : null;
+  const sorted = sortedTradeRecordsDesc(recs);
+  const latest = sorted[0];
+  const streak = lossStreakFromNewest(sorted);
+
+  const total =
+    snap && snap.total != null && Number.isFinite(Number(snap.total))
+      ? Number(snap.total)
+      : recs.length;
+  const winRate =
+    snap && snap.winRate != null && Number.isFinite(Number(snap.winRate))
+      ? Number(snap.winRate)
+      : null;
+  const expectancy =
+    snap && snap.expectancy != null && Number.isFinite(Number(snap.expectancy))
+      ? Number(snap.expectancy)
+      : null;
+  const bestSession = snap && snap.bestSession ? String(snap.bestSession).trim() : "";
+
+  const lines = [];
+  lines.push(`${capDay} ${daypart} — core online.`);
+
+  if (winRate != null) {
+    lines.push(`Book: ${total} trades · win rate ${winRate.toFixed(1)}%.`);
+  } else {
+    lines.push(`Book: ${total} trades.`);
+  }
+
+  if (latest) {
+    const o = normOutcomeGreeting(latest.outcome ?? latest.Outcome);
+    const pair = String(latest.pair ?? latest.Pair ?? "")
+      .trim()
+      .toUpperCase() || "—";
+    const sess = String(latest.session ?? latest.Session ?? "").trim();
+    const oLabel = o === "WIN" ? "WIN" : o === "LOSS" ? "LOSS" : o === "BE" ? "BE" : o || "—";
+    lines.push(
+      sess ? `Newest line: ${sess} · ${pair} → ${oLabel}.` : `Newest line: ${pair} → ${oLabel}.`
+    );
+  }
+
+  let watch = "";
+  if (streak >= 2 && total >= 2) {
+    watch = `Watch it: ${streak} losses at the top of the book — size down or restate the rule before the next entry.`;
+  } else if (expectancy != null && expectancy < 0 && total >= 8) {
+    watch =
+      "Watch it: expectancy is negative across the sample — fewer trades until one leak is fixed.";
+  } else if (winRate != null && winRate < 40 && total >= 6) {
+    watch = "Watch it: win rate is soft on this volume — A+ setups only until the stats lift.";
+  } else if (weekday.toLowerCase() === "friday" && total >= 5) {
+    watch =
+      "Watch it: Friday — match size to focus; sloppy execution shows up fast in the log.";
+  } else if (bestSession && total >= 8) {
+    watch = `Context: most trades sit in ${bestSession} — confirm that's edge, not autopilot volume.`;
+  } else {
+    watch =
+      "Pick one lane — last loss, session, or a single stat — and we'll run it tight to the numbers.";
+  }
+
+  lines.push(watch);
+
+  if (typeof td.warning === "string" && td.warning.trim()) {
+    lines.push(`Note: ${td.warning.trim()}`);
+  }
+
+  let out = lines.join(" ");
+  if (out.length > MAX_OPEN_GREETING_CHARS) {
+    out = `${out.slice(0, MAX_OPEN_GREETING_CHARS - 1).trimEnd()}…`;
+  }
+  return out;
 }
 
 async function showGreeting() {
-  const text = getGreeting();
+  if (chatMessages.length > 0) return;
+  const text = buildSmartOpenGreeting(tradeData);
   chatUiMessages.push({ role: "assistant", content: text });
   setUIMode("chat");
   renderChatHistory({ streamLast: true });
