@@ -2097,7 +2097,8 @@ async function boot() {
   initChatRotatingPlaceholder();
 
   chatMessages = loadChatMessagesFromStorage();
-  chatUiMessages = chatMessages.map((m) => ({ role: m.role, content: m.content }));
+  /** Visible thread only — not hydrated from storage so each load is a fresh comms panel. */
+  chatUiMessages = [];
   setUIMode("idle");
   renderSnapshot();
   updateSendEnabled();
