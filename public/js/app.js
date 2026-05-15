@@ -10,6 +10,21 @@ const MAX_CHAT_MESSAGES_API = 5;
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_CHAT_MESSAGES_STORED = 120;
 
+/** Rotating home chat placeholder (sessionStorage advances each full page load). */
+const CHAT_PLACEHOLDER_STORAGE_KEY = "jarvis_chat_placeholder_index";
+const CHAT_PLACEHOLDER_EXAMPLES = [
+  "Why did I lose my last trade?",
+  "Walk me through my last trade.",
+  "Am I overtrading on Fridays?",
+  "Where is my edge breaking down this month?",
+  "What was my worst trade this week?",
+  "What pattern shows up before my best wins?",
+  "Which session am I bleeding in — London or NY?",
+  "Am I taking revenge trades after losses?",
+  "One rule I keep breaking — what does my data say?",
+  "How should I size the next session after yesterday’s result?",
+];
+
 let currentUserId = DEFAULT_USER_ID;
 let snapshotRequestSeq = 0;
 
@@ -1216,25 +1231,29 @@ function updateSendEnabled() {
   if (els.chatInput) {
     els.chatInput.disabled = chatSending;
   }
-  const suggest = document.getElementById("chat-suggest");
-  if (suggest) {
-    const dis = chatSending || Boolean(tradeData?.loadError) || !tradesLoaded;
-    suggest.classList.toggle("chat-suggest--disabled", dis);
-  }
 }
 
-/** STEP 3: tap example chips to prefill the chat input (no auto-send). */
-function initChatSuggestChips() {
-  const root = document.getElementById("chat-suggest");
-  if (!root) return;
-  root.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-ask]");
-    if (!btn) return;
-    const q = btn.getAttribute("data-ask");
-    if (!els.chatInput || !q) return;
-    els.chatInput.value = q;
-    els.chatInput.focus();
-  });
+function initChatRotatingPlaceholder() {
+  if (!els.chatInput) return;
+  const n = CHAT_PLACEHOLDER_EXAMPLES.length;
+  let idx = 0;
+  try {
+    const raw = sessionStorage.getItem(CHAT_PLACEHOLDER_STORAGE_KEY);
+    if (raw != null && raw !== "") {
+      const parsed = parseInt(raw, 10);
+      idx = Number.isFinite(parsed) ? ((parsed % n) + n) % n : 0;
+    } else {
+      idx = 0;
+    }
+  } catch {
+    idx = Math.floor(Math.random() * n);
+  }
+  els.chatInput.placeholder = CHAT_PLACEHOLDER_EXAMPLES[idx];
+  try {
+    sessionStorage.setItem(CHAT_PLACEHOLDER_STORAGE_KEY, String((idx + 1) % n));
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
 const SESSION_PENDING_JARVIS = "jarvis_pending_message";
@@ -2014,6 +2033,8 @@ function initLogTradeBtn() {
 async function boot() {
   await ensureUserId();
 
+  initChatRotatingPlaceholder();
+
   chatMessages = loadChatMessagesFromStorage();
   chatUiMessages = [];
   setUIMode("idle");
@@ -2027,7 +2048,6 @@ async function boot() {
   initLogTradeBtn();
   initLogoutButton();
   initChatImageLightbox();
-  initChatSuggestChips();
   setOrbMode("active");
   void loadTrades()
     .then(async () => {
