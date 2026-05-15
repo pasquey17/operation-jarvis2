@@ -1,6 +1,7 @@
 /**
- * Vercel entry: rewrites send all traffic here with the original path in `__v_path`
- * so the monolithic `server.mjs` still sees `req.url` as on a long-lived server.
+ * Vercel entry: `vercel.json` rewrites **only** `/api/*` here with the original path in
+ * `__v_path` so `server.mjs` sees `req.url` like a normal server. HTML/CSS/JS under `/public`
+ * are served from the edge CDN without cold-starting this function.
  */
 import handler from "../server.mjs";
 

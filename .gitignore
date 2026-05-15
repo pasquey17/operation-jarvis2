@@ -1,3 +1,4 @@
 .env
+.claude/
 node_modules/
 notion-data-source-query-response.json

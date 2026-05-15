@@ -688,7 +688,10 @@ async function setSyncState(syncKey) {
  * — If `notion_connections` + `notion_mappings` exist for user_id, OAuth sync runs (same as POST /api/notion/sync-user).
  * — Otherwise falls back to env-based syncNotionToSupabase / mum (NOTION_API_KEY).
  * Same sync_state keys (`notion_aiden` / `notion_mum`) for both paths; OAuth wins when mapping is complete (no double-write).
- * handleTrades **awaits** this before reading Supabase so the first response includes data from a completed sync (Vercel timeout still applies for huge DBs).
+ *
+ * **Latency:** `GET /api/trades` and `GET /api/snapshot` no longer **await** this — they return
+ * Supabase immediately and kick sync in the background so first paint is not blocked by Notion
+ * (manual sync: `/api/sync-notion`, `/api/sync-mum`, POST `/api/notion/sync-user`).
  */
 async function maybeSyncNotion(userId) {
   const syncKey = userId === "spasque70@gmail.com" ? "notion_mum" : "notion_aiden";
@@ -1878,8 +1881,14 @@ async function handleTrades(req, res) {
     const userIdRaw = u.searchParams.get("user_id") || "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
     const includeArchived = u.searchParams.get("include_archived") === "1";
-    await maybeSyncNotion(userId);
+    void maybeSyncNotion(userId).catch(() => {});
+    const tDb = Date.now();
     const payload = await fetchTradesFromSupabase(userId, { includeArchived });
+    if (process.env.JARVIS_PERF_LOG === "1") {
+      console.log(
+        `[perf] GET /api/trades user=${userId} dbMs=${Date.now() - tDb} rows=${payload.records.length}`
+      );
+    }
     if (!payload.records.length) {
       json(res, 200, {
         ...payload,
@@ -1908,12 +1917,18 @@ async function handleSnapshot(req, res) {
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
 
-    await maybeSyncNotion(userId);
+    void maybeSyncNotion(userId).catch(() => {});
 
+    const tDb = Date.now();
     const trades = await getRecentTrades(userId, { limit: MAX_SUPABASE_ROWS });
     const tradesForPrompt = trades.map(slimTradeRowForPrompt);
 
     const snapshot = deriveTradingSnapshot(tradesForPrompt);
+    if (process.env.JARVIS_PERF_LOG === "1") {
+      console.log(
+        `[perf] GET /api/snapshot user=${userId} dbMs=${Date.now() - tDb} trades=${trades.length}`
+      );
+    }
     json(res, 200, { userId, snapshot });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -656,7 +656,9 @@ function renderSnapshot() {
     if (els.snapAvgRR) els.snapAvgRR.textContent = "—";
     if (els.snapExpectancy) els.snapExpectancy.textContent = "—";
     if (els.snapTotal) els.snapTotal.textContent = "—";
-    if (els.snapInsight) els.snapInsight.textContent = "Syncing ledger…";
+    if (els.snapInsight) {
+      els.snapInsight.textContent = tradesLoaded ? "Syncing ledger…" : "Loading ledger…";
+    }
     return;
   }
 
@@ -1154,6 +1156,9 @@ async function loadTradesAttempt() {
     localStorage.getItem("jarvis_user") ||
     localStorage.getItem("user_id") ||
     DEFAULT_USER_ID;
+  if (els.snapInsight) {
+    els.snapInsight.textContent = "Fetching ledger…";
+  }
   const res = await fetch(`${API_TRADES}?user_id=eq.${encodeURIComponent(userId)}`, {
     cache: "no-store",
   });
@@ -1189,8 +1194,8 @@ async function loadTradesAttempt() {
 }
 
 async function loadTrades() {
-  const maxAttempts = 3;
-  const delayMs = 500;
+  const maxAttempts = 4;
+  const delayMs = 600;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       await loadTradesAttempt();
