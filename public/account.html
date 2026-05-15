@@ -192,66 +192,122 @@
         background: rgba(4, 9, 18, 0.92);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
-        min-height: 42px;
+        min-height: 80px;
         box-sizing: border-box;
       }
       .ac-news-bar__inner {
         display: flex;
-        align-items: center;
-        gap: 12px;
+        align-items: stretch;
+        gap: 16px;
         max-width: 1440px;
         margin: 0 auto;
-        padding: 8px 20px;
+        padding: 14px 22px;
         box-sizing: border-box;
-        min-height: 42px;
+        min-height: 80px;
       }
-      .ac-news-bar__label {
-        flex-shrink: 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.75);
-        white-space: nowrap;
-      }
-      .ac-news-bar__track {
+      .ac-news-bar__viewport {
         flex: 1;
         min-width: 0;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        mask-image: linear-gradient(
+          90deg,
+          transparent 0,
+          #000 14px,
+          #000 calc(100% - 14px),
+          transparent 100%
+        );
+        -webkit-mask-image: linear-gradient(
+          90deg,
+          transparent 0,
+          #000 14px,
+          #000 calc(100% - 14px),
+          transparent 100%
+        );
+      }
+      .ac-news-bar__viewport.is-marquee {
+        cursor: default;
+      }
+      .ac-news-bar__marquee {
         display: flex;
         flex-wrap: nowrap;
-        gap: 14px;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding-bottom: 2px;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 212, 255, 0.25) transparent;
+        width: max-content;
+        will-change: transform;
       }
-      .ac-news-bar__track::-webkit-scrollbar {
-        height: 4px;
+      .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee {
+        animation: ac-news-marquee var(--ac-marquee-dur, 55s) linear infinite;
       }
-      .ac-news-bar__track::-webkit-scrollbar-thumb {
-        background: rgba(0, 212, 255, 0.22);
-        border-radius: 99px;
+      .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee:hover {
+        animation-play-state: paused;
+      }
+      @keyframes ac-news-marquee {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee {
+          animation: none;
+        }
+        .ac-news-bar__viewport.is-marquee {
+          overflow-x: auto;
+          overflow-y: hidden;
+          mask-image: none;
+          -webkit-mask-image: none;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(0, 212, 255, 0.25) transparent;
+        }
+      }
+      .ac-news-bar__seq {
+        flex: 0 0 auto;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 28px;
+        padding-right: 28px;
+        box-sizing: border-box;
+      }
+      .ac-news-bar__viewport:not(.is-marquee) .ac-news-bar__marquee {
+        display: none;
+      }
+      .ac-news-bar__viewport.is-marquee .ac-news-bar__static {
+        display: none;
+      }
+      .ac-news-bar__static {
+        flex: 1;
+        min-width: 0;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 14px;
+        letter-spacing: 0.06em;
+        line-height: 1.45;
+        color: rgba(236, 242, 247, 0.82);
+        display: flex;
+        align-items: center;
+        margin: 0;
       }
       .ac-news-bar__chip {
         flex: 0 0 auto;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        max-width: min(420px, 85vw);
-        padding: 4px 0;
+        gap: 12px;
+        padding: 8px 0;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.05em;
-        color: rgba(236, 242, 247, 0.88);
+        font-size: 15px;
+        letter-spacing: 0.03em;
+        color: rgba(236, 242, 247, 0.94);
         white-space: nowrap;
       }
       .ac-news-bar__dot {
-        width: 8px;
-        height: 8px;
+        width: 14px;
+        height: 14px;
         border-radius: 50%;
         flex-shrink: 0;
-        box-shadow: 0 0 8px currentColor;
+        box-shadow: 0 0 10px currentColor;
       }
       .ac-news-bar__dot--low {
         color: #f5e000;
@@ -271,24 +327,25 @@
         box-shadow: none;
       }
       .ac-news-bar__meta {
-        color: rgba(0, 212, 255, 0.65);
+        color: rgba(0, 212, 255, 0.82);
         flex-shrink: 0;
+        font-size: 14px;
       }
       .ac-news-bar__title {
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-weight: 500;
       }
       .ac-news-bar__more {
         flex-shrink: 0;
+        align-self: center;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
+        font-size: 12px;
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.65);
+        color: rgba(0, 212, 255, 0.75);
         text-decoration: none;
         border: 1px solid rgba(0, 212, 255, 0.28);
-        border-radius: 6px;
-        padding: 5px 8px;
+        border-radius: 8px;
+        padding: 10px 14px;
         transition: border-color 0.2s, color 0.2s, background 0.2s;
       }
       .ac-news-bar__more:hover {
@@ -296,16 +353,14 @@
         border-color: rgba(0, 212, 255, 0.55);
         background: rgba(0, 212, 255, 0.08);
       }
-      .ac-news-bar--err .ac-news-bar__track {
-        color: rgba(255, 130, 130, 0.75);
-        font-size: 10px;
-        letter-spacing: 0.06em;
+      .ac-news-bar--err .ac-news-bar__static {
+        color: rgba(255, 130, 130, 0.8);
       }
 
       .ac-page {
         position: relative;
         z-index: 1;
-        padding: 124px 0 72px;
+        padding: 156px 0 72px;
         overflow-x: clip;
         max-width: 100%;
       }
@@ -406,7 +461,17 @@
       }
       @media (max-width: 768px) {
         .ac-page {
-          padding: 112px 0 64px;
+          padding: 144px 0 64px;
+        }
+        .ac-news-bar__inner {
+          padding: 10px 14px;
+          gap: 12px;
+        }
+        .ac-news-bar__chip {
+          font-size: 13px;
+        }
+        .ac-news-bar__meta {
+          font-size: 12px;
         }
         .ac-shell {
           width: 100%;
@@ -1271,8 +1336,13 @@
     <!-- Economic calendar: GET /api/economic-calendar (server-side; Adelaide “today”). -->
     <div id="ac-news-bar" class="ac-news-bar" role="region" aria-label="Economic calendar today">
       <div class="ac-news-bar__inner">
-        <span class="ac-news-bar__label" id="ac-news-label">Today · Adelaide</span>
-        <div class="ac-news-bar__track" id="ac-news-track">Loading calendar…</div>
+        <div class="ac-news-bar__viewport" id="ac-news-viewport">
+          <div class="ac-news-bar__marquee" id="ac-news-marquee">
+            <div class="ac-news-bar__seq" id="ac-news-track"></div>
+            <div class="ac-news-bar__seq" id="ac-news-track-dup" aria-hidden="true"></div>
+          </div>
+          <p class="ac-news-bar__static" id="ac-news-static">Loading calendar…</p>
+        </div>
         <a
           class="ac-news-bar__more"
           href="https://www.forexfactory.com/calendar"
@@ -2059,9 +2129,41 @@
 
         function loadEconomicNewsBar() {
           var bar = document.getElementById("ac-news-bar");
+          var viewport = document.getElementById("ac-news-viewport");
+          var marquee = document.getElementById("ac-news-marquee");
           var track = document.getElementById("ac-news-track");
-          var lab = document.getElementById("ac-news-label");
-          if (!bar || !track) return;
+          var dup = document.getElementById("ac-news-track-dup");
+          var stat = document.getElementById("ac-news-static");
+          if (!bar || !viewport || !marquee || !track || !dup || !stat) return;
+
+          function showStatic(msg, err) {
+            viewport.classList.remove("is-marquee");
+            marquee.style.removeProperty("--ac-marquee-dur");
+            track.innerHTML = "";
+            dup.innerHTML = "";
+            stat.textContent = msg;
+            if (err) bar.classList.add("ac-news-bar--err");
+            else bar.classList.remove("ac-news-bar--err");
+          }
+
+          function applyMarqueeDuration() {
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () {
+                var w = track.scrollWidth;
+                if (w < 1) return;
+                var pxPerSec = 44;
+                var sec = Math.max(32, w / pxPerSec);
+                marquee.style.setProperty("--ac-marquee-dur", sec + "s");
+              });
+            });
+          }
+
+          stat.textContent = "Loading calendar…";
+          viewport.classList.remove("is-marquee");
+          track.innerHTML = "";
+          dup.innerHTML = "";
+          bar.classList.remove("ac-news-bar--err");
+
           fetch("/api/economic-calendar", { cache: "no-store" })
             .then(function (r) {
               return r.json().then(function (j) {
@@ -2071,25 +2173,20 @@
             .then(function (x) {
               bar.classList.remove("ac-news-bar--err");
               var j = x.j || {};
-              if (lab && j.date) {
-                lab.textContent = "Today · " + String(j.date) + " · Adelaide";
-              }
               if (!x.ok) {
-                bar.classList.add("ac-news-bar--err");
-                track.textContent = (j && j.error) || "Economic calendar request failed.";
+                showStatic((j && j.error) || "Economic calendar request failed.", true);
                 return;
               }
               if (j.error) {
-                bar.classList.add("ac-news-bar--err");
-                track.textContent = String(j.error);
+                showStatic(String(j.error), true);
                 return;
               }
               var items = Array.isArray(j.items) ? j.items : [];
               if (!items.length) {
-                track.textContent = "No economic releases for this calendar day.";
+                showStatic("No economic releases for this calendar day.", false);
                 return;
               }
-              track.innerHTML = items
+              var html = items
                 .map(function (it) {
                   var imp = String(it.impact || "low").toLowerCase();
                   var dcls = "ac-news-bar__dot--low";
@@ -2114,10 +2211,14 @@
                   );
                 })
                 .join("");
+              track.innerHTML = html;
+              dup.innerHTML = html;
+              stat.textContent = "";
+              viewport.classList.add("is-marquee");
+              applyMarqueeDuration();
             })
             .catch(function () {
-              bar.classList.add("ac-news-bar--err");
-              track.textContent = "Could not load economic calendar.";
+              showStatic("Could not load economic calendar.", true);
             });
         }
 
