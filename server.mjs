@@ -1158,8 +1158,9 @@ function mergeReplyWithTradeImageUrls(
 }
 
 /**
- * True when the user explicitly asks to include/show/link journal photos or charts.
- * Only then do we add `trade_images` to the slim trade JSON (text URLs — not vision).
+ * True when trade chart HTTPS URLs should be attached to the prompt / reply merge.
+ * (A) Explicit show/include photo language, or (B) narrow proactive "review this trade"
+ * intents — URLs are for the home chat UI thumbnails, not model vision.
  */
 function userWantsTradePhotoLinks(message) {
   const s = String(message || "").trim().toLowerCase();
@@ -1197,7 +1198,92 @@ function userWantsTradePhotoLinks(message) {
     return true;
   }
 
+  /* ── STEP 2: proactive chart context (still URL-first; capped rows below) ── */
+  if (s.length >= 8) {
+    const pLossWhy =
+      /\bwhy\s+(did\s+i|have\s+i)\s+lose\b/.test(s) ||
+      /\bwhy\s+did\s+that\s+(trade|setup)\s+(lose|fail|rip)\b/.test(s);
+    const pWentWrong =
+      /\bwhat\s+went\s+wrong\b/.test(s) &&
+      /\b(trade|loss|setup|session|today|chart|xau|gold|entry|execution)\b/.test(s);
+    const pPostMortem = /\bpost[\s-]*mortem\b/.test(s);
+    const pDebrief =
+      /\b(debrief|diagnos(e|ing)|break\s*down)\b/.test(s) &&
+      /\b(last|recent|my|that|trade|loss|setup)\b/.test(s);
+    const pReview =
+      /\b(review|audit)\b/.test(s) &&
+      /\b(last|recent|my)\b/.test(s) &&
+      /\b(trade|loss|setup|execution)\b/.test(s);
+    const pExec =
+      /\b(execution|fills?|entry|exit)\b/.test(s) &&
+      /\b(wrong|mistake|error|bad|off|late|early|missed)\b/.test(s) &&
+      /\b(last|recent|my|that|this|trade|loss)\b/.test(s);
+    const pWalk =
+      /\b(walk|talk)\s+me\s+through\b/.test(s) &&
+      /\b(last|recent|that|trade|loss|setup|chart)\b/.test(s);
+    const pShowChart =
+      /\b(show|see)\s+me\b/.test(s) && /\b(on\s+)?(the\s+)?chart\b/.test(s);
+    const pChartTrade =
+      /\b(chart|screenshot)\b/.test(s) &&
+      /\b(last|recent|that|compare|same|this)\b/.test(s) &&
+      /\b(trade|loss|setup|xau|gold)\b/.test(s);
+    const pLastLoss = /\blast\s+loss\b|\bmost\s+recent\s+loss\b|\bmy\s+last\s+loss\b/.test(s);
+    const pLastWin = /\blast\s+win\b|\bmost\s+recent\s+win\b|\bmy\s+last\s+win\b/.test(s);
+    const pLastTrade =
+      /\blast\s+trade\b|\bmost\s+recent\s+trade\b|\bmy\s+last\s+trade\b/.test(s);
+    const pGold =
+      /\b(xau\/?usd|xauusd|gold)\b/.test(s) &&
+      /\b(last|recent|that|trade|loss|setup)\b/.test(s);
+    const proactive =
+      pLossWhy ||
+      pWentWrong ||
+      pPostMortem ||
+      pDebrief ||
+      pReview ||
+      pExec ||
+      pWalk ||
+      pShowChart ||
+      pChartTrade ||
+      pLastLoss ||
+      pLastWin ||
+      pLastTrade ||
+      pGold;
+    if (proactive) return true;
+  }
+
   return false;
+}
+
+/** Normalized instrument key for substring match (e.g. XAUUSD). */
+function tradePairNormForPhoto(t) {
+  return String(t?.pair ?? t?.Pair ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+/** Newest-first row index when the user names an instrument (XAU, EURUSD, etc.). */
+function findTradeIndexByInstrumentMention(arr, messageLower) {
+  const u = String(messageLower || "").toUpperCase();
+  if (/\b(XAU\/?USD|XAUUSD|GOLD)\b/.test(u)) {
+    const ix = arr.findIndex((t) => {
+      const p = tradePairNormForPhoto(t);
+      return p.includes("XAU") || p.includes("GOLD");
+    });
+    if (ix >= 0) return ix;
+  }
+  const m = u.match(/\b([A-Z]{3})\/?([A-Z]{3})\b/);
+  if (m) {
+    const needle = `${m[1]}${m[2]}`.replace(/[^A-Z]/g, "");
+    if (needle.length >= 6) {
+      const ix = arr.findIndex((t) => {
+        const p = tradePairNormForPhoto(t);
+        if (!p) return false;
+        return p.includes(needle) || needle.includes(p);
+      });
+      if (ix >= 0) return ix;
+    }
+  }
+  return -1;
 }
 
 /**
@@ -1272,8 +1358,17 @@ function tradePhotoLinkIndices(tradesForChat, messageSource) {
     }
   }
 
+  const pairIx = findTradeIndexByInstrumentMention(arr, s);
+  if (pairIx >= 0) add(pairIx);
+
   if (indices.size === 0 && arr.length > 0) {
-    add(0);
+    const wantsLossRow =
+      /\bwhy\s+(did\s+i|have\s+i)\s+lose\b/.test(s) ||
+      (/\bwhat\s+went\s+wrong\b/.test(s) &&
+        /\b(trade|loss|setup|session|today|chart|xau|gold|entry|execution)\b/.test(s)) ||
+      /\bpost[\s-]*mortem\b/.test(s);
+    if (wantsLossRow && idxLoss >= 0) add(idxLoss);
+    else add(0);
   }
 
   const sorted = [...indices]
@@ -2277,7 +2372,7 @@ async function handleChat(req, res) {
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
     (includePhotoLinks
-      ? "\n\nTRADE PHOTOS — The user asked to include journal screenshots or charts. Only relevant trades have a \"trade_images\" array below (ordered: \"Trade Photo\" first when labelled; else first image / chart 1). If they ask for a single photo of a trade, paste only one HTTPS URL (that primary chart), not every screenshot. Only if they explicitly ask for all photos, all screenshots, or all charts should you paste multiple URLs. Paste full URLs so the app can render thumbnails—do not claim to see pixels. If there are no trade_images, say no screenshot is stored."
+      ? "\n\nTRADE PHOTOS — Chart context is ON for this turn (either you asked for screenshots, or your message is a tight review intent like last loss / walk-through / execution check). Some trade rows include a \"trade_images\" array below (ordered: \"Trade Photo\" label first when present; else first image). When you discuss a row that still has charts, paste the primary chart as one full HTTPS URL on its own line at the end of your reply so the HUD can render a thumbnail — do not claim to see pixels. If multiple scoped rows have images, at most one URL per row unless the user explicitly asked for all photos/charts/screenshots. If trade_images is missing for that row, say no screenshot is stored."
       : "") +
     (wantsNotionExtras
       ? "\n\nNOTION EXTRAS — Some trades may include a selective \"notion_extras\" object (extra Notion fields). It appears only when the user asked about dimensions beyond core stats (psychology, timeframes, volume, tags, etc.). Use these values when present; do not invent fields."
