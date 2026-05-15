@@ -22,7 +22,7 @@ const CHAT_PLACEHOLDER_EXAMPLES = [
   "Which session am I bleeding in — London or NY?",
   "Am I taking revenge trades after losses?",
   "One rule I keep breaking — what does my data say?",
-  "How should I size the next session after yesterday’s result?",
+  "How should I size the next session after yesterday's result?",
 ];
 
 let currentUserId = DEFAULT_USER_ID;
