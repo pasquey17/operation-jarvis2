@@ -2744,6 +2744,260 @@ async function handleLogTrade(req, res) {
   }
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuidString(id) {
+  return typeof id === "string" && UUID_RE.test(id.trim());
+}
+
+/** PATCH /api/journal-trades — update one `journal_trades` row (must match id + user_id). */
+async function handleJournalTradePatch(req, res) {
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const id = typeof body.id === "string" ? body.id.trim() : "";
+  const userId = typeof body.user_id === "string" ? body.user_id.trim() : "";
+  if (!isUuidString(id) || !userId) {
+    json(res, 400, { error: "Valid id and user_id required" });
+    return;
+  }
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  const rrVal = body.rr != null && body.rr !== "" ? Number(body.rr) : null;
+  const patch = {
+    traded_at: body.traded_at || undefined,
+    pair: body.pair !== undefined ? body.pair || null : undefined,
+    outcome: body.outcome !== undefined ? body.outcome || null : undefined,
+    rr: body.rr !== undefined ? (Number.isFinite(rrVal) ? rrVal : null) : undefined,
+    session: body.session !== undefined ? body.session || null : undefined,
+    account: body.account !== undefined ? body.account || null : undefined,
+    custom_data:
+      body.custom_data !== undefined && typeof body.custom_data === "object" ? body.custom_data : undefined,
+  };
+  const payload = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+  if (!Object.keys(payload).length) {
+    json(res, 400, { error: "No updatable fields" });
+    return;
+  }
+
+  try {
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const r = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = [];
+    }
+    json(res, 200, { trade: Array.isArray(data) ? data[0] : data });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** DELETE /api/journal-trades?id={uuid}&user_id=eq.{email} */
+async function handleJournalTradeDelete(req, res) {
+  const u = new URL(req.url, `http://localhost:${PORT}`);
+  const id = (u.searchParams.get("id") || "").trim();
+  const userId = parseSupabaseUserIdParam(req);
+  if (!isUuidString(id)) {
+    json(res, 400, { error: "Valid id query param required" });
+    return;
+  }
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  try {
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const r = await fetch(endpoint, {
+      method: "DELETE",
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    json(res, 200, { ok: true, deleted: id });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+const TRADE_ROW_PATCH_KEYS = new Set([
+  "date",
+  "session",
+  "outcome",
+  "rr",
+  "pair",
+  "model",
+  "notes",
+  "direction",
+]);
+
+/** PATCH /api/trades-row — update one `trades` row (id + user_id). Notion may re-sync later. */
+async function handleTradeRowPatch(req, res) {
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const id = typeof body.id === "string" ? body.id.trim() : "";
+  const userId = typeof body.user_id === "string" ? body.user_id.trim() : "";
+  if (!isUuidString(id) || !userId) {
+    json(res, 400, { error: "Valid id and user_id required" });
+    return;
+  }
+
+  const { url, key: anonKey, tableRaw } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+  const tableEnc = encodeURIComponent(tableRaw);
+
+  const patch = {};
+  for (const k of TRADE_ROW_PATCH_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(body, k)) continue;
+    const v = body[k];
+    if (k === "rr") {
+      const n = v != null && v !== "" ? Number(v) : null;
+      patch[k] = Number.isFinite(n) ? n : null;
+      continue;
+    }
+    if (k === "date") {
+      if (typeof v === "string" && v.trim()) patch[k] = v.trim();
+      continue;
+    }
+    patch[k] = v == null || v === "" ? "" : String(v);
+  }
+  if (!Object.keys(patch).length) {
+    json(res, 400, { error: "No updatable fields" });
+    return;
+  }
+  patch.updated_at = new Date().toISOString();
+
+  try {
+    const endpoint = `${url}/rest/v1/${tableEnc}?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const r = await fetch(endpoint, {
+      method: "PATCH",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(patch),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = [];
+    }
+    json(res, 200, { trade: Array.isArray(data) ? data[0] : data });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** DELETE /api/trades-row?id={uuid}&user_id=eq.{email} */
+async function handleTradeRowDelete(req, res) {
+  const u = new URL(req.url, `http://localhost:${PORT}`);
+  const id = (u.searchParams.get("id") || "").trim();
+  const userId = parseSupabaseUserIdParam(req);
+  if (!isUuidString(id)) {
+    json(res, 400, { error: "Valid id query param required" });
+    return;
+  }
+
+  const { url, key: anonKey, tableRaw } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+  const tableEnc = encodeURIComponent(tableRaw);
+
+  try {
+    const endpoint = `${url}/rest/v1/${tableEnc}?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const r = await fetch(endpoint, {
+      method: "DELETE",
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+      });
+      return;
+    }
+    json(res, 200, { ok: true, deleted: id });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 function parseSupabaseUserIdParam(req) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
   let raw = (u.searchParams.get("user_id") || "").trim();
@@ -3535,6 +3789,23 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/log-trade")) {
     await handleLogTrade(req, res);
+    return;
+  }
+
+  if (req.method === "PATCH" && req.url.startsWith("/api/journal-trades")) {
+    await handleJournalTradePatch(req, res);
+    return;
+  }
+  if (req.method === "DELETE" && req.url.startsWith("/api/journal-trades")) {
+    await handleJournalTradeDelete(req, res);
+    return;
+  }
+  if (req.method === "PATCH" && req.url.startsWith("/api/trades-row")) {
+    await handleTradeRowPatch(req, res);
+    return;
+  }
+  if (req.method === "DELETE" && req.url.startsWith("/api/trades-row")) {
+    await handleTradeRowDelete(req, res);
     return;
   }
 

@@ -189,7 +189,7 @@ function buildOverlayHtml(today, orderedFields) {
   const rowsHtml = orderedFields.map(f => renderFieldRow(f, today)).join("\n");
   return `<div class="trade-form-panel ltm-panel" id="ltm-panel">
   <div class="trade-form-header">
-    <span class="trade-form-title">LOG TRADE</span>
+    <span class="trade-form-title" id="ltm-title">LOG TRADE</span>
     <button type="button" class="trade-form-close" id="ltm-close" aria-label="Close">&#x2715;</button>
   </div>
   <div class="trade-form-body">
@@ -232,7 +232,8 @@ function buildOverlayHtml(today, orderedFields) {
         </div>
       </div>
 
-      <div class="trade-form-actions">
+      <div class="trade-form-actions trade-form-actions--split">
+        <button type="button" class="trade-delete-btn" id="ltm-delete" hidden>Delete</button>
         <button type="submit" class="trade-submit-btn" id="ltm-submit">SAVE TRADE</button>
       </div>
 
@@ -241,9 +242,20 @@ function buildOverlayHtml(today, orderedFields) {
 </div>`;
 }
 
+function outcomeToLtmSelect(outcomeRaw) {
+  const u = String(outcomeRaw || "").trim().toUpperCase();
+  if (u === "WIN" || u === "W") return "Win";
+  if (u === "LOSS" || u === "L") return "Loss";
+  if (u === "BE" || u.includes("BREAK")) return "BE";
+  const s = String(outcomeRaw || "").trim();
+  if (s === "Win" || s === "Loss" || s === "BE") return s;
+  return "";
+}
+
 // ── Main export ─────────────────────────────────────────────────────────
 export async function openLogTradeModal(options) {
-  const { getUserId, fetchTradeRowsForPrefill, readApiErrorMessage, showToast, onTradeSaved } = options;
+  const { getUserId, fetchTradeRowsForPrefill, readApiErrorMessage, showToast, onTradeSaved, editTrade } = options;
+  const editId = editTrade && typeof editTrade.id === "string" ? editTrade.id.trim() : "";
 
   if (ltmOpen) return;
   ltmOpen   = true;
@@ -297,6 +309,74 @@ export async function openLogTradeModal(options) {
 
   overlay.addEventListener("click", e => { if (e.target === overlay) closeModal(); });
   document.getElementById("ltm-close").addEventListener("click", closeModal);
+
+  const titleEl = document.getElementById("ltm-title");
+  if (titleEl) titleEl.textContent = editId ? "EDIT TRADE" : "LOG TRADE";
+  const submitLabel = document.getElementById("ltm-submit");
+  if (submitLabel) submitLabel.textContent = editId ? "SAVE CHANGES" : "SAVE TRADE";
+
+  if (editId && editTrade) {
+    const delBtn = document.getElementById("ltm-delete");
+    if (delBtn) delBtn.hidden = false;
+
+    const ta = editTrade.traded_at ? String(editTrade.traded_at) : "";
+    const dateSlice = ta ? ta.slice(0, 10) : today;
+    const dateInp = document.getElementById("ltm-f-date");
+    if (dateInp) dateInp.value = dateSlice;
+
+    const formRef = document.getElementById("ltm-form");
+    const setVal = (name, val) => {
+      if (!formRef) return;
+      const el = formRef.elements.namedItem(name);
+      if (el && "value" in el) el.value = val == null ? "" : String(val);
+    };
+    setVal("pair", editTrade.pair || "");
+    setVal("session", editTrade.session || "");
+    setVal("outcome", outcomeToLtmSelect(editTrade.outcome));
+    const rrV = editTrade.rr != null && editTrade.rr !== "" ? editTrade.rr : "";
+    setVal("rr", rrV === "" ? "" : String(editTrade.rr));
+    setVal("account", editTrade.account || "");
+
+    const cd = editTrade.custom_data && typeof editTrade.custom_data === "object" ? editTrade.custom_data : {};
+    for (const k of Object.keys(cd)) {
+      if (k === "photos") continue;
+      setVal(k, cd[k]);
+    }
+    if (Array.isArray(cd.photos)) {
+      ltmPhotos = cd.photos
+        .filter((p) => p && typeof p.url === "string" && p.url.trim())
+        .map((p) => ({ dataUrl: p.url.trim(), label: typeof p.label === "string" ? p.label : "" }));
+      renderPhotoPreviews(document.getElementById("ltm-photo-previews"));
+    }
+
+    if (delBtn) {
+      delBtn.addEventListener("click", async () => {
+        if (!confirm("Delete this trade from your journal? This cannot be undone.")) return;
+        delBtn.disabled = true;
+        try {
+          const q = new URLSearchParams({
+            id: editId,
+            user_id: `eq.${getUserId()}`,
+          });
+          const res = await fetch(`/api/journal-trades?${q.toString()}`, {
+            method: "DELETE",
+            cache: "no-store",
+          });
+          if (!res.ok) {
+            const d = await res.json().catch(() => ({}));
+            throw new Error(readApiErrorMessage(d) || `Delete failed (${res.status})`);
+          }
+          closeModal();
+          showToast("Trade deleted.");
+          if (onTradeSaved) await onTradeSaved();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Delete failed.";
+          showToast(msg, true);
+          delBtn.disabled = false;
+        }
+      });
+    }
+  }
 
   // ── Field drag-and-drop ──────────────────────────────────────────────
   const fieldsList = document.getElementById("ltm-fields-list");
@@ -407,23 +487,27 @@ export async function openLogTradeModal(options) {
     }
 
     const submitBtn = document.getElementById("ltm-submit");
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Saving…"; }
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = editId ? "Saving…" : "Saving…";
+    }
 
     try {
-      const res = await fetch("/api/log-trade", {
-        method: "POST",
+      const basePayload = {
+        user_id: getUserId(),
+        traded_at: `${dateVal}T00:00:00.000Z`,
+        pair: pair || null,
+        outcome,
+        rr: rr !== null && !Number.isNaN(rr) ? rr : null,
+        session,
+        account: account || null,
+        custom_data,
+      };
+      const res = await fetch(editId ? "/api/journal-trades" : "/api/log-trade", {
+        method: editId ? "PATCH" : "POST",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id:    getUserId(),
-          traded_at:  `${dateVal}T00:00:00.000Z`,
-          pair:       pair    || null,
-          outcome,
-          rr:         rr !== null && !Number.isNaN(rr) ? rr : null,
-          session,
-          account:    account || null,
-          custom_data,
-        }),
+        body: JSON.stringify(editId ? { id: editId, ...basePayload } : basePayload),
       });
 
       if (!res.ok) {
@@ -432,14 +516,17 @@ export async function openLogTradeModal(options) {
       }
 
       closeModal();
-      showToast("Trade logged.");
+      showToast(editId ? "Trade updated." : "Trade logged.");
       if (onTradeSaved) {
         await onTradeSaved({ outcome, pair, session, rr, account, custom_data, dateVal, userId: getUserId() });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Save failed.";
       showToast(msg, true);
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "SAVE TRADE"; }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = editId ? "SAVE CHANGES" : "SAVE TRADE";
+      }
     }
   });
 

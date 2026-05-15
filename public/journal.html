@@ -440,6 +440,27 @@
         display: flex; align-items: center; gap: 6px;
         flex-shrink: 0; margin-left: auto;
       }
+      .jn-card__edit {
+        flex-shrink: 0;
+        width: 30px; height: 30px; padding: 0; margin: 0;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 212, 255, 0.35);
+        background: rgba(0, 212, 255, 0.06);
+        color: #00d4ff;
+        cursor: pointer;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 14px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+      .jn-card__edit:hover {
+        background: rgba(0, 212, 255, 0.14);
+        border-color: rgba(0, 212, 255, 0.65);
+        box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+      }
       .jn-card__date {
         font-family: "Outfit", system-ui, sans-serif !important;
         font-size: 13px; font-weight: 600;
@@ -2433,6 +2454,7 @@
           modelDisplay ? '      <span class="jn-card__model">' + esc(modelDisplay) + '</span>' : '',
           '      </div>',
           '      <div class="jn-card__right">',
+          '      <button type="button" class="jn-card__edit" aria-label="Edit or delete trade" title="Edit / delete">&#9998;</button>',
           '      ' + acctBadge,
           '      <span class="jn-card__rr"' + (rrColor ? ' style="color:' + rrColor + '"' : '') + '>' + esc(rrDisplay) + '</span>',
           '      <span class="jn-card__chevron">&#9660;</span>',
@@ -2538,11 +2560,287 @@
         closeTradeModal();
       });
 
+      function normalizeOutcomeForLtm(raw) {
+        var u = String(raw || '').trim().toUpperCase();
+        if (u === 'WIN' || u === 'W') return 'Win';
+        if (u === 'LOSS' || u === 'L') return 'Loss';
+        if (u === 'BE' || u.indexOf('BREAK') >= 0) return 'BE';
+        var s = String(raw || '').trim();
+        if (s === 'Win' || s === 'Loss' || s === 'BE') return s;
+        return '';
+      }
+
+      async function openJournalTradeEditorFromRow(trade) {
+        var src = trade._jarvis_trade_source || '';
+        var rowId = trade.id;
+        if (!rowId) {
+          showToast('This row has no id — cannot edit.', true);
+          return;
+        }
+        if (src === 'journal_log') {
+          try {
+            var mod = await import('/js/log-trade-modal.js');
+            await mod.openLogTradeModal({
+              getUserId: function () {
+                return (
+                  currentUserId ||
+                  localStorage.getItem('jarvis_user') ||
+                  localStorage.getItem('user_id') ||
+                  'aidenpasque11@gmail.com'
+                );
+              },
+              fetchTradeRowsForPrefill: async function () {
+                return Array.isArray(allTrades) ? allTrades : [];
+              },
+              readApiErrorMessage: readApiError,
+              showToast: showToast,
+              onTradeSaved: refreshJournalData,
+              editTrade: {
+                id: String(rowId),
+                traded_at: trade.traded_at || trade.date || '',
+                pair: getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '',
+                outcome: getField(trade, 'outcome', 'Outcome', 'OUTCOME') || '',
+                rr: trade.rr != null && trade.rr !== '' ? trade.rr : getField(trade, 'rr', 'RR'),
+                session: getField(trade, 'session', 'Session', 'SESSION') || '',
+                account: getField(trade, 'account', 'Account', 'ACCOUNT') || '',
+                custom_data:
+                  trade.custom_data && typeof trade.custom_data === 'object' ? trade.custom_data : {},
+              },
+            });
+          } catch (e) {
+            console.warn('[journal] edit modal', e);
+            showToast('Could not open editor.', true);
+          }
+          return;
+        }
+        if (src === 'notion_table') {
+          openNotionTradeEditorOverlay(trade);
+          return;
+        }
+        showToast('Cannot edit this source type.', true);
+      }
+
+      function closeNotionTradeEditor() {
+        var root = document.getElementById('jn-notion-edit');
+        if (root) {
+          if (root._jnEsc) {
+            try {
+              document.removeEventListener('keydown', root._jnEsc);
+            } catch (eRem) {}
+          }
+          root.remove();
+        }
+        try {
+          document.body.style.overflow = '';
+        } catch (e0) {}
+      }
+
+      function openNotionTradeEditorOverlay(trade) {
+        if (document.getElementById('jn-notion-edit')) return;
+        var rowId = trade.id;
+        if (!rowId) {
+          showToast('This row has no id — cannot edit.', true);
+          return;
+        }
+        var uid =
+          currentUserId ||
+          localStorage.getItem('jarvis_user') ||
+          localStorage.getItem('user_id') ||
+          'aidenpasque11@gmail.com';
+
+        var dateRaw = trade.date || trade.Date || trade.traded_at || '';
+        var dateStr =
+          typeof dateRaw === 'string' && dateRaw.length >= 10 ? String(dateRaw).slice(0, 10) : '';
+        if (!dateStr) {
+          try {
+            var dk = dateKeyAdelaide(tradeDate(trade));
+            if (dk) dateStr = dk;
+          } catch (e1) {}
+        }
+
+        var pair = getField(trade, 'pair', 'Pair', 'PAIR', 'instrument', 'symbol') || '';
+        var session = getField(trade, 'session', 'Session', 'SESSION') || '';
+        var outcomeRaw = getField(trade, 'outcome', 'Outcome', 'OUTCOME') || '';
+        var outcomeSel = normalizeOutcomeForLtm(outcomeRaw);
+        var rrNum = parseFloat(getField(trade, 'rr', 'RR'));
+        var model = getField(trade, 'model', 'Model', 'MODEL', 'ENTRY MODEL') || '';
+        var notes = getField(trade, 'notes', 'Notes', 'NOTE', 'TRADE SUMMARY') || '';
+        var direction = getField(trade, 'direction', 'Direction', 'DIRECTION') || '';
+
+        var wrap = document.createElement('div');
+        wrap.id = 'jn-notion-edit';
+        wrap.className = 'trade-form-overlay';
+        wrap.setAttribute('role', 'dialog');
+        wrap.setAttribute('aria-modal', 'true');
+        wrap.innerHTML =
+          '<div class="trade-form-panel ltm-panel" id="jn-notion-panel" style="max-width:520px;width:min(520px,96vw);">' +
+          '<div class="trade-form-header">' +
+          '<span class="trade-form-title">EDIT TRADE</span>' +
+          '<button type="button" class="trade-form-close" id="jn-notion-close" aria-label="Close">&#x2715;</button>' +
+          '</div>' +
+          '<div class="trade-form-body">' +
+          '<div class="ltm-section-label">Core</div>' +
+          '<label class="trade-label ltm-label">Date</label>' +
+          '<input id="jn-ne-date" class="trade-input ltm-input" type="date" value="' +
+          esc(dateStr) +
+          '">' +
+          '<label class="trade-label ltm-label">Pair</label>' +
+          '<input id="jn-ne-pair" class="trade-input ltm-input" type="text" value="' +
+          esc(pair) +
+          '">' +
+          '<label class="trade-label ltm-label">Session</label>' +
+          '<input id="jn-ne-session" class="trade-input ltm-input" type="text" value="' +
+          esc(session) +
+          '">' +
+          '<label class="trade-label ltm-label">Outcome</label>' +
+          '<select id="jn-ne-outcome" class="trade-input trade-select ltm-input">' +
+          '<option value="">—</option>' +
+          '<option value="Win"' +
+          (outcomeSel === 'Win' ? ' selected' : '') +
+          '>Win</option>' +
+          '<option value="Loss"' +
+          (outcomeSel === 'Loss' ? ' selected' : '') +
+          '>Loss</option>' +
+          '<option value="BE"' +
+          (outcomeSel === 'BE' ? ' selected' : '') +
+          '>BE</option>' +
+          '</select>' +
+          '<label class="trade-label ltm-label">RR</label>' +
+          '<input id="jn-ne-rr" class="trade-input ltm-input" type="number" step="0.01" min="0" value="' +
+          (isNaN(rrNum) ? '' : esc(String(rrNum))) +
+          '">' +
+          '<label class="trade-label ltm-label">Direction</label>' +
+          '<input id="jn-ne-dir" class="trade-input ltm-input" type="text" value="' +
+          esc(direction) +
+          '">' +
+          '<label class="trade-label ltm-label">Entry model</label>' +
+          '<input id="jn-ne-model" class="trade-input ltm-input" type="text" value="' +
+          esc(model) +
+          '">' +
+          '<label class="trade-label ltm-label">Notes</label>' +
+          '<textarea id="jn-ne-notes" class="trade-input ltm-input ltm-textarea" rows="3">' +
+          esc(notes) +
+          '</textarea>' +
+          '<div class="trade-form-actions trade-form-actions--split" style="margin-top:18px">' +
+          '<button type="button" class="trade-delete-btn" id="jn-ne-delete">Delete</button>' +
+          '<button type="button" class="trade-submit-btn" id="jn-ne-save">SAVE</button>' +
+          '</div>' +
+          '<p style="margin:12px 0 0;font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:0.06em;color:rgba(136,153,170,0.7);">Notion sync may overwrite this row if the source page still exists.</p>' +
+          '</div></div>';
+
+        document.body.appendChild(wrap);
+        wrap._jnEsc = function (ev) {
+          if (ev.key === 'Escape') closeNotionTradeEditor();
+        };
+        document.addEventListener('keydown', wrap._jnEsc);
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(function () {
+          wrap.classList.add('trade-form-overlay--visible');
+          var p = document.getElementById('jn-notion-panel');
+          if (p) p.classList.add('trade-form-panel--visible');
+        });
+
+        document.getElementById('jn-notion-close').addEventListener('click', closeNotionTradeEditor);
+        wrap.addEventListener('click', function (ev) {
+          if (ev.target === wrap) closeNotionTradeEditor();
+        });
+
+        document.getElementById('jn-ne-save').addEventListener('click', async function () {
+          var saveBtn = document.getElementById('jn-ne-save');
+          if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving…';
+          }
+          try {
+            var d = document.getElementById('jn-ne-date').value;
+            if (!d) throw new Error('Date is required');
+            var payload = {
+              id: String(rowId),
+              user_id: uid,
+              date: d + 'T00:00:00.000Z',
+              pair: document.getElementById('jn-ne-pair').value.trim() || '',
+              session: document.getElementById('jn-ne-session').value.trim() || '',
+              outcome: document.getElementById('jn-ne-outcome').value.trim() || '',
+              rr: (function () {
+                var r = parseFloat(document.getElementById('jn-ne-rr').value);
+                return isNaN(r) ? null : r;
+              })(),
+              direction: document.getElementById('jn-ne-dir').value.trim() || '',
+              model: document.getElementById('jn-ne-model').value.trim() || '',
+              notes: document.getElementById('jn-ne-notes').value.trim() || '',
+            };
+            var res = await fetch('/api/trades-row', {
+              method: 'PATCH',
+              cache: 'no-store',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+              var errJ = await res.json().catch(function () {
+                return {};
+              });
+              throw new Error(readApiError(errJ) || 'Save failed (' + res.status + ')');
+            }
+            closeNotionTradeEditor();
+            showToast('Trade updated.');
+            await refreshJournalData();
+          } catch (err) {
+            showToast(err.message || 'Save failed', true);
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'SAVE';
+            }
+          }
+        });
+
+        document.getElementById('jn-ne-delete').addEventListener('click', async function () {
+          if (
+            !confirm(
+              'Delete this trade from the ledger? If the Notion page still exists, the next sync may recreate it.'
+            )
+          )
+            return;
+          var delBtn = document.getElementById('jn-ne-delete');
+          if (delBtn) delBtn.disabled = true;
+          try {
+            var q =
+              'id=' +
+              encodeURIComponent(String(rowId)) +
+              '&user_id=' +
+              encodeURIComponent('eq.' + uid);
+            var res = await fetch('/api/trades-row?' + q, { method: 'DELETE', cache: 'no-store' });
+            if (!res.ok) {
+              var errJ = await res.json().catch(function () {
+                return {};
+              });
+              throw new Error(readApiError(errJ) || 'Delete failed (' + res.status + ')');
+            }
+            closeNotionTradeEditor();
+            showToast('Trade deleted.');
+            await refreshJournalData();
+          } catch (err) {
+            showToast(err.message || 'Delete failed', true);
+            if (delBtn) delBtn.disabled = false;
+          }
+        });
+      }
+
       /* ── Card / modal: photo zoom, Ask Jarvis, open detail (Notion-style) ── */
       document.addEventListener('click', function (e) {
         var inList = e.target.closest('#jn-list');
         var inModal = e.target.closest('#jn-trade-modal');
         if (!inList && !inModal) return;
+
+        var editBtn = e.target.closest('.jn-card__edit');
+        if (editBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          var ec = editBtn.closest('.jn-card');
+          var eidx = ec ? parseInt(ec.getAttribute('data-idx'), 10) : NaN;
+          var et = !isNaN(eidx) ? filteredTrades[eidx] : null;
+          if (et) void openJournalTradeEditorFromRow(et);
+          return;
+        }
 
         var photoBtn = e.target.closest('.jn-photo-open');
         if (photoBtn) {

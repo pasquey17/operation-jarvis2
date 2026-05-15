@@ -1057,6 +1057,33 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 
 /* Trade Form Actions */
 .trade-form-actions { margin-top: 24px; }
+.trade-form-actions--split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+.trade-form-actions--split .trade-submit-btn { flex: 1 1 160px; }
+.trade-delete-btn {
+  flex: 0 0 auto;
+  padding: 14px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 107, 107, 0.45);
+  background: rgba(255, 60, 60, 0.08);
+  color: rgba(255, 170, 170, 0.95);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+.trade-delete-btn:hover:not(:disabled) {
+  background: rgba(255, 60, 60, 0.16);
+  border-color: rgba(255, 140, 140, 0.65);
+}
+.trade-delete-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .trade-submit-btn {
   width: 100%; padding: 14px; border-radius: 6px;
   border: 1px solid var(--blue); background: rgba(0, 212, 255, 0.15);
