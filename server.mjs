@@ -3003,6 +3003,129 @@ async function handleTradeRowDelete(req, res) {
   }
 }
 
+/**
+ * GET /api/economic-calendar
+ *
+ * Returns economic release rows for the **calendar day in Australia/Adelaide**
+ * (same timezone anchor as trade dates elsewhere in Jarvis).
+ *
+ * Data source: public JSON that mirrors Forex Factory–style fields (title, country, date, impact).
+ * This is a **third-party** weekly feed — not an official Forex Factory API; the URL or schema
+ * can change without notice. For production-grade stability, extend this handler to call a paid
+ * calendar API when `FMP_API_KEY` or `ECONOMIC_CALENDAR_API_KEY` is set (e.g. Financial Modeling Prep).
+ */
+const JARVIS_ECONOMIC_TZ = "Australia/Adelaide";
+const FF_STYLE_CALENDAR_JSON_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+
+function formatAdelaideDateKey(d) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: JARVIS_ECONOMIC_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const y = parts.find((p) => p.type === "year")?.value;
+  const mo = parts.find((p) => p.type === "month")?.value;
+  const da = parts.find((p) => p.type === "day")?.value;
+  if (!y || !mo || !da) return "";
+  return `${y}-${mo}-${da}`;
+}
+
+function mapEconomicImpact(raw) {
+  const u = String(raw || "").trim().toLowerCase();
+  if (u === "high") return "high";
+  if (u === "medium") return "medium";
+  if (u === "holiday") return "holiday";
+  return "low";
+}
+
+async function handleEconomicCalendar(req, res) {
+  const todayKey = formatAdelaideDateKey(new Date());
+  const base = {
+    date: todayKey,
+    timezone: JARVIS_ECONOMIC_TZ,
+    source: "ff_style_feed",
+    items: [],
+  };
+  try {
+    const ac = new AbortController();
+    const tid = setTimeout(() => ac.abort(), 12000);
+    let r;
+    try {
+      r = await fetch(FF_STYLE_CALENDAR_JSON_URL, {
+        signal: ac.signal,
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "OperationJarvis/1.0 (private)",
+        },
+      });
+    } finally {
+      clearTimeout(tid);
+    }
+    if (!r.ok) {
+      json(res, 200, {
+        ...base,
+        error: `Calendar upstream HTTP ${r.status}`,
+      });
+      return;
+    }
+    const body = await r.text();
+    let arr;
+    try {
+      arr = JSON.parse(body);
+    } catch {
+      json(res, 200, {
+        ...base,
+        error: "Calendar upstream returned invalid JSON",
+      });
+      return;
+    }
+    if (!Array.isArray(arr)) {
+      json(res, 200, {
+        ...base,
+        error: "Calendar upstream returned non-array",
+      });
+      return;
+    }
+    const rows = [];
+    for (const row of arr) {
+      if (!row || typeof row !== "object") continue;
+      const iso = row.date;
+      if (typeof iso !== "string" || !iso.trim()) continue;
+      const ms = Date.parse(iso);
+      if (!Number.isFinite(ms)) continue;
+      if (formatAdelaideDateKey(new Date(ms)) !== todayKey) continue;
+      const title = String(row.title || "").trim();
+      if (!title) continue;
+      const timeLabel = new Intl.DateTimeFormat("en-AU", {
+        timeZone: JARVIS_ECONOMIC_TZ,
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(new Date(ms));
+      rows.push({
+        _ms: ms,
+        time: timeLabel,
+        currency: String(row.country || "").trim() || "—",
+        title,
+        impact: mapEconomicImpact(row.impact),
+      });
+    }
+    rows.sort((a, b) => a._ms - b._ms);
+    const items = rows.map(({ _ms, ...rest }) => rest);
+    json(res, 200, {
+      ...base,
+      upstream: FF_STYLE_CALENDAR_JSON_URL,
+      items,
+    });
+  } catch (e) {
+    json(res, 200, {
+      ...base,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+}
+
 function parseSupabaseUserIdParam(req) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
   let raw = (u.searchParams.get("user_id") || "").trim();
@@ -3758,6 +3881,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/notion/reconcile-archive")) {
     await handleNotionReconcileArchive(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/economic-calendar")) {
+    await handleEconomicCalendar(req, res);
     return;
   }
 

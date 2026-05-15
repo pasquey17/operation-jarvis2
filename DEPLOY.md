@@ -17,7 +17,8 @@ Set production secrets in the Vercel dashboard (or your host) as described in `C
 
 ## Static data
 
-Account page ticker and pair presets read from:
+Account page pair presets read from:
 
-- `public/data/news-today.json` — manual curated lines (not a live scrape).
 - `public/data/fx-pairs.json` — static pip sizing hints.
+
+The economic calendar strip on `/account.html` loads from **`GET /api/economic-calendar`** (server-side fetch; no browser CORS to calendar sites).
