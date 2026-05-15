@@ -789,21 +789,73 @@ function lossStreakFromNewest(sortedDesc) {
   return n;
 }
 
+function traderDisplayName(userId) {
+  const id = String(userId || "").trim();
+  if (id === DEFAULT_USER_ID) return "Aiden";
+  if (id === USER_MUM_ID) return "Mum";
+  return "";
+}
+
 /**
- * Cold-open copy: one grounded, human-sounding read of the ledger (no API call).
- * Uses only `tradeData` already returned from GET /api/trades.
+ * One honest extra line from recent rows only (newest-first `sorted`).
+ * Prefer last-three same outcome; else dominant pair in the last up-to-20 lines.
  */
-function buildSmartOpenGreeting(td) {
+function gleanLedgerSnapshotClause(sortedNewestFirst, latestPairUpper) {
+  const slice = sortedNewestFirst.slice(0, 20);
+  if (slice.length < 3) return "";
+
+  const o0 = normOutcomeGreeting(slice[0].outcome ?? slice[0].Outcome);
+  const o1 = normOutcomeGreeting(slice[1].outcome ?? slice[1].Outcome);
+  const o2 = normOutcomeGreeting(slice[2].outcome ?? slice[2].Outcome);
+  if (o0 && o0 === o1 && o1 === o2 && (o0 === "WIN" || o0 === "LOSS")) {
+    return o0 === "WIN"
+      ? "Your last three logged trades are all wins."
+      : "Your last three logged trades are all losses.";
+  }
+
+  if (slice.length < 5) return "";
+
+  const counts = new Map();
+  for (const r of slice) {
+    const p = String(r.pair ?? r.Pair ?? "")
+      .trim()
+      .toUpperCase();
+    if (!p || p === "—") continue;
+    counts.set(p, (counts.get(p) || 0) + 1);
+  }
+  let best = "";
+  let bestN = 0;
+  for (const [p, n] of counts) {
+    if (n > bestN) {
+      best = p;
+      bestN = n;
+    }
+  }
+  const need = slice.length >= 15 ? 6 : slice.length >= 10 ? 5 : 4;
+  const shareOk = bestN >= Math.ceil(slice.length * 0.35);
+  if (!best || bestN < need || !shareOk) return "";
+  if (latestPairUpper && best === latestPairUpper) {
+    return "";
+  }
+  return `Across your last ${slice.length} lines, ${best} shows up most.`;
+}
+
+/**
+ * Cold-open copy: grounded, human, no API call. Uses `td` + optional `userId` for first name only.
+ */
+function buildSmartOpenGreeting(td, userId) {
   const { weekday, daypart } = getAdelaideDayContext();
   const capDay = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const name = traderDisplayName(userId);
+  const lead = name ? `${name}, ${capDay} ${daypart}` : `${capDay} ${daypart}`;
 
   if (!td || td.loadError) {
-    return `${capDay} ${daypart} — I couldn't pull your ledger just now. Try a refresh once; if it still won't load, it's usually sync or access, not you.`;
+    return `${lead} — I couldn't pull your ledger just now. Try a refresh once; if it still won't load, it's usually sync or access, not you.`;
   }
 
   const recs = Array.isArray(td.records) ? td.records : [];
   if (!recs.length) {
-    return `${capDay} ${daypart} — nothing on the book for this profile yet. Log a trade or run a Notion sync and we'll anchor to real lines.`;
+    return `${lead} — nothing's on the book for this profile yet. Log a trade or sync Notion and we'll work from real lines.`;
   }
 
   const snap = td.snapshot != null && typeof td.snapshot === "object" ? td.snapshot : null;
@@ -825,33 +877,36 @@ function buildSmartOpenGreeting(td) {
       : null;
   const bestSession = snap && snap.bestSession ? String(snap.bestSession).trim() : "";
 
-  const bookBit =
-    winRate != null
-      ? `You've got ${total} trades in the book and win rate is sitting near ${winRate.toFixed(1)}%.`
-      : `You've got ${total} trades in the book.`;
-
-  let latestBit = "";
+  let latestPairUpper = "";
+  let latestPhrase = "";
   if (latest) {
     const o = normOutcomeGreeting(latest.outcome ?? latest.Outcome);
     const pair = String(latest.pair ?? latest.Pair ?? "")
       .trim()
       .toUpperCase() || "—";
+    latestPairUpper = pair;
     const sess = String(latest.session ?? latest.Session ?? "").trim();
-    const oLabel = o === "WIN" ? "WIN" : o === "LOSS" ? "LOSS" : o === "BE" ? "BE" : o || "—";
-    const outcomeTail =
+    const tail =
       o === "WIN"
-        ? ", and that one was a win."
+        ? "a win"
         : o === "LOSS"
-          ? ", and that one was a loss."
+          ? "a loss"
           : o === "BE"
-            ? ", flat / break-even on the sheet."
-            : oLabel
-              ? `, logged as ${oLabel}.`
-              : ".";
-    latestBit = sess
-      ? ` Last on the tape: ${sess}, ${pair}${outcomeTail}`
-      : ` Last on the tape: ${pair}${outcomeTail}`;
+            ? "flat / break-even"
+            : o
+              ? String(o)
+              : "something to review";
+    latestPhrase = sess
+      ? `Most recent fill: ${sess} ${pair}, ${tail}.`
+      : `Most recent fill: ${pair}, ${tail}.`;
   }
+
+  const glean = gleanLedgerSnapshotClause(sorted, latestPairUpper);
+
+  const statsPhrase =
+    winRate != null
+      ? `You've got ${total} trades logged; win rate is about ${winRate.toFixed(1)}%.`
+      : `You've got ${total} trades logged.`;
 
   let nudge = "";
   if (streak >= 2 && total >= 2) {
@@ -863,20 +918,26 @@ function buildSmartOpenGreeting(td) {
     nudge = "Win rate's soft on this volume — A+ setups only until the stats lift.";
   } else if (weekday.toLowerCase() === "friday" && total >= 5) {
     nudge =
-      "It's Friday — match size to how sharp you actually feel; sloppy execution shows up fast when you read the log back.";
+      "It's Friday — match size to how sharp you feel; sloppy execution shows up fast when you read the log back.";
   } else if (bestSession && total >= 8) {
     nudge = `Most of your trades sit in ${bestSession} — make sure that's real edge, not autopilot volume.`;
   } else {
     nudge = "Pick one lane — last loss, a session, or one stat — and we'll run it tight to what you logged.";
   }
 
-  let out = `${capDay} ${daypart} — I'm on your book. ${bookBit}${latestBit} ${nudge}`;
+  const s1Parts = [statsPhrase];
+  if (latestPhrase) s1Parts.push(latestPhrase);
+  if (glean) s1Parts.push(glean);
+  const sentence1 = `${lead} — ${s1Parts.join(" ")}`.replace(/\s+/g, " ").trim();
+  const s1Closed = sentence1.endsWith(".") ? sentence1 : `${sentence1}.`;
+  const sentence2 = nudge.trim();
+  const s2Closed = sentence2.endsWith(".") ? sentence2 : `${sentence2}.`;
+  let out = `${s1Closed} ${s2Closed}`.replace(/\s+/g, " ").trim();
 
   if (typeof td.warning === "string" && td.warning.trim()) {
-    out = `${out.trim()} — heads up: ${td.warning.trim()}`;
+    out = `${out} — heads up: ${td.warning.trim()}`;
   }
 
-  out = out.replace(/\s+/g, " ").trim();
   if (out.length > MAX_OPEN_GREETING_CHARS) {
     out = `${out.slice(0, MAX_OPEN_GREETING_CHARS - 1).trimEnd()}…`;
   }
@@ -887,7 +948,12 @@ async function showColdOpenGreeting() {
   if (coldOpenGreetingDoneThisPage || chatSending) return;
   coldOpenGreetingDoneThisPage = true;
 
-  const text = buildSmartOpenGreeting(tradeData);
+  const uid =
+    currentUserId ||
+    localStorage.getItem("jarvis_user") ||
+    localStorage.getItem("user_id") ||
+    DEFAULT_USER_ID;
+  const text = buildSmartOpenGreeting(tradeData, uid);
   const msg = { role: "assistant", content: text, coldOpen: true };
   const hadHistory = chatMessages.length > 0;
 
