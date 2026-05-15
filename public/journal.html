@@ -221,6 +221,45 @@
       }
       .jn-log-btn:active { transform: translateY(0); }
 
+      /* ── LOG TRADE + Edit — stacked under filter ── */
+      .jn-action-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .jn-edit-toolbar-btn {
+        flex-shrink: 0;
+        padding: 10px 18px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 212, 255, 0.35) !important;
+        background: rgba(0, 212, 255, 0.06) !important;
+        color: #00d4ff !important;
+        font-family: "Share Tech Mono", "Courier New", monospace !important;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, opacity 0.2s;
+      }
+      .jn-edit-toolbar-btn:hover:not(:disabled) {
+        border-color: rgba(0, 212, 255, 0.65) !important;
+        background: rgba(0, 212, 255, 0.12) !important;
+        box-shadow: 0 0 14px rgba(0, 212, 255, 0.15);
+      }
+      .jn-edit-toolbar-btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .jn-edit-toolbar-btn__icon {
+        margin-left: 0.35em;
+        font-size: 1.05em;
+        vertical-align: -0.05em;
+      }
+
       /* ── Filter toggle ── */
       .jn-filter-toggle {
         position: relative; padding: 10px 18px; border-radius: 6px;
@@ -440,26 +479,8 @@
         display: flex; align-items: center; gap: 6px;
         flex-shrink: 0; margin-left: auto;
       }
-      .jn-card__edit {
-        flex-shrink: 0;
-        width: 30px; height: 30px; padding: 0; margin: 0;
-        border-radius: 6px;
-        border: 1px solid rgba(0, 212, 255, 0.35);
-        background: rgba(0, 212, 255, 0.06);
-        color: #00d4ff;
-        cursor: pointer;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 14px;
-        line-height: 1;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-      }
-      .jn-card__edit:hover {
-        background: rgba(0, 212, 255, 0.14);
-        border-color: rgba(0, 212, 255, 0.65);
-        box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+      .jn-card--selected {
+        box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.45), 0 8px 28px rgba(0, 212, 255, 0.12) !important;
       }
       .jn-card__date {
         font-family: "Outfit", system-ui, sans-serif !important;
@@ -632,8 +653,10 @@
         .jn-page { padding: 68px 14px 90px; }
         .jn-header { flex-direction: column; gap: 12px; align-items: stretch; }
         .jn-header__actions { flex-direction: column; align-items: stretch; width: 100%; }
+        .jn-action-stack { width: 100%; }
         .jn-filter-toggle { text-align: center; min-height: 44px; }
         .jn-log-btn { text-align: center; min-height: 44px; }
+        .jn-edit-toolbar-btn { text-align: center; min-height: 44px; }
         .jn-title { font-size: 2rem !important; }
         .jn-card__top { padding: 9px 10px 10px; }
         .jn-card__cover { max-height: 92px; min-height: 60px; }
@@ -944,7 +967,19 @@
               </div>
             </div>
           </div>
-          <button class="jn-log-btn" id="jn-log-btn" type="button">LOG TRADE +</button>
+          <div class="jn-action-stack" role="group" aria-label="Log and edit trade">
+            <button class="jn-log-btn" id="jn-log-btn" type="button">LOG TRADE +</button>
+            <button
+              type="button"
+              class="jn-edit-toolbar-btn"
+              id="jn-edit-trade-btn"
+              disabled
+              aria-disabled="true"
+              title="Tap a trade card to select it, then edit or delete"
+            >
+              EDIT TRADE<span class="jn-edit-toolbar-btn__icon" aria-hidden="true">&#9998;</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -993,6 +1028,8 @@
       let allTrades      = [];
       let filteredTrades = [];
       let displayedCount = 0;
+      /** Last trade row tapped (detail modal) — drives header EDIT TRADE button. */
+      let journalEditTargetId = null;
       let activeFilters  = {
         period: 'all',
         outcome: 'all',
@@ -2154,9 +2191,17 @@
         jnDebugRegressionSort();
         updateFilterHint();
 
+        if (journalEditTargetId) {
+          var stillThere = filteredTrades.some(function (t) {
+            return t.id != null && String(t.id) === String(journalEditTargetId);
+          });
+          if (!stillThere) journalEditTargetId = null;
+        }
+
         displayedCount = 0;
         document.getElementById('jn-list').innerHTML = '';
         renderNextPage();
+        syncJournalEditToolbar();
       }
 
       /* ── Card rendering ── */
@@ -2360,9 +2405,58 @@
         return '<div class="jn-expand-inner">' + parts.join('') + '</div>';
       }
 
+      function findTradeInFilteredByEditId(id) {
+        if (id == null || id === '') return null;
+        var sid = String(id);
+        for (var i = 0; i < filteredTrades.length; i++) {
+          var t = filteredTrades[i];
+          if (t && t.id != null && String(t.id) === sid) return t;
+        }
+        return null;
+      }
+
+      function isJournalTradeEditable(trade) {
+        if (!trade || trade.id == null || String(trade.id).trim() === '') return false;
+        var src = trade._jarvis_trade_source || '';
+        return src === 'journal_log' || src === 'notion_table';
+      }
+
+      function syncJournalEditToolbar() {
+        var btn = document.getElementById('jn-edit-trade-btn');
+        if (!btn) return;
+        var t = journalEditTargetId ? findTradeInFilteredByEditId(journalEditTargetId) : null;
+        var ok = !!(t && isJournalTradeEditable(t));
+        btn.disabled = !ok;
+        btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
+      }
+
+      function updateJournalCardSelectionDom() {
+        document.querySelectorAll('#jn-list .jn-card').forEach(function (card) {
+          var idx = parseInt(card.getAttribute('data-idx'), 10);
+          var tr = !isNaN(idx) ? filteredTrades[idx] : null;
+          var sel =
+            !!journalEditTargetId &&
+            tr &&
+            tr.id != null &&
+            String(tr.id) === String(journalEditTargetId);
+          card.classList.toggle('jn-card--selected', !!sel);
+        });
+      }
+
+      function setJournalEditTarget(trade) {
+        if (trade && trade.id != null && String(trade.id).trim() !== '') {
+          journalEditTargetId = String(trade.id).trim();
+        } else {
+          journalEditTargetId = null;
+        }
+        syncJournalEditToolbar();
+        updateJournalCardSelectionDom();
+      }
+
       function openTradeModal(idx) {
         var trade = filteredTrades[idx];
         if (!trade) return;
+        setJournalEditTarget(trade);
         var modal = document.getElementById('jn-trade-modal');
         var scrollEl = document.getElementById('jn-trade-modal-scroll');
         var titleEl = document.getElementById('jn-trade-modal-title');
@@ -2441,8 +2535,15 @@
             '  </div>';
         }
 
+        var selClass =
+          journalEditTargetId &&
+          trade.id != null &&
+          String(trade.id) === String(journalEditTargetId)
+            ? ' jn-card--selected'
+            : '';
+
         return [
-          '<article class="jn-card" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
+          '<article class="jn-card' + selClass + '" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
           coverPiece,
           '  <div class="jn-card__top">',
           '    <span class="jn-card__date">' + esc(dateShort) + '</span>',
@@ -2454,7 +2555,6 @@
           modelDisplay ? '      <span class="jn-card__model">' + esc(modelDisplay) + '</span>' : '',
           '      </div>',
           '      <div class="jn-card__right">',
-          '      <button type="button" class="jn-card__edit" aria-label="Edit or delete trade" title="Edit / delete">&#9998;</button>',
           '      ' + acctBadge,
           '      <span class="jn-card__rr"' + (rrColor ? ' style="color:' + rrColor + '"' : '') + '>' + esc(rrDisplay) + '</span>',
           '      <span class="jn-card__chevron">&#9660;</span>',
@@ -2831,17 +2931,6 @@
         var inModal = e.target.closest('#jn-trade-modal');
         if (!inList && !inModal) return;
 
-        var editBtn = e.target.closest('.jn-card__edit');
-        if (editBtn) {
-          e.preventDefault();
-          e.stopPropagation();
-          var ec = editBtn.closest('.jn-card');
-          var eidx = ec ? parseInt(ec.getAttribute('data-idx'), 10) : NaN;
-          var et = !isNaN(eidx) ? filteredTrades[eidx] : null;
-          if (et) void openJournalTradeEditorFromRow(et);
-          return;
-        }
-
         var photoBtn = e.target.closest('.jn-photo-open');
         if (photoBtn) {
           e.preventDefault();
@@ -3214,6 +3303,18 @@
 
       /* ── Boot ── */
       document.getElementById('jn-log-btn').addEventListener('click', openTradeForm);
+      document.getElementById('jn-edit-trade-btn').addEventListener('click', function () {
+        var t = journalEditTargetId ? findTradeInFilteredByEditId(journalEditTargetId) : null;
+        if (!t) {
+          showToast('Tap a trade card to open it, then use Edit trade.', true);
+          return;
+        }
+        if (!isJournalTradeEditable(t)) {
+          showToast('This source cannot be edited here.', true);
+          return;
+        }
+        void openJournalTradeEditorFromRow(t);
+      });
 
       async function boot() {
         initParticles();
