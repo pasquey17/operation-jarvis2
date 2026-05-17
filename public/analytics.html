@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/style.css?v=b4e91c2a" />
+    <link rel="stylesheet" href="/css/style.css?v=c8d3f01e" />
     <style>
       html, body {
         overflow: auto !important; height: auto !important;
@@ -286,65 +286,55 @@
         user-select: none;
       }
 
-      /* ═══ Win rate hero ═══ */
-      .an-winrate-hero { margin-bottom: 22px; }
-      .an-wr-panel {
+      /* ═══ Win rate hero — open centered HUD ═══ */
+      .an-winrate-hero {
+        margin: 8px auto 36px;
+        padding: 12px 0 8px;
+        max-width: 720px;
+        width: 100%;
+      }
+      .an-wr-inner {
         position: relative;
-        border-radius: 20px;
-        border: 1px solid rgba(0,212,255,0.2);
-        background: linear-gradient(165deg, rgba(8,18,32,0.98) 0%, rgba(2,6,14,0.94) 100%);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        padding: 20px 22px 22px;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 16px 48px rgba(0,0,0,0.45), 0 0 40px rgba(0,191,255,0.06);
-        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
       }
-      .an-wr-panel::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        pointer-events: none;
-        background: radial-gradient(ellipse 80% 60% at 30% 20%, rgba(0,212,255,0.08), transparent 55%);
-      }
-      .an-wr-top {
+      .an-wr-toolbar {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 18px;
+        gap: 16px;
+        width: 100%;
+        margin-bottom: 8px;
         position: relative;
         z-index: 2;
       }
-      .an-wr-top__left { min-width: 0; }
-      .an-wr-eyebrow {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        color: rgba(0,212,255,0.95);
-        margin: 0 0 6px;
-      }
-      .an-wr-meta-row {
+      .an-wr-toolbar__left {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px;
+        gap: 10px 14px;
+        min-width: 0;
+        text-align: left;
+      }
+      .an-wr-eyebrow {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.7);
+        margin: 0;
       }
       .an-wr-meta-chip {
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 9px;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.14em;
         text-transform: uppercase;
-        padding: 5px 10px;
-        border-radius: 999px;
-        border: 1px solid rgba(0,212,255,0.22);
-        background: rgba(0,212,255,0.06);
-        color: rgba(192,192,192,0.85);
+        color: rgba(192,192,192,0.55);
       }
       .an-wr-meta-chip--warn {
-        border-color: rgba(255,200,80,0.35);
-        color: rgba(255,220,140,0.9);
+        color: rgba(255,200,100,0.9);
       }
       .an-wr-filter-wrap { position: relative; flex-shrink: 0; z-index: 30; }
       .an-wr-filter-btn {
@@ -455,21 +445,38 @@
         padding: 4px 0;
       }
       .an-wr-clear:hover { color: #00d4ff; text-decoration: underline; }
+      .an-wr-chips--bar {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        margin: 0 0 12px;
+        min-height: 0;
+      }
+      .an-wr-chips--bar:empty { display: none; margin: 0; }
       .an-wr-body {
-        display: grid;
-        grid-template-columns: minmax(200px, 280px) 1fr;
-        gap: 24px;
+        display: flex;
+        flex-direction: column;
         align-items: center;
+        width: 100%;
         position: relative;
         z-index: 1;
       }
       .an-wr-gauge-wrap {
         position: relative;
-        width: 100%;
-        max-width: 280px;
-        margin: 0 auto;
+        width: min(100%, 380px);
+        margin: 8px auto 0;
         aspect-ratio: 1;
-        max-height: 260px;
+        filter: drop-shadow(0 0 48px rgba(0,191,255,0.12));
+      }
+      .an-wr-gauge-wrap::after {
+        content: "";
+        position: absolute;
+        inset: 12%;
+        border-radius: 50%;
+        pointer-events: none;
+        box-shadow: inset 0 0 40px rgba(0,0,0,0.65);
       }
       .an-wr-gauge-wrap canvas {
         display: block;
@@ -485,109 +492,90 @@
         justify-content: center;
         pointer-events: none;
         text-align: center;
-        padding: 28% 18%;
+        padding: 30% 20%;
       }
       .an-wr-gauge-pct {
         font-family: "Outfit",system-ui,sans-serif;
-        font-weight: 300;
-        font-size: clamp(2.4rem, 6vw, 3.2rem);
+        font-weight: 200;
+        font-size: clamp(3rem, 10vw, 4.25rem);
         line-height: 1;
         color: #fff;
-        text-shadow: 0 0 40px rgba(0,212,255,0.45);
-        letter-spacing: 0.02em;
+        text-shadow: 0 0 60px rgba(0,212,255,0.55), 0 0 12px rgba(0,212,255,0.25);
+        letter-spacing: -0.02em;
       }
-      .an-wr-gauge-pct--muted { color: rgba(255,255,255,0.35); font-size: 1.5rem; }
+      .an-wr-gauge-pct--muted { color: rgba(255,255,255,0.35); font-size: 1.75rem; text-shadow: none; }
       .an-wr-gauge-label {
-        margin-top: 6px;
+        margin-top: 8px;
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 10px;
-        letter-spacing: 0.2em;
+        letter-spacing: 0.22em;
         text-transform: uppercase;
-        color: rgba(0,212,255,0.75);
+        color: rgba(0,212,255,0.65);
       }
       .an-wr-gauge-sub {
-        margin-top: 4px;
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 8px;
-        letter-spacing: 0.1em;
-        color: rgba(255,200,100,0.85);
-      }
-      .an-wr-breakdown { display: flex; flex-direction: column; gap: 12px; }
-      .an-wr-pill {
-        padding: 14px 16px;
-        border-radius: 14px;
-        border: 1px solid rgba(255,255,255,0.08);
-        background: rgba(0,0,0,0.35);
-        position: relative;
-        overflow: hidden;
-      }
-      .an-wr-pill::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 3px;
-        background: var(--wr-accent, #00d4ff);
-      }
-      .an-wr-pill--win { --wr-accent: rgba(0,255,170,0.95); }
-      .an-wr-pill--loss { --wr-accent: rgba(255,90,110,0.95); }
-      .an-wr-pill--be { --wr-accent: rgba(192,192,192,0.75); }
-      .an-wr-pill-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 8px;
-      }
-      .an-wr-pill-k {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.55);
-      }
-      .an-wr-pill-v {
-        font-family: "Outfit",sans-serif;
-        font-weight: 500;
-        font-size: 1.35rem;
-        color: rgba(255,255,255,0.95);
-      }
-      .an-wr-pill-bar {
-        height: 6px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.08);
-        overflow: hidden;
-      }
-      .an-wr-pill-bar > i {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: var(--wr-accent, #00d4ff);
-        transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .an-wr-pill-meta {
         margin-top: 6px;
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 9px;
-        color: rgba(192,192,192,0.65);
+        font-size: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(192,192,192,0.45);
+        max-width: 14em;
+        line-height: 1.35;
       }
-      .an-wr-body--empty .an-wr-breakdown {
-        pointer-events: none;
-      }
-      .an-wr-empty {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 32px 16px;
+      .an-wr-gauge-sub--warn { color: rgba(255,200,100,0.85); }
+      .an-wr-stats {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 6px 10px;
+        margin-top: 20px;
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 11px;
-        letter-spacing: 0.08em;
-        color: rgba(192,192,192,0.65);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.42);
       }
+      .an-wr-stat strong {
+        font-family: "Outfit",sans-serif;
+        font-weight: 500;
+        font-size: 1.05rem;
+        letter-spacing: 0;
+        margin-left: 4px;
+      }
+      .an-wr-stat--w strong { color: rgba(0,255,180,0.95); }
+      .an-wr-stat--l strong { color: rgba(255,100,120,0.95); }
+      .an-wr-stat--b strong { color: rgba(192,192,192,0.85); }
+      .an-wr-stat-sep { color: rgba(0,212,255,0.25); user-select: none; }
+      .an-wr-stack {
+        display: flex;
+        width: min(100%, 420px);
+        height: 4px;
+        margin-top: 14px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.06);
+      }
+      .an-wr-stack > i {
+        display: block;
+        height: 100%;
+        transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+        min-width: 0;
+      }
+      .an-wr-stack__w { background: linear-gradient(90deg, rgba(0,255,170,0.85), rgba(0,212,255,0.55)); }
+      .an-wr-stack__l { background: linear-gradient(90deg, rgba(255,90,110,0.9), rgba(180,40,60,0.6)); }
+      .an-wr-stack__b { background: rgba(192,192,192,0.45); }
+      .an-wr-body--empty .an-wr-stats,
+      .an-wr-body--empty .an-wr-stack { opacity: 0.3; }
       @media (max-width: 768px) {
-        .an-wr-body { grid-template-columns: 1fr; gap: 20px; }
-        .an-wr-filter-panel { right: auto; left: 0; width: min(340px, calc(100vw - 40px)); }
+        .an-winrate-hero { padding: 4px 0 4px; margin-bottom: 28px; }
+        .an-wr-toolbar { flex-direction: column; align-items: stretch; }
+        .an-wr-toolbar__left { justify-content: center; text-align: center; }
+        .an-wr-filter-wrap { align-self: flex-end; }
+        .an-wr-filter-panel { right: 0; left: auto; width: min(340px, calc(100vw - 32px)); }
         .an-wr-filter-row { grid-template-columns: 1fr; }
         .an-wr-filter-add { width: 100%; min-height: 44px; }
+        .an-wr-gauge-wrap { width: min(88vw, 320px); }
       }
 
       /* ═══ Monte risk control ═══ */
@@ -821,14 +809,12 @@
         </header>
 
         <section class="an-winrate-hero" id="an-winrate-hero" aria-label="Win rate overview">
-          <article class="an-wr-panel">
-            <div class="an-wr-top">
-              <div class="an-wr-top__left">
+          <div class="an-wr-inner">
+            <header class="an-wr-toolbar">
+              <div class="an-wr-toolbar__left">
                 <h2 class="an-wr-eyebrow">Win rate</h2>
-                <div class="an-wr-meta-row">
-                  <span class="an-wr-meta-chip" id="an-wr-meta-trades">— trades</span>
-                  <span class="an-wr-meta-chip an-wr-meta-chip--warn" id="an-wr-meta-sample" hidden>Low sample</span>
-                </div>
+                <span class="an-wr-meta-chip" id="an-wr-meta-trades">— trades</span>
+                <span class="an-wr-meta-chip an-wr-meta-chip--warn" id="an-wr-meta-sample" hidden>Low sample</span>
               </div>
               <div class="an-wr-filter-wrap">
                 <button type="button" class="an-wr-filter-btn" id="an-wr-filter-btn" aria-expanded="false" aria-controls="an-wr-filter-panel">
@@ -841,39 +827,34 @@
                     <select id="an-wr-val" aria-label="Filter value" disabled></select>
                     <button type="button" class="an-wr-filter-add" id="an-wr-filter-add">Add</button>
                   </div>
-                  <div class="an-wr-chips" id="an-wr-chips"></div>
                   <button type="button" class="an-wr-clear" id="an-wr-filter-clear">Clear all filters</button>
                 </div>
               </div>
-            </div>
+            </header>
+            <div class="an-wr-chips an-wr-chips--bar" id="an-wr-chips" aria-live="polite"></div>
             <div class="an-wr-body" id="an-wr-body">
               <div class="an-wr-gauge-wrap">
                 <canvas id="chart-winrate-hero" aria-label="Win rate gauge"></canvas>
                 <div class="an-wr-gauge-center">
                   <div class="an-wr-gauge-pct" id="an-wr-pct">—</div>
                   <div class="an-wr-gauge-label">Win rate</div>
-                  <div class="an-wr-gauge-sub" id="an-wr-sub" hidden></div>
+                  <div class="an-wr-gauge-sub" id="an-wr-sub">Wins ÷ all trades (incl. BE)</div>
                 </div>
               </div>
-              <div class="an-wr-breakdown" id="an-wr-breakdown">
-                <div class="an-wr-pill an-wr-pill--win">
-                  <div class="an-wr-pill-top"><span class="an-wr-pill-k">Wins</span><span class="an-wr-pill-v" id="an-wr-wins">0</span></div>
-                  <div class="an-wr-pill-bar"><i id="an-wr-bar-win" style="width:0%"></i></div>
-                  <div class="an-wr-pill-meta" id="an-wr-meta-win">—</div>
-                </div>
-                <div class="an-wr-pill an-wr-pill--loss">
-                  <div class="an-wr-pill-top"><span class="an-wr-pill-k">Losses</span><span class="an-wr-pill-v" id="an-wr-losses">0</span></div>
-                  <div class="an-wr-pill-bar"><i id="an-wr-bar-loss" style="width:0%"></i></div>
-                  <div class="an-wr-pill-meta" id="an-wr-meta-loss">—</div>
-                </div>
-                <div class="an-wr-pill an-wr-pill--be">
-                  <div class="an-wr-pill-top"><span class="an-wr-pill-k">Break even</span><span class="an-wr-pill-v" id="an-wr-be">0</span></div>
-                  <div class="an-wr-pill-bar"><i id="an-wr-bar-be" style="width:0%"></i></div>
-                  <div class="an-wr-pill-meta" id="an-wr-meta-be">—</div>
-                </div>
+              <div class="an-wr-stats" id="an-wr-stats">
+                <span class="an-wr-stat an-wr-stat--w">W <strong id="an-wr-wins">0</strong></span>
+                <span class="an-wr-stat-sep" aria-hidden="true">·</span>
+                <span class="an-wr-stat an-wr-stat--l">L <strong id="an-wr-losses">0</strong></span>
+                <span class="an-wr-stat-sep" aria-hidden="true">·</span>
+                <span class="an-wr-stat an-wr-stat--b">BE <strong id="an-wr-be">0</strong></span>
+              </div>
+              <div class="an-wr-stack" id="an-wr-stack" aria-hidden="true">
+                <i class="an-wr-stack__w" id="an-wr-bar-win" style="width:0%"></i>
+                <i class="an-wr-stack__l" id="an-wr-bar-loss" style="width:0%"></i>
+                <i class="an-wr-stack__b" id="an-wr-bar-be" style="width:0%"></i>
               </div>
             </div>
-          </article>
+          </div>
         </section>
 
         <section class="an-reports" id="an-reports" aria-label="Weekly and monthly reports">
@@ -2327,9 +2308,8 @@
 
         /* ══════════════════════════════════════════════════
            WIN RATE HERO — filtered gauge + breakdown
-           Win rate % = wins / (wins + losses) * 100; BE excluded from denominator.
-           Meta chip shows total filtered trades including BE. Ring = W/L/BE share of all filtered.
-           Outcome filter (e.g. Wins only) can skew the headline % — that is intentional.
+           Win rate % = wins / totalTrades * 100 (BE in denominator). Subtitle documents this.
+           Meta chip = filtered trade count. Ring = W/L/BE share of all filtered trades.
         ══════════════════════════════════════════════════ */
         var wrActiveFilters = [];
         var wrFilterUiBound = false;
@@ -2496,13 +2476,46 @@
             else if (o === 'loss') losses++;
             else if (o === 'be') be++;
           });
-          var denom = wins + losses;
-          var wr = denom > 0 ? (wins / denom) * 100 : null;
-          return { n: trades.length, wins: wins, losses: losses, be: be, wr: wr, denom: denom };
+          var n = trades.length;
+          var wr = n > 0 ? (wins / n) * 100 : null;
+          return { n: n, wins: wins, losses: losses, be: be, wr: wr };
         }
-        function wrPctShare(n, total) {
-          if (!total) return '0% of trades';
-          return ((n / total) * 100).toFixed(1) + '% of trades';
+        function wrSyncBadge(stats, filteredTrades) {
+          var netR = 0;
+          filteredTrades.forEach(function (t) {
+            netR += rDelta(t);
+          });
+          var scope = wrActiveFilters.length ? 'filtered' : 'full dataset';
+          var wrStr = stats.wr != null ? stats.wr.toFixed(1) + '% WR' : '—';
+          var badge = document.getElementById('an-badge-text');
+          var foot = document.getElementById('an-foot');
+          var line =
+            stats.n +
+            ' trades · ' +
+            scope +
+            ' · ' +
+            wrStr +
+            ' · ' +
+            netR.toFixed(2) +
+            'R';
+          if (badge) badge.textContent = line;
+          if (foot) {
+            foot.textContent =
+              (wrActiveFilters.length ? 'Filtered' : 'Full dataset') +
+              ': ' +
+              stats.n +
+              ' trades  ·  Win rate: ' +
+              (stats.wr != null ? stats.wr.toFixed(1) + '%' : '—') +
+              '  ·  Net R: ' +
+              netR.toFixed(2) +
+              'R';
+          }
+          __anLastStats = {
+            total: stats.n,
+            wins: stats.wins,
+            winRate: stats.wr,
+            netR: netR
+          };
         }
         function wrPopulateDimSelect(trades) {
           var sel = document.getElementById('an-wr-dim');
@@ -2717,7 +2730,8 @@
           var elPct = document.getElementById('an-wr-pct');
           var elSub = document.getElementById('an-wr-sub');
           var elBody = document.getElementById('an-wr-body');
-          var elBd = document.getElementById('an-wr-breakdown');
+          var elStats = document.getElementById('an-wr-stats');
+          var elStack = document.getElementById('an-wr-stack');
           var canvas = document.getElementById('chart-winrate-hero');
 
           if (elMeta) {
@@ -2736,28 +2750,28 @@
             }
             if (elSub) {
               elSub.hidden = false;
+              elSub.classList.add('an-wr-gauge-sub--warn');
               elSub.textContent = 'No trades for this filter';
             }
-            if (elBd) elBd.style.opacity = '0.35';
-            ['an-wr-wins', 'an-wr-losses', 'an-wr-be'].forEach(function (id, i) {
+            if (elStats) elStats.style.opacity = '0.35';
+            if (elStack) elStack.style.opacity = '0.35';
+            ['an-wr-wins', 'an-wr-losses', 'an-wr-be'].forEach(function (id) {
               var el = document.getElementById(id);
               if (el) el.textContent = '0';
-            });
-            ['an-wr-meta-win', 'an-wr-meta-loss', 'an-wr-meta-be'].forEach(function (id) {
-              var el = document.getElementById(id);
-              if (el) el.textContent = '—';
             });
             ['an-wr-bar-win', 'an-wr-bar-loss', 'an-wr-bar-be'].forEach(function (id) {
               var el = document.getElementById(id);
               if (el) el.style.width = '0%';
             });
             if (elBody) elBody.classList.add('an-wr-body--empty');
+            wrSyncBadge(stats, filtered);
             return;
           }
 
           if (elBody) elBody.classList.remove('an-wr-body--empty');
           if (canvas) canvas.style.visibility = 'visible';
-          if (elBd) elBd.style.opacity = '1';
+          if (elStats) elStats.style.opacity = '1';
+          if (elStack) elStack.style.opacity = '1';
 
           var wrTxt =
             stats.wr != null
@@ -2768,32 +2782,34 @@
             elPct.classList.toggle('an-wr-gauge-pct--muted', stats.wr == null);
           }
           if (elSub) {
-            if (stats.wr == null && stats.denom === 0) {
+            elSub.classList.remove('an-wr-gauge-sub--warn');
+            if (stats.n < 5) {
               elSub.hidden = false;
-              elSub.textContent = 'No wins or losses in filter';
-            } else if (stats.n < 5) {
-              elSub.hidden = false;
-              elSub.textContent = 'Low sample';
+              elSub.textContent = 'Low sample · Wins ÷ all trades (incl. BE)';
             } else {
-              elSub.hidden = true;
-              elSub.textContent = '';
+              elSub.hidden = false;
+              elSub.textContent = 'Wins ÷ all trades (incl. BE)';
             }
           }
 
           var tot = stats.n;
-          var setPill = function (countId, barId, metaId, n) {
-            var cEl = document.getElementById(countId);
-            var bEl = document.getElementById(barId);
-            var mEl = document.getElementById(metaId);
-            if (cEl) cEl.textContent = String(n);
-            if (bEl) bEl.style.width = (tot ? (n / tot) * 100 : 0) + '%';
-            if (mEl) mEl.textContent = wrPctShare(n, tot);
+          var setCount = function (id, n) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = String(n);
           };
-          setPill('an-wr-wins', 'an-wr-bar-win', 'an-wr-meta-win', stats.wins);
-          setPill('an-wr-losses', 'an-wr-bar-loss', 'an-wr-meta-loss', stats.losses);
-          setPill('an-wr-be', 'an-wr-bar-be', 'an-wr-meta-be', stats.be);
+          var setBar = function (id, n) {
+            var el = document.getElementById(id);
+            if (el) el.style.width = (tot ? (n / tot) * 100 : 0) + '%';
+          };
+          setCount('an-wr-wins', stats.wins);
+          setCount('an-wr-losses', stats.losses);
+          setCount('an-wr-be', stats.be);
+          setBar('an-wr-bar-win', stats.wins);
+          setBar('an-wr-bar-loss', stats.losses);
+          setBar('an-wr-bar-be', stats.be);
 
           renderWinRateHeroChart(stats);
+          wrSyncBadge(stats, filtered);
         }
 
         function renderReports(trades) {
@@ -2920,11 +2936,6 @@
           var stats = { total:total, wins:wins, winRate:total>0?(wins/total)*100:null, netR:netR };
           __anLastStats = stats;
 
-          document.getElementById('an-badge-text').textContent =
-            total + ' trades · full dataset · ' + (stats.winRate != null ? stats.winRate.toFixed(1) + '% WR' : '—') + ' · ' + netR.toFixed(2) + 'R';
-          var foot=document.getElementById('an-foot');
-          if(foot) foot.textContent = 'Full dataset: '+total+' trades  ·  Win rate: '+(stats.winRate!=null?stats.winRate.toFixed(1)+'%':'—')+'  ·  Net R: '+netR.toFixed(2)+'R';
-
           renderWinRateHero(trades);
           renderReports(trades);
 
@@ -3024,7 +3035,7 @@
             setTimeout(runParticles, 380);
           }
 
-          void import('/js/notion-sync-client.js?v=b4e91c2a').then(function (mod) {
+          void import('/js/notion-sync-client.js?v=c8d3f01e').then(function (mod) {
             var before = allTrades.length;
             return mod.startNotionAutoSync(currentUserId, {
               onComplete: function () {
