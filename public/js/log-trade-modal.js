@@ -20,7 +20,8 @@ import {
 } from "./journal-photo-slots-client.mjs";
 
 export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1";
-const FIELD_ORDER_KEY = "jarvis_field_order_v3";
+const FIELD_ORDER_KEY_PREFIX = "jarvis_field_order_v4_";
+const FIELD_ORDER_KEY_LEGACY = "jarvis_field_order_v3";
 const HIDDEN_FIELDS_KEY = "jarvis_hidden_journal_fields_v1";
 const PAIR_OTHER = "Other";
 const MAX_ORPHAN_PHOTOS = 8;
@@ -214,45 +215,83 @@ function deriveLastRRFromRows(rows) {
   return "";
 }
 
-function loadFieldOrder(allIds) {
+function fieldOrderStorageKey(userId) {
+  const uid = String(userId || "default").trim().toLowerCase() || "default";
+  return `${FIELD_ORDER_KEY_PREFIX}${uid}`;
+}
+
+function readSavedFieldOrder(userId) {
   try {
-    const coreSet = new Set(CANONICAL_CORE_ORDER);
-    const corePresent = CANONICAL_CORE_ORDER.filter((id) => allIds.includes(id));
-    const extrasInNotionOrder = allIds.filter((id) => !coreSet.has(id));
-
-    const saved = JSON.parse(localStorage.getItem(FIELD_ORDER_KEY) || "null");
-    if (!Array.isArray(saved) || !saved.length) {
-      return [...corePresent, ...extrasInNotionOrder];
+    const key = fieldOrderStorageKey(userId);
+    let raw = localStorage.getItem(key);
+    if (!raw) {
+      raw = localStorage.getItem(FIELD_ORDER_KEY_LEGACY);
     }
-
-    const savedSet = new Set(saved);
-    const extrasFromSaved = saved.filter((id) => extrasInNotionOrder.includes(id));
-    const extrasUnseen = extrasInNotionOrder.filter((id) => !savedSet.has(id));
-    return [...corePresent, ...extrasFromSaved, ...extrasUnseen];
+    const parsed = JSON.parse(raw || "null");
+    return Array.isArray(parsed) ? parsed : null;
   } catch {
-    const coreSet = new Set(CANONICAL_CORE_ORDER);
-    return [
-      ...CANONICAL_CORE_ORDER.filter((id) => allIds.includes(id)),
-      ...allIds.filter((id) => !coreSet.has(id)),
-    ];
+    return null;
   }
 }
 
-/** Core fields first; extras follow Notion `display_order` (then optional user drag order). */
-function buildLogTradeFieldList(coreDefs, journalFieldRows, hiddenKeys) {
+/** Default: core block first, then Notion extras (already sorted by display_order). */
+function defaultFieldOrder(allIds) {
+  const coreSet = new Set(CANONICAL_CORE_ORDER);
+  const corePresent = CANONICAL_CORE_ORDER.filter((id) => allIds.includes(id));
+  const extras = allIds.filter((id) => !coreSet.has(id));
+  return [...corePresent, ...extras];
+}
+
+function loadFieldOrder(allIds, userId) {
+  const allSet = new Set(allIds);
+  try {
+    const saved = readSavedFieldOrder(userId);
+    if (!saved?.length) return defaultFieldOrder(allIds);
+
+    const seen = new Set();
+    const ordered = [];
+    for (const id of saved) {
+      if (!id || !allSet.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      ordered.push(id);
+    }
+    for (const id of allIds) {
+      if (!seen.has(id)) ordered.push(id);
+    }
+    return ordered;
+  } catch {
+    return defaultFieldOrder(allIds);
+  }
+}
+
+/** Core fields first by default; user drag order persists in full (per user). */
+function buildLogTradeFieldList(coreDefs, journalFieldRows, hiddenKeys, userId) {
   const coreOrdered = CANONICAL_CORE_ORDER.map((id) => coreDefs.find((f) => f.id === id)).filter(Boolean);
   const extras = filterAndDedupeJournalFieldRows(journalFieldRows)
     .filter((f) => !hiddenKeys.has(normalizeFieldKey(f.field_name)))
     .map(notionFieldToDef);
   const allDefs = [...coreOrdered, ...extras];
-  const orderedIds = loadFieldOrder(allDefs.map((f) => f.id));
+  const orderedIds = loadFieldOrder(
+    allDefs.map((f) => f.id),
+    userId
+  );
   return orderedIds.map((id) => allDefs.find((f) => f.id === id)).filter(Boolean);
 }
 
-function saveFieldOrder(ids) {
+function saveFieldOrder(ids, userId) {
+  const list = Array.isArray(ids) ? ids.filter(Boolean) : [];
+  if (!list.length) return;
   try {
-    localStorage.setItem(FIELD_ORDER_KEY, JSON.stringify(ids));
+    localStorage.setItem(fieldOrderStorageKey(userId), JSON.stringify(list));
   } catch {}
+}
+
+function persistFieldOrderFromDom(fieldsList, userId) {
+  if (!fieldsList) return;
+  const ids = Array.from(fieldsList.querySelectorAll(".ltm-field-row"))
+    .map((r) => r.dataset.fieldId)
+    .filter(Boolean);
+  saveFieldOrder(ids, userId);
 }
 
 function buildCoreFieldDefs({ pairOptions, accountNames, hasAccounts }) {
@@ -1028,7 +1067,7 @@ function initFieldRemoveHandlers(fieldsList, showToast) {
   fieldsList.addEventListener("touchmove", () => clearTimeout(pressTimer));
 }
 
-function initFieldDrag(list) {
+function initFieldDrag(list, userId) {
   let dragging = null;
   let fromHandle = false;
 
@@ -1068,20 +1107,18 @@ function initFieldDrag(list) {
     if (dragging) dragging.classList.remove("ltm-dragging");
     dragging = null;
     fromHandle = false;
-    const ids = Array.from(list.querySelectorAll(".ltm-field-row"))
-      .map((r) => r.dataset.fieldId)
-      .filter(Boolean);
-    saveFieldOrder(ids);
+    persistFieldOrderFromDom(list, userId);
   });
 }
 
-function initReorderToggle(fieldsList) {
+function initReorderToggle(fieldsList, userId) {
   const btn = document.getElementById("ltm-reorder-toggle");
   if (!btn || !fieldsList) return;
   btn.addEventListener("click", () => {
     const on = fieldsList.classList.toggle("ltm-fields-list--reorder");
     btn.setAttribute("aria-pressed", on ? "true" : "false");
     btn.textContent = on ? "Done reordering" : "Reorder fields";
+    if (!on) persistFieldOrderFromDom(fieldsList, userId);
   });
 }
 
@@ -1278,7 +1315,7 @@ export async function openLogTradeModal(options) {
     .map(notionFieldToDef);
 
   const today = new Date().toISOString().slice(0, 10);
-  const orderedDefs = buildLogTradeFieldList(coreDefs, allFields, hiddenKeys);
+  const orderedDefs = buildLogTradeFieldList(coreDefs, allFields, hiddenKeys, userId);
 
   const defaults = !editId ? deriveDefaultsFromRows(allPrefillRows, accounts) : null;
 
@@ -1306,6 +1343,7 @@ export async function openLogTradeModal(options) {
   const pasteHandler = buildDocumentPasteHandler(overlay);
 
   function closeModal() {
+    persistFieldOrderFromDom(fieldsList, userId);
     overlay.classList.remove("trade-form-overlay--visible");
     document.getElementById("ltm-panel")?.classList.remove("trade-form-panel--visible");
     overlay.addEventListener(
@@ -1417,8 +1455,8 @@ export async function openLogTradeModal(options) {
   if (rrInp && lastRR) rrInp.placeholder = lastRR;
 
   const fieldsList = document.getElementById("ltm-fields-list");
-  initFieldDrag(fieldsList);
-  initReorderToggle(fieldsList);
+  initFieldDrag(fieldsList, userId);
+  initReorderToggle(fieldsList, userId);
   const mouseupHandler = () => {};
   document.addEventListener("mouseup", mouseupHandler, { passive: true });
 
