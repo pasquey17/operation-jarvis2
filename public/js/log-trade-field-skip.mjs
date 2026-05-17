@@ -6,12 +6,6 @@ export const TRADE_SUMMARY_FIELD_ID = "__trade_summary";
 /** Key in journal_trades.custom_data (matches Notion TRADE SUMMARY). */
 export const TRADE_SUMMARY_STORAGE_KEY = "Trade Summary";
 
-export const CHART_PHOTO_SLOTS = [
-  { id: "htf", label: "HTF" },
-  { id: "ltf", label: "LTF" },
-  { id: "entry", label: "Entry" },
-];
-
 export const CANONICAL_CORE_ORDER = [
   "date",
   "pair",

@@ -2706,6 +2706,153 @@ async function handleJournalFields(req, res) {
   }
 }
 
+function parseJournalPhotoSlotsUserId(req) {
+  const userIdRaw =
+    new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
+    "aidenpasque11@gmail.com";
+  return userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+}
+
+function normalizeJournalPhotoSlotRow(row) {
+  const slot_id = String(row?.slot_id || "").trim();
+  const label = String(row?.label || "").trim();
+  if (!slot_id || !label) return null;
+  return {
+    slot_id,
+    label,
+    display_order: Number(row?.display_order) || 0,
+  };
+}
+
+/** GET /api/journal-photo-slots?user_id=eq.{email} */
+async function handleJournalPhotoSlotsGet(req, res) {
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+  const userId = parseJournalPhotoSlotsUserId(req);
+  try {
+    const endpoint = `${url}/rest/v1/journal_photo_slots?user_id=eq.${encodeURIComponent(userId)}&select=slot_id,label,display_order&order=display_order.asc`;
+    const r = await fetch(endpoint, {
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+        error: formatSupabaseError(text, r.status) || `Supabase HTTP ${r.status}`,
+      });
+      return;
+    }
+    let rows;
+    try {
+      rows = JSON.parse(text);
+    } catch {
+      json(res, 502, { error: "Invalid JSON from Supabase" });
+      return;
+    }
+    const slots = (Array.isArray(rows) ? rows : [])
+      .map(normalizeJournalPhotoSlotRow)
+      .filter(Boolean)
+      .sort((a, b) => a.display_order - b.display_order);
+    json(res, 200, { slots });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** PATCH /api/journal-photo-slots — replace all slots for user. Body: { user_id, slots: [{ slot_id, label, display_order }] } */
+async function handleJournalPhotoSlotsPatch(req, res) {
+  let raw;
+  try {
+    raw = await readBody(req);
+  } catch {
+    json(res, 413, { error: "Payload too large" });
+    return;
+  }
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    json(res, 400, { error: "Invalid JSON" });
+    return;
+  }
+
+  const { url, key: anonKey } = getSupabaseConfig();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  if (!url || !key) {
+    json(res, 503, { error: "Supabase not configured" });
+    return;
+  }
+
+  const userId = String(body.user_id || "").trim();
+  if (!userId) {
+    json(res, 400, { error: "user_id required" });
+    return;
+  }
+
+  const incoming = Array.isArray(body.slots) ? body.slots : [];
+  const slots = incoming
+    .map(normalizeJournalPhotoSlotRow)
+    .filter(Boolean)
+    .map((s, i) => ({ ...s, display_order: Number.isFinite(s.display_order) ? s.display_order : i }));
+
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+
+  try {
+    const del = await fetch(
+      `${url}/rest/v1/journal_photo_slots?user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "DELETE", headers: { ...headers, Prefer: "return=minimal" } }
+    );
+    if (!del.ok) {
+      const t = await del.text();
+      json(res, del.status, { error: formatSupabaseError(t, del.status) });
+      return;
+    }
+
+    if (slots.length) {
+      const rows = slots.map((s) => ({
+        user_id: userId,
+        slot_id: s.slot_id,
+        label: s.label,
+        display_order: s.display_order,
+      }));
+      const ins = await fetch(`${url}/rest/v1/journal_photo_slots`, {
+        method: "POST",
+        headers: { ...headers, Prefer: "return=representation" },
+        body: JSON.stringify(rows),
+      });
+      const insText = await ins.text();
+      if (!ins.ok) {
+        json(res, ins.status, { error: formatSupabaseError(insText, ins.status) });
+        return;
+      }
+      let saved;
+      try {
+        saved = JSON.parse(insText);
+      } catch {
+        saved = rows;
+      }
+      const out = (Array.isArray(saved) ? saved : [])
+        .map(normalizeJournalPhotoSlotRow)
+        .filter(Boolean)
+        .sort((a, b) => a.display_order - b.display_order);
+      json(res, 200, { slots: out });
+      return;
+    }
+
+    json(res, 200, { slots: [] });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 /** GET /api/journal-trades?user_id=eq.{email} — manual LOG TRADE rows (journal_trades). */
 async function handleJournalTradesGet(req, res) {
   const { url, key } = getSupabaseConfig();
@@ -3967,6 +4114,15 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/journal-fields")) {
     await handleJournalFields(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/journal-photo-slots")) {
+    await handleJournalPhotoSlotsGet(req, res);
+    return;
+  }
+  if (req.method === "PATCH" && req.url.startsWith("/api/journal-photo-slots")) {
+    await handleJournalPhotoSlotsPatch(req, res);
     return;
   }
 

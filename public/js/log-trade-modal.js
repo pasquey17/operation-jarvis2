@@ -1,34 +1,44 @@
 /**
  * LOG TRADE modal — premium rebuild.
- * Drag-to-reorder fields. Chart photo slots (HTF/LTF/Entry). Saves to /api/log-trade.
+ * Drag-to-reorder fields. Per-user chart photo slots. Saves to /api/log-trade.
  */
 
 import {
   TRADE_SUMMARY_FIELD_ID,
   TRADE_SUMMARY_STORAGE_KEY,
-  CHART_PHOTO_SLOTS,
   CANONICAL_CORE_ORDER,
   normalizeFieldKey,
   shouldSkipJournalFieldName,
   isCoreFieldId,
   filterAndDedupeJournalFieldRows,
 } from "./log-trade-field-skip.mjs";
+import {
+  loadPhotoSlotsForUser,
+  persistPhotoSlotsForUser,
+  makePhotoSlotId,
+  sortPhotoSlots,
+} from "./journal-photo-slots-client.mjs";
 
 export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1";
 const FIELD_ORDER_KEY = "jarvis_field_order_v3";
 const HIDDEN_FIELDS_KEY = "jarvis_hidden_journal_fields_v1";
 const PAIR_OTHER = "Other";
-const MAX_EXTRA_PHOTOS = 3;
-const MAX_TOTAL_PHOTOS = 6;
+const MAX_ORPHAN_PHOTOS = 8;
+const MAX_TOTAL_PHOTOS = 24;
+const MAX_PHOTO_SLOTS = 12;
 
 const CURATED_PAIRS = ["XAUUSD", "NAS100", "EURUSD", "GBPUSD", "USDJPY", "BTCUSD"];
 
 let ltmOpen = false;
+/** @type {{ slot_id: string, label: string, display_order: number }[]} */
+let ltmPhotoSlotDefs = [];
 /** @type {Record<string, { dataUrl: string, label: string } | null>} */
 let ltmSlotPhotos = {};
 /** @type {{ dataUrl: string, label: string }[]} */
 let ltmExtraPhotos = [];
 let ltmFocusedSlotId = null;
+let ltmCurrentUserId = "";
+let ltmPersistPhotoSlots = async () => {};
 
 function escHtml(s) {
   return String(s)
@@ -471,10 +481,14 @@ function renderFieldRow(field, today) {
 </div>`;
 }
 
+function findSlotDef(slotId) {
+  return ltmPhotoSlotDefs.find((s) => s.slot_id === slotId);
+}
+
 function countFilledPhotos() {
   let n = 0;
-  for (const slot of CHART_PHOTO_SLOTS) {
-    if (ltmSlotPhotos[slot.id]?.dataUrl) n += 1;
+  for (const slot of ltmPhotoSlotDefs) {
+    if (ltmSlotPhotos[slot.slot_id]?.dataUrl) n += 1;
   }
   n += ltmExtraPhotos.filter((p) => p?.dataUrl).length;
   return n;
@@ -490,34 +504,43 @@ function updatePhotoCountUI() {
     return;
   }
   el.hidden = false;
-  el.textContent = `${n}/${MAX_TOTAL_PHOTOS}`;
+  el.textContent = `${n} photo${n === 1 ? "" : "s"}`;
 }
 
 function photosToPayload() {
   const out = [];
-  for (const slot of CHART_PHOTO_SLOTS) {
-    const p = ltmSlotPhotos[slot.id];
+  for (const slot of ltmPhotoSlotDefs) {
+    const p = ltmSlotPhotos[slot.slot_id];
     if (p?.dataUrl) out.push({ url: p.dataUrl, label: slot.label });
   }
   for (const p of ltmExtraPhotos) {
-    if (p?.dataUrl) out.push({ url: p.dataUrl, label: p.label || "Extra" });
+    if (p?.dataUrl) out.push({ url: p.dataUrl, label: p.label || "Photo" });
   }
   return out;
 }
 
+function syncSlotPhotoMap() {
+  const next = {};
+  for (const slot of ltmPhotoSlotDefs) {
+    next[slot.slot_id] = ltmSlotPhotos[slot.slot_id] ?? null;
+  }
+  ltmSlotPhotos = next;
+}
+
 function hydratePhotosFromCustomData(photos) {
-  resetPhotoState();
   const arr = Array.isArray(photos) ? photos : [];
+  ltmExtraPhotos = [];
+  syncSlotPhotoMap();
   for (const p of arr) {
     if (!p || typeof p.url !== "string" || !p.url.trim()) continue;
     const labelKey = normalizeFieldKey(p.label);
-    const slot = CHART_PHOTO_SLOTS.find((s) => normalizeFieldKey(s.label) === labelKey);
-    if (slot && !ltmSlotPhotos[slot.id]?.dataUrl) {
-      ltmSlotPhotos[slot.id] = { dataUrl: p.url.trim(), label: slot.label };
-    } else {
+    const slot = ltmPhotoSlotDefs.find((s) => normalizeFieldKey(s.label) === labelKey);
+    if (slot && !ltmSlotPhotos[slot.slot_id]?.dataUrl) {
+      ltmSlotPhotos[slot.slot_id] = { dataUrl: p.url.trim(), label: slot.label };
+    } else if (ltmExtraPhotos.length < MAX_ORPHAN_PHOTOS) {
       ltmExtraPhotos.push({
         dataUrl: p.url.trim(),
-        label: typeof p.label === "string" && p.label.trim() ? p.label.trim() : "Extra",
+        label: typeof p.label === "string" && p.label.trim() ? p.label.trim() : "Photo",
       });
     }
   }
@@ -525,25 +548,43 @@ function hydratePhotosFromCustomData(photos) {
 
 function resetPhotoState() {
   ltmSlotPhotos = {};
-  for (const slot of CHART_PHOTO_SLOTS) ltmSlotPhotos[slot.id] = null;
   ltmExtraPhotos = [];
   ltmFocusedSlotId = null;
+  syncSlotPhotoMap();
 }
 
-function buildChartPhotosHtml() {
-  const slots = CHART_PHOTO_SLOTS.map(
-    (slot) =>
-      `<div class="ltm-chart-slot" data-slot-id="${escAttr(slot.id)}">
-      <span class="ltm-chart-slot__label">${escHtml(slot.label)}</span>
-      <div class="ltm-chart-slot__drop" tabindex="0" role="button" aria-label="Add ${escAttr(slot.label)} chart">
-        <span class="ltm-chart-slot__hint">Drop or click</span>
+function buildChartPhotosInnerHtml() {
+  if (!ltmPhotoSlotDefs.length) {
+    return `<p class="ltm-photo-empty-hint">No photo slots yet — add one below or open Customize form.</p>`;
+  }
+  const slots = ltmPhotoSlotDefs
+    .map(
+      (slot) =>
+        `<div class="ltm-chart-slot" data-slot-id="${escAttr(slot.slot_id)}">
+      <div class="ltm-chart-slot__label-row">
+        <span class="ltm-chart-slot__label">${escHtml(slot.label)}</span>
+        <button type="button" class="ltm-slot-label-edit" data-slot-edit="${escAttr(slot.slot_id)}" aria-label="Rename ${escAttr(slot.label)}" title="Rename">&#9998;</button>
+        <button type="button" class="ltm-slot-def-remove" data-slot-def-remove="${escAttr(slot.slot_id)}" aria-label="Remove slot" title="Remove slot">&times;</button>
       </div>
-      <div class="ltm-chart-slot__preview" data-slot-preview="${escAttr(slot.id)}"></div>
+      <div class="ltm-chart-slot__drop" tabindex="0" role="button" aria-label="Add ${escAttr(slot.label)} photo">
+        <span class="ltm-chart-slot__hint">Click here, then paste</span>
+        <span class="ltm-chart-slot__sub">Drop, click, or Ctrl+V</span>
+      </div>
+      <div class="ltm-chart-slot__preview" data-slot-preview="${escAttr(slot.slot_id)}"></div>
     </div>`
-  ).join("");
+    )
+    .join("");
   return `<div class="ltm-chart-slots">${slots}</div>
-    <button type="button" class="ltm-add-extra-photo" id="ltm-add-extra-photo">+ Add another photo</button>
-    <div class="ltm-extra-photos" id="ltm-extra-photos"></div>`;
+    <div class="ltm-extra-photos" id="ltm-extra-photos"></div>
+    <button type="button" class="ltm-add-photo-slot" id="ltm-add-photo-slot">+ Add photo slot</button>`;
+}
+
+function refreshPhotoSectionDOM() {
+  const section = document.getElementById("ltm-photo-section");
+  if (!section) return;
+  section.innerHTML = buildChartPhotosInnerHtml();
+  delete section.dataset.photoBound;
+  renderAllSlotPreviews();
 }
 
 function renderSlotPreview(slotId) {
@@ -554,7 +595,7 @@ function renderSlotPreview(slotId) {
     el.innerHTML = "";
     return;
   }
-  const slot = CHART_PHOTO_SLOTS.find((s) => s.id === slotId);
+  const slot = findSlotDef(slotId);
   el.innerHTML = `<div class="ltm-thumb">
     <img class="ltm-thumb-img" src="${escHtml(p.dataUrl)}" alt="${escHtml(slot?.label || "Chart")}">
     <button type="button" class="ltm-thumb-remove" data-slot-clear="${escAttr(slotId)}" aria-label="Remove photo">&times;</button>
@@ -564,40 +605,56 @@ function renderSlotPreview(slotId) {
 function renderExtraPhotoPreviews() {
   const container = document.getElementById("ltm-extra-photos");
   if (!container) return;
-  container.innerHTML = ltmExtraPhotos
+  if (!ltmExtraPhotos.length) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `<div class="ltm-section-label ltm-section-label--orphan">Other photos</div>${ltmExtraPhotos
     .map(
       (p, i) =>
         `<div class="ltm-extra-photo">
-      <span class="ltm-extra-photo__label">${escHtml(p.label || "Extra")}</span>
+      <span class="ltm-extra-photo__label">${escHtml(p.label || "Photo")}</span>
       <div class="ltm-thumb">
         <img class="ltm-thumb-img" src="${escHtml(p.dataUrl)}" alt="">
         <button type="button" class="ltm-thumb-remove" data-extra-idx="${i}" aria-label="Remove">&times;</button>
       </div>
     </div>`
     )
-    .join("");
+    .join("")}`;
 }
 
 function renderAllSlotPreviews() {
-  for (const slot of CHART_PHOTO_SLOTS) renderSlotPreview(slot.id);
+  for (const slot of ltmPhotoSlotDefs) renderSlotPreview(slot.slot_id);
   renderExtraPhotoPreviews();
   updatePhotoCountUI();
 }
 
 function setSlotPhoto(slotId, dataUrl) {
-  const slot = CHART_PHOTO_SLOTS.find((s) => s.id === slotId);
-  if (!slot) return;
+  const slot = findSlotDef(slotId);
+  if (!slot) return false;
+  if (countFilledPhotos() >= MAX_TOTAL_PHOTOS && !ltmSlotPhotos[slotId]?.dataUrl) return false;
   ltmSlotPhotos[slotId] = { dataUrl, label: slot.label };
   renderSlotPreview(slotId);
   updatePhotoCountUI();
+  return true;
 }
 
-function addPhotoToFirstEmptySlot(file) {
+function addPhotoToSlot(file, slotId) {
+  if (!file || !file.type.startsWith("image/")) return false;
+  if (!slotId || !findSlotDef(slotId)) return addPhotoToFocusedOrFirstEmpty(file);
+  if (countFilledPhotos() >= MAX_TOTAL_PHOTOS && !ltmSlotPhotos[slotId]?.dataUrl) return false;
+  const reader = new FileReader();
+  reader.onload = (ev) => setSlotPhoto(slotId, ev.target.result);
+  reader.readAsDataURL(file);
+  return true;
+}
+
+function addPhotoToFocusedOrFirstEmpty(file) {
   if (!file || !file.type.startsWith("image/")) return false;
   if (countFilledPhotos() >= MAX_TOTAL_PHOTOS) return false;
   const targetId =
     ltmFocusedSlotId ||
-    CHART_PHOTO_SLOTS.find((s) => !ltmSlotPhotos[s.id]?.dataUrl)?.id ||
+    ltmPhotoSlotDefs.find((s) => !ltmSlotPhotos[s.slot_id]?.dataUrl)?.slot_id ||
     null;
   if (targetId) {
     const reader = new FileReader();
@@ -605,52 +662,117 @@ function addPhotoToFirstEmptySlot(file) {
     reader.readAsDataURL(file);
     return true;
   }
-  if (ltmExtraPhotos.length >= MAX_EXTRA_PHOTOS) return false;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    ltmExtraPhotos.push({ dataUrl: ev.target.result, label: "Extra" });
-    renderExtraPhotoPreviews();
-    updatePhotoCountUI();
-  };
-  reader.readAsDataURL(file);
+  return false;
+}
+
+function clipboardHasImage(e) {
+  const items = e.clipboardData?.items || [];
+  for (const item of items) {
+    if (item.type.startsWith("image/")) return item.getAsFile();
+  }
+  return null;
+}
+
+function isTextInputFocused() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName?.toLowerCase();
+  if (tag === "textarea") return true;
+  if (tag === "input") {
+    const t = (el.type || "text").toLowerCase();
+    return !["button", "submit", "checkbox", "radio", "file"].includes(t);
+  }
+  return el.isContentEditable;
+}
+
+async function addPhotoSlotDefinition(label, showToast) {
+  const name = String(label || "").trim();
+  if (!name) return false;
+  if (ltmPhotoSlotDefs.length >= MAX_PHOTO_SLOTS) {
+    showToast?.(`Maximum ${MAX_PHOTO_SLOTS} photo slots.`, true);
+    return false;
+  }
+  const slot_id = makePhotoSlotId();
+  ltmPhotoSlotDefs = sortPhotoSlots([
+    ...ltmPhotoSlotDefs,
+    { slot_id, label: name, display_order: ltmPhotoSlotDefs.length },
+  ]);
+  syncSlotPhotoMap();
+  await ltmPersistPhotoSlots();
+  refreshPhotoSectionDOM();
+  mountPhotoSectionHandlers(document.querySelector(".trade-form-overlay"), showToast);
   return true;
 }
 
-function initChartPhotos(overlay, showToast) {
-  renderAllSlotPreviews();
-  for (const slot of CHART_PHOTO_SLOTS) {
-    const slotEl = overlay.querySelector(`[data-slot-id="${slot.id}"]`);
-    if (!slotEl) continue;
-    const drop = slotEl.querySelector(".ltm-chart-slot__drop");
-    if (!drop) continue;
-    drop.addEventListener("focus", () => {
-      ltmFocusedSlotId = slot.id;
-    });
-    drop.addEventListener("click", () => {
-      ltmFocusedSlotId = slot.id;
-      const inp = document.createElement("input");
-      inp.type = "file";
-      inp.accept = "image/*";
-      inp.onchange = () => {
-        const f = inp.files?.[0];
-        if (f) addPhotoToFirstEmptySlot(f);
-      };
-      inp.click();
-    });
-    drop.addEventListener("dragover", (e) => {
+async function removePhotoSlotDefinition(slotId, showToast) {
+  const slot = findSlotDef(slotId);
+  if (!slot) return;
+  const hasImage = !!ltmSlotPhotos[slotId]?.dataUrl;
+  if (hasImage && !confirm(`Remove slot "${slot.label}"? The photo in this trade will be cleared.`)) return;
+  ltmPhotoSlotDefs = ltmPhotoSlotDefs.filter((s) => s.slot_id !== slotId);
+  delete ltmSlotPhotos[slotId];
+  ltmPhotoSlotDefs = sortPhotoSlots(
+    ltmPhotoSlotDefs.map((s, i) => ({ ...s, display_order: i }))
+  );
+  syncSlotPhotoMap();
+  await ltmPersistPhotoSlots();
+  refreshPhotoSectionDOM();
+  mountPhotoSectionHandlers(document.querySelector(".trade-form-overlay"), showToast);
+  showToast?.("Photo slot removed.", false);
+}
+
+async function renamePhotoSlotDefinition(slotId, newLabel, showToast) {
+  const label = String(newLabel || "").trim();
+  if (!label) return;
+  const idx = ltmPhotoSlotDefs.findIndex((s) => s.slot_id === slotId);
+  if (idx < 0) return;
+  ltmPhotoSlotDefs[idx] = { ...ltmPhotoSlotDefs[idx], label };
+  if (ltmSlotPhotos[slotId]) ltmSlotPhotos[slotId].label = label;
+  await ltmPersistPhotoSlots();
+  refreshPhotoSectionDOM();
+  mountPhotoSectionHandlers(document.querySelector(".trade-form-overlay"), showToast);
+  showToast?.("Slot renamed.", false);
+}
+
+function mountPhotoSectionHandlers(overlay, showToast) {
+  const section = document.getElementById("ltm-photo-section");
+  if (!section || section.dataset.photoBound === "1") return;
+  section.dataset.photoBound = "1";
+
+  section.addEventListener("focusin", (e) => {
+    const drop = e.target.closest(".ltm-chart-slot__drop");
+    if (!drop) return;
+    const slotEl = drop.closest("[data-slot-id]");
+    if (slotEl) ltmFocusedSlotId = slotEl.getAttribute("data-slot-id");
+  });
+
+  section.addEventListener("paste", (e) => {
+    const drop = e.target.closest(".ltm-chart-slot__drop");
+    if (!drop) return;
+    const file = clipboardHasImage(e);
+    if (!file) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const slotId = drop.closest("[data-slot-id]")?.getAttribute("data-slot-id");
+    if (slotId) addPhotoToSlot(file, slotId);
+  });
+
+  section.addEventListener("click", (e) => {
+    const editBtn = e.target.closest("[data-slot-edit]");
+    if (editBtn) {
       e.preventDefault();
-      drop.classList.add("ltm-chart-slot__drop--over");
-    });
-    drop.addEventListener("dragleave", () => drop.classList.remove("ltm-chart-slot__drop--over"));
-    drop.addEventListener("drop", (e) => {
+      const sid = editBtn.getAttribute("data-slot-edit");
+      const slot = findSlotDef(sid);
+      const next = prompt("Rename photo slot:", slot?.label || "");
+      if (next != null) void renamePhotoSlotDefinition(sid, next, showToast);
+      return;
+    }
+    const removeDef = e.target.closest("[data-slot-def-remove]");
+    if (removeDef) {
       e.preventDefault();
-      drop.classList.remove("ltm-chart-slot__drop--over");
-      ltmFocusedSlotId = slot.id;
-      const f = e.dataTransfer.files?.[0];
-      if (f) addPhotoToFirstEmptySlot(f);
-    });
-  }
-  overlay.querySelector(".ltm-chart-slots")?.addEventListener("click", (e) => {
+      void removePhotoSlotDefinition(removeDef.getAttribute("data-slot-def-remove"), showToast);
+      return;
+    }
     const clearSlot = e.target.closest("[data-slot-clear]");
     if (clearSlot) {
       const sid = clearSlot.getAttribute("data-slot-clear");
@@ -667,26 +789,186 @@ function initChartPhotos(overlay, showToast) {
         renderExtraPhotoPreviews();
         updatePhotoCountUI();
       }
-    }
-  });
-  document.getElementById("ltm-add-extra-photo")?.addEventListener("click", () => {
-    if (countFilledPhotos() >= MAX_TOTAL_PHOTOS) {
-      showToast?.(`Maximum ${MAX_TOTAL_PHOTOS} photos.`, true);
       return;
     }
-    if (ltmExtraPhotos.length >= MAX_EXTRA_PHOTOS) {
-      showToast?.("Maximum extra photos added.", true);
+    const drop = e.target.closest(".ltm-chart-slot__drop");
+    if (drop && !e.target.closest(".ltm-thumb-remove")) {
+      const slotId = drop.closest("[data-slot-id]")?.getAttribute("data-slot-id");
+      ltmFocusedSlotId = slotId;
+      const inp = document.createElement("input");
+      inp.type = "file";
+      inp.accept = "image/*";
+      inp.onchange = () => {
+        const f = inp.files?.[0];
+        if (f && slotId) addPhotoToSlot(f, slotId);
+      };
+      inp.click();
+    }
+  });
+
+  section.addEventListener("dragover", (e) => {
+    const drop = e.target.closest(".ltm-chart-slot__drop");
+    if (!drop) return;
+    e.preventDefault();
+    drop.classList.add("ltm-chart-slot__drop--over");
+  });
+  section.addEventListener("dragleave", (e) => {
+    const drop = e.target.closest(".ltm-chart-slot__drop");
+    if (drop && !drop.contains(e.relatedTarget)) drop.classList.remove("ltm-chart-slot__drop--over");
+  });
+  section.addEventListener("drop", (e) => {
+    const drop = e.target.closest(".ltm-chart-slot__drop");
+    if (!drop) return;
+    e.preventDefault();
+    drop.classList.remove("ltm-chart-slot__drop--over");
+    const slotId = drop.closest("[data-slot-id]")?.getAttribute("data-slot-id");
+    const f = e.dataTransfer.files?.[0];
+    if (f && slotId) addPhotoToSlot(f, slotId);
+  });
+
+  document.getElementById("ltm-add-photo-slot")?.addEventListener("click", () => {
+    const name = prompt("Photo slot name (e.g. HTF, Context, Execution):", "");
+    if (name != null) void addPhotoSlotDefinition(name, showToast);
+  });
+}
+
+function buildDocumentPasteHandler(overlay) {
+  return (e) => {
+    if (!document.body.contains(overlay)) return;
+    if (isTextInputFocused()) return;
+    const file = clipboardHasImage(e);
+    if (!file) return;
+    if (ltmFocusedSlotId && findSlotDef(ltmFocusedSlotId)) {
+      e.preventDefault();
+      addPhotoToSlot(file, ltmFocusedSlotId);
       return;
     }
-    const inp = document.createElement("input");
-    inp.type = "file";
-    inp.accept = "image/*";
-    inp.onchange = () => {
-      const f = inp.files?.[0];
-      if (f) addPhotoToFirstEmptySlot(f);
-    };
-    inp.click();
+    if (addPhotoToFocusedOrFirstEmpty(file)) e.preventDefault();
+  };
+}
+
+function buildCustomizePanelHtml() {
+  const rows = ltmPhotoSlotDefs
+    .map(
+      (s, i) =>
+        `<div class="ltm-customize-row" data-customize-slot="${escAttr(s.slot_id)}">
+      <input type="text" class="trade-input ltm-input ltm-customize-label" value="${escAttr(s.label)}" maxlength="48" aria-label="Slot name">
+      <div class="ltm-customize-order">
+        <button type="button" class="ltm-customize-move" data-move-up="${escAttr(s.slot_id)}" ${i === 0 ? "disabled" : ""} aria-label="Move up">&#9650;</button>
+        <button type="button" class="ltm-customize-move" data-move-down="${escAttr(s.slot_id)}" ${i === ltmPhotoSlotDefs.length - 1 ? "disabled" : ""} aria-label="Move down">&#9660;</button>
+      </div>
+      <button type="button" class="ltm-customize-del" data-customize-del="${escAttr(s.slot_id)}" aria-label="Delete slot">&times;</button>
+    </div>`
+    )
+    .join("");
+  return `<div class="ltm-customize-panel" id="ltm-customize-panel" hidden>
+    <div class="ltm-customize-header">
+      <span class="ltm-customize-title">Customize form</span>
+      <button type="button" class="ltm-customize-close" id="ltm-customize-close" aria-label="Close">&times;</button>
+    </div>
+    <p class="ltm-customize-note">Photo slots are saved for your account. Extra journal fields still sync from Notion when connected.</p>
+    <div class="ltm-customize-slots" id="ltm-customize-slots">${rows || '<p class="ltm-customize-empty">No photo slots — add one below.</p>'}</div>
+    <button type="button" class="ltm-customize-add" id="ltm-customize-add">+ Add photo slot</button>
+    <button type="button" class="trade-submit-btn ltm-customize-save" id="ltm-customize-save">Save layout</button>
+  </div>`;
+}
+
+function refreshCustomizePanelDOM() {
+  const existing = document.getElementById("ltm-customize-panel");
+  if (!existing) return;
+  const parent = existing.parentElement;
+  const wasOpen = !existing.hidden;
+  existing.remove();
+  parent?.insertAdjacentHTML("beforeend", buildCustomizePanelHtml());
+  const panel = document.getElementById("ltm-customize-panel");
+  if (panel && wasOpen) panel.hidden = false;
+}
+
+function bindCustomizePanelEvents(overlay, showToast, closePanel) {
+  const panel = document.getElementById("ltm-customize-panel");
+  if (!panel) return;
+
+  document.getElementById("ltm-customize-close")?.addEventListener("click", closePanel);
+
+  document.getElementById("ltm-customize-add")?.addEventListener("click", () => {
+    const name = prompt("Photo slot name:", "");
+    if (name != null && String(name).trim()) {
+      void addPhotoSlotDefinition(name, showToast).then(() => refreshCustomizePanelDOM());
+    }
   });
+
+  panel.querySelectorAll("[data-customize-del]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      void removePhotoSlotDefinition(btn.getAttribute("data-customize-del"), showToast).then(() =>
+        refreshCustomizePanelDOM()
+      );
+    });
+  });
+
+  panel.querySelectorAll("[data-move-up]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-move-up");
+      const i = ltmPhotoSlotDefs.findIndex((s) => s.slot_id === id);
+      if (i <= 0) return;
+      const copy = [...ltmPhotoSlotDefs];
+      [copy[i - 1], copy[i]] = [copy[i], copy[i - 1]];
+      ltmPhotoSlotDefs = sortPhotoSlots(copy.map((s, idx) => ({ ...s, display_order: idx })));
+      refreshCustomizePanelDOM();
+      bindCustomizePanelEvents(overlay, showToast, closePanel);
+    });
+  });
+
+  panel.querySelectorAll("[data-move-down]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-move-down");
+      const i = ltmPhotoSlotDefs.findIndex((s) => s.slot_id === id);
+      if (i < 0 || i >= ltmPhotoSlotDefs.length - 1) return;
+      const copy = [...ltmPhotoSlotDefs];
+      [copy[i], copy[i + 1]] = [copy[i + 1], copy[i]];
+      ltmPhotoSlotDefs = sortPhotoSlots(copy.map((s, idx) => ({ ...s, display_order: idx })));
+      refreshCustomizePanelDOM();
+      bindCustomizePanelEvents(overlay, showToast, closePanel);
+    });
+  });
+
+  document.getElementById("ltm-customize-save")?.addEventListener("click", async () => {
+    const labels = panel.querySelectorAll(".ltm-customize-label");
+    ltmPhotoSlotDefs = sortPhotoSlots(
+      ltmPhotoSlotDefs.map((s, i) => ({
+        ...s,
+        label: labels[i]?.value?.trim() || s.label,
+        display_order: i,
+      }))
+    );
+    syncSlotPhotoMap();
+    await ltmPersistPhotoSlots();
+    refreshPhotoSectionDOM();
+    mountPhotoSectionHandlers(overlay, showToast);
+    showToast?.("Form layout saved.", false);
+    closePanel();
+  });
+}
+
+function initCustomizePanel(overlay, showToast) {
+  const openBtn = document.getElementById("ltm-customize-btn");
+  const panel = document.getElementById("ltm-customize-panel");
+  if (!openBtn || !panel) return;
+
+  const closePanel = () => {
+    panel.hidden = true;
+    openBtn.setAttribute("aria-expanded", "false");
+  };
+
+  openBtn.addEventListener("click", () => {
+    refreshCustomizePanelDOM();
+    const p = document.getElementById("ltm-customize-panel");
+    if (!p) return;
+    p.hidden = false;
+    openBtn.setAttribute("aria-expanded", "true");
+    bindCustomizePanelEvents(overlay, showToast, closePanel);
+  });
+
+  document.getElementById("ltm-customize-close")?.addEventListener("click", closePanel);
 }
 
 function initFieldRemoveHandlers(fieldsList, showToast) {
@@ -879,9 +1161,7 @@ function buildOverlayHtml(today, orderedFields, hasAccounts, isEdit) {
         <span>Chart photos</span>
         <span class="ltm-photo-count" id="ltm-photo-count" hidden aria-live="polite"></span>
       </div>
-      <div class="ltm-photo-section">
-        ${buildChartPhotosHtml()}
-      </div>
+      <div class="ltm-photo-section" id="ltm-photo-section"></div>
       <div class="ltm-section-label">Custom fields</div>
       <div class="ltm-adder-wrap" id="ltm-adder-wrap">
         <button type="button" class="ltm-adder-btn" id="ltm-adder-btn">
@@ -900,6 +1180,8 @@ function buildOverlayHtml(today, orderedFields, hasAccounts, isEdit) {
           <button type="button" class="ltm-adder-cancel"  id="ltm-adder-cancel">Cancel</button>
         </div>
       </div>
+      <button type="button" class="ltm-customize-btn" id="ltm-customize-btn" aria-expanded="false">&#9998; Customize form</button>
+      ${buildCustomizePanelHtml()}
       </div>
       <div class="ltm-actions-sticky trade-form-actions trade-form-actions--split">
         <button type="button" class="trade-delete-btn" id="ltm-delete" hidden>Delete</button>
@@ -938,11 +1220,11 @@ export async function openLogTradeModal(options) {
 
   if (ltmOpen) return;
   ltmOpen = true;
-  resetPhotoState();
 
   const userId = getUserId();
+  ltmCurrentUserId = userId;
 
-  const [prefillRows, journalRows, accounts, journalFieldsRes] = await Promise.all([
+  const [prefillRows, journalRows, accounts, journalFieldsRes, photoSlotsLoaded] = await Promise.all([
     typeof fetchTradeRowsForPrefill === "function"
       ? fetchTradeRowsForPrefill().catch(() => [])
       : Promise.resolve([]),
@@ -951,7 +1233,15 @@ export async function openLogTradeModal(options) {
     fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`, { cache: "no-store" })
       .then((r) => r.json().catch(() => ({})))
       .catch(() => ({})),
+    loadPhotoSlotsForUser(userId),
   ]);
+
+  ltmPhotoSlotDefs = photoSlotsLoaded;
+  ltmPersistPhotoSlots = async () => {
+    ltmPhotoSlotDefs = await persistPhotoSlotsForUser(userId, ltmPhotoSlotDefs);
+    syncSlotPhotoMap();
+  };
+  resetPhotoState();
 
   const prefill = Array.isArray(prefillRows) ? prefillRows : [];
   const journal = Array.isArray(journalRows) ? journalRows : [];
@@ -995,6 +1285,12 @@ export async function openLogTradeModal(options) {
 
   const form = document.getElementById("ltm-form");
   initPairOtherToggle(form);
+
+  refreshPhotoSectionDOM();
+  mountPhotoSectionHandlers(overlay, showToast);
+  initCustomizePanel(overlay, showToast);
+
+  const pasteHandler = buildDocumentPasteHandler(overlay);
 
   function closeModal() {
     overlay.classList.remove("trade-form-overlay--visible");
@@ -1114,18 +1410,7 @@ export async function openLogTradeModal(options) {
   document.addEventListener("mouseup", mouseupHandler, { passive: true });
 
   initFieldRemoveHandlers(fieldsList, showToast);
-  initChartPhotos(overlay, showToast);
 
-  const pasteHandler = (e) => {
-    if (!document.body.contains(overlay)) return;
-    const items = e.clipboardData?.items || [];
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (file) addPhotoToFirstEmptySlot(file);
-      }
-    }
-  };
   document.addEventListener("paste", pasteHandler);
 
   const adderBtn = document.getElementById("ltm-adder-btn");
