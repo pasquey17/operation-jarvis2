@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/style.css?v=e1a4b7f2" />
+    <link rel="stylesheet" href="/css/style.css?v=f9a2c6d4" />
     <style>
       html, body {
         overflow: auto !important; height: auto !important;
@@ -307,7 +307,7 @@
         font-size: 9px;
         letter-spacing: 0.28em;
         text-transform: uppercase;
-        color: rgba(0,212,255,0.38);
+        color: rgba(0,212,255,0.28);
         text-align: left;
       }
       .an-wr-body--empty .an-wr-stage { opacity: 0.35; }
@@ -483,9 +483,9 @@
       .an-wr-stage::before {
         content: "";
         position: absolute;
-        inset: 8%;
+        inset: 6%;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(0,191,255,0.14) 0%, rgba(0,100,180,0.04) 45%, transparent 70%);
+        background: radial-gradient(circle, rgba(0,191,255,0.07) 0%, rgba(0,100,180,0.02) 50%, transparent 72%);
         pointer-events: none;
         z-index: 0;
       }
@@ -498,48 +498,16 @@
         z-index: 1;
         overflow: visible;
       }
-      .an-wr-hud .an-wr-hud-arc {
+      .an-wr-hud .an-wr-hud-ring {
         fill: none;
-        stroke: rgba(0,212,255,0.35);
-        stroke-linecap: round;
-      }
-      .an-wr-hud .an-wr-hud-arc--dim { stroke: rgba(0,212,255,0.18); stroke-width: 1; }
-      .an-wr-hud .an-wr-hud-arc--mid { stroke: rgba(0,212,255,0.28); stroke-width: 1.25; }
-      .an-wr-hud .an-wr-hud-arc--bright { stroke: rgba(180,240,255,0.45); stroke-width: 1.5; }
-      .an-wr-hud .an-wr-hud-halo {
-        fill: none;
-        stroke: rgba(200,245,255,0.22);
+        stroke: rgba(0,212,255,0.15);
         stroke-width: 1;
-        filter: drop-shadow(0 0 6px rgba(0,212,255,0.5));
-      }
-      .an-wr-hud .an-wr-hud-callout {
-        fill: none;
-        stroke: rgba(0,212,255,0.42);
-        stroke-width: 0.85;
-      }
-      .an-wr-hud .an-wr-hud-node {
-        fill: none;
-        stroke: rgba(0,212,255,0.55);
-        stroke-width: 1;
-      }
-      .an-wr-hud .an-wr-hud-tick {
-        stroke: rgba(0,212,255,0.2);
-        stroke-width: 0.75;
       }
       .an-wr-gauge-wrap {
         position: absolute;
-        inset: 14%;
+        inset: 11%;
         z-index: 2;
-        filter: drop-shadow(0 0 32px rgba(0,191,255,0.18));
-      }
-      .an-wr-gauge-wrap::after {
-        content: "";
-        position: absolute;
-        inset: 14%;
-        border-radius: 50%;
-        pointer-events: none;
-        box-shadow: inset 0 0 36px rgba(0,0,0,0.55);
-        z-index: 4;
+        filter: drop-shadow(0 0 24px rgba(0,191,255,0.12));
       }
       .an-wr-gauge-wrap canvas {
         display: block;
@@ -566,7 +534,7 @@
         font-size: clamp(3.5rem, 11vw, 4.5rem);
         line-height: 1;
         color: #fff;
-        text-shadow: 0 0 70px rgba(0,212,255,0.6), 0 0 20px rgba(0,212,255,0.35);
+        text-shadow: 0 0 40px rgba(0,212,255,0.35);
         letter-spacing: -0.02em;
       }
       .an-wr-gauge-pct--muted { color: rgba(255,255,255,0.35); font-size: 1.75rem; text-shadow: none; }
@@ -598,20 +566,20 @@
         margin-top: 20px;
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 11px;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: rgba(255,255,255,0.42);
+        color: rgba(255,255,255,0.48);
       }
       .an-wr-stat strong {
         font-family: "Outfit",sans-serif;
         font-weight: 500;
-        font-size: 1.05rem;
+        font-size: 1.08rem;
         letter-spacing: 0;
         margin-left: 4px;
       }
-      .an-wr-stat--w strong { color: rgba(0,255,180,0.95); }
-      .an-wr-stat--l strong { color: rgba(255,100,120,0.95); }
-      .an-wr-stat--b strong { color: rgba(192,192,192,0.85); }
+      .an-wr-stat--w strong { color: rgba(0,255,195,1); }
+      .an-wr-stat--l strong { color: rgba(255,115,135,1); }
+      .an-wr-stat--b strong { color: rgba(210,215,225,0.95); }
       .an-wr-stat-sep { color: rgba(0,212,255,0.25); user-select: none; }
       .an-wr-stack {
         display: flex;
@@ -644,10 +612,7 @@
         .an-wr-filter-add { width: 100%; min-height: 44px; }
         .an-wr-stage { width: min(92vw, 340px); }
         .an-wr-sys-eyebrow { text-align: center; font-size: 8px; letter-spacing: 0.2em; }
-        .an-wr-hud-callouts { display: none; }
-      }
-      @media (max-width: 400px) {
-        .an-wr-hud-callouts { display: none; }
+        .an-wr-gauge-wrap { inset: 10%; }
       }
 
       /* ═══ Monte risk control ═══ */
@@ -908,42 +873,7 @@
             <div class="an-wr-body" id="an-wr-body">
               <div class="an-wr-stage">
                 <svg class="an-wr-hud" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                  <defs>
-                    <radialGradient id="an-wr-hud-bloom" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="rgba(0,212,255,0.12)"/>
-                      <stop offset="55%" stop-color="rgba(0,120,200,0.04)"/>
-                      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
-                    </radialGradient>
-                  </defs>
-                  <circle cx="200" cy="200" r="198" fill="url(#an-wr-hud-bloom)"/>
-                  <circle class="an-wr-hud-halo" cx="200" cy="200" r="168"/>
-                  <circle class="an-wr-hud-arc an-wr-hud-arc--dim" cx="200" cy="200" r="188" stroke-dasharray="420 380" stroke-dashoffset="40" transform="rotate(-24 200 200)"/>
-                  <circle class="an-wr-hud-arc an-wr-hud-arc--mid" cx="200" cy="200" r="178" stroke-dasharray="360 440" stroke-dashoffset="120" transform="rotate(48 200 200)"/>
-                  <circle class="an-wr-hud-arc an-wr-hud-arc--bright" cx="200" cy="200" r="192" stroke-dasharray="300 520" stroke-dashoffset="200" transform="rotate(110 200 200)"/>
-                  <g class="an-wr-hud-ticks">
-                    <line class="an-wr-hud-tick" x1="200" y1="24" x2="200" y2="32"/>
-                    <line class="an-wr-hud-tick" x1="338" y1="92" x2="332" y2="98"/>
-                    <line class="an-wr-hud-tick" x1="376" y1="200" x2="368" y2="200"/>
-                    <line class="an-wr-hud-tick" x1="338" y1="308" x2="332" y2="302"/>
-                    <line class="an-wr-hud-tick" x1="200" y1="376" x2="200" y2="368"/>
-                    <line class="an-wr-hud-tick" x1="62" y1="308" x2="68" y2="302"/>
-                    <line class="an-wr-hud-tick" x1="24" y1="200" x2="32" y2="200"/>
-                    <line class="an-wr-hud-tick" x1="62" y1="92" x2="68" y2="98"/>
-                  </g>
-                  <g class="an-wr-hud-callouts">
-                    <path class="an-wr-hud-callout" d="M 268 118 L 298 118 L 298 88"/>
-                    <circle class="an-wr-hud-node" cx="298" cy="88" r="3.5"/>
-                    <path class="an-wr-hud-callout" d="M 318 168 L 348 168 L 348 198"/>
-                    <circle class="an-wr-hud-node" cx="348" cy="198" r="3.5"/>
-                    <path class="an-wr-hud-callout" d="M 298 282 L 328 282 L 328 312"/>
-                    <circle class="an-wr-hud-node" cx="328" cy="312" r="3.5"/>
-                    <path class="an-wr-hud-callout" d="M 132 282 L 102 282 L 102 312"/>
-                    <circle class="an-wr-hud-node" cx="102" cy="312" r="3.5"/>
-                    <path class="an-wr-hud-callout" d="M 82 168 L 52 168 L 52 138"/>
-                    <circle class="an-wr-hud-node" cx="52" cy="138" r="3.5"/>
-                    <path class="an-wr-hud-callout" d="M 132 118 L 102 118 L 102 88"/>
-                    <circle class="an-wr-hud-node" cx="102" cy="88" r="3.5"/>
-                  </g>
+                  <circle class="an-wr-hud-ring" cx="200" cy="200" r="185"/>
                 </svg>
                 <div class="an-wr-gauge-wrap">
                   <canvas id="chart-winrate-hero" aria-label="Win rate gauge"></canvas>
@@ -2770,17 +2700,11 @@
             if (!outer) return;
             ctx.save();
             ctx.beginPath();
-            ctx.arc(cx, cy, outer + 5, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(0,212,255,0.32)';
-            ctx.lineWidth = 1.5;
-            ctx.shadowColor = 'rgba(0,212,255,0.75)';
-            ctx.shadowBlur = 16;
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(cx, cy, outer + 9, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-            ctx.lineWidth = 1;
-            ctx.shadowBlur = 0;
+            ctx.arc(cx, cy, outer + 4, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0,212,255,0.22)';
+            ctx.lineWidth = 1.25;
+            ctx.shadowColor = 'rgba(0,212,255,0.45)';
+            ctx.shadowBlur = 10;
             ctx.stroke();
             ctx.restore();
           }
@@ -2796,15 +2720,14 @@
           var r = Math.min(area.right - area.left, area.bottom - area.top) / 2;
           var g = chart.ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
           if (i === 0) {
-            g.addColorStop(0, 'rgba(0,255,230,0.98)');
-            g.addColorStop(0.5, 'rgba(0,212,255,0.88)');
-            g.addColorStop(1, 'rgba(0,120,220,0.5)');
+            g.addColorStop(0, 'rgba(0,230,255,0.92)');
+            g.addColorStop(1, 'rgba(0,140,210,0.55)');
           } else if (i === 1) {
-            g.addColorStop(0, 'rgba(255,100,120,0.95)');
-            g.addColorStop(1, 'rgba(160,25,45,0.5)');
+            g.addColorStop(0, 'rgba(255,95,115,0.88)');
+            g.addColorStop(1, 'rgba(150,35,50,0.48)');
           } else {
-            g.addColorStop(0, 'rgba(200,210,220,0.7)');
-            g.addColorStop(1, 'rgba(100,110,120,0.35)');
+            g.addColorStop(0, 'rgba(190,200,210,0.62)');
+            g.addColorStop(1, 'rgba(95,105,115,0.32)');
           }
           return g;
         }
@@ -3178,7 +3101,7 @@
             setTimeout(runParticles, 380);
           }
 
-          void import('/js/notion-sync-client.js?v=e1a4b7f2').then(function (mod) {
+          void import('/js/notion-sync-client.js?v=f9a2c6d4').then(function (mod) {
             var before = allTrades.length;
             return mod.startNotionAutoSync(currentUserId, {
               onComplete: function () {

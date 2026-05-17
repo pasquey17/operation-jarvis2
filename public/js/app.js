@@ -1,4 +1,4 @@
-import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=e1a4b7f2";
+import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=f9a2c6d4";
 import { startNotionAutoSync } from "/js/notion-sync-client.js";
 
 const API_CHAT = "/api/chat";
