@@ -356,6 +356,21 @@
       .ac-news-bar--err .ac-news-bar__static {
         color: rgba(255, 130, 130, 0.8);
       }
+      .ac-news-bar--compact {
+        min-height: 44px;
+      }
+      .ac-news-bar--compact .ac-news-bar__inner {
+        min-height: 44px;
+        padding: 8px 20px;
+        gap: 10px;
+      }
+      .ac-news-bar--compact .ac-news-bar__static {
+        font-size: 12px;
+      }
+      .ac-news-bar--compact .ac-news-bar__more {
+        padding: 6px 10px;
+        font-size: 10px;
+      }
 
       .ac-page {
         position: relative;
@@ -417,6 +432,18 @@
         -webkit-overflow-scrolling: touch;
         margin: 0 -6px;
         padding: 0 6px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 212, 255, 0.28) transparent;
+      }
+      .ac-modal__body-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .ac-modal__body-scroll::-webkit-scrollbar-thumb {
+        background: rgba(0, 212, 255, 0.28);
+        border-radius: 99px;
+      }
+      body:has(.ac-news-bar--compact) .ac-page {
+        padding-top: 128px;
       }
       .ac-panel--calc {
         margin-bottom: 0;
@@ -438,10 +465,6 @@
         margin-bottom: 0;
         box-shadow: none;
       }
-      .ac-modal--calc .ac-calc-keypad {
-        grid-template-columns: repeat(auto-fill, minmax(min(148px, 100%), 1fr));
-        gap: 11px 12px;
-      }
       .ac-tool-btn {
         padding: 8px 14px;
         border-radius: 8px;
@@ -462,6 +485,9 @@
       @media (max-width: 768px) {
         .ac-page {
           padding: 144px 0 64px;
+        }
+        body:has(.ac-news-bar--compact) .ac-page {
+          padding-top: 120px;
         }
         .ac-news-bar__inner {
           padding: 10px 14px;
@@ -514,14 +540,40 @@
         border: 1px solid rgba(0, 212, 255, 0.12);
         background: rgba(0, 0, 0, 0.35);
       }
-      .ac-controls__hint {
+      .ac-onboard {
+        margin: 0 0 20px;
+        padding: 14px 18px;
+        border-radius: 14px;
+        border: 1px solid rgba(0, 212, 255, 0.14);
+        background: rgba(4, 9, 18, 0.75);
+      }
+      .ac-onboard[hidden] {
+        display: none;
+      }
+      .ac-onboard__steps {
+        margin: 0 0 12px;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.06em;
-        color: rgba(236, 242, 247, 0.38);
-        line-height: 1.45;
-        flex: 1 1 200px;
-        min-width: 0;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        line-height: 1.55;
+        color: rgba(0, 212, 255, 0.72);
+      }
+      .ac-onboard__cta {
+        padding: 10px 18px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.35);
+        background: rgba(0, 212, 255, 0.1);
+        color: rgba(0, 212, 255, 0.95);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .ac-onboard__cta:hover {
+        background: rgba(0, 212, 255, 0.18);
+        border-color: rgba(0, 212, 255, 0.55);
       }
       .ac-title {
         margin: 0 0 6px;
@@ -588,6 +640,19 @@
       }
       .ac-status--err {
         color: rgba(255, 100, 120, 0.9);
+      }
+      .ac-status--empty {
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        border-radius: 12px;
+        border: 1px dashed rgba(0, 212, 255, 0.22);
+        background: rgba(0, 212, 255, 0.04);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        color: rgba(0, 212, 255, 0.85);
+      }
+      .ac-status--empty .ac-status__text {
+        display: block;
       }
       .ac-status__hint {
         display: block;
@@ -700,11 +765,13 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 120px;
-        padding: 20px 18px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.09);
-        background: rgba(22, 26, 32, 0.95);
+        min-height: 140px;
+        padding: 24px 20px;
+        border-radius: 20px;
+        border: 1px dashed rgba(0, 212, 255, 0.28);
+        background: rgba(4, 9, 18, 0.72);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         cursor: pointer;
         text-align: center;
         font: inherit;
@@ -713,12 +780,16 @@
           border-color 0.2s,
           background 0.2s,
           box-shadow 0.2s;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.05),
+          0 12px 40px rgba(0, 0, 0, 0.35);
       }
       .ac-add-tile:hover {
-        border-color: rgba(255, 255, 255, 0.14);
-        background: rgba(30, 34, 42, 0.98);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        border-color: rgba(0, 212, 255, 0.45);
+        background: rgba(0, 212, 255, 0.06);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 0 24px rgba(0, 212, 255, 0.08);
       }
       .ac-add-tile:focus-visible {
         outline: 2px solid rgba(0, 212, 255, 0.55);
@@ -733,19 +804,20 @@
       .ac-add-tile__glyph {
         font-family: "Share Tech Mono", "Courier New", monospace;
         font-weight: 400;
-        font-size: 18px;
+        font-size: 22px;
         line-height: 1;
-        color: rgba(236, 242, 247, 0.38);
+        color: rgba(0, 212, 255, 0.55);
       }
       .ac-add-tile__label {
         font-family: "Share Tech Mono", "Courier New", monospace;
         font-size: 12px;
-        letter-spacing: 0.06em;
-        color: rgba(236, 242, 247, 0.56);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.82);
       }
       .ac-add-tile:hover .ac-add-tile__glyph,
       .ac-add-tile:hover .ac-add-tile__label {
-        color: rgba(236, 242, 247, 0.78);
+        color: #00d4ff;
       }
       .ac-card {
         border-radius: 20px;
@@ -1043,13 +1115,43 @@
         color: rgba(0, 212, 255, 0.88);
         margin: 0 0 14px;
       }
-      .ac-panel__sub {
+      .ac-calc-help-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+      }
+      .ac-calc-help {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 212, 255, 0.28);
+        background: rgba(0, 0, 0, 0.35);
+        color: rgba(0, 212, 255, 0.75);
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        color: rgba(255, 255, 255, 0.28);
-        margin: -8px 0 14px;
-        line-height: 1.5;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.2s, color 0.2s, background 0.2s;
+      }
+      .ac-calc-help:hover,
+      .ac-calc-help[aria-expanded="true"] {
+        border-color: rgba(0, 212, 255, 0.5);
+        color: #00d4ff;
+        background: rgba(0, 212, 255, 0.1);
+      }
+      .ac-calc-help-panel {
+        margin: 0 0 14px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.15);
+        background: rgba(0, 0, 0, 0.35);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.05em;
+        line-height: 1.55;
+        color: rgba(236, 242, 247, 0.55);
+      }
+      .ac-calc-help-panel[hidden] {
+        display: none;
       }
       .ac-calc-tabs {
         display: flex;
@@ -1057,13 +1159,13 @@
         margin-bottom: 16px;
       }
       .ac-calc-tab {
-        padding: 6px 14px;
+        padding: 8px 16px;
         border-radius: 8px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(0, 0, 0, 0.35);
         color: rgba(255, 255, 255, 0.45);
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
+        font-size: 10px;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         cursor: pointer;
@@ -1113,59 +1215,108 @@
       }
       .ac-calc-device__badge {
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.14em;
+        font-size: 9px;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: rgba(236, 242, 247, 0.35);
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(0, 212, 255, 0.25);
+        color: rgba(0, 212, 255, 0.75);
       }
       .ac-calc-lcd {
-        border-radius: 10px;
-        border: 1px solid rgba(0, 80, 90, 0.5);
-        background: linear-gradient(180deg, #0a1410 0%, #050d0a 55%, #061208 100%);
+        border-radius: 14px;
+        border: 1px solid rgba(0, 212, 255, 0.22);
+        background: linear-gradient(165deg, rgba(0, 212, 255, 0.08) 0%, rgba(4, 9, 18, 0.95) 55%);
         box-shadow:
-          inset 0 2px 12px rgba(0, 0, 0, 0.65),
-          inset 0 0 0 1px rgba(0, 255, 180, 0.04);
-        padding: 12px 14px 14px;
-        margin-bottom: 14px;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        min-height: 88px;
+          inset 0 1px 0 rgba(255, 255, 255, 0.06),
+          0 0 32px rgba(0, 212, 255, 0.06);
+        padding: 16px 18px;
+        margin-bottom: 16px;
+        min-height: 96px;
         box-sizing: border-box;
       }
       .ac-calc-lcd--ft {
-        min-height: 72px;
+        min-height: 88px;
       }
       .ac-calc-lcd__pair {
+        font-family: "Share Tech Mono", "Courier New", monospace;
         font-size: 11px;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.55);
-        margin-bottom: 6px;
+        color: rgba(0, 212, 255, 0.65);
+        margin-bottom: 8px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
       .ac-calc-lcd__main {
-        font-size: clamp(1.35rem, 4vw, 1.85rem);
-        font-weight: 400;
-        letter-spacing: 0.06em;
-        color: rgba(180, 255, 210, 0.92);
-        text-shadow: 0 0 20px rgba(0, 255, 160, 0.12);
-        line-height: 1.25;
+        font-family: "Outfit", system-ui, sans-serif;
+        font-weight: 300;
+        font-size: clamp(1.75rem, 5vw, 2.25rem);
+        letter-spacing: 0.04em;
+        color: #fff;
+        text-shadow: 0 0 40px rgba(0, 212, 255, 0.15);
+        line-height: 1.15;
         word-break: break-word;
       }
       .ac-calc-lcd__sub {
-        margin-top: 8px;
+        margin-top: 10px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
         font-size: 11px;
-        letter-spacing: 0.06em;
-        line-height: 1.4;
-        color: rgba(120, 200, 150, 0.55);
+        letter-spacing: 0.05em;
+        line-height: 1.45;
+        color: rgba(236, 242, 247, 0.48);
+      }
+      .ac-calc-lcd--warn .ac-calc-lcd__main {
+        font-size: clamp(1rem, 3vw, 1.25rem);
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-weight: 400;
+        color: rgba(236, 242, 247, 0.55);
+        text-shadow: none;
       }
       .ac-calc-keypad {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
+        grid-template-columns: 1fr;
         gap: 12px 14px;
         align-items: end;
         min-width: 0;
+      }
+      @media (min-width: 520px) {
+        .ac-calc-keypad {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .ac-calc-advanced {
+        grid-column: 1 / -1;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.12);
+        background: rgba(0, 0, 0, 0.25);
+        padding: 0;
+      }
+      .ac-calc-advanced summary {
+        padding: 10px 12px;
+        font-family: "Share Tech Mono", "Courier New", monospace;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(0, 212, 255, 0.65);
+        cursor: pointer;
+        list-style: none;
+      }
+      .ac-calc-advanced summary::-webkit-details-marker {
+        display: none;
+      }
+      .ac-calc-advanced__inner {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px 14px;
+        padding: 0 12px 12px;
+        border-top: 1px solid rgba(0, 212, 255, 0.08);
+      }
+      @media (min-width: 520px) {
+        .ac-calc-advanced__inner {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
       }
       .ac-panel__hr {
         height: 1px;
@@ -1187,38 +1338,20 @@
       .ac-calc-err {
         grid-column: 1 / -1;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.08em;
-        color: rgba(255, 130, 130, 0.85);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        line-height: 1.4;
+        color: rgba(255, 130, 130, 0.9);
         min-height: 1.2em;
-      }
-      .ac-out--muted {
-        opacity: 0.45;
-        pointer-events: none;
       }
       .ac-field label {
         display: block;
         font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
+        font-size: 10px;
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.35);
-        margin-bottom: 4px;
-      }
-      .ac-out {
-        grid-column: 1 / -1;
-        padding: 12px 14px;
-        border-radius: 10px;
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        background: rgba(0, 212, 255, 0.06);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.85);
-        letter-spacing: 0.06em;
-      }
-      .ac-out strong {
-        color: #00d4ff;
-        font-size: 13px;
+        color: rgba(255, 255, 255, 0.42);
+        margin-bottom: 5px;
       }
 
       .ac-modal-overlay {
@@ -1362,12 +1495,17 @@
             <p class="ac-sub">Manual equity · eval / funded / live</p>
           </div>
         </header>
+        <div class="ac-onboard" id="ac-onboard" hidden>
+          <p class="ac-onboard__steps">Add account → Log equity → Track eval progress</p>
+          <button type="button" class="ac-onboard__cta" id="ac-onboard-add">+ Add account</button>
+        </div>
         <div class="ac-controls">
           <button type="button" class="ac-tool-btn" id="ac-btn-calc">Position size</button>
-          <label class="ac-check"
+          <label
+            class="ac-check"
+            title="When checked, archived accounts are included in the grid."
             ><input type="checkbox" id="ac-show-archived" /> Show archived</label
           >
-          <span class="ac-controls__hint">When checked, archived accounts are included in the grid.</span>
         </div>
         <div class="ac-status" id="ac-status"></div>
 
@@ -1424,13 +1562,28 @@
         </div>
         <div class="ac-modal__body-scroll">
           <section class="ac-panel ac-panel--calc" aria-label="Position size calculator">
-            <p class="ac-panel__sub">
-              Forex: lots = risk USD ÷ (stop pips × pip $ per 1.00 lot). Pair presets:
-              <code style="font-size: 9px; color: rgba(0, 212, 255, 0.55)">/data/fx-pairs.json</code> (static).
-              Economic releases for today (Adelaide) load in the bar above via
-              <code style="font-size: 9px; color: rgba(0, 212, 255, 0.55)">/api/economic-calendar</code>.
-              Futures: risk ÷ (stop points × $/point). Client-side only.
-            </p>
+            <div class="ac-calc-help-row">
+              <button
+                type="button"
+                class="ac-calc-help"
+                id="calc-help-btn"
+                aria-expanded="false"
+                aria-controls="calc-help-panel"
+                title="How this works"
+              >
+                ?
+              </button>
+            </div>
+            <div class="ac-calc-help-panel" id="calc-help-panel" hidden>
+              Forex: lots = risk $ ÷ (stop pips × pip $ per lot). Futures: contracts = risk $ ÷ (stop
+              points × $/point). Pair pip defaults use static presets. All math runs in your browser.
+            </div>
+            <div class="ac-field ac-field--full">
+              <label for="calc-balance-account">Balance from account</label>
+              <select class="ac-select" id="calc-balance-account">
+                <option value="">Manual entry</option>
+              </select>
+            </div>
             <div class="ac-calc-tabs" role="tablist">
               <button type="button" class="ac-calc-tab ac-active" id="calc-tab-fx" role="tab" aria-selected="true">
                 Forex (pips)
@@ -1444,7 +1597,7 @@
               <div class="ac-calc-device">
                 <div class="ac-calc-device__head">
                   <span class="ac-calc-device__name">FX · pip risk</span>
-                  <span class="ac-calc-device__badge">MODEL JRV-3</span>
+                  <span class="ac-calc-device__badge">FX</span>
                 </div>
                 <div class="ac-calc-lcd" id="calc-fx-lcd" aria-live="polite">
                   <div class="ac-calc-lcd__pair" id="calc-fx-lcd-pair">—</div>
@@ -1483,6 +1636,9 @@
                     <label for="calc-fx-pips">Stop (pips)</label>
                     <input class="ac-input" type="number" id="calc-fx-pips" step="0.1" min="0.1" placeholder="25" />
                   </div>
+                  <details class="ac-calc-advanced">
+                    <summary>Advanced · pip settings</summary>
+                    <div class="ac-calc-advanced__inner">
                   <div class="ac-field">
                     <label for="calc-fx-pipsize">Pip size (price)</label>
                     <select class="ac-select" id="calc-fx-pipsize">
@@ -1494,11 +1650,9 @@
                     <label for="calc-fx-pipusd">Pip $ / 1.00 lot</label>
                     <input class="ac-input" type="number" id="calc-fx-pipusd" step="0.01" min="0.01" placeholder="10" />
                   </div>
+                    </div>
+                  </details>
                   <div class="ac-calc-err" id="calc-fx-err" aria-live="polite"></div>
-                  <div class="ac-out" id="calc-fx-out">
-                    <span class="ac-out-line1">Detail: <strong>—</strong></span><br />
-                    <span class="ac-out-line2" style="font-size: 10px; color: rgba(236, 242, 247, 0.42)"></span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1508,7 +1662,7 @@
               <div class="ac-calc-device">
                 <div class="ac-calc-device__head">
                   <span class="ac-calc-device__name">Futures · point risk</span>
-                  <span class="ac-calc-device__badge">MODEL JRV-3</span>
+                  <span class="ac-calc-device__badge">Futures</span>
                 </div>
                 <div class="ac-calc-lcd ac-calc-lcd--ft" id="calc-ft-lcd" aria-live="polite">
                   <div class="ac-calc-lcd__pair">Contracts</div>
@@ -1548,10 +1702,6 @@
                     <input class="ac-input" type="number" id="calc-ft-dpp" step="0.01" min="0.01" placeholder="5" />
                   </div>
                   <div class="ac-calc-err" id="calc-ft-err" aria-live="polite"></div>
-                  <div class="ac-out" id="calc-ft-out">
-                    <span class="ac-out-line1">Detail: <strong>—</strong></span><br />
-                    <span class="ac-out-line2" style="font-size: 10px; color: rgba(236, 242, 247, 0.42)"></span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1938,6 +2088,52 @@
           });
         }
 
+        function updateOnboardVisibility() {
+          var ob = document.getElementById("ac-onboard");
+          if (!ob) return;
+          ob.hidden = accountsCache.length > 0;
+        }
+
+        function populateCalcAccountSelect() {
+          var sel = document.getElementById("calc-balance-account");
+          if (!sel) return;
+          var prev = sel.value;
+          sel.innerHTML = '<option value="">Manual entry</option>';
+          accountsCache.forEach(function (a) {
+            if (a.archived) return;
+            var eq =
+              a.latest_snapshot && a.latest_snapshot.equity != null
+                ? Number(a.latest_snapshot.equity)
+                : null;
+            var label = a.name || "Account";
+            if (eq != null && Number.isFinite(eq)) {
+              label += " · $" + eq.toLocaleString(undefined, { maximumFractionDigits: 0 });
+            } else {
+              label += " · no equity logged";
+            }
+            var opt = document.createElement("option");
+            opt.value = a.id;
+            opt.textContent = label;
+            sel.appendChild(opt);
+          });
+          if (prev && sel.querySelector('option[value="' + prev + '"]')) sel.value = prev;
+        }
+
+        function applyCalcBalanceFromAccount() {
+          var sel = document.getElementById("calc-balance-account");
+          if (!sel || !sel.value) return;
+          var acc = accountsCache.find(function (a) {
+            return a.id === sel.value;
+          });
+          if (!acc) return;
+          var ls = acc.latest_snapshot;
+          if (!ls || ls.equity == null) return;
+          var s = String(ls.equity);
+          document.getElementById("calc-fx-balance").value = s;
+          document.getElementById("calc-ft-balance").value = s;
+          runAllCalc();
+        }
+
         function setStatus(msg, isErr) {
           var el = document.getElementById("ac-status");
           if (!msg) {
@@ -1981,7 +2177,8 @@
             escapeHtml(m) +
             "</span>" +
             (hint ? '<span class="ac-status__hint">' + escapeHtml(hint) + "</span>" : "");
-          el.className = "ac-status" + (isErr ? " ac-status--err" : "");
+          var emptyHint = !isErr && low.indexOf("no accounts yet") !== -1;
+          el.className = "ac-status" + (isErr ? " ac-status--err" : emptyHint ? " ac-status--empty" : "");
         }
 
         async function loadAccounts() {
@@ -1998,11 +2195,15 @@
           if (!res.ok) {
             setStatus((data && data.error) || res.statusText || "Load failed", true);
             accountsCache = [];
+            updateOnboardVisibility();
+            populateCalcAccountSelect();
             document.getElementById("ac-grid").innerHTML = renderAddAccountTile();
             return;
           }
           accountsCache = Array.isArray(data.accounts) ? data.accounts : [];
           setStatus(accountsCache.length ? "" : "No accounts yet — tap Add account tile.");
+          updateOnboardVisibility();
+          populateCalcAccountSelect();
           document.getElementById("ac-grid").innerHTML =
             renderAddAccountTile() + accountsCache.map(renderCard).join("");
           requestAnimationFrame(function () {
@@ -2142,6 +2343,7 @@
             track.innerHTML = "";
             dup.innerHTML = "";
             stat.textContent = msg;
+            bar.classList.add("ac-news-bar--compact");
             if (err) bar.classList.add("ac-news-bar--err");
             else bar.classList.remove("ac-news-bar--err");
           }
@@ -2163,6 +2365,7 @@
           track.innerHTML = "";
           dup.innerHTML = "";
           bar.classList.remove("ac-news-bar--err");
+          bar.classList.remove("ac-news-bar--compact");
 
           fetch("/api/economic-calendar", { cache: "no-store" })
             .then(function (r) {
@@ -2214,6 +2417,7 @@
               track.innerHTML = html;
               dup.innerHTML = html;
               stat.textContent = "";
+              bar.classList.remove("ac-news-bar--compact");
               viewport.classList.add("is-marquee");
               applyMarqueeDuration();
             })
@@ -2223,6 +2427,10 @@
         }
 
         function openCalcModal() {
+          populateCalcAccountSelect();
+          applyDefaultBalanceFromAccounts();
+          var pipsEl = document.getElementById("calc-fx-pips");
+          if (pipsEl && String(pipsEl.value).trim() === "") pipsEl.value = "25";
           calcOverlay.classList.add("ac-open");
           calcOverlay.setAttribute("aria-hidden", "false");
           requestAnimationFrame(function () {
@@ -2253,6 +2461,18 @@
         });
 
         document.getElementById("ac-btn-calc").addEventListener("click", openCalcModal);
+        document.getElementById("ac-onboard-add").addEventListener("click", openAddModal);
+        document.getElementById("calc-help-btn").addEventListener("click", function () {
+          var panel = document.getElementById("calc-help-panel");
+          var btn = document.getElementById("calc-help-btn");
+          if (!panel || !btn) return;
+          var open = panel.hidden;
+          panel.hidden = !open;
+          btn.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+        document.getElementById("calc-balance-account").addEventListener("change", function () {
+          if (this.value) applyCalcBalanceFromAccount();
+        });
         document.getElementById("ac-calc-close").addEventListener("click", function () {
           calcOverlay.classList.remove("ac-open");
           calcOverlay.setAttribute("aria-hidden", "true");
@@ -2426,25 +2646,21 @@
 
         function runFxCalc() {
           var errEl = document.getElementById("calc-fx-err");
-          var out = document.getElementById("calc-fx-out");
-          var l1 = out.querySelector(".ac-out-line1");
-          var l2 = out.querySelector(".ac-out-line2");
+          var lcd = document.getElementById("calc-fx-lcd");
           var lcdP = document.getElementById("calc-fx-lcd-pair");
           var lcdM = document.getElementById("calc-fx-lcd-main");
           var lcdS = document.getElementById("calc-fx-lcd-sub");
           var pairSel = document.getElementById("calc-fx-pair");
           errEl.textContent = "";
-          out.classList.remove("ac-out--muted");
+          if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           var opt = pairSel.selectedOptions && pairSel.selectedOptions[0];
           if (lcdP) lcdP.textContent = opt ? opt.textContent : "—";
 
           function fail(msg) {
             errEl.textContent = msg;
-            out.classList.add("ac-out--muted");
-            l1.innerHTML = "Detail: <strong>—</strong>";
-            l2.textContent = "";
-            if (lcdM) lcdM.textContent = "—";
-            if (lcdS) lcdS.textContent = msg;
+            if (lcd) lcd.classList.add("ac-calc-lcd--warn");
+            if (lcdM) lcdM.textContent = msg;
+            if (lcdS) lcdS.textContent = "";
           }
 
           var bal = parseInputNumber("calc-fx-balance");
@@ -2490,6 +2706,7 @@
           var micro = Math.round(lots * 100);
           var perPipAtSize = lots * pipUsd;
 
+          if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           if (lcdM) lcdM.textContent = lots.toFixed(2) + " lots";
           if (lcdS)
             lcdS.textContent =
@@ -2497,41 +2714,25 @@
               riskUsd.toFixed(2) +
               " · ~$" +
               (Number.isFinite(perPipAtSize) ? perPipAtSize.toFixed(2) : "—") +
-              " /pip @ size · " +
+              " /pip · " +
               micro +
-              " µ";
-
-          l1.innerHTML =
-            "Detail: <strong>" +
-            lots.toFixed(2) +
-            " lots</strong> <span style='opacity:0.55'>(" +
-            micro +
-            " micro)</span>";
-          l2.textContent =
-            "Risk $" +
-            riskUsd.toFixed(2) +
-            " · Est. $/pip @ this size $" +
-            (Number.isFinite(perPipAtSize) ? perPipAtSize.toFixed(2) : "—");
+              " micro";
           saveCalcPrefs();
         }
 
         function runFtCalc() {
           var errEl = document.getElementById("calc-ft-err");
-          var out = document.getElementById("calc-ft-out");
-          var l1 = out.querySelector(".ac-out-line1");
-          var l2 = out.querySelector(".ac-out-line2");
+          var lcd = document.getElementById("calc-ft-lcd");
           var lcdM = document.getElementById("calc-ft-lcd-main");
           var lcdS = document.getElementById("calc-ft-lcd-sub");
           errEl.textContent = "";
-          out.classList.remove("ac-out--muted");
+          if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
 
           function fail(msg) {
             errEl.textContent = msg;
-            out.classList.add("ac-out--muted");
-            l1.innerHTML = "Detail: <strong>—</strong>";
-            l2.textContent = "";
-            if (lcdM) lcdM.textContent = "—";
-            if (lcdS) lcdS.textContent = msg;
+            if (lcd) lcd.classList.add("ac-calc-lcd--warn");
+            if (lcdM) lcdM.textContent = msg;
+            if (lcdS) lcdS.textContent = "";
           }
 
           var bal = parseInputNumber("calc-ft-balance");
@@ -2564,10 +2765,9 @@
             return;
           }
           var contracts = riskUsd / denom;
+          if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           if (lcdM) lcdM.textContent = contracts.toFixed(2) + " contracts";
-          if (lcdS) lcdS.textContent = "Risk $" + riskUsd.toFixed(2) + " · stop × $" + dpp + "/pt";
-          l1.innerHTML = "Detail: <strong>" + contracts.toFixed(2) + " contracts</strong>";
-          l2.textContent = "Risk $" + riskUsd.toFixed(2);
+          if (lcdS) lcdS.textContent = "Risk $" + riskUsd.toFixed(2) + " · " + stop + " pts × $" + dpp + "/pt";
           saveCalcPrefs();
         }
 
@@ -2667,14 +2867,21 @@
         function applyDefaultBalanceFromAccounts() {
           var fxB = document.getElementById("calc-fx-balance");
           var ftB = document.getElementById("calc-ft-balance");
-          var filled = (fxB.value && Number(fxB.value) > 0) || (ftB.value && Number(ftB.value) > 0);
-          if (filled) return;
+          var sel = document.getElementById("calc-balance-account");
+          if (!fxB || !ftB) return;
+          var fxT = String(fxB.value).trim();
+          var ftT = String(ftB.value).trim();
+          if (fxT !== "" && Number(fxT) > 0) return;
+          if (ftT !== "" && Number(ftT) > 0) return;
           for (var i = 0; i < accountsCache.length; i++) {
-            var ls = accountsCache[i].latest_snapshot;
+            var a = accountsCache[i];
+            if (a.archived) continue;
+            var ls = a.latest_snapshot;
             if (ls && ls.equity != null) {
               var s = String(ls.equity);
               fxB.value = s;
               ftB.value = s;
+              if (sel) sel.value = a.id;
               runAllCalc();
               return;
             }
