@@ -1192,6 +1192,14 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   color: rgba(0,212,255,0.7);
 }
 .ltm-input { display: block; }
+.ltm-pair-other { margin-top: 8px; }
+.ltm-pair-other[hidden] { display: none !important; }
+.ltm-account-hint {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.45); margin: 0 0 12px 34px; line-height: 1.5;
+}
+.ltm-account-hint a { color: rgba(0,212,255,0.85); text-decoration: none; }
+.ltm-account-hint a:hover { text-decoration: underline; }
 .ltm-textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
 
 /* Section labels */

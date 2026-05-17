@@ -12,13 +12,30 @@
  * - title, files, formula, rollup, relation, people, created_*, last_edited_*, unique_id → skipped
  *
  * Core columns skipped (same as public/js/log-trade-modal.js CORE_FIELD_NAMES, case-insensitive):
- * date, pair, session, outcome, rr, account — not duplicated as custom fields.
+ * date, pair, direction, session, outcome, rr, account (+ position-type aliases) — not duplicated as custom fields.
  */
 
 const NOTION_API = "https://api.notion.com/v1";
 export const NOTION_VERSION = "2025-09-03";
 
-const CORE_FIELD_KEYS = new Set(["date", "pair", "session", "outcome", "rr", "account"]);
+const CORE_FIELD_KEYS = new Set([
+  "date",
+  "pair",
+  "direction",
+  "session",
+  "outcome",
+  "rr",
+  "account",
+]);
+
+const DIRECTION_FIELD_ALIASES = new Set([
+  "position type",
+  "position_type",
+  "long_short",
+  "side",
+  "trade_direction",
+  "long/short",
+]);
 
 const SKIP_TYPES = new Set([
   "title",
@@ -41,7 +58,9 @@ export function shouldSkipJournalFieldName(name) {
     .trim()
     .toLowerCase();
   if (!n) return true;
-  return CORE_FIELD_KEYS.has(n);
+  if (CORE_FIELD_KEYS.has(n)) return true;
+  if (DIRECTION_FIELD_ALIASES.has(n)) return true;
+  return false;
 }
 
 export function mapNotionPropertyToJournalField(propName, prop) {
