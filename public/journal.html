@@ -2071,6 +2071,9 @@
         var merged = [];
         if (tradesRes.status === 'fulfilled') {
           var data = tradesRes.value;
+          if (data && data.notion_sync_warning) {
+            showToast(String(data.notion_sync_warning), true);
+          }
           var norm = normalizeTradesApiBody(data);
           var recs = norm.records;
           for (var ri = 0; ri < recs.length; ri++) {
@@ -3571,7 +3574,7 @@
         try { allTrades = await fetchAllTrades(); }
         catch(e) { list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>'; return; }
         if (allTrades.length === 0) {
-          list.innerHTML = '<div class="jn-state">No trades to show. Open FILTER + → Data sources if you expect manual LOG TRADE rows or legacy Notion sync, or log a trade above.</div>'; return;
+          list.innerHTML = '<div class="jn-state">No trades to show. Add trades in your Notion database or use LOG TRADE above. If you just added rows in Notion, refresh the page.</div>'; return;
         }
         renderWeeklyStats(computeWeeklyStats(allTrades));
         buildFilterOptions(allTrades);

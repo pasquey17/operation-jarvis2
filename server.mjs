@@ -13,8 +13,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildMessagesUserContent } from "./prompts.mjs";
-import { syncNotionToSupabase } from './notion-sync.mjs';
-import { syncNotionToSupabaseMum } from './notion-sync-mum.mjs';
 import { fetchTradeImagesFromNotionPageBlocks } from './notion-page-images.mjs';
 import { syncJournalFieldsFromNotion } from "./sync-journal-fields-notion.mjs";
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
@@ -83,15 +81,19 @@ const MAX_CHAT_MESSAGES = 12;
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 /**
- * Auto-sync throttle: re-pull from Notion if last sync was longer ago than this.
- * Default 60s so new Notion rows appear quickly (was 30m — felt “stuck”).
- * Set NOTION_SYNC_INTERVAL_MS in env (minimum 10000) to override.
+ * Background-only throttle (optional fire-and-forget paths). Read paths use `{ force: true }`
+ * and always pull Notion before returning Supabase data.
  */
 const NOTION_SYNC_INTERVAL_MS = (() => {
   const raw = Number(process.env.NOTION_SYNC_INTERVAL_MS);
   if (Number.isFinite(raw) && raw >= 10_000) return raw;
   return 60_000;
 })();
+
+/** One in-flight OAuth sync per user — parallel /api/trades calls share the same promise. */
+const notionSyncInflight = new Map();
+
+const OAUTH_BOOT_USER_IDS = ["aidenpasque11@gmail.com", "spasque70@gmail.com"];
 
 /**
  * Jarvis chat identity — merged voice spec (token-neutral vs prior); date/trade JSON appended in buildJarvisChatSystem.
@@ -684,62 +686,108 @@ async function setSyncState(syncKey) {
 }
 
 /**
- * Auto Notion sync (throttled via sync_state).
- * — If `notion_connections` + `notion_mappings` exist for user_id, OAuth sync runs (same as POST /api/notion/sync-user).
- * — Otherwise falls back to env-based syncNotionToSupabase / mum (NOTION_API_KEY).
- * Same sync_state keys (`notion_aiden` / `notion_mum`) for both paths; OAuth wins when mapping is complete (no double-write).
+ * OAuth-only Notion → Supabase sync (`notion_connections` + `notion_mappings`).
+ * Env NOTION_API_KEY sync is not used.
  *
- * **Latency:** `GET /api/trades` and `GET /api/snapshot` no longer **await** this — they return
- * Supabase immediately and kick sync in the background so first paint is not blocked by Notion
- * (manual sync: `/api/sync-notion`, `/api/sync-mum`, POST `/api/notion/sync-user`).
+ * @param {string} userId
+ * @param {{ force?: boolean }} [options] — `force: true` skips throttle (used on read paths).
+ * @returns {Promise<{ ok: boolean, skipped?: boolean, reason?: string, fetched?: number, upserted?: number, oauthRequired?: boolean, oauthAuthError?: boolean }>}
  */
-async function maybeSyncNotion(userId) {
+async function maybeSyncNotion(userId, options = {}) {
+  const uid = String(userId || "").trim() || "aidenpasque11@gmail.com";
+  if (notionSyncInflight.has(uid)) {
+    return notionSyncInflight.get(uid);
+  }
+  const work = runMaybeSyncNotion(uid, options).finally(() => {
+    notionSyncInflight.delete(uid);
+  });
+  notionSyncInflight.set(uid, work);
+  return work;
+}
+
+async function runMaybeSyncNotion(userId, options = {}) {
   const syncKey = userId === "spasque70@gmail.com" ? "notion_mum" : "notion_aiden";
+  const force = options.force === true;
   try {
-    const lastSynced = await getSyncState(syncKey);
-    if (lastSynced && Date.now() - lastSynced.getTime() < NOTION_SYNC_INTERVAL_MS) {
-      return; // Data is fresh — skip
+    if (!force) {
+      const lastSynced = await getSyncState(syncKey);
+      if (lastSynced && Date.now() - lastSynced.getTime() < NOTION_SYNC_INTERVAL_MS) {
+        return { ok: true, skipped: true, reason: "throttled" };
+      }
     }
 
     const oauthResult = await syncNotionOAuthForUser(userId);
 
-    if (oauthResult.skipped && (oauthResult.reason === "no_connection" || oauthResult.reason === "no_mapping")) {
-      const syncFn = userId === "spasque70@gmail.com" ? syncNotionToSupabaseMum : syncNotionToSupabase;
-      const result = await syncFn();
-      if (result.ok) {
-        await setSyncState(syncKey);
-        console.log(`[auto-sync] ${userId}: fetched ${result.fetched}, upserted ${result.upserted}`);
-      } else if (result.skipped) {
-        console.warn(`[auto-sync] ${userId} (env): skipped — ${result.reason ?? "unknown"}`);
-      } else {
-        console.warn(
-          `[auto-sync] ${userId} (env): did not sync — ${result.reason ?? result.error ?? "unknown"}`
-        );
-      }
-      return;
+    if (oauthResult.skipped) {
+      const reason = oauthResult.reason || "oauth_not_configured";
+      console.warn(`[notion-sync] ${userId}: ${reason} — complete /notion-setup.html`);
+      return {
+        ok: false,
+        skipped: true,
+        reason,
+        oauthRequired: true,
+      };
     }
 
     if (oauthResult.ok) {
       await setSyncState(syncKey);
       console.log(
-        `[auto-sync] ${userId} (oauth): fetched ${oauthResult.fetched}, upserted ${oauthResult.upserted}`
+        `[notion-sync] ${userId}: fetched ${oauthResult.fetched}, upserted ${oauthResult.upserted}`
       );
-      return;
+      return {
+        ok: true,
+        skipped: false,
+        fetched: oauthResult.fetched,
+        upserted: oauthResult.upserted,
+      };
     }
 
+    const reason = oauthResult.reason || "sync_failed";
     if (oauthResult.oauthAuthError) {
       console.warn(
-        `[auto-sync] ${userId} (oauth): Notion token rejected (${oauthResult.status ?? "?"}) — reconnect OAuth in onboarding`
+        `[notion-sync] ${userId}: Notion token rejected (${oauthResult.status ?? "?"}) — reconnect OAuth`
       );
     } else {
-      console.warn(
-        `[auto-sync] ${userId} (oauth): ${oauthResult.reason || "sync failed"}`
-      );
+      console.warn(`[notion-sync] ${userId}: ${reason}`);
     }
+    return {
+      ok: false,
+      skipped: false,
+      reason,
+      oauthAuthError: Boolean(oauthResult.oauthAuthError),
+    };
   } catch (e) {
-    console.warn("[auto-sync] Failed:", e instanceof Error ? e.message : e);
-    // Never throw — request continues with existing data
+    const reason = e instanceof Error ? e.message : String(e);
+    console.warn("[notion-sync] Failed:", reason);
+    return { ok: false, skipped: false, reason };
   }
+}
+
+/** Attach human-readable sync status for clients (still returns cached trades on failure). */
+function applyNotionSyncMeta(payload, syncMeta) {
+  if (!payload || typeof payload !== "object" || !syncMeta) return payload;
+  if (syncMeta.ok && !syncMeta.skipped) {
+    payload.notion_sync = {
+      ok: true,
+      fetched: syncMeta.fetched ?? null,
+      upserted: syncMeta.upserted ?? null,
+    };
+    return payload;
+  }
+  if (syncMeta.skipped && syncMeta.reason === "throttled") return payload;
+  if (syncMeta.skipped && syncMeta.oauthRequired) {
+    payload.notion_sync_warning =
+      syncMeta.reason === "no_mapping"
+        ? "Notion column mapping missing — finish setup at /notion-setup.html"
+        : "Notion not connected — connect at /notion-setup.html";
+    return payload;
+  }
+  if (!syncMeta.ok) {
+    payload.notion_sync_warning = syncMeta.oauthAuthError
+      ? "Notion connection expired — reconnect at /notion-setup.html"
+      : syncMeta.reason || "Notion sync failed";
+  }
+  return payload;
 }
 
 loadEnvFromDotenv();
@@ -1848,24 +1896,32 @@ function formatSupabaseError(responseText, status) {
 
 async function handleSyncNotion(req, res) {
   try {
-    const result = await syncNotionToSupabase();
-    if (result.ok) {
+    const u = new URL(req.url, `http://localhost:${PORT}`);
+    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
+    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const syncMeta = await maybeSyncNotion(userId, { force: true });
+    if (syncMeta.ok && !syncMeta.skipped) {
       json(res, 200, {
         success: true,
-        fetched: result.fetched,
-        upserted: result.upserted,
+        fetched: syncMeta.fetched,
+        upserted: syncMeta.upserted,
       });
       return;
     }
-    if (result.skipped) {
-      json(res, 200, {
+    if (syncMeta.skipped && syncMeta.oauthRequired) {
+      json(res, 404, {
         success: false,
-        skipped: true,
-        reason: result.reason ?? "unknown",
+        error:
+          syncMeta.reason === "no_mapping"
+            ? "No column mapping — complete /notion-setup.html"
+            : "No Notion connection — connect at /notion-setup.html",
       });
       return;
     }
-    json(res, 500, { success: false, error: result.error ?? "Sync failed" });
+    json(res, syncMeta.oauthAuthError ? 401 : 502, {
+      success: false,
+      error: syncMeta.reason || "Sync failed",
+    });
   } catch (e) {
     console.error("[notion-sync]", e);
     json(res, 500, {
@@ -1881,9 +1937,10 @@ async function handleTrades(req, res) {
     const userIdRaw = u.searchParams.get("user_id") || "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
     const includeArchived = u.searchParams.get("include_archived") === "1";
-    void maybeSyncNotion(userId).catch(() => {});
+    const syncMeta = await maybeSyncNotion(userId, { force: true });
     const tDb = Date.now();
     const payload = await fetchTradesFromSupabase(userId, { includeArchived });
+    applyNotionSyncMeta(payload, syncMeta);
     if (process.env.JARVIS_PERF_LOG === "1") {
       console.log(
         `[perf] GET /api/trades user=${userId} dbMs=${Date.now() - tDb} rows=${payload.records.length}`
@@ -1917,7 +1974,7 @@ async function handleSnapshot(req, res) {
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
 
-    void maybeSyncNotion(userId).catch(() => {});
+    const syncMeta = await maybeSyncNotion(userId, { force: true });
 
     const tDb = Date.now();
     const trades = await getRecentTrades(userId, { limit: MAX_SUPABASE_ROWS });
@@ -1929,7 +1986,9 @@ async function handleSnapshot(req, res) {
         `[perf] GET /api/snapshot user=${userId} dbMs=${Date.now() - tDb} trades=${trades.length}`
       );
     }
-    json(res, 200, { userId, snapshot });
+    const body = { userId, snapshot };
+    applyNotionSyncMeta(body, syncMeta);
+    json(res, 200, body);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const code = e?.code;
@@ -2181,9 +2240,8 @@ async function handleChat(req, res) {
     return;
   }
 
-  // Profile fetch runs in parallel; Notion sync fires in background (fire-and-forget)
   const profilePromise = fetchUserProfile(userId);
-  maybeSyncNotion(userId).catch(() => {});
+  await maybeSyncNotion(userId, { force: true });
 
   let trades;
   try {
@@ -3637,11 +3695,17 @@ async function handleRefreshTradeImage(req, res) {
 
   if (!notionId) { json(res, 400, { error: "Missing notion_id" }); return; }
 
-  const notionKey = userId === "spasque70@gmail.com"
-    ? process.env.NOTION_API_KEY_MUM?.trim()
-    : process.env.NOTION_API_KEY?.trim();
-
-  if (!notionKey) { json(res, 503, { error: "Notion key not configured" }); return; }
+  const conn = await loadNotionOAuthConnection(userId || "aidenpasque11@gmail.com");
+  if (!conn.ok) {
+    json(res, 503, {
+      error:
+        conn.reason === "no_mapping"
+          ? "Notion mapping missing — complete /notion-setup.html"
+          : "Notion OAuth not connected — connect at /notion-setup.html",
+    });
+    return;
+  }
+  const notionKey = conn.accessToken;
 
   try {
     const pageRes = await fetch(`https://api.notion.com/v1/pages/${notionId}`, {
@@ -3974,9 +4038,15 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/sync-mum")) {
     try {
-      const result = await syncNotionToSupabaseMum();
+      const syncMeta = await maybeSyncNotion("spasque70@gmail.com", { force: true });
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(result));
+      res.end(
+        JSON.stringify(
+          syncMeta.ok && !syncMeta.skipped
+            ? { ok: true, fetched: syncMeta.fetched, upserted: syncMeta.upserted }
+            : { ok: false, error: syncMeta.reason || "Sync failed" }
+        )
+      );
     } catch (err) {
       res.statusCode = 500;
       res.end(JSON.stringify({ error: err.message }));
@@ -4521,19 +4591,15 @@ function resolveNotionTradeDateIso(page, mapping, get) {
 }
 
 /**
- * Load OAuth token + mapping and fetch all pages from the mapped Notion database / data source.
- * @returns {{ ok: true, skipped: false, pages: object[], mapping: object, accessToken: string } | { ok: false, skipped: true, reason: string, pages: [] } | { ok: false, skipped: false, reason: string, oauthAuthError?: boolean, status?: number, pages: [] }}
+ * Load OAuth token + column mapping from Supabase (no Notion API call).
  */
-async function notionOAuthFetchAllPages(userId) {
+async function loadNotionOAuthConnection(userId) {
   const { url } = getSupabaseConfig();
   const srKey = getServiceRoleKey();
   if (!url || !srKey) {
-    return { ok: false, skipped: false, reason: "Supabase not configured", pages: [] };
+    return { ok: false, skipped: false, reason: "Supabase not configured" };
   }
 
-  let accessToken;
-  let databaseId;
-  let mapping;
   try {
     const [connRes, mapRes] = await Promise.all([
       fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
@@ -4545,9 +4611,11 @@ async function notionOAuthFetchAllPages(userId) {
     ]);
     const connRows = await connRes.json().catch(() => null);
     const mapRows = await mapRes.json().catch(() => null);
-    accessToken = Array.isArray(connRows) && connRows.length > 0 ? connRows[0].access_token : null;
-    databaseId = Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].database_id : null;
-    mapping = Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].mapping : null;
+    const accessToken =
+      Array.isArray(connRows) && connRows.length > 0 ? connRows[0].access_token : null;
+    const databaseId =
+      Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].database_id : null;
+    let mapping = Array.isArray(mapRows) && mapRows.length > 0 ? mapRows[0].mapping : null;
     if (mapping != null && typeof mapping === "string") {
       try {
         mapping = JSON.parse(mapping);
@@ -4555,19 +4623,36 @@ async function notionOAuthFetchAllPages(userId) {
         mapping = null;
       }
     }
+
+    if (!accessToken) return { ok: false, skipped: true, reason: "no_connection" };
+    if (!databaseId || mapping == null || typeof mapping !== "object" || Array.isArray(mapping)) {
+      return { ok: false, skipped: true, reason: "no_mapping" };
+    }
+
+    return { ok: true, accessToken, databaseId, mapping };
   } catch (e) {
     return {
       ok: false,
       skipped: false,
       reason: `Failed to read connection/mapping: ${String(e.message ?? e)}`,
-      pages: [],
     };
   }
+}
 
-  if (!accessToken) return { ok: false, skipped: true, reason: "no_connection", pages: [] };
-  if (!databaseId || mapping == null || typeof mapping !== "object" || Array.isArray(mapping)) {
-    return { ok: false, skipped: true, reason: "no_mapping", pages: [] };
+/**
+ * Load OAuth token + mapping and fetch all pages from the mapped Notion database / data source.
+ * @returns {{ ok: true, skipped: false, pages: object[], mapping: object, accessToken: string } | { ok: false, skipped: true, reason: string, pages: [] } | { ok: false, skipped: false, reason: string, oauthAuthError?: boolean, status?: number, pages: [] }}
+ */
+async function notionOAuthFetchAllPages(userId) {
+  const conn = await loadNotionOAuthConnection(userId);
+  if (!conn.ok) {
+    if (conn.skipped) {
+      return { ok: false, skipped: true, reason: conn.reason, pages: [] };
+    }
+    return { ok: false, skipped: false, reason: conn.reason, pages: [] };
   }
+
+  const { accessToken, databaseId, mapping } = conn;
 
   let dataSourceId = mapping.__data_source_id ?? null;
   if (dataSourceId != null && String(dataSourceId).trim()) {
@@ -4912,7 +4997,7 @@ async function handleNotionReconcileArchive(req, res) {
  * OAuth + notion_mappings → trades (shared by POST /api/notion/sync-user and maybeSyncNotion).
  * Notion OAuth access tokens are not refreshed here (schema has no refresh_token); reconnect if Notion invalidates the token.
  *
- * @returns { skipped: true, reason: 'no_connection'|'no_mapping' } — use legacy env sync
+ * @returns { skipped: true, reason: 'no_connection'|'no_mapping' }
  * @returns { ok: true, fetched, upserted, skipped: false }
  * @returns { ok: false, skipped: false, reason, oauthAuthError?, status? }
  */
@@ -5025,27 +5110,26 @@ async function handleNotionSyncUser(req, res) {
     return;
   }
 
-  const result = await syncNotionOAuthForUser(user_id);
+  const syncMeta = await maybeSyncNotion(user_id, { force: true });
 
-  if (result.skipped && result.reason === "no_connection") {
-    json(res, 404, { error: "No Notion connection found" });
-    return;
-  }
-  if (result.skipped && result.reason === "no_mapping") {
-    json(res, 404, { error: "No column mapping found — complete setup first" });
-    return;
-  }
-
-  if (!result.ok) {
-    if (result.oauthAuthError) {
-      json(res, 401, { error: result.reason || "Notion token rejected — reconnect OAuth" });
-      return;
-    }
-    json(res, 502, { error: result.reason || "Sync failed" });
+  if (syncMeta.skipped && syncMeta.oauthRequired) {
+    json(res, 404, {
+      error:
+        syncMeta.reason === "no_mapping"
+          ? "No column mapping found — complete setup first"
+          : "No Notion connection found",
+    });
     return;
   }
 
-  json(res, 200, { synced: result.upserted });
+  if (!syncMeta.ok) {
+    json(res, syncMeta.oauthAuthError ? 401 : 502, {
+      error: syncMeta.reason || "Sync failed",
+    });
+    return;
+  }
+
+  json(res, 200, { synced: syncMeta.upserted ?? 0, fetched: syncMeta.fetched ?? null });
 }
 
 const server = http.createServer(requestListener);
@@ -5071,17 +5155,27 @@ if (!process.env.VERCEL) {
       );
     }
 
-    void syncNotionToSupabase()
-      .then((r) => {
-        if (r.ok) {
-          console.log(
-            `[notion-sync] Startup sync complete — fetched ${r.fetched}, upserted ${r.upserted}.`
+    void (async () => {
+      for (const uid of OAUTH_BOOT_USER_IDS) {
+        try {
+          const r = await maybeSyncNotion(uid, { force: true });
+          if (r.ok && !r.skipped) {
+            console.log(
+              `[notion-sync] Startup OAuth sync ${uid}: fetched ${r.fetched}, upserted ${r.upserted}`
+            );
+          } else if (r.skipped && r.oauthRequired) {
+            console.log(`[notion-sync] Startup skip ${uid}: ${r.reason}`);
+          } else if (!r.ok) {
+            console.warn(`[notion-sync] Startup ${uid}: ${r.reason || "failed"}`);
+          }
+        } catch (e) {
+          console.error(
+            `[notion-sync] Startup OAuth sync failed (${uid}):`,
+            e instanceof Error ? e.message : e
           );
         }
-      })
-      .catch((e) => {
-        console.error("[notion-sync] Startup sync failed:", e instanceof Error ? e.message : e);
-      });
+      }
+    })();
   });
 }
 

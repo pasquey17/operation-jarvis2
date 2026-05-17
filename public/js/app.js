@@ -277,6 +277,8 @@ function normalizeTradesApiBody(data) {
         ? inner.snapshot
         : null,
     warning: typeof inner.warning === "string" ? inner.warning : "",
+    notionSyncWarning:
+      typeof inner.notion_sync_warning === "string" ? inner.notion_sync_warning : "",
   };
 }
 
@@ -1325,7 +1327,11 @@ async function loadTradesAttempt() {
     records: normalized.records,
     snapshot: normalized.snapshot,
     ...(normalized.warning ? { warning: normalized.warning } : {}),
+    ...(normalized.notionSyncWarning ? { notionSyncWarning: normalized.notionSyncWarning } : {}),
   };
+  if (normalized.notionSyncWarning && els.snapInsight) {
+    els.snapInsight.textContent = normalized.notionSyncWarning;
+  }
   console.log("FRONTEND RECORDS:", tradeData.records.length);
   tradesLoaded = true;
   renderSnapshot();
