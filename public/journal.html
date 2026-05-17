@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/css/style.css?v=53a2ae4" />
+    <link rel="stylesheet" href="/css/style.css?v=c4f7a2e1" />
     <style>
       /* ══════════════════════════════════════════════════════
          JOURNAL — DEEP SPACE THEME
@@ -2838,7 +2838,7 @@
         }
         if (src === 'journal_log') {
           try {
-            var mod = await import('/js/log-trade-modal.js?v=53a2ae4');
+            var mod = await import('/js/log-trade-modal.js?v=c4f7a2e1');
             await mod.openLogTradeModal({
               getUserId: function () {
                 return (
@@ -3481,7 +3481,7 @@
       /* ── LOG TRADE modal (shared: /js/log-trade-modal.js) ── */
       async function openTradeForm() {
         try {
-          var mod = await import('/js/log-trade-modal.js?v=53a2ae4');
+          var mod = await import('/js/log-trade-modal.js?v=c4f7a2e1');
           await mod.openLogTradeModal({
             getUserId: function () {
               return (
@@ -3560,7 +3560,7 @@
       }, true); // capture phase — error events don't bubble
 
       function runBackgroundNotionSync() {
-        return import('/js/notion-sync-client.js?v=53a2ae4').then(function (mod) {
+        return import('/js/notion-sync-client.js?v=c4f7a2e1').then(function (mod) {
           var countBefore = allTrades.length;
           return mod.startNotionAutoSync(currentUserId, {
             onComplete: function () {

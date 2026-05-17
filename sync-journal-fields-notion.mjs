@@ -11,31 +11,13 @@
  * - date → text (skip property names matching core "date" etc.; see shouldSkipJournalFieldName)
  * - title, files, formula, rollup, relation, people, created_*, last_edited_*, unique_id → skipped
  *
- * Core columns skipped (same as public/js/log-trade-modal.js CORE_FIELD_NAMES, case-insensitive):
- * date, pair, direction, session, outcome, rr, account (+ position-type aliases) — not duplicated as custom fields.
+ * Core/template skips: public/js/log-trade-field-skip.mjs (keep in sync with LOG TRADE modal).
  */
+
+import { shouldSkipJournalFieldName as shouldSkipJournalFieldNameShared } from "./public/js/log-trade-field-skip.mjs";
 
 const NOTION_API = "https://api.notion.com/v1";
 export const NOTION_VERSION = "2025-09-03";
-
-const CORE_FIELD_KEYS = new Set([
-  "date",
-  "pair",
-  "direction",
-  "session",
-  "outcome",
-  "rr",
-  "account",
-]);
-
-const DIRECTION_FIELD_ALIASES = new Set([
-  "position type",
-  "position_type",
-  "long_short",
-  "side",
-  "trade_direction",
-  "long/short",
-]);
 
 const SKIP_TYPES = new Set([
   "title",
@@ -54,13 +36,7 @@ const SKIP_TYPES = new Set([
 ]);
 
 export function shouldSkipJournalFieldName(name) {
-  const n = String(name || "")
-    .trim()
-    .toLowerCase();
-  if (!n) return true;
-  if (CORE_FIELD_KEYS.has(n)) return true;
-  if (DIRECTION_FIELD_ALIASES.has(n)) return true;
-  return false;
+  return shouldSkipJournalFieldNameShared(name);
 }
 
 export function mapNotionPropertyToJournalField(propName, prop) {

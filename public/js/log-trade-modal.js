@@ -1,45 +1,34 @@
 /**
  * LOG TRADE modal — premium rebuild.
- * Drag-to-reorder fields. Photo paste/drop. Saves to /api/log-trade.
+ * Drag-to-reorder fields. Chart photo slots (HTF/LTF/Entry). Saves to /api/log-trade.
  */
+
+import {
+  TRADE_SUMMARY_FIELD_ID,
+  TRADE_SUMMARY_STORAGE_KEY,
+  CHART_PHOTO_SLOTS,
+  CANONICAL_CORE_ORDER,
+  normalizeFieldKey,
+  shouldSkipJournalFieldName,
+  isCoreFieldId,
+  filterAndDedupeJournalFieldRows,
+} from "./log-trade-field-skip.mjs";
 
 export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1";
 const FIELD_ORDER_KEY = "jarvis_field_order_v3";
+const HIDDEN_FIELDS_KEY = "jarvis_hidden_journal_fields_v1";
 const PAIR_OTHER = "Other";
+const MAX_EXTRA_PHOTOS = 3;
+const MAX_TOTAL_PHOTOS = 6;
 
 const CURATED_PAIRS = ["XAUUSD", "NAS100", "EURUSD", "GBPUSD", "USDJPY", "BTCUSD"];
 
-const CORE_FIELD_NAMES = new Set([
-  "date",
-  "pair",
-  "direction",
-  "session",
-  "outcome",
-  "rr",
-  "account",
-]);
-
-const DIRECTION_SKIP_NAMES = new Set([
-  "position type",
-  "position_type",
-  "long_short",
-  "side",
-  "trade_direction",
-  "long/short",
-]);
-
-const CANONICAL_CORE_ORDER = [
-  "date",
-  "pair",
-  "direction",
-  "session",
-  "outcome",
-  "rr",
-  "account",
-];
-
 let ltmOpen = false;
-let ltmPhotos = [];
+/** @type {Record<string, { dataUrl: string, label: string } | null>} */
+let ltmSlotPhotos = {};
+/** @type {{ dataUrl: string, label: string }[]} */
+let ltmExtraPhotos = [];
+let ltmFocusedSlotId = null;
 
 function escHtml(s) {
   return String(s)
@@ -55,17 +44,24 @@ function escAttr(s) {
     .replace(/</g, "&lt;");
 }
 
-function normalizeFieldKey(name) {
-  return String(name || "")
-    .trim()
-    .toLowerCase();
+function loadHiddenFieldKeySet() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HIDDEN_FIELDS_KEY) || "[]");
+    if (!Array.isArray(raw)) return new Set();
+    return new Set(raw.map((k) => normalizeFieldKey(k)).filter(Boolean));
+  } catch {
+    return new Set();
+  }
 }
 
-function shouldSkipNotionField(fieldName) {
-  const n = normalizeFieldKey(fieldName);
-  if (CORE_FIELD_NAMES.has(n)) return true;
-  if (DIRECTION_SKIP_NAMES.has(n)) return true;
-  return false;
+function hideJournalFieldKey(fieldId) {
+  const key = normalizeFieldKey(fieldId);
+  if (!key || isCoreFieldId(fieldId)) return;
+  const set = loadHiddenFieldKeySet();
+  set.add(key);
+  try {
+    localStorage.setItem(HIDDEN_FIELDS_KEY, JSON.stringify([...set]));
+  } catch {}
 }
 
 function getRowField(row, ...keys) {
@@ -287,6 +283,12 @@ function buildCoreFieldDefs({ pairOptions, accountNames, hasAccounts }) {
       placeholderSelect: hasAccounts ? "Choose account" : "No account yet",
       allowEmptyAccount: !hasAccounts,
     },
+    {
+      id: TRADE_SUMMARY_FIELD_ID,
+      label: "Trade summary",
+      type: "textarea",
+      placeholder: "What happened on this trade?",
+    },
   ];
 }
 
@@ -446,7 +448,11 @@ function renderFieldRow(field, today) {
   }
   const inputHtml =
     field.id === "outcome" ? buildOutcomeInputHtml(field) : buildInputHtml(field, today);
-  return `<div class="ltm-field-row" data-field-id="${escAttr(field.id)}" draggable="true">
+  const removable = !isCoreFieldId(field.id);
+  const removeBtn = removable
+    ? `<button type="button" class="ltm-field-remove" data-remove-field-id="${escAttr(field.id)}" aria-label="Remove field" title="Remove from form">×</button>`
+    : "";
+  return `<div class="ltm-field-row${removable ? " ltm-field-row--removable" : ""}" data-field-id="${escAttr(field.id)}" draggable="true">
   <div class="ltm-drag-handle" title="Drag to reorder" aria-hidden="true">
     <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
       <circle cx="3" cy="3"  r="1.3"/><circle cx="7" cy="3"  r="1.3"/>
@@ -455,52 +461,273 @@ function renderFieldRow(field, today) {
     </svg>
   </div>
   <div class="ltm-field-inner">
-    <label class="trade-label ltm-label" for="${escAttr(inputId)}">${escHtml(field.label)}</label>
+    <div class="ltm-label-row">
+      <label class="trade-label ltm-label" for="${escAttr(inputId)}">${escHtml(field.label)}</label>
+      ${removeBtn}
+    </div>
     ${inputHtml}
     ${pairOther}
   </div>
 </div>`;
 }
 
+function countFilledPhotos() {
+  let n = 0;
+  for (const slot of CHART_PHOTO_SLOTS) {
+    if (ltmSlotPhotos[slot.id]?.dataUrl) n += 1;
+  }
+  n += ltmExtraPhotos.filter((p) => p?.dataUrl).length;
+  return n;
+}
+
 function updatePhotoCountUI() {
   const el = document.getElementById("ltm-photo-count");
   if (!el) return;
-  if (!ltmPhotos.length) {
+  const n = countFilledPhotos();
+  if (!n) {
     el.textContent = "";
     el.hidden = true;
     return;
   }
   el.hidden = false;
-  el.textContent = `${ltmPhotos.length}/6`;
+  el.textContent = `${n}/${MAX_TOTAL_PHOTOS}`;
 }
 
-function renderPhotoPreviews(container) {
-  if (!ltmPhotos.length) {
-    container.innerHTML = "";
-    updatePhotoCountUI();
+function photosToPayload() {
+  const out = [];
+  for (const slot of CHART_PHOTO_SLOTS) {
+    const p = ltmSlotPhotos[slot.id];
+    if (p?.dataUrl) out.push({ url: p.dataUrl, label: slot.label });
+  }
+  for (const p of ltmExtraPhotos) {
+    if (p?.dataUrl) out.push({ url: p.dataUrl, label: p.label || "Extra" });
+  }
+  return out;
+}
+
+function hydratePhotosFromCustomData(photos) {
+  resetPhotoState();
+  const arr = Array.isArray(photos) ? photos : [];
+  for (const p of arr) {
+    if (!p || typeof p.url !== "string" || !p.url.trim()) continue;
+    const labelKey = normalizeFieldKey(p.label);
+    const slot = CHART_PHOTO_SLOTS.find((s) => normalizeFieldKey(s.label) === labelKey);
+    if (slot && !ltmSlotPhotos[slot.id]?.dataUrl) {
+      ltmSlotPhotos[slot.id] = { dataUrl: p.url.trim(), label: slot.label };
+    } else {
+      ltmExtraPhotos.push({
+        dataUrl: p.url.trim(),
+        label: typeof p.label === "string" && p.label.trim() ? p.label.trim() : "Extra",
+      });
+    }
+  }
+}
+
+function resetPhotoState() {
+  ltmSlotPhotos = {};
+  for (const slot of CHART_PHOTO_SLOTS) ltmSlotPhotos[slot.id] = null;
+  ltmExtraPhotos = [];
+  ltmFocusedSlotId = null;
+}
+
+function buildChartPhotosHtml() {
+  const slots = CHART_PHOTO_SLOTS.map(
+    (slot) =>
+      `<div class="ltm-chart-slot" data-slot-id="${escAttr(slot.id)}">
+      <span class="ltm-chart-slot__label">${escHtml(slot.label)}</span>
+      <div class="ltm-chart-slot__drop" tabindex="0" role="button" aria-label="Add ${escAttr(slot.label)} chart">
+        <span class="ltm-chart-slot__hint">Drop or click</span>
+      </div>
+      <div class="ltm-chart-slot__preview" data-slot-preview="${escAttr(slot.id)}"></div>
+    </div>`
+  ).join("");
+  return `<div class="ltm-chart-slots">${slots}</div>
+    <button type="button" class="ltm-add-extra-photo" id="ltm-add-extra-photo">+ Add another photo</button>
+    <div class="ltm-extra-photos" id="ltm-extra-photos"></div>`;
+}
+
+function renderSlotPreview(slotId) {
+  const el = document.querySelector(`[data-slot-preview="${slotId}"]`);
+  if (!el) return;
+  const p = ltmSlotPhotos[slotId];
+  if (!p?.dataUrl) {
+    el.innerHTML = "";
     return;
   }
-  container.innerHTML = ltmPhotos
+  const slot = CHART_PHOTO_SLOTS.find((s) => s.id === slotId);
+  el.innerHTML = `<div class="ltm-thumb">
+    <img class="ltm-thumb-img" src="${escHtml(p.dataUrl)}" alt="${escHtml(slot?.label || "Chart")}">
+    <button type="button" class="ltm-thumb-remove" data-slot-clear="${escAttr(slotId)}" aria-label="Remove photo">&times;</button>
+  </div>`;
+}
+
+function renderExtraPhotoPreviews() {
+  const container = document.getElementById("ltm-extra-photos");
+  if (!container) return;
+  container.innerHTML = ltmExtraPhotos
     .map(
       (p, i) =>
-        `<div class="ltm-thumb">
-      <img class="ltm-thumb-img" src="${escHtml(p.dataUrl)}" alt="Photo ${i + 1}">
-      <button type="button" class="ltm-thumb-remove" data-idx="${i}" aria-label="Remove photo">&times;</button>
+        `<div class="ltm-extra-photo">
+      <span class="ltm-extra-photo__label">${escHtml(p.label || "Extra")}</span>
+      <div class="ltm-thumb">
+        <img class="ltm-thumb-img" src="${escHtml(p.dataUrl)}" alt="">
+        <button type="button" class="ltm-thumb-remove" data-extra-idx="${i}" aria-label="Remove">&times;</button>
+      </div>
     </div>`
     )
     .join("");
+}
+
+function renderAllSlotPreviews() {
+  for (const slot of CHART_PHOTO_SLOTS) renderSlotPreview(slot.id);
+  renderExtraPhotoPreviews();
   updatePhotoCountUI();
 }
 
-function addPhotoFile(file, previewContainer) {
-  if (!file || !file.type.startsWith("image/")) return;
-  if (ltmPhotos.length >= 6) return;
+function setSlotPhoto(slotId, dataUrl) {
+  const slot = CHART_PHOTO_SLOTS.find((s) => s.id === slotId);
+  if (!slot) return;
+  ltmSlotPhotos[slotId] = { dataUrl, label: slot.label };
+  renderSlotPreview(slotId);
+  updatePhotoCountUI();
+}
+
+function addPhotoToFirstEmptySlot(file) {
+  if (!file || !file.type.startsWith("image/")) return false;
+  if (countFilledPhotos() >= MAX_TOTAL_PHOTOS) return false;
+  const targetId =
+    ltmFocusedSlotId ||
+    CHART_PHOTO_SLOTS.find((s) => !ltmSlotPhotos[s.id]?.dataUrl)?.id ||
+    null;
+  if (targetId) {
+    const reader = new FileReader();
+    reader.onload = (ev) => setSlotPhoto(targetId, ev.target.result);
+    reader.readAsDataURL(file);
+    return true;
+  }
+  if (ltmExtraPhotos.length >= MAX_EXTRA_PHOTOS) return false;
   const reader = new FileReader();
   reader.onload = (ev) => {
-    ltmPhotos.push({ dataUrl: ev.target.result, label: "" });
-    renderPhotoPreviews(previewContainer);
+    ltmExtraPhotos.push({ dataUrl: ev.target.result, label: "Extra" });
+    renderExtraPhotoPreviews();
+    updatePhotoCountUI();
   };
   reader.readAsDataURL(file);
+  return true;
+}
+
+function initChartPhotos(overlay, showToast) {
+  renderAllSlotPreviews();
+  for (const slot of CHART_PHOTO_SLOTS) {
+    const slotEl = overlay.querySelector(`[data-slot-id="${slot.id}"]`);
+    if (!slotEl) continue;
+    const drop = slotEl.querySelector(".ltm-chart-slot__drop");
+    if (!drop) continue;
+    drop.addEventListener("focus", () => {
+      ltmFocusedSlotId = slot.id;
+    });
+    drop.addEventListener("click", () => {
+      ltmFocusedSlotId = slot.id;
+      const inp = document.createElement("input");
+      inp.type = "file";
+      inp.accept = "image/*";
+      inp.onchange = () => {
+        const f = inp.files?.[0];
+        if (f) addPhotoToFirstEmptySlot(f);
+      };
+      inp.click();
+    });
+    drop.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      drop.classList.add("ltm-chart-slot__drop--over");
+    });
+    drop.addEventListener("dragleave", () => drop.classList.remove("ltm-chart-slot__drop--over"));
+    drop.addEventListener("drop", (e) => {
+      e.preventDefault();
+      drop.classList.remove("ltm-chart-slot__drop--over");
+      ltmFocusedSlotId = slot.id;
+      const f = e.dataTransfer.files?.[0];
+      if (f) addPhotoToFirstEmptySlot(f);
+    });
+  }
+  overlay.querySelector(".ltm-chart-slots")?.addEventListener("click", (e) => {
+    const clearSlot = e.target.closest("[data-slot-clear]");
+    if (clearSlot) {
+      const sid = clearSlot.getAttribute("data-slot-clear");
+      ltmSlotPhotos[sid] = null;
+      renderSlotPreview(sid);
+      updatePhotoCountUI();
+      return;
+    }
+    const extraBtn = e.target.closest("[data-extra-idx]");
+    if (extraBtn) {
+      const idx = parseInt(extraBtn.getAttribute("data-extra-idx"), 10);
+      if (!isNaN(idx)) {
+        ltmExtraPhotos.splice(idx, 1);
+        renderExtraPhotoPreviews();
+        updatePhotoCountUI();
+      }
+    }
+  });
+  document.getElementById("ltm-add-extra-photo")?.addEventListener("click", () => {
+    if (countFilledPhotos() >= MAX_TOTAL_PHOTOS) {
+      showToast?.(`Maximum ${MAX_TOTAL_PHOTOS} photos.`, true);
+      return;
+    }
+    if (ltmExtraPhotos.length >= MAX_EXTRA_PHOTOS) {
+      showToast?.("Maximum extra photos added.", true);
+      return;
+    }
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "image/*";
+    inp.onchange = () => {
+      const f = inp.files?.[0];
+      if (f) addPhotoToFirstEmptySlot(f);
+    };
+    inp.click();
+  });
+}
+
+function initFieldRemoveHandlers(fieldsList, showToast) {
+  if (!fieldsList) return;
+  fieldsList.addEventListener("click", (e) => {
+    const btn = e.target.closest(".ltm-field-remove");
+    if (!btn) return;
+    const row = btn.closest(".ltm-field-row");
+    const fid = row?.dataset?.fieldId || btn.dataset.removeFieldId;
+    if (!fid || isCoreFieldId(fid)) return;
+    hideJournalFieldKey(fid);
+    row?.remove();
+    showToast?.("Field removed from form.", false);
+  });
+  fieldsList.addEventListener("contextmenu", (e) => {
+    const row = e.target.closest(".ltm-field-row");
+    if (!row) return;
+    const fid = row.dataset.fieldId;
+    if (!fid || isCoreFieldId(fid)) return;
+    e.preventDefault();
+    hideJournalFieldKey(fid);
+    row.remove();
+    showToast?.("Field removed from form.", false);
+  });
+  let pressTimer = null;
+  fieldsList.addEventListener(
+    "touchstart",
+    (e) => {
+      const row = e.target.closest(".ltm-field-row--removable");
+      if (!row) return;
+      const fid = row.dataset.fieldId;
+      pressTimer = setTimeout(() => {
+        hideJournalFieldKey(fid);
+        row.remove();
+        showToast?.("Field removed from form.", false);
+      }, 550);
+    },
+    { passive: true }
+  );
+  fieldsList.addEventListener("touchend", () => clearTimeout(pressTimer));
+  fieldsList.addEventListener("touchmove", () => clearTimeout(pressTimer));
 }
 
 function initFieldDrag(list) {
@@ -649,22 +876,11 @@ function buildOverlayHtml(today, orderedFields, hasAccounts, isEdit) {
       <div class="ltm-fields-list" id="ltm-fields-list">${rowsHtml}</div>
       ${accountHint}
       <div class="ltm-section-label ltm-section-label--with-count">
-        <span>Photos</span>
+        <span>Chart photos</span>
         <span class="ltm-photo-count" id="ltm-photo-count" hidden aria-live="polite"></span>
       </div>
       <div class="ltm-photo-section">
-        <div class="ltm-dropzone" id="ltm-dropzone" tabindex="0" role="button"
-             aria-label="Upload photo — drop files or click to browse">
-          <svg class="ltm-dz-icon" width="24" height="24" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-          <span class="ltm-dz-hint">Drop images or paste from clipboard</span>
-          <span class="ltm-dz-sub">Click to browse · PNG, JPG, WEBP · max 6</span>
-        </div>
-        <div class="ltm-photo-previews" id="ltm-photo-previews"></div>
+        ${buildChartPhotosHtml()}
       </div>
       <div class="ltm-section-label">Custom fields</div>
       <div class="ltm-adder-wrap" id="ltm-adder-wrap">
@@ -722,7 +938,7 @@ export async function openLogTradeModal(options) {
 
   if (ltmOpen) return;
   ltmOpen = true;
-  ltmPhotos = [];
+  resetPhotoState();
 
   const userId = getUserId();
 
@@ -749,10 +965,10 @@ export async function openLogTradeModal(options) {
   const pairOptions = mergePairOptions(prefill, journal);
   const coreDefs = buildCoreFieldDefs({ pairOptions, accountNames, hasAccounts });
 
-  let notionFields = [];
+  const hiddenKeys = loadHiddenFieldKeySet();
   const allFields = Array.isArray(journalFieldsRes.fields) ? journalFieldsRes.fields : [];
-  notionFields = allFields
-    .filter((f) => !shouldSkipNotionField(f.field_name))
+  const notionFields = filterAndDedupeJournalFieldRows(allFields)
+    .filter((f) => !hiddenKeys.has(normalizeFieldKey(f.field_name)))
     .map(notionFieldToDef);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -788,7 +1004,7 @@ export async function openLogTradeModal(options) {
       () => {
         overlay.remove();
         ltmOpen = false;
-        ltmPhotos = [];
+        resetPhotoState();
       },
       { once: true }
     );
@@ -835,21 +1051,25 @@ export async function openLogTradeModal(options) {
     const dirVal = cd.direction || extractDirectionFromRow(editTrade);
     if (dirVal) setFormValue(form, "direction", dirVal, pairOptions);
 
+    let tradeSummary = "";
     for (const k of Object.keys(cd)) {
       if (k === "photos" || k === "direction") continue;
+      const nk = normalizeFieldKey(k);
+      if (nk === "trade summary" || nk === "notes") {
+        if (!tradeSummary && cd[k] != null && String(cd[k]).trim()) {
+          tradeSummary = String(cd[k]).trim();
+        }
+        continue;
+      }
       setFormValue(form, k, cd[k], pairOptions);
     }
+    setFormValue(form, TRADE_SUMMARY_FIELD_ID, tradeSummary, pairOptions);
 
     initPairOtherToggle(form);
 
     if (Array.isArray(cd.photos)) {
-      ltmPhotos = cd.photos
-        .filter((p) => p && typeof p.url === "string" && p.url.trim())
-        .map((p) => ({
-          dataUrl: p.url.trim(),
-          label: typeof p.label === "string" ? p.label : "",
-        }));
-      renderPhotoPreviews(document.getElementById("ltm-photo-previews"));
+      hydratePhotosFromCustomData(cd.photos);
+      renderAllSlotPreviews();
     }
 
     if (delBtn) {
@@ -893,54 +1113,20 @@ export async function openLogTradeModal(options) {
   const mouseupHandler = () => {};
   document.addEventListener("mouseup", mouseupHandler, { passive: true });
 
-  const dropzone = document.getElementById("ltm-dropzone");
-  const previews = document.getElementById("ltm-photo-previews");
-
-  dropzone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropzone.classList.add("ltm-dropzone--over");
-  });
-  dropzone.addEventListener("dragleave", (e) => {
-    if (!dropzone.contains(e.relatedTarget)) dropzone.classList.remove("ltm-dropzone--over");
-  });
-  dropzone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    dropzone.classList.remove("ltm-dropzone--over");
-    Array.from(e.dataTransfer.files).forEach((f) => addPhotoFile(f, previews));
-  });
-  dropzone.addEventListener("click", () => {
-    const inp = document.createElement("input");
-    inp.type = "file";
-    inp.accept = "image/*";
-    inp.multiple = true;
-    inp.onchange = () => Array.from(inp.files || []).forEach((f) => addPhotoFile(f, previews));
-    inp.click();
-  });
-  dropzone.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      dropzone.click();
-    }
-  });
+  initFieldRemoveHandlers(fieldsList, showToast);
+  initChartPhotos(overlay, showToast);
 
   const pasteHandler = (e) => {
     if (!document.body.contains(overlay)) return;
     const items = e.clipboardData?.items || [];
     for (const item of items) {
-      if (item.type.startsWith("image/")) addPhotoFile(item.getAsFile(), previews);
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) addPhotoToFirstEmptySlot(file);
+      }
     }
   };
   document.addEventListener("paste", pasteHandler);
-
-  previews.addEventListener("click", (e) => {
-    const btn = e.target.closest(".ltm-thumb-remove");
-    if (!btn) return;
-    const idx = parseInt(btn.dataset.idx, 10);
-    if (!isNaN(idx)) {
-      ltmPhotos.splice(idx, 1);
-      renderPhotoPreviews(previews);
-    }
-  });
 
   const adderBtn = document.getElementById("ltm-adder-btn");
   const adderForm = document.getElementById("ltm-adder-form");
@@ -964,6 +1150,10 @@ export async function openLogTradeModal(options) {
     const label = adderName.value.trim();
     if (!label) {
       adderName.focus();
+      return;
+    }
+    if (shouldSkipJournalFieldName(label)) {
+      showToast("That field is already on the form or reserved.", true);
       return;
     }
     const type = adderType.value;
@@ -1000,8 +1190,8 @@ export async function openLogTradeModal(options) {
     syncOutcomeChipsFromSelect(form);
     const rrEl = form.elements.namedItem("rr");
     if (rrEl && "value" in rrEl) rrEl.value = "";
-    ltmPhotos = [];
-    renderPhotoPreviews(previews);
+    resetPhotoState();
+    renderAllSlotPreviews();
     syncRR();
     setSavingState(false);
     form.querySelector(".ltm-outcome-chip")?.focus?.();
@@ -1030,13 +1220,16 @@ export async function openLogTradeModal(options) {
     const custom_data = {};
     if (direction) custom_data.direction = direction;
 
+    const summaryVal = (fd.get(TRADE_SUMMARY_FIELD_ID) || "").trim();
+    if (summaryVal) custom_data[TRADE_SUMMARY_STORAGE_KEY] = summaryVal;
+
     for (const f of [...notionFields, ...userAddedFields]) {
+      if (shouldSkipJournalFieldName(f.id)) continue;
       const v = (fd.get(f.id) || "").trim();
       if (v) custom_data[f.id] = v;
     }
-    if (ltmPhotos.length) {
-      custom_data.photos = ltmPhotos.map((p) => ({ url: p.dataUrl, label: p.label }));
-    }
+    const photoPayload = photosToPayload();
+    if (photoPayload.length) custom_data.photos = photoPayload;
 
     setSavingState(true);
     if (submitBtn) submitBtn.textContent = "Saving…";
