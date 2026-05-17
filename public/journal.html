@@ -3559,6 +3559,24 @@
           .catch(function () {});
       }, true); // capture phase — error events don't bubble
 
+      function runBackgroundNotionSync() {
+        return import('/js/notion-sync-client.js').then(function (mod) {
+          var countBefore = allTrades.length;
+          return mod.startNotionAutoSync(currentUserId, {
+            onComplete: function () {
+              return refreshJournalData().then(function () {
+                if (allTrades.length > countBefore) {
+                  showToast('Notion synced — ' + (allTrades.length - countBefore) + ' new trade(s)', false);
+                }
+              });
+            },
+            onError: function (e) {
+              showToast(e.message || 'Notion sync failed', true);
+            }
+          });
+        });
+      }
+
       /* ── Boot ── */
       document.getElementById('jn-log-btn').addEventListener('click', openTradeForm);
       document.getElementById('jn-edit-trade-btn').addEventListener('click', function () {
@@ -3574,13 +3592,19 @@
         try { allTrades = await fetchAllTrades(); }
         catch(e) { list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>'; return; }
         if (allTrades.length === 0) {
-          list.innerHTML = '<div class="jn-state">No trades to show. Add trades in your Notion database or use LOG TRADE above. If you just added rows in Notion, refresh the page.</div>'; return;
+          list.innerHTML = '<div class="jn-state">Syncing from Notion…</div>';
+        } else {
+          renderWeeklyStats(computeWeeklyStats(allTrades));
+          buildFilterOptions(allTrades);
+          applyFilters();
+          updateAccordionLabels();
+          updateFilterDot();
         }
-        renderWeeklyStats(computeWeeklyStats(allTrades));
-        buildFilterOptions(allTrades);
-        applyFilters();
-        updateAccordionLabels();
-        updateFilterDot();
+        void runBackgroundNotionSync().then(function () {
+          if (allTrades.length === 0) {
+            list.innerHTML = '<div class="jn-state">No trades to show. Add trades in your Notion database or use LOG TRADE above.</div>';
+          }
+        });
       }
 
       // ── Premium animation layer ──

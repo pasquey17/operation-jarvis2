@@ -2189,6 +2189,24 @@
           } else {
             setTimeout(runParticles, 380);
           }
+
+          void import('/js/notion-sync-client.js').then(function (mod) {
+            var before = allTrades.length;
+            return mod.startNotionAutoSync(currentUserId, {
+              onComplete: function () {
+                return fetchAllTrades().then(function (t) {
+                  if (t.length !== before) {
+                    allTrades = t;
+                    if (allTrades.length) {
+                      bindMonteCarloRiskControlsOnce();
+                      renderAll(allTrades);
+                      bindMonteCarloScenarioClicksOnce();
+                    }
+                  }
+                });
+              }
+            });
+          });
         }
 
         boot();

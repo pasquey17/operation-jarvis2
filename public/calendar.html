@@ -2786,6 +2786,25 @@
           if (panelEl) {
             setTimeout(function () { panelEl.classList.add("cal-panel--visible"); }, 80);
           }
+
+          void import("/js/notion-sync-client.js").then(function (mod) {
+            var before = trades.length;
+            return mod.startNotionAutoSync(currentUserId, {
+              onComplete: function () {
+                return fetchAllTrades().then(function (t) {
+                  if (t.length === before) return;
+                  trades = t;
+                  buildIndex(trades);
+                  var badgeEl = document.getElementById("cal-badge-text");
+                  if (badgeEl) {
+                    badgeEl.textContent =
+                      trades.length === 1 ? "1 trade loaded" : trades.length + " trades loaded";
+                  }
+                  renderGrid();
+                });
+              },
+            });
+          });
         }
 
         boot();

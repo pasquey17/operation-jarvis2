@@ -1,4 +1,5 @@
 import { openLogTradeModal } from "/js/log-trade-modal.js";
+import { startNotionAutoSync } from "/js/notion-sync-client.js";
 
 const API_CHAT = "/api/chat";
 const API_TRADES = "/api/trades";
@@ -1353,6 +1354,41 @@ async function loadTrades() {
   }
 }
 
+function runBackgroundNotionSync() {
+  const userId =
+    currentUserId ||
+    localStorage.getItem("jarvis_user") ||
+    localStorage.getItem("user_id") ||
+    DEFAULT_USER_ID;
+  const prevInsight = els.snapInsight?.textContent || "";
+  if (els.snapInsight && !tradeData?.notionSyncWarning) {
+    els.snapInsight.textContent = "Syncing Notion…";
+  }
+  return startNotionAutoSync(userId, {
+    onComplete: async () => {
+      const countBefore = tradeData?.records?.length ?? 0;
+      await loadTrades();
+      if (
+        els.snapInsight &&
+        els.snapInsight.textContent === "Syncing Notion…" &&
+        !tradeData?.notionSyncWarning
+      ) {
+        renderSnapshot();
+      }
+      const countAfter = tradeData?.records?.length ?? 0;
+      if (countAfter > countBefore && els.snapInsight && !tradeData?.notionSyncWarning) {
+        els.snapInsight.textContent = "Notion synced — ledger updated.";
+      }
+    },
+    onError: (e) => {
+      if (els.snapInsight?.textContent === "Syncing Notion…") {
+        els.snapInsight.textContent = prevInsight || e.message;
+      }
+      console.warn("[notion-sync]", e.message);
+    },
+  }).catch(() => {});
+}
+
 function updateSendEnabled() {
   if (els.chatSend) {
     const blocked = Boolean(tradeData?.loadError);
@@ -2208,12 +2244,16 @@ async function boot() {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible" || chatSending) return;
   if (tradeData?.loadError || !tradesLoaded) {
-    void loadTrades();
+    void loadTrades().then(() => void runBackgroundNotionSync());
+    return;
   }
+  void runBackgroundNotionSync();
 });
 
 window.addEventListener("pageshow", (ev) => {
-  if (ev.persisted && !chatSending) void loadTrades();
+  if (ev.persisted && !chatSending) {
+    void loadTrades().then(() => void runBackgroundNotionSync());
+  }
 });
 
 function keepAlive() {

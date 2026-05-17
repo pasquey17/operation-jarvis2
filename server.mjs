@@ -80,10 +80,7 @@ const MAX_CHAT_MESSAGES = 12;
 /** Per-turn content cap (characters) before API send. */
 const MAX_CHAT_MESSAGE_CHARS = 1800;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
-/**
- * Background-only throttle (optional fire-and-forget paths). Read paths use `{ force: true }`
- * and always pull Notion before returning Supabase data.
- */
+/** Throttle for optional server-side background kicks. Read paths return Supabase immediately; clients POST /api/notion/sync-user in parallel. */
 const NOTION_SYNC_INTERVAL_MS = (() => {
   const raw = Number(process.env.NOTION_SYNC_INTERVAL_MS);
   if (Number.isFinite(raw) && raw >= 10_000) return raw;
@@ -1937,10 +1934,8 @@ async function handleTrades(req, res) {
     const userIdRaw = u.searchParams.get("user_id") || "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
     const includeArchived = u.searchParams.get("include_archived") === "1";
-    const syncMeta = await maybeSyncNotion(userId, { force: true });
     const tDb = Date.now();
     const payload = await fetchTradesFromSupabase(userId, { includeArchived });
-    applyNotionSyncMeta(payload, syncMeta);
     if (process.env.JARVIS_PERF_LOG === "1") {
       console.log(
         `[perf] GET /api/trades user=${userId} dbMs=${Date.now() - tDb} rows=${payload.records.length}`
@@ -1974,8 +1969,6 @@ async function handleSnapshot(req, res) {
       "aidenpasque11@gmail.com";
     const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
 
-    const syncMeta = await maybeSyncNotion(userId, { force: true });
-
     const tDb = Date.now();
     const trades = await getRecentTrades(userId, { limit: MAX_SUPABASE_ROWS });
     const tradesForPrompt = trades.map(slimTradeRowForPrompt);
@@ -1986,9 +1979,7 @@ async function handleSnapshot(req, res) {
         `[perf] GET /api/snapshot user=${userId} dbMs=${Date.now() - tDb} trades=${trades.length}`
       );
     }
-    const body = { userId, snapshot };
-    applyNotionSyncMeta(body, syncMeta);
-    json(res, 200, body);
+    json(res, 200, { userId, snapshot });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const code = e?.code;
@@ -2241,7 +2232,7 @@ async function handleChat(req, res) {
   }
 
   const profilePromise = fetchUserProfile(userId);
-  await maybeSyncNotion(userId, { force: true });
+  void maybeSyncNotion(userId, { force: true });
 
   let trades;
   try {
