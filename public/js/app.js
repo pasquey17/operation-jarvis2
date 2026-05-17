@@ -1,4 +1,4 @@
-import { openLogTradeModal } from "/js/log-trade-modal.js";
+import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=53a2ae4";
 import { startNotionAutoSync } from "/js/notion-sync-client.js";
 
 const API_CHAT = "/api/chat";
@@ -2146,6 +2146,9 @@ function startOrb() {
 
 /* ═══════════ Trade logging form (shared modal: /js/log-trade-modal.js) ═══════════ */
 async function openTradeForm() {
+  const { openLogTradeModal } = await import(
+    `/js/log-trade-modal.js?v=${JARVIS_ASSET_V}`
+  );
   await openLogTradeModal({
     getUserId: () =>
       currentUserId ||
