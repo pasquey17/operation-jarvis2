@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/style.css?v=f2c8a91d" />
+    <link rel="stylesheet" href="/css/style.css?v=b4e91c2a" />
     <style>
       html, body {
         overflow: auto !important; height: auto !important;
@@ -286,6 +286,310 @@
         user-select: none;
       }
 
+      /* ═══ Win rate hero ═══ */
+      .an-winrate-hero { margin-bottom: 22px; }
+      .an-wr-panel {
+        position: relative;
+        border-radius: 20px;
+        border: 1px solid rgba(0,212,255,0.2);
+        background: linear-gradient(165deg, rgba(8,18,32,0.98) 0%, rgba(2,6,14,0.94) 100%);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 20px 22px 22px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 16px 48px rgba(0,0,0,0.45), 0 0 40px rgba(0,191,255,0.06);
+        overflow: visible;
+      }
+      .an-wr-panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        background: radial-gradient(ellipse 80% 60% at 30% 20%, rgba(0,212,255,0.08), transparent 55%);
+      }
+      .an-wr-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+        position: relative;
+        z-index: 2;
+      }
+      .an-wr-top__left { min-width: 0; }
+      .an-wr-eyebrow {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.95);
+        margin: 0 0 6px;
+      }
+      .an-wr-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .an-wr-meta-chip {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 5px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0,212,255,0.22);
+        background: rgba(0,212,255,0.06);
+        color: rgba(192,192,192,0.85);
+      }
+      .an-wr-meta-chip--warn {
+        border-color: rgba(255,200,80,0.35);
+        color: rgba(255,220,140,0.9);
+      }
+      .an-wr-filter-wrap { position: relative; flex-shrink: 0; z-index: 30; }
+      .an-wr-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 1px solid rgba(0,212,255,0.35);
+        background: rgba(0,212,255,0.08);
+        color: rgba(0,212,255,0.95);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+      .an-wr-filter-btn:hover,
+      .an-wr-filter-btn[aria-expanded="true"] {
+        background: rgba(0,212,255,0.16);
+        border-color: rgba(0,212,255,0.55);
+        box-shadow: 0 0 20px rgba(0,191,255,0.2);
+      }
+      .an-wr-filter-panel {
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: min(340px, calc(100vw - 48px));
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(0,212,255,0.28);
+        background: rgba(4,10,20,0.98);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.65), 0 0 24px rgba(0,191,255,0.12);
+        z-index: 40;
+      }
+      .an-wr-filter-panel[hidden] { display: none !important; }
+      .an-wr-filter-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .an-wr-filter-row select {
+        min-height: 40px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(0,212,255,0.22);
+        background: rgba(0,0,0,0.55);
+        color: #fff;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        outline: none;
+        color-scheme: dark;
+      }
+      .an-wr-filter-add {
+        min-height: 40px;
+        padding: 0 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(0,212,255,0.35);
+        background: rgba(0,212,255,0.1);
+        color: rgba(0,212,255,0.95);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .an-wr-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+        min-height: 0;
+      }
+      .an-wr-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px 5px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(0,212,255,0.3);
+        background: rgba(0,212,255,0.1);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        color: rgba(220,240,255,0.9);
+      }
+      .an-wr-chip button {
+        border: none;
+        background: transparent;
+        color: rgba(255,255,255,0.55);
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 0 2px;
+      }
+      .an-wr-chip button:hover { color: #ff8888; }
+      .an-wr-clear {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.7);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 0;
+      }
+      .an-wr-clear:hover { color: #00d4ff; text-decoration: underline; }
+      .an-wr-body {
+        display: grid;
+        grid-template-columns: minmax(200px, 280px) 1fr;
+        gap: 24px;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+      }
+      .an-wr-gauge-wrap {
+        position: relative;
+        width: 100%;
+        max-width: 280px;
+        margin: 0 auto;
+        aspect-ratio: 1;
+        max-height: 260px;
+      }
+      .an-wr-gauge-wrap canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .an-wr-gauge-center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        text-align: center;
+        padding: 28% 18%;
+      }
+      .an-wr-gauge-pct {
+        font-family: "Outfit",system-ui,sans-serif;
+        font-weight: 300;
+        font-size: clamp(2.4rem, 6vw, 3.2rem);
+        line-height: 1;
+        color: #fff;
+        text-shadow: 0 0 40px rgba(0,212,255,0.45);
+        letter-spacing: 0.02em;
+      }
+      .an-wr-gauge-pct--muted { color: rgba(255,255,255,0.35); font-size: 1.5rem; }
+      .an-wr-gauge-label {
+        margin-top: 6px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.75);
+      }
+      .an-wr-gauge-sub {
+        margin-top: 4px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px;
+        letter-spacing: 0.1em;
+        color: rgba(255,200,100,0.85);
+      }
+      .an-wr-breakdown { display: flex; flex-direction: column; gap: 12px; }
+      .an-wr-pill {
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(0,0,0,0.35);
+        position: relative;
+        overflow: hidden;
+      }
+      .an-wr-pill::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--wr-accent, #00d4ff);
+      }
+      .an-wr-pill--win { --wr-accent: rgba(0,255,170,0.95); }
+      .an-wr-pill--loss { --wr-accent: rgba(255,90,110,0.95); }
+      .an-wr-pill--be { --wr-accent: rgba(192,192,192,0.75); }
+      .an-wr-pill-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 8px;
+      }
+      .an-wr-pill-k {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.55);
+      }
+      .an-wr-pill-v {
+        font-family: "Outfit",sans-serif;
+        font-weight: 500;
+        font-size: 1.35rem;
+        color: rgba(255,255,255,0.95);
+      }
+      .an-wr-pill-bar {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        overflow: hidden;
+      }
+      .an-wr-pill-bar > i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--wr-accent, #00d4ff);
+        transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .an-wr-pill-meta {
+        margin-top: 6px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        color: rgba(192,192,192,0.65);
+      }
+      .an-wr-body--empty .an-wr-breakdown {
+        pointer-events: none;
+      }
+      .an-wr-empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 32px 16px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: rgba(192,192,192,0.65);
+      }
+      @media (max-width: 768px) {
+        .an-wr-body { grid-template-columns: 1fr; gap: 20px; }
+        .an-wr-filter-panel { right: auto; left: 0; width: min(340px, calc(100vw - 40px)); }
+        .an-wr-filter-row { grid-template-columns: 1fr; }
+        .an-wr-filter-add { width: 100%; min-height: 44px; }
+      }
+
       /* ═══ Monte risk control ═══ */
       .mc-risk-bar {
         display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
@@ -515,6 +819,62 @@
             <span id="an-badge-text">Loading…</span>
           </div>
         </header>
+
+        <section class="an-winrate-hero" id="an-winrate-hero" aria-label="Win rate overview">
+          <article class="an-wr-panel">
+            <div class="an-wr-top">
+              <div class="an-wr-top__left">
+                <h2 class="an-wr-eyebrow">Win rate</h2>
+                <div class="an-wr-meta-row">
+                  <span class="an-wr-meta-chip" id="an-wr-meta-trades">— trades</span>
+                  <span class="an-wr-meta-chip an-wr-meta-chip--warn" id="an-wr-meta-sample" hidden>Low sample</span>
+                </div>
+              </div>
+              <div class="an-wr-filter-wrap">
+                <button type="button" class="an-wr-filter-btn" id="an-wr-filter-btn" aria-expanded="false" aria-controls="an-wr-filter-panel">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                  Filter
+                </button>
+                <div class="an-wr-filter-panel" id="an-wr-filter-panel" hidden>
+                  <div class="an-wr-filter-row">
+                    <select id="an-wr-dim" aria-label="Filter dimension"></select>
+                    <select id="an-wr-val" aria-label="Filter value" disabled></select>
+                    <button type="button" class="an-wr-filter-add" id="an-wr-filter-add">Add</button>
+                  </div>
+                  <div class="an-wr-chips" id="an-wr-chips"></div>
+                  <button type="button" class="an-wr-clear" id="an-wr-filter-clear">Clear all filters</button>
+                </div>
+              </div>
+            </div>
+            <div class="an-wr-body" id="an-wr-body">
+              <div class="an-wr-gauge-wrap">
+                <canvas id="chart-winrate-hero" aria-label="Win rate gauge"></canvas>
+                <div class="an-wr-gauge-center">
+                  <div class="an-wr-gauge-pct" id="an-wr-pct">—</div>
+                  <div class="an-wr-gauge-label">Win rate</div>
+                  <div class="an-wr-gauge-sub" id="an-wr-sub" hidden></div>
+                </div>
+              </div>
+              <div class="an-wr-breakdown" id="an-wr-breakdown">
+                <div class="an-wr-pill an-wr-pill--win">
+                  <div class="an-wr-pill-top"><span class="an-wr-pill-k">Wins</span><span class="an-wr-pill-v" id="an-wr-wins">0</span></div>
+                  <div class="an-wr-pill-bar"><i id="an-wr-bar-win" style="width:0%"></i></div>
+                  <div class="an-wr-pill-meta" id="an-wr-meta-win">—</div>
+                </div>
+                <div class="an-wr-pill an-wr-pill--loss">
+                  <div class="an-wr-pill-top"><span class="an-wr-pill-k">Losses</span><span class="an-wr-pill-v" id="an-wr-losses">0</span></div>
+                  <div class="an-wr-pill-bar"><i id="an-wr-bar-loss" style="width:0%"></i></div>
+                  <div class="an-wr-pill-meta" id="an-wr-meta-loss">—</div>
+                </div>
+                <div class="an-wr-pill an-wr-pill--be">
+                  <div class="an-wr-pill-top"><span class="an-wr-pill-k">Break even</span><span class="an-wr-pill-v" id="an-wr-be">0</span></div>
+                  <div class="an-wr-pill-bar"><i id="an-wr-bar-be" style="width:0%"></i></div>
+                  <div class="an-wr-pill-meta" id="an-wr-meta-be">—</div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
 
         <section class="an-reports" id="an-reports" aria-label="Weekly and monthly reports">
           <div class="an-reports-grid">
@@ -1964,6 +2324,478 @@
             })
           });
         }
+
+        /* ══════════════════════════════════════════════════
+           WIN RATE HERO — filtered gauge + breakdown
+           Win rate % = wins / (wins + losses) * 100; BE excluded from denominator.
+           Meta chip shows total filtered trades including BE. Ring = W/L/BE share of all filtered.
+           Outcome filter (e.g. Wins only) can skew the headline % — that is intentional.
+        ══════════════════════════════════════════════════ */
+        var wrActiveFilters = [];
+        var wrFilterUiBound = false;
+        var wrFiltersHydrated = false;
+        var wrDynamicDims = [];
+        var WR_FILTER_LS = 'jarvis_analytics_wr_filters_v1_';
+        var WR_EXTRA_SKIP = { notion_id: 1, user_id: 1, trade_images: 1, id: 1 };
+        var WR_EXTRA_BLOB = /url|image|photo|screenshot|chart|file|attachment|embed/i;
+
+        function tradeDirection(t) {
+          return (
+            getField(t, 'direction', 'Direction', 'DIRECTION', 'position_type', 'Position Type', 'position') ||
+            getExtrasVal(t, 'Direction', 'direction', 'Position type', 'Position Type', 'position')
+          );
+        }
+        function tradeAccount(t) {
+          return getField(t, 'account', 'Account', 'ACCOUNT') || getExtrasVal(t, 'ACCOUNT', 'Account', 'account');
+        }
+        function tradeOutcomeDim(t) {
+          var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+          if (o === 'win') return 'Win';
+          if (o === 'loss') return 'Loss';
+          if (o === 'be') return 'BE';
+          return '';
+        }
+        function wrExtraScalar(raw) {
+          if (raw == null) return '';
+          if (Array.isArray(raw)) {
+            if (!raw.length) return '';
+            return wrExtraScalar(raw[0]);
+          }
+          if (typeof raw === 'object') {
+            var n = raw.name || (raw.select && raw.select.name) || (raw.status && raw.status.name) || '';
+            return n ? String(n).trim() : '';
+          }
+          var s = String(raw).trim();
+          return s;
+        }
+        function wrGetByDim(t, dimId) {
+          if (!dimId) return '';
+          if (dimId.indexOf('extra:') === 0) {
+            var key = dimId.slice(6);
+            var ex = parsedExtras(t);
+            return ex && ex[key] != null ? wrExtraScalar(ex[key]) : '';
+          }
+          switch (dimId) {
+            case 'session':
+              return tradeSession(t);
+            case 'pair':
+              return tradePair(t);
+            case 'model':
+              return tradeModel(t);
+            case 'weekday':
+              return weekdayAdelaide(tradeDate(t));
+            case 'direction':
+              return tradeDirection(t);
+            case 'account':
+              return tradeAccount(t);
+            case 'outcome':
+              return tradeOutcomeDim(t);
+            default:
+              return '';
+          }
+        }
+        function wrDimLabel(dimId) {
+          if (dimId.indexOf('extra:') === 0) return dimId.slice(6);
+          var map = {
+            session: 'Session',
+            pair: 'Pair',
+            model: 'Entry model',
+            weekday: 'Weekday',
+            direction: 'Direction',
+            account: 'Account',
+            outcome: 'Outcome'
+          };
+          return map[dimId] || dimId;
+        }
+        function wrCollectDynamicDims(trades) {
+          var freq = {};
+          trades.forEach(function (t) {
+            var ex = parsedExtras(t);
+            if (!ex || typeof ex !== 'object') return;
+            Object.keys(ex).forEach(function (k) {
+              if (WR_EXTRA_SKIP[k] || WR_EXTRA_BLOB.test(k)) return;
+              var v = wrExtraScalar(ex[k]);
+              if (!v || v.length > 120) return;
+              freq[k] = (freq[k] || 0) + 1;
+            });
+          });
+          return Object.keys(freq)
+            .sort(function (a, b) {
+              return freq[b] - freq[a] || a.localeCompare(b);
+            })
+            .slice(0, 12)
+            .map(function (k) {
+              return { id: 'extra:' + k, label: k };
+            });
+        }
+        function wrAllDimensions(trades) {
+          var staticDims = [
+            { id: 'session', label: 'Session' },
+            { id: 'pair', label: 'Pair' },
+            { id: 'model', label: 'Entry model' },
+            { id: 'weekday', label: 'Weekday' },
+            { id: 'direction', label: 'Direction' },
+            { id: 'account', label: 'Account' },
+            { id: 'outcome', label: 'Outcome' }
+          ];
+          return staticDims.concat(wrDynamicDims);
+        }
+        function wrDistinctValues(trades, dimId) {
+          var set = {};
+          trades.forEach(function (t) {
+            var v = String(wrGetByDim(t, dimId) || '').trim();
+            if (v) set[v] = true;
+          });
+          return Object.keys(set).sort(function (a, b) {
+            return a.localeCompare(b, undefined, { sensitivity: 'base' });
+          });
+        }
+        function wrFiltersLsKey() {
+          return WR_FILTER_LS + (currentUserId || DEFAULT_USER);
+        }
+        function wrLoadFilters() {
+          try {
+            var raw = localStorage.getItem(wrFiltersLsKey());
+            if (!raw) return [];
+            var parsed = JSON.parse(raw);
+            return Array.isArray(parsed)
+              ? parsed.filter(function (f) {
+                  return f && f.dim && f.val;
+                })
+              : [];
+          } catch (e) {
+            return [];
+          }
+        }
+        function wrSaveFilters() {
+          try {
+            localStorage.setItem(wrFiltersLsKey(), JSON.stringify(wrActiveFilters));
+          } catch (e) {}
+        }
+        function applyWrFilters(trades, filters) {
+          if (!filters || !filters.length) return trades.slice();
+          return trades.filter(function (t) {
+            return filters.every(function (f) {
+              var got = String(wrGetByDim(t, f.dim) || '')
+                .trim()
+                .toLowerCase();
+              var want = String(f.val || '')
+                .trim()
+                .toLowerCase();
+              return got && got === want;
+            });
+          });
+        }
+        function computeWrStats(trades) {
+          var wins = 0;
+          var losses = 0;
+          var be = 0;
+          trades.forEach(function (t) {
+            var o = normalizeOutcome(getField(t, 'outcome', 'Outcome', 'OUTCOME'));
+            if (o === 'win') wins++;
+            else if (o === 'loss') losses++;
+            else if (o === 'be') be++;
+          });
+          var denom = wins + losses;
+          var wr = denom > 0 ? (wins / denom) * 100 : null;
+          return { n: trades.length, wins: wins, losses: losses, be: be, wr: wr, denom: denom };
+        }
+        function wrPctShare(n, total) {
+          if (!total) return '0% of trades';
+          return ((n / total) * 100).toFixed(1) + '% of trades';
+        }
+        function wrPopulateDimSelect(trades) {
+          var sel = document.getElementById('an-wr-dim');
+          if (!sel) return;
+          var dims = wrAllDimensions(trades);
+          var cur = sel.value;
+          sel.innerHTML = '';
+          dims.forEach(function (d) {
+            var opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.label;
+            sel.appendChild(opt);
+          });
+          if (cur && dims.some(function (d) {
+            return d.id === cur;
+          })) {
+            sel.value = cur;
+          }
+        }
+        function wrPopulateValSelect(trades, dimId) {
+          var sel = document.getElementById('an-wr-val');
+          if (!sel) return;
+          sel.innerHTML = '';
+          if (!dimId) {
+            sel.disabled = true;
+            return;
+          }
+          var vals = wrDistinctValues(trades, dimId);
+          if (!vals.length) {
+            sel.disabled = true;
+            var empty = document.createElement('option');
+            empty.textContent = 'No values';
+            empty.value = '';
+            sel.appendChild(empty);
+            return;
+          }
+          sel.disabled = false;
+          vals.forEach(function (v) {
+            var opt = document.createElement('option');
+            opt.value = v;
+            opt.textContent = v;
+            sel.appendChild(opt);
+          });
+        }
+        function wrRenderChips() {
+          var box = document.getElementById('an-wr-chips');
+          if (!box) return;
+          box.innerHTML = '';
+          wrActiveFilters.forEach(function (f, idx) {
+            var chip = document.createElement('span');
+            chip.className = 'an-wr-chip';
+            chip.textContent = wrDimLabel(f.dim) + ': ' + f.val + ' ';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('aria-label', 'Remove filter');
+            btn.textContent = '×';
+            btn.addEventListener('click', function () {
+              wrActiveFilters.splice(idx, 1);
+              wrSaveFilters();
+              renderWinRateHero(allTrades);
+            });
+            chip.appendChild(btn);
+            box.appendChild(chip);
+          });
+        }
+        function wrCloseFilterPanel() {
+          var panel = document.getElementById('an-wr-filter-panel');
+          var btn = document.getElementById('an-wr-filter-btn');
+          if (panel) panel.hidden = true;
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+        function wrToggleFilterPanel() {
+          var panel = document.getElementById('an-wr-filter-panel');
+          var btn = document.getElementById('an-wr-filter-btn');
+          if (!panel || !btn) return;
+          var open = panel.hidden;
+          panel.hidden = !open;
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (open) wrPopulateValSelect(allTrades, document.getElementById('an-wr-dim').value);
+        }
+        function wrBindFilterUiOnce() {
+          if (wrFilterUiBound) return;
+          wrFilterUiBound = true;
+          var btn = document.getElementById('an-wr-filter-btn');
+          var dimSel = document.getElementById('an-wr-dim');
+          var valSel = document.getElementById('an-wr-val');
+          var addBtn = document.getElementById('an-wr-filter-add');
+          var clearBtn = document.getElementById('an-wr-filter-clear');
+          if (btn) btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            wrToggleFilterPanel();
+          });
+          document.addEventListener('click', function (e) {
+            var panel = document.getElementById('an-wr-filter-panel');
+            var wrap = document.querySelector('.an-wr-filter-wrap');
+            if (!panel || panel.hidden || !wrap) return;
+            if (!wrap.contains(e.target)) wrCloseFilterPanel();
+          });
+          if (dimSel) {
+            dimSel.addEventListener('change', function () {
+              wrPopulateValSelect(allTrades, dimSel.value);
+            });
+          }
+          if (addBtn) {
+            addBtn.addEventListener('click', function () {
+              var dim = dimSel ? dimSel.value : '';
+              var val = valSel ? valSel.value : '';
+              if (!dim || !val) return;
+              var dup = wrActiveFilters.some(function (f) {
+                return f.dim === dim && String(f.val).toLowerCase() === String(val).toLowerCase();
+              });
+              if (!dup) {
+                wrActiveFilters.push({ dim: dim, val: val });
+                wrSaveFilters();
+              }
+              wrRenderChips();
+              renderWinRateHero(allTrades);
+            });
+          }
+          if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+              wrActiveFilters = [];
+              wrSaveFilters();
+              wrRenderChips();
+              renderWinRateHero(allTrades);
+            });
+          }
+        }
+        function wrHeroSegmentColor(ctx, i) {
+          var chart = ctx.chart;
+          var area = chart.chartArea;
+          if (!area) {
+            return ['rgba(0,255,170,0.85)', 'rgba(255,90,110,0.82)', 'rgba(192,192,192,0.5)'][i] || 'rgba(0,212,255,0.5)';
+          }
+          var cx = (area.left + area.right) / 2;
+          var cy = (area.top + area.bottom) / 2;
+          var r = Math.min(area.right - area.left, area.bottom - area.top) / 2;
+          var g = chart.ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
+          if (i === 0) {
+            g.addColorStop(0, 'rgba(0,255,200,0.95)');
+            g.addColorStop(1, 'rgba(0,140,255,0.55)');
+          } else if (i === 1) {
+            g.addColorStop(0, 'rgba(255,120,130,0.95)');
+            g.addColorStop(1, 'rgba(180,30,50,0.45)');
+          } else {
+            g.addColorStop(0, 'rgba(220,220,220,0.75)');
+            g.addColorStop(1, 'rgba(120,130,140,0.35)');
+          }
+          return g;
+        }
+        function renderWinRateHeroChart(stats) {
+          destroyChart('winrate-hero');
+          var canvas = document.getElementById('chart-winrate-hero');
+          if (!canvas || !window.Chart || !stats || stats.n < 1) return;
+          var w = stats.wins;
+          var l = stats.losses;
+          var b = stats.be;
+          if (w + l + b < 1) return;
+          chartInstances['winrate-hero'] = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+              labels: ['Wins', 'Losses', 'BE'],
+              datasets: [
+                {
+                  data: [w, l, b],
+                  backgroundColor: function (c) {
+                    return wrHeroSegmentColor(c, c.dataIndex);
+                  },
+                  borderColor: 'rgba(0,0,0,0.35)',
+                  borderWidth: 2,
+                  hoverOffset: 4,
+                  spacing: 2
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: true,
+              cutout: '78%',
+              animation: { duration: chartAnimationDurationMs(), easing: 'easeOutQuart' },
+              layout: { padding: 4 },
+              plugins: {
+                legend: { display: false },
+                tooltip: Object.assign({}, ttBase(), {
+                  callbacks: {
+                    label: function (ctx) {
+                      var v = ctx.parsed;
+                      var tot = w + l + b;
+                      var pct = tot ? ((v / tot) * 100).toFixed(1) : '0';
+                      return (ctx.label || '') + ': ' + v + ' (' + pct + '%)';
+                    }
+                  }
+                })
+              }
+            }
+          });
+        }
+        function renderWinRateHero(trades) {
+          wrBindFilterUiOnce();
+          wrDynamicDims = wrCollectDynamicDims(trades);
+          wrPopulateDimSelect(trades);
+          if (!wrFiltersHydrated) {
+            wrActiveFilters = wrLoadFilters();
+            wrFiltersHydrated = true;
+          }
+          wrRenderChips();
+
+          var filtered = applyWrFilters(trades, wrActiveFilters);
+          var stats = computeWrStats(filtered);
+          var elMeta = document.getElementById('an-wr-meta-trades');
+          var elSample = document.getElementById('an-wr-meta-sample');
+          var elPct = document.getElementById('an-wr-pct');
+          var elSub = document.getElementById('an-wr-sub');
+          var elBody = document.getElementById('an-wr-body');
+          var elBd = document.getElementById('an-wr-breakdown');
+          var canvas = document.getElementById('chart-winrate-hero');
+
+          if (elMeta) {
+            elMeta.textContent = stats.n === 1 ? '1 trade' : stats.n + ' trades';
+          }
+          if (elSample) {
+            elSample.hidden = !(stats.n > 0 && stats.n < 5);
+          }
+
+          if (stats.n < 1) {
+            destroyChart('winrate-hero');
+            if (canvas) canvas.style.visibility = 'hidden';
+            if (elPct) {
+              elPct.textContent = '—';
+              elPct.classList.add('an-wr-gauge-pct--muted');
+            }
+            if (elSub) {
+              elSub.hidden = false;
+              elSub.textContent = 'No trades for this filter';
+            }
+            if (elBd) elBd.style.opacity = '0.35';
+            ['an-wr-wins', 'an-wr-losses', 'an-wr-be'].forEach(function (id, i) {
+              var el = document.getElementById(id);
+              if (el) el.textContent = '0';
+            });
+            ['an-wr-meta-win', 'an-wr-meta-loss', 'an-wr-meta-be'].forEach(function (id) {
+              var el = document.getElementById(id);
+              if (el) el.textContent = '—';
+            });
+            ['an-wr-bar-win', 'an-wr-bar-loss', 'an-wr-bar-be'].forEach(function (id) {
+              var el = document.getElementById(id);
+              if (el) el.style.width = '0%';
+            });
+            if (elBody) elBody.classList.add('an-wr-body--empty');
+            return;
+          }
+
+          if (elBody) elBody.classList.remove('an-wr-body--empty');
+          if (canvas) canvas.style.visibility = 'visible';
+          if (elBd) elBd.style.opacity = '1';
+
+          var wrTxt =
+            stats.wr != null
+              ? stats.wr.toFixed(1) + '%'
+              : '—';
+          if (elPct) {
+            elPct.textContent = wrTxt;
+            elPct.classList.toggle('an-wr-gauge-pct--muted', stats.wr == null);
+          }
+          if (elSub) {
+            if (stats.wr == null && stats.denom === 0) {
+              elSub.hidden = false;
+              elSub.textContent = 'No wins or losses in filter';
+            } else if (stats.n < 5) {
+              elSub.hidden = false;
+              elSub.textContent = 'Low sample';
+            } else {
+              elSub.hidden = true;
+              elSub.textContent = '';
+            }
+          }
+
+          var tot = stats.n;
+          var setPill = function (countId, barId, metaId, n) {
+            var cEl = document.getElementById(countId);
+            var bEl = document.getElementById(barId);
+            var mEl = document.getElementById(metaId);
+            if (cEl) cEl.textContent = String(n);
+            if (bEl) bEl.style.width = (tot ? (n / tot) * 100 : 0) + '%';
+            if (mEl) mEl.textContent = wrPctShare(n, tot);
+          };
+          setPill('an-wr-wins', 'an-wr-bar-win', 'an-wr-meta-win', stats.wins);
+          setPill('an-wr-losses', 'an-wr-bar-loss', 'an-wr-meta-loss', stats.losses);
+          setPill('an-wr-be', 'an-wr-bar-be', 'an-wr-meta-be', stats.be);
+
+          renderWinRateHeroChart(stats);
+        }
+
         function renderReports(trades) {
           destroyReportCharts();
           var weekWin = adelaideWeekMonFriWindow();
@@ -2093,6 +2925,7 @@
           var foot=document.getElementById('an-foot');
           if(foot) foot.textContent = 'Full dataset: '+total+' trades  ·  Win rate: '+(stats.winRate!=null?stats.winRate.toFixed(1)+'%':'—')+'  ·  Net R: '+netR.toFixed(2)+'R';
 
+          renderWinRateHero(trades);
           renderReports(trades);
 
           var raf = window.requestAnimationFrame || function (fn) { setTimeout(fn, 16); };
@@ -2172,6 +3005,7 @@
               var el = document.getElementById(id);
               if (el) el.textContent = id.indexOf('line') >= 0 ? '' : '—';
             });
+            renderWinRateHero([]);
             return;
           }
           bindMonteCarloRiskControlsOnce();
@@ -2190,7 +3024,7 @@
             setTimeout(runParticles, 380);
           }
 
-          void import('/js/notion-sync-client.js?v=f2c8a91d').then(function (mod) {
+          void import('/js/notion-sync-client.js?v=b4e91c2a').then(function (mod) {
             var before = allTrades.length;
             return mod.startNotionAutoSync(currentUserId, {
               onComplete: function () {
