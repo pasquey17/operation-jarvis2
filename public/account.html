@@ -476,11 +476,27 @@
         letter-spacing: 0.14em;
         text-transform: uppercase;
         cursor: pointer;
-        transition: background 0.2s, border-color 0.2s;
+        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
       }
       .ac-tool-btn:hover {
         background: rgba(0, 212, 255, 0.14);
         border-color: rgba(0, 212, 255, 0.5);
+      }
+      .ac-tool-btn--calc {
+        padding: 18px 32px;
+        border-radius: 14px;
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        border-color: rgba(0, 212, 255, 0.45);
+        background: rgba(0, 212, 255, 0.12);
+        box-shadow:
+          0 0 28px rgba(0, 212, 255, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+      .ac-tool-btn--calc:hover {
+        background: rgba(0, 212, 255, 0.22);
+        border-color: rgba(0, 212, 255, 0.7);
+        box-shadow: 0 0 36px rgba(0, 212, 255, 0.22);
       }
       @media (max-width: 768px) {
         .ac-page {
@@ -527,30 +543,25 @@
         }
       }
       .ac-header {
-        margin-bottom: 12px;
-      }
-      .ac-controls {
         display: flex;
-        align-items: center;
-        margin-bottom: 16px;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px 24px;
+        margin-bottom: 20px;
       }
-      .ac-onboard {
-        margin: 0 0 20px;
-        padding: 14px 18px;
-        border-radius: 14px;
-        border: 1px solid rgba(0, 212, 255, 0.14);
-        background: rgba(4, 9, 18, 0.75);
+      .ac-header__text {
+        flex: 1;
+        min-width: 0;
       }
-      .ac-onboard[hidden] {
-        display: none;
-      }
-      .ac-onboard__steps {
-        margin: 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        letter-spacing: 0.08em;
-        line-height: 1.55;
-        color: rgba(0, 212, 255, 0.72);
+      @media (max-width: 520px) {
+        .ac-header {
+          flex-wrap: wrap;
+        }
+        .ac-tool-btn--calc {
+          margin-left: auto;
+          padding: 14px 22px;
+          font-size: 12px;
+        }
       }
       .ac-title {
         margin: 0 0 6px;
@@ -1453,17 +1464,12 @@
     <div class="ac-page">
       <div class="ac-shell">
         <header class="ac-header">
-          <div>
+          <div class="ac-header__text">
             <h1 class="ac-title">Account</h1>
             <p class="ac-sub">Manual equity · eval / funded / live</p>
           </div>
+          <button type="button" class="ac-tool-btn ac-tool-btn--calc" id="ac-btn-calc">Position size</button>
         </header>
-        <div class="ac-onboard" id="ac-onboard" hidden>
-          <p class="ac-onboard__steps">Add account → Log equity → Track eval progress</p>
-        </div>
-        <div class="ac-controls">
-          <button type="button" class="ac-tool-btn" id="ac-btn-calc">Position size</button>
-        </div>
         <div class="ac-status" id="ac-status"></div>
 
         <div class="ac-grid" id="ac-grid"></div>
@@ -2045,12 +2051,6 @@
           });
         }
 
-        function updateOnboardVisibility() {
-          var ob = document.getElementById("ac-onboard");
-          if (!ob) return;
-          ob.hidden = accountsCache.length > 0;
-        }
-
         function populateCalcAccountSelect() {
           var sel = document.getElementById("calc-balance-account");
           if (!sel) return;
@@ -2148,14 +2148,12 @@
           if (!res.ok) {
             setStatus((data && data.error) || res.statusText || "Load failed", true);
             accountsCache = [];
-            updateOnboardVisibility();
             populateCalcAccountSelect();
             document.getElementById("ac-grid").innerHTML = renderAddAccountTile();
             return;
           }
           accountsCache = Array.isArray(data.accounts) ? data.accounts : [];
           setStatus(accountsCache.length ? "" : "No accounts yet — tap Add account tile.");
-          updateOnboardVisibility();
           populateCalcAccountSelect();
           document.getElementById("ac-grid").innerHTML =
             renderAddAccountTile() + accountsCache.map(renderCard).join("");
