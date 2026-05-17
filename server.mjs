@@ -14,7 +14,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildMessagesUserContent } from "./prompts.mjs";
 import { fetchTradeImagesFromNotionPageBlocks } from './notion-page-images.mjs';
-import { syncJournalFieldsFromNotion } from "./sync-journal-fields-notion.mjs";
+import {
+  syncJournalFieldsFromNotion,
+  syncJournalFieldsFromOAuthConnection,
+} from "./sync-journal-fields-notion.mjs";
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 import { serializeNotionProperties } from "./notion-serialize-props.mjs";
 
@@ -4570,6 +4573,45 @@ async function handleNotionColumns(req, res) {
   }
 }
 
+/** Best-effort: mirror Notion DB column order into journal_fields for LOG TRADE. */
+async function maybeSyncJournalFieldsFromOAuth(userId) {
+  const uid = String(userId || "").trim();
+  if (!uid) return { ok: false, reason: "no_user" };
+
+  const conn = await loadNotionOAuthConnection(uid);
+  if (!conn.ok) {
+    return { ok: false, reason: conn.skipped ? conn.reason : conn.reason };
+  }
+
+  const { url } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) return { ok: false, reason: "supabase_not_configured" };
+
+  let dataSourceId = conn.mapping.__data_source_id ?? null;
+  if (dataSourceId != null && String(dataSourceId).trim()) {
+    dataSourceId = String(dataSourceId).replace(/-/g, "");
+  } else {
+    dataSourceId = null;
+  }
+
+  try {
+    const result = await syncJournalFieldsFromOAuthConnection({
+      userId: uid,
+      accessToken: conn.accessToken,
+      databaseId: conn.databaseId,
+      dataSourceId,
+      supabaseUrl: url,
+      supabaseKey: srKey,
+    });
+    console.log(`[journal-fields] ${uid}: synced ${result.synced} fields from Notion OAuth`);
+    return { ok: true, synced: result.synced };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(`[journal-fields] ${uid}: OAuth field sync failed:`, msg);
+    return { ok: false, reason: msg };
+  }
+}
+
 async function handleNotionSaveMapping(req, res) {
   let body;
   try {
@@ -4607,7 +4649,13 @@ async function handleNotionSaveMapping(req, res) {
       const err = await upsertRes.text().catch(() => "unknown");
       json(res, 502, { error: `Save mapping failed: ${err}` }); return;
     }
-    json(res, 200, { success: true });
+
+    const fieldSync = await maybeSyncJournalFieldsFromOAuth(user_id);
+    json(res, 200, {
+      success: true,
+      journal_fields_synced: fieldSync.ok ? fieldSync.synced ?? 0 : 0,
+      journal_fields_warning: fieldSync.ok ? undefined : fieldSync.reason,
+    });
   } catch (e) {
     json(res, 502, { error: `Save mapping error: ${String(e.message ?? e)}` });
   }
@@ -5237,7 +5285,15 @@ async function syncNotionOAuthForUser(userId) {
     }
   }
 
-  return { ok: true, fetched, upserted: batch.length, skipped: false };
+  const fieldSync = await maybeSyncJournalFieldsFromOAuth(userId);
+
+  return {
+    ok: true,
+    fetched,
+    upserted: batch.length,
+    skipped: false,
+    journal_fields_synced: fieldSync.ok ? fieldSync.synced ?? 0 : 0,
+  };
 }
 
 async function handleNotionSyncUser(req, res) {

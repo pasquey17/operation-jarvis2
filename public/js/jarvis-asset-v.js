@@ -1,2 +1,2 @@
 /** Bump when shipping frontend changes so browsers/CDN fetch fresh JS/CSS. */
-export const JARVIS_ASSET_V = "b8e3d4f2";
+export const JARVIS_ASSET_V = "e9a1c3b7";

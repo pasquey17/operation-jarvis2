@@ -216,21 +216,37 @@ function deriveLastRRFromRows(rows) {
 
 function loadFieldOrder(allIds) {
   try {
-    const saved = JSON.parse(localStorage.getItem(FIELD_ORDER_KEY) || "null");
-    let ordered = allIds;
-    if (Array.isArray(saved) && saved.length) {
-      const savedSet = new Set(saved);
-      const fromSaved = saved.filter((id) => allIds.includes(id));
-      const unseen = allIds.filter((id) => !savedSet.has(id));
-      ordered = [...fromSaved, ...unseen];
-    }
     const coreSet = new Set(CANONICAL_CORE_ORDER);
-    const corePresent = CANONICAL_CORE_ORDER.filter((id) => ordered.includes(id));
-    const rest = ordered.filter((id) => !coreSet.has(id));
-    return [...corePresent, ...rest];
+    const corePresent = CANONICAL_CORE_ORDER.filter((id) => allIds.includes(id));
+    const extrasInNotionOrder = allIds.filter((id) => !coreSet.has(id));
+
+    const saved = JSON.parse(localStorage.getItem(FIELD_ORDER_KEY) || "null");
+    if (!Array.isArray(saved) || !saved.length) {
+      return [...corePresent, ...extrasInNotionOrder];
+    }
+
+    const savedSet = new Set(saved);
+    const extrasFromSaved = saved.filter((id) => extrasInNotionOrder.includes(id));
+    const extrasUnseen = extrasInNotionOrder.filter((id) => !savedSet.has(id));
+    return [...corePresent, ...extrasFromSaved, ...extrasUnseen];
   } catch {
-    return allIds;
+    const coreSet = new Set(CANONICAL_CORE_ORDER);
+    return [
+      ...CANONICAL_CORE_ORDER.filter((id) => allIds.includes(id)),
+      ...allIds.filter((id) => !coreSet.has(id)),
+    ];
   }
+}
+
+/** Core fields first; extras follow Notion `display_order` (then optional user drag order). */
+function buildLogTradeFieldList(coreDefs, journalFieldRows, hiddenKeys) {
+  const coreOrdered = CANONICAL_CORE_ORDER.map((id) => coreDefs.find((f) => f.id === id)).filter(Boolean);
+  const extras = filterAndDedupeJournalFieldRows(journalFieldRows)
+    .filter((f) => !hiddenKeys.has(normalizeFieldKey(f.field_name)))
+    .map(notionFieldToDef);
+  const allDefs = [...coreOrdered, ...extras];
+  const orderedIds = loadFieldOrder(allDefs.map((f) => f.id));
+  return orderedIds.map((id) => allDefs.find((f) => f.id === id)).filter(Boolean);
 }
 
 function saveFieldOrder(ids) {
@@ -1262,10 +1278,7 @@ export async function openLogTradeModal(options) {
     .map(notionFieldToDef);
 
   const today = new Date().toISOString().slice(0, 10);
-  const allDefs = [...coreDefs, ...notionFields];
-  const allIds = allDefs.map((f) => f.id);
-  const orderedIds = loadFieldOrder(allIds);
-  const orderedDefs = orderedIds.map((id) => allDefs.find((f) => f.id === id)).filter(Boolean);
+  const orderedDefs = buildLogTradeFieldList(coreDefs, allFields, hiddenKeys);
 
   const defaults = !editId ? deriveDefaultsFromRows(allPrefillRows, accounts) : null;
 

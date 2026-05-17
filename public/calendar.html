@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/css/style.css?v=b8e3d4f2" />
+    <link rel="stylesheet" href="/css/style.css?v=e9a1c3b7" />
     <style>
       /* ── Page shell (match analytics / journal HUD) ── */
       html,
@@ -2787,7 +2787,7 @@
             setTimeout(function () { panelEl.classList.add("cal-panel--visible"); }, 80);
           }
 
-          void import("/js/notion-sync-client.js?v=b8e3d4f2").then(function (mod) {
+          void import("/js/notion-sync-client.js?v=e9a1c3b7").then(function (mod) {
             var before = trades.length;
             return mod.startNotionAutoSync(currentUserId, {
               onComplete: function () {
