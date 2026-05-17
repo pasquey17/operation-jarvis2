@@ -430,7 +430,7 @@ function buildInputHtml(field, today) {
       return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input" ${req}><option value="">${escHtml(ph)}</option>${opts}</select>`;
     }
     case "yesno":
-      return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input"><option value="">Choose</option><option value="Yes">Yes</option><option value="No">No</option></select>`;
+      return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input"><option value="">${escHtml(ph)}</option><option value="Yes">Yes</option><option value="No">No</option></select>`;
     case "textarea":
       return `<textarea id="${id}" name="${escAttr(name)}" class="trade-input ltm-input ltm-textarea" rows="3"></textarea>`;
     default:
@@ -462,9 +462,22 @@ function renderFieldRow(field, today) {
 </div>`;
 }
 
+function updatePhotoCountUI() {
+  const el = document.getElementById("ltm-photo-count");
+  if (!el) return;
+  if (!ltmPhotos.length) {
+    el.textContent = "";
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  el.textContent = `${ltmPhotos.length}/6`;
+}
+
 function renderPhotoPreviews(container) {
   if (!ltmPhotos.length) {
     container.innerHTML = "";
+    updatePhotoCountUI();
     return;
   }
   container.innerHTML = ltmPhotos
@@ -476,6 +489,7 @@ function renderPhotoPreviews(container) {
     </div>`
     )
     .join("");
+  updatePhotoCountUI();
 }
 
 function addPhotoFile(file, previewContainer) {
@@ -533,6 +547,16 @@ function initFieldDrag(list) {
       .map((r) => r.dataset.fieldId)
       .filter(Boolean);
     saveFieldOrder(ids);
+  });
+}
+
+function initReorderToggle(fieldsList) {
+  const btn = document.getElementById("ltm-reorder-toggle");
+  if (!btn || !fieldsList) return;
+  btn.addEventListener("click", () => {
+    const on = fieldsList.classList.toggle("ltm-fields-list--reorder");
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.textContent = on ? "Done reordering" : "Reorder fields";
   });
 }
 
@@ -610,15 +634,24 @@ function buildOverlayHtml(today, orderedFields, hasAccounts, isEdit) {
     : `<p class="ltm-account-hint" id="ltm-account-hint">No trading accounts yet — <a href="/account.html">add one on Account</a>.</p>`;
 
   return `<div class="trade-form-panel ltm-panel" id="ltm-panel">
+  <span class="ltm-corner ltm-corner--tl" aria-hidden="true"></span>
+  <span class="ltm-corner ltm-corner--tr" aria-hidden="true"></span>
+  <span class="ltm-corner ltm-corner--bl" aria-hidden="true"></span>
+  <span class="ltm-corner ltm-corner--br" aria-hidden="true"></span>
   <div class="trade-form-header">
     <span class="trade-form-title" id="ltm-title">LOG TRADE</span>
     <button type="button" class="trade-form-close" id="ltm-close" aria-label="Close">&#x2715;</button>
   </div>
-  <div class="trade-form-body">
+  <div class="trade-form-body ltm-panel-body">
     <form id="ltm-form" autocomplete="off" novalidate>
+      <button type="button" class="ltm-reorder-toggle" id="ltm-reorder-toggle" aria-pressed="false">Reorder fields</button>
+      <div class="ltm-panel-scroll">
       <div class="ltm-fields-list" id="ltm-fields-list">${rowsHtml}</div>
       ${accountHint}
-      <div class="ltm-section-label">Photos</div>
+      <div class="ltm-section-label ltm-section-label--with-count">
+        <span>Photos</span>
+        <span class="ltm-photo-count" id="ltm-photo-count" hidden aria-live="polite"></span>
+      </div>
       <div class="ltm-photo-section">
         <div class="ltm-dropzone" id="ltm-dropzone" tabindex="0" role="button"
              aria-label="Upload photo — drop files or click to browse">
@@ -651,7 +684,8 @@ function buildOverlayHtml(today, orderedFields, hasAccounts, isEdit) {
           <button type="button" class="ltm-adder-cancel"  id="ltm-adder-cancel">Cancel</button>
         </div>
       </div>
-      <div class="trade-form-actions trade-form-actions--split">
+      </div>
+      <div class="ltm-actions-sticky trade-form-actions trade-form-actions--split">
         <button type="button" class="trade-delete-btn" id="ltm-delete" hidden>Delete</button>
         ${
           isEdit
@@ -855,6 +889,7 @@ export async function openLogTradeModal(options) {
 
   const fieldsList = document.getElementById("ltm-fields-list");
   initFieldDrag(fieldsList);
+  initReorderToggle(fieldsList);
   const mouseupHandler = () => {};
   document.addEventListener("mouseup", mouseupHandler, { passive: true });
 
