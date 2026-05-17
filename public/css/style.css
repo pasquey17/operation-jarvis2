@@ -1202,6 +1202,80 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 .ltm-account-hint a:hover { text-decoration: underline; }
 .ltm-textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
 
+/* Outcome chips (Phase 2) */
+.ltm-outcome-wrap { display: flex; flex-direction: column; gap: 0; }
+.ltm-outcome-chips {
+  display: flex; gap: 8px; width: 100%;
+}
+.ltm-outcome-chip {
+  flex: 1; min-height: 44px; padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.28);
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.72);
+  font-family: var(--font-mono); font-size: 12px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.ltm-outcome-chip:hover {
+  border-color: rgba(0, 212, 255, 0.5);
+  color: rgba(255, 255, 255, 0.9);
+}
+.ltm-outcome-chip--active {
+  border-color: #00d4ff;
+  background: rgba(0, 212, 255, 0.14);
+  color: #00d4ff;
+  box-shadow: 0 0 14px rgba(0, 191, 255, 0.35);
+}
+.ltm-outcome-chip--win.ltm-outcome-chip--active {
+  border-color: rgba(0, 212, 255, 0.85);
+  color: #7ee8ff;
+}
+.ltm-outcome-chip--loss.ltm-outcome-chip--active {
+  border-color: rgba(255, 100, 100, 0.65);
+  background: rgba(255, 60, 60, 0.12);
+  color: #ffaaaa;
+  box-shadow: 0 0 12px rgba(255, 80, 80, 0.25);
+}
+.ltm-outcome-chip--be.ltm-outcome-chip--active {
+  border-color: rgba(192, 192, 192, 0.55);
+  color: #c0c0c0;
+  box-shadow: 0 0 10px rgba(192, 192, 192, 0.15);
+}
+.ltm-outcome-select {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.ltm-field-row--error {
+  background: rgba(255, 60, 60, 0.06);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(255, 90, 90, 0.35);
+}
+.ltm-field-row--error .ltm-input,
+.ltm-field-row--error .trade-select {
+  border-color: rgba(255, 100, 100, 0.55) !important;
+}
+.ltm-field-row--error .ltm-outcome-chip {
+  border-color: rgba(255, 100, 100, 0.45);
+}
+.trade-submit-btn--secondary {
+  flex: 1 1 140px;
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  background: rgba(0, 212, 255, 0.06);
+  color: rgba(0, 212, 255, 0.9);
+  box-shadow: none;
+}
+.trade-submit-btn--secondary:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.14);
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+.trade-submit-btn--secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Section labels */
 .ltm-section-label {
   font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.22em;

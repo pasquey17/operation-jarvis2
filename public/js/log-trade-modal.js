@@ -196,6 +196,18 @@ function deriveDefaultsFromRows(rows, accounts) {
   return { pair, account, direction, session };
 }
 
+function deriveLastRRFromRows(rows) {
+  for (const row of rows) {
+    const outcome = outcomeToLtmSelect(row.outcome || getRowField(row, "outcome", "Outcome"));
+    if (outcome === "BE") continue;
+    const rrRaw = row.rr != null && row.rr !== "" ? row.rr : getRowField(row, "rr", "RR");
+    if (rrRaw === "" || rrRaw == null) continue;
+    const n = Number(rrRaw);
+    if (Number.isFinite(n) && n >= 0) return String(n);
+  }
+  return "";
+}
+
 function loadFieldOrder(allIds) {
   try {
     const saved = JSON.parse(localStorage.getItem(FIELD_ORDER_KEY) || "null");
@@ -312,6 +324,94 @@ function fieldInputId(fieldId) {
   return `ltm-f-${fieldId.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9\-_]/g, "").toLowerCase()}`;
 }
 
+function buildOutcomeInputHtml(field) {
+  const id = fieldInputId(field.id);
+  const opts = field.options || ["Win", "Loss", "BE"];
+  const chips = opts
+    .map((o) => {
+      const mod = o === "Win" ? " ltm-outcome-chip--win" : o === "Loss" ? " ltm-outcome-chip--loss" : " ltm-outcome-chip--be";
+      return `<button type="button" class="ltm-outcome-chip${mod}" data-outcome="${escAttr(o)}" aria-pressed="false">${escHtml(o)}</button>`;
+    })
+    .join("");
+  const selectOpts = opts.map((o) => `<option value="${escHtml(o)}">${escHtml(o)}</option>`).join("");
+  return `<div class="ltm-outcome-wrap">
+    <div class="ltm-outcome-chips" role="group" aria-label="Outcome">${chips}</div>
+    <select id="${id}" name="outcome" class="ltm-outcome-select trade-input trade-select ltm-input" required tabindex="-1" aria-hidden="true">
+      <option value="">Choose outcome</option>${selectOpts}
+    </select>
+  </div>`;
+}
+
+function syncOutcomeChipsFromSelect(form) {
+  if (!form) return;
+  const sel = form.elements.namedItem("outcome");
+  const v = sel && "value" in sel ? String(sel.value || "") : "";
+  form.querySelectorAll(".ltm-outcome-chip").forEach((btn) => {
+    const on = btn.dataset.outcome === v;
+    btn.classList.toggle("ltm-outcome-chip--active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
+function initOutcomeChips(form, onOutcomeChange) {
+  if (!form) return;
+  const sel = form.elements.namedItem("outcome");
+  if (!sel) return;
+
+  form.querySelectorAll(".ltm-outcome-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = btn.dataset.outcome || "";
+      sel.value = v;
+      syncOutcomeChipsFromSelect(form);
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+      if (onOutcomeChange) onOutcomeChange();
+    });
+  });
+
+  sel.addEventListener("change", () => {
+    syncOutcomeChipsFromSelect(form);
+    if (onOutcomeChange) onOutcomeChange();
+  });
+
+  syncOutcomeChipsFromSelect(form);
+}
+
+function clearFormValidation(form) {
+  if (!form) return;
+  form.querySelectorAll(".ltm-field-row--error").forEach((row) => {
+    row.classList.remove("ltm-field-row--error");
+  });
+}
+
+function validateLogTradeForm(form, fieldsList) {
+  clearFormValidation(form);
+  const checks = [
+    { name: "date", label: "Date" },
+    { name: "session", label: "Session" },
+    { name: "outcome", label: "Outcome" },
+  ];
+
+  for (const c of checks) {
+    const el = form.elements.namedItem(c.name);
+    const val = el && "value" in el ? String(el.value || "").trim() : "";
+    if (val) continue;
+
+    const row = fieldsList?.querySelector(`[data-field-id="${c.name}"]`);
+    row?.classList.add("ltm-field-row--error");
+
+    if (c.name === "outcome") {
+      const chip = form.querySelector(".ltm-outcome-chip");
+      chip?.focus();
+    } else {
+      el?.focus();
+    }
+
+    return { ok: false, message: `${c.label} is required.` };
+  }
+
+  return { ok: true };
+}
+
 function buildInputHtml(field, today) {
   const id = fieldInputId(field.id);
   const name = field.id;
@@ -344,6 +444,8 @@ function renderFieldRow(field, today) {
   if (field.allowOther) {
     pairOther = `<input type="text" name="pair_other" id="ltm-f-pair-other" class="trade-input ltm-input ltm-pair-other" hidden placeholder="Enter pair symbol">`;
   }
+  const inputHtml =
+    field.id === "outcome" ? buildOutcomeInputHtml(field) : buildInputHtml(field, today);
   return `<div class="ltm-field-row" data-field-id="${escAttr(field.id)}" draggable="true">
   <div class="ltm-drag-handle" title="Drag to reorder" aria-hidden="true">
     <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -354,7 +456,7 @@ function renderFieldRow(field, today) {
   </div>
   <div class="ltm-field-inner">
     <label class="trade-label ltm-label" for="${escAttr(inputId)}">${escHtml(field.label)}</label>
-    ${buildInputHtml(field, today)}
+    ${inputHtml}
     ${pairOther}
   </div>
 </div>`;
@@ -501,7 +603,7 @@ function applyNewTradeDefaults(form, defaults, pairOptions) {
   initPairOtherToggle(form);
 }
 
-function buildOverlayHtml(today, orderedFields, hasAccounts) {
+function buildOverlayHtml(today, orderedFields, hasAccounts, isEdit) {
   const rowsHtml = orderedFields.map((f) => renderFieldRow(f, today)).join("\n");
   const accountHint = hasAccounts
     ? ""
@@ -551,11 +653,16 @@ function buildOverlayHtml(today, orderedFields, hasAccounts) {
       </div>
       <div class="trade-form-actions trade-form-actions--split">
         <button type="button" class="trade-delete-btn" id="ltm-delete" hidden>Delete</button>
+        ${
+          isEdit
+            ? ""
+            : `<button type="button" class="trade-submit-btn trade-submit-btn--secondary" id="ltm-submit-another">SAVE &amp; LOG ANOTHER</button>`
+        }
         <button type="submit" class="trade-submit-btn" id="ltm-submit">SAVE TRADE</button>
       </div>
     </form>
   </div>
-  </div>`;
+</div>`;
 }
 
 function outcomeToLtmSelect(outcomeRaw) {
@@ -626,7 +733,9 @@ export async function openLogTradeModal(options) {
   overlay.className = "trade-form-overlay";
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
-  overlay.innerHTML = buildOverlayHtml(today, orderedDefs, hasAccounts);
+  const lastRR = deriveLastRRFromRows(allPrefillRows);
+
+  overlay.innerHTML = buildOverlayHtml(today, orderedDefs, hasAccounts, Boolean(editId));
   document.body.appendChild(overlay);
 
   requestAnimationFrame(() => {
@@ -738,7 +847,11 @@ export async function openLogTradeModal(options) {
     }
   } else if (defaults) {
     applyNewTradeDefaults(form, defaults, pairOptions);
+    syncOutcomeChipsFromSelect(form);
   }
+
+  const rrInp = document.getElementById("ltm-f-rr");
+  if (rrInp && lastRR) rrInp.placeholder = lastRR;
 
   const fieldsList = document.getElementById("ltm-fields-list");
   initFieldDrag(fieldsList);
@@ -827,18 +940,46 @@ export async function openLogTradeModal(options) {
     adderName.value = "";
   });
 
-  const outcomeEl = document.querySelector("#ltm-form [name='outcome']");
+  const outcomeEl = form.elements.namedItem("outcome");
   const rrRow = fieldsList.querySelector("[data-field-id='rr']");
   function syncRR() {
     if (rrRow) rrRow.style.display = outcomeEl?.value === "BE" ? "none" : "";
   }
-  outcomeEl?.addEventListener("change", syncRR);
+  initOutcomeChips(form, syncRR);
   syncRR();
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
+  const submitBtn = document.getElementById("ltm-submit");
+  const submitAnotherBtn = document.getElementById("ltm-submit-another");
 
+  function setSavingState(saving) {
+    if (submitBtn) {
+      submitBtn.disabled = saving;
+      if (!saving) submitBtn.textContent = editId ? "SAVE CHANGES" : "SAVE TRADE";
+    }
+    if (submitAnotherBtn) submitAnotherBtn.disabled = saving;
+  }
+
+  function resetFormForAnother() {
+    clearFormValidation(form);
+    if (outcomeEl && "value" in outcomeEl) outcomeEl.value = "";
+    syncOutcomeChipsFromSelect(form);
+    const rrEl = form.elements.namedItem("rr");
+    if (rrEl && "value" in rrEl) rrEl.value = "";
+    ltmPhotos = [];
+    renderPhotoPreviews(previews);
+    syncRR();
+    setSavingState(false);
+    form.querySelector(".ltm-outcome-chip")?.focus?.();
+  }
+
+  async function saveTrade(closeAfter) {
+    const validation = validateLogTradeForm(form, fieldsList);
+    if (!validation.ok) {
+      showToast(validation.message, true);
+      return;
+    }
+
+    const fd = new FormData(form);
     const dateVal = (fd.get("date") || "").trim();
     let pair = (fd.get("pair") || "").trim();
     if (pair === PAIR_OTHER) pair = (fd.get("pair_other") || "").trim();
@@ -851,11 +992,6 @@ export async function openLogTradeModal(options) {
 
     if (account === "No account — add on Account page") account = "";
 
-    if (!dateVal || !session || !outcome) {
-      showToast("Date, Session and Outcome are required.", true);
-      return;
-    }
-
     const custom_data = {};
     if (direction) custom_data.direction = direction;
 
@@ -867,11 +1003,8 @@ export async function openLogTradeModal(options) {
       custom_data.photos = ltmPhotos.map((p) => ({ url: p.dataUrl, label: p.label }));
     }
 
-    const submitBtn = document.getElementById("ltm-submit");
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Saving…";
-    }
+    setSavingState(true);
+    if (submitBtn) submitBtn.textContent = "Saving…";
 
     try {
       const basePayload = {
@@ -896,30 +1029,56 @@ export async function openLogTradeModal(options) {
         throw new Error(readApiErrorMessage(d) || `Save failed (${res.status})`);
       }
 
-      closeModal();
-      showToast(editId ? "Trade updated." : "Trade logged.");
-      if (onTradeSaved) {
-        await onTradeSaved({
-          outcome,
-          pair,
-          session,
-          rr,
-          account,
-          direction,
-          custom_data,
-          dateVal,
-          userId: getUserId(),
-        });
+      const savedMeta = {
+        outcome,
+        pair,
+        session,
+        rr,
+        account,
+        direction,
+        custom_data,
+        dateVal,
+        userId: getUserId(),
+      };
+
+      if (closeAfter) {
+        closeModal();
+        showToast(editId ? "Trade updated." : "Trade logged.");
+        if (onTradeSaved) await onTradeSaved(savedMeta);
+        return;
       }
+
+      showToast("Trade logged — add another below.");
+      resetFormForAnother();
+      if (onTradeSaved) await onTradeSaved(savedMeta);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Save failed.";
       showToast(msg, true);
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = editId ? "SAVE CHANGES" : "SAVE TRADE";
-      }
+      setSavingState(false);
     }
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    void saveTrade(true);
   });
 
-  document.getElementById("ltm-f-date")?.focus();
+  if (submitAnotherBtn) {
+    submitAnotherBtn.addEventListener("click", () => {
+      void saveTrade(false);
+    });
+  }
+
+  form.addEventListener("input", (e) => {
+    const row = e.target.closest?.(".ltm-field-row--error");
+    if (row) row.classList.remove("ltm-field-row--error");
+  });
+
+  if (!editId) {
+    const firstChip = form.querySelector(".ltm-outcome-chip");
+    firstChip?.focus?.();
+  } else {
+    document.getElementById("ltm-f-date")?.focus();
+  }
 }
+
