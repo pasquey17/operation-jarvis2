@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/style.css?v=c8d3f01e" />
+    <link rel="stylesheet" href="/css/style.css?v=e1a4b7f2" />
     <style>
       html, body {
         overflow: auto !important; height: auto !important;
@@ -300,6 +300,17 @@
         align-items: center;
         text-align: center;
       }
+      .an-wr-sys-eyebrow {
+        width: 100%;
+        margin: 0 0 10px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: rgba(0,212,255,0.38);
+        text-align: left;
+      }
+      .an-wr-body--empty .an-wr-stage { opacity: 0.35; }
       .an-wr-toolbar {
         display: flex;
         align-items: flex-start;
@@ -463,25 +474,79 @@
         position: relative;
         z-index: 1;
       }
-      .an-wr-gauge-wrap {
+      .an-wr-stage {
         position: relative;
-        width: min(100%, 380px);
-        margin: 8px auto 0;
+        width: min(100%, 420px);
         aspect-ratio: 1;
-        filter: drop-shadow(0 0 48px rgba(0,191,255,0.12));
+        margin: 4px auto 0;
+      }
+      .an-wr-stage::before {
+        content: "";
+        position: absolute;
+        inset: 8%;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(0,191,255,0.14) 0%, rgba(0,100,180,0.04) 45%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+      }
+      .an-wr-hud {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+        overflow: visible;
+      }
+      .an-wr-hud .an-wr-hud-arc {
+        fill: none;
+        stroke: rgba(0,212,255,0.35);
+        stroke-linecap: round;
+      }
+      .an-wr-hud .an-wr-hud-arc--dim { stroke: rgba(0,212,255,0.18); stroke-width: 1; }
+      .an-wr-hud .an-wr-hud-arc--mid { stroke: rgba(0,212,255,0.28); stroke-width: 1.25; }
+      .an-wr-hud .an-wr-hud-arc--bright { stroke: rgba(180,240,255,0.45); stroke-width: 1.5; }
+      .an-wr-hud .an-wr-hud-halo {
+        fill: none;
+        stroke: rgba(200,245,255,0.22);
+        stroke-width: 1;
+        filter: drop-shadow(0 0 6px rgba(0,212,255,0.5));
+      }
+      .an-wr-hud .an-wr-hud-callout {
+        fill: none;
+        stroke: rgba(0,212,255,0.42);
+        stroke-width: 0.85;
+      }
+      .an-wr-hud .an-wr-hud-node {
+        fill: none;
+        stroke: rgba(0,212,255,0.55);
+        stroke-width: 1;
+      }
+      .an-wr-hud .an-wr-hud-tick {
+        stroke: rgba(0,212,255,0.2);
+        stroke-width: 0.75;
+      }
+      .an-wr-gauge-wrap {
+        position: absolute;
+        inset: 14%;
+        z-index: 2;
+        filter: drop-shadow(0 0 32px rgba(0,191,255,0.18));
       }
       .an-wr-gauge-wrap::after {
         content: "";
         position: absolute;
-        inset: 12%;
+        inset: 14%;
         border-radius: 50%;
         pointer-events: none;
-        box-shadow: inset 0 0 40px rgba(0,0,0,0.65);
+        box-shadow: inset 0 0 36px rgba(0,0,0,0.55);
+        z-index: 4;
       }
       .an-wr-gauge-wrap canvas {
         display: block;
         width: 100% !important;
         height: 100% !important;
+        position: relative;
+        z-index: 2;
       }
       .an-wr-gauge-center {
         position: absolute;
@@ -492,15 +557,16 @@
         justify-content: center;
         pointer-events: none;
         text-align: center;
-        padding: 30% 20%;
+        padding: 28% 18%;
+        z-index: 5;
       }
       .an-wr-gauge-pct {
         font-family: "Outfit",system-ui,sans-serif;
         font-weight: 200;
-        font-size: clamp(3rem, 10vw, 4.25rem);
+        font-size: clamp(3.5rem, 11vw, 4.5rem);
         line-height: 1;
         color: #fff;
-        text-shadow: 0 0 60px rgba(0,212,255,0.55), 0 0 12px rgba(0,212,255,0.25);
+        text-shadow: 0 0 70px rgba(0,212,255,0.6), 0 0 20px rgba(0,212,255,0.35);
         letter-spacing: -0.02em;
       }
       .an-wr-gauge-pct--muted { color: rgba(255,255,255,0.35); font-size: 1.75rem; text-shadow: none; }
@@ -510,7 +576,7 @@
         font-size: 10px;
         letter-spacing: 0.22em;
         text-transform: uppercase;
-        color: rgba(0,212,255,0.65);
+        color: rgba(0,212,255,0.82);
       }
       .an-wr-gauge-sub {
         margin-top: 6px;
@@ -551,10 +617,11 @@
         display: flex;
         width: min(100%, 420px);
         height: 4px;
-        margin-top: 14px;
+        margin-top: 16px;
         border-radius: 999px;
         overflow: hidden;
         background: rgba(255,255,255,0.06);
+        box-shadow: 0 0 12px rgba(0,191,255,0.08);
       }
       .an-wr-stack > i {
         display: block;
@@ -575,7 +642,12 @@
         .an-wr-filter-panel { right: 0; left: auto; width: min(340px, calc(100vw - 32px)); }
         .an-wr-filter-row { grid-template-columns: 1fr; }
         .an-wr-filter-add { width: 100%; min-height: 44px; }
-        .an-wr-gauge-wrap { width: min(88vw, 320px); }
+        .an-wr-stage { width: min(92vw, 340px); }
+        .an-wr-sys-eyebrow { text-align: center; font-size: 8px; letter-spacing: 0.2em; }
+        .an-wr-hud-callouts { display: none; }
+      }
+      @media (max-width: 400px) {
+        .an-wr-hud-callouts { display: none; }
       }
 
       /* ═══ Monte risk control ═══ */
@@ -810,6 +882,7 @@
 
         <section class="an-winrate-hero" id="an-winrate-hero" aria-label="Win rate overview">
           <div class="an-wr-inner">
+            <p class="an-wr-sys-eyebrow">System-level performance diagnostics</p>
             <header class="an-wr-toolbar">
               <div class="an-wr-toolbar__left">
                 <h2 class="an-wr-eyebrow">Win rate</h2>
@@ -833,12 +906,52 @@
             </header>
             <div class="an-wr-chips an-wr-chips--bar" id="an-wr-chips" aria-live="polite"></div>
             <div class="an-wr-body" id="an-wr-body">
-              <div class="an-wr-gauge-wrap">
-                <canvas id="chart-winrate-hero" aria-label="Win rate gauge"></canvas>
-                <div class="an-wr-gauge-center">
-                  <div class="an-wr-gauge-pct" id="an-wr-pct">—</div>
-                  <div class="an-wr-gauge-label">Win rate</div>
-                  <div class="an-wr-gauge-sub" id="an-wr-sub">Wins ÷ all trades (incl. BE)</div>
+              <div class="an-wr-stage">
+                <svg class="an-wr-hud" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                  <defs>
+                    <radialGradient id="an-wr-hud-bloom" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="rgba(0,212,255,0.12)"/>
+                      <stop offset="55%" stop-color="rgba(0,120,200,0.04)"/>
+                      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+                    </radialGradient>
+                  </defs>
+                  <circle cx="200" cy="200" r="198" fill="url(#an-wr-hud-bloom)"/>
+                  <circle class="an-wr-hud-halo" cx="200" cy="200" r="168"/>
+                  <circle class="an-wr-hud-arc an-wr-hud-arc--dim" cx="200" cy="200" r="188" stroke-dasharray="420 380" stroke-dashoffset="40" transform="rotate(-24 200 200)"/>
+                  <circle class="an-wr-hud-arc an-wr-hud-arc--mid" cx="200" cy="200" r="178" stroke-dasharray="360 440" stroke-dashoffset="120" transform="rotate(48 200 200)"/>
+                  <circle class="an-wr-hud-arc an-wr-hud-arc--bright" cx="200" cy="200" r="192" stroke-dasharray="300 520" stroke-dashoffset="200" transform="rotate(110 200 200)"/>
+                  <g class="an-wr-hud-ticks">
+                    <line class="an-wr-hud-tick" x1="200" y1="24" x2="200" y2="32"/>
+                    <line class="an-wr-hud-tick" x1="338" y1="92" x2="332" y2="98"/>
+                    <line class="an-wr-hud-tick" x1="376" y1="200" x2="368" y2="200"/>
+                    <line class="an-wr-hud-tick" x1="338" y1="308" x2="332" y2="302"/>
+                    <line class="an-wr-hud-tick" x1="200" y1="376" x2="200" y2="368"/>
+                    <line class="an-wr-hud-tick" x1="62" y1="308" x2="68" y2="302"/>
+                    <line class="an-wr-hud-tick" x1="24" y1="200" x2="32" y2="200"/>
+                    <line class="an-wr-hud-tick" x1="62" y1="92" x2="68" y2="98"/>
+                  </g>
+                  <g class="an-wr-hud-callouts">
+                    <path class="an-wr-hud-callout" d="M 268 118 L 298 118 L 298 88"/>
+                    <circle class="an-wr-hud-node" cx="298" cy="88" r="3.5"/>
+                    <path class="an-wr-hud-callout" d="M 318 168 L 348 168 L 348 198"/>
+                    <circle class="an-wr-hud-node" cx="348" cy="198" r="3.5"/>
+                    <path class="an-wr-hud-callout" d="M 298 282 L 328 282 L 328 312"/>
+                    <circle class="an-wr-hud-node" cx="328" cy="312" r="3.5"/>
+                    <path class="an-wr-hud-callout" d="M 132 282 L 102 282 L 102 312"/>
+                    <circle class="an-wr-hud-node" cx="102" cy="312" r="3.5"/>
+                    <path class="an-wr-hud-callout" d="M 82 168 L 52 168 L 52 138"/>
+                    <circle class="an-wr-hud-node" cx="52" cy="138" r="3.5"/>
+                    <path class="an-wr-hud-callout" d="M 132 118 L 102 118 L 102 88"/>
+                    <circle class="an-wr-hud-node" cx="102" cy="88" r="3.5"/>
+                  </g>
+                </svg>
+                <div class="an-wr-gauge-wrap">
+                  <canvas id="chart-winrate-hero" aria-label="Win rate gauge"></canvas>
+                  <div class="an-wr-gauge-center">
+                    <div class="an-wr-gauge-pct" id="an-wr-pct">—</div>
+                    <div class="an-wr-gauge-label">Win rate</div>
+                    <div class="an-wr-gauge-sub" id="an-wr-sub">Wins / all trades (incl. BE)</div>
+                  </div>
                 </div>
               </div>
               <div class="an-wr-stats" id="an-wr-stats">
@@ -2644,6 +2757,34 @@
             });
           }
         }
+        var wrHeroGlowPlugin = {
+          id: 'wrHeroGlowRing',
+          afterDatasetsDraw: function (chart) {
+            var meta = chart.getDatasetMeta(0);
+            if (!meta || !meta.data || !meta.data.length) return;
+            var el = meta.data[0];
+            var ctx = chart.ctx;
+            var cx = el.x;
+            var cy = el.y;
+            var outer = el.outerRadius;
+            if (!outer) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, outer + 5, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0,212,255,0.32)';
+            ctx.lineWidth = 1.5;
+            ctx.shadowColor = 'rgba(0,212,255,0.75)';
+            ctx.shadowBlur = 16;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(cx, cy, outer + 9, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = 0;
+            ctx.stroke();
+            ctx.restore();
+          }
+        };
         function wrHeroSegmentColor(ctx, i) {
           var chart = ctx.chart;
           var area = chart.chartArea;
@@ -2655,14 +2796,15 @@
           var r = Math.min(area.right - area.left, area.bottom - area.top) / 2;
           var g = chart.ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
           if (i === 0) {
-            g.addColorStop(0, 'rgba(0,255,200,0.95)');
-            g.addColorStop(1, 'rgba(0,140,255,0.55)');
+            g.addColorStop(0, 'rgba(0,255,230,0.98)');
+            g.addColorStop(0.5, 'rgba(0,212,255,0.88)');
+            g.addColorStop(1, 'rgba(0,120,220,0.5)');
           } else if (i === 1) {
-            g.addColorStop(0, 'rgba(255,120,130,0.95)');
-            g.addColorStop(1, 'rgba(180,30,50,0.45)');
+            g.addColorStop(0, 'rgba(255,100,120,0.95)');
+            g.addColorStop(1, 'rgba(160,25,45,0.5)');
           } else {
-            g.addColorStop(0, 'rgba(220,220,220,0.75)');
-            g.addColorStop(1, 'rgba(120,130,140,0.35)');
+            g.addColorStop(0, 'rgba(200,210,220,0.7)');
+            g.addColorStop(1, 'rgba(100,110,120,0.35)');
           }
           return g;
         }
@@ -2684,19 +2826,19 @@
                   backgroundColor: function (c) {
                     return wrHeroSegmentColor(c, c.dataIndex);
                   },
-                  borderColor: 'rgba(0,0,0,0.35)',
-                  borderWidth: 2,
-                  hoverOffset: 4,
-                  spacing: 2
+                  borderColor: 'rgba(0,0,0,0.85)',
+                  borderWidth: 0,
+                  hoverOffset: 3,
+                  spacing: 3
                 }
               ]
             },
             options: {
               responsive: true,
               maintainAspectRatio: true,
-              cutout: '78%',
+              cutout: '74%',
               animation: { duration: chartAnimationDurationMs(), easing: 'easeOutQuart' },
-              layout: { padding: 4 },
+              layout: { padding: 2 },
               plugins: {
                 legend: { display: false },
                 tooltip: Object.assign({}, ttBase(), {
@@ -2710,7 +2852,8 @@
                   }
                 })
               }
-            }
+            },
+            plugins: [wrHeroGlowPlugin]
           });
         }
         function renderWinRateHero(trades) {
@@ -2785,10 +2928,10 @@
             elSub.classList.remove('an-wr-gauge-sub--warn');
             if (stats.n < 5) {
               elSub.hidden = false;
-              elSub.textContent = 'Low sample · Wins ÷ all trades (incl. BE)';
+              elSub.textContent = 'Low sample · Wins / all trades (incl. BE)';
             } else {
               elSub.hidden = false;
-              elSub.textContent = 'Wins ÷ all trades (incl. BE)';
+              elSub.textContent = 'Wins / all trades (incl. BE)';
             }
           }
 
@@ -3035,7 +3178,7 @@
             setTimeout(runParticles, 380);
           }
 
-          void import('/js/notion-sync-client.js?v=c8d3f01e').then(function (mod) {
+          void import('/js/notion-sync-client.js?v=e1a4b7f2').then(function (mod) {
             var before = allTrades.length;
             return mod.startNotionAutoSync(currentUserId, {
               onComplete: function () {
