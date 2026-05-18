@@ -489,51 +489,19 @@
         pointer-events: none;
         z-index: 0;
       }
-      .an-wr-hud {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 1;
-        overflow: visible;
-      }
-      .an-wr-hud .an-wr-hud-ring {
-        fill: none;
-        stroke: rgba(0,212,255,0.28);
-        stroke-width: 1;
-        transform-origin: center;
-        transform-box: fill-box;
-        animation: an-wr-hud-spin 20s linear infinite;
-      }
-      @keyframes an-wr-hud-spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
       .an-wr-gauge-wrap {
         position: absolute;
         inset: 11%;
         z-index: 2;
         border-radius: 50%;
-        box-shadow: 0 0 32px rgba(0,212,255,0.2), 0 0 56px rgba(0,191,255,0.1);
-        filter: drop-shadow(0 0 24px rgba(0,191,255,0.14));
-      }
-      .an-wr-gauge-wrap::after {
-        content: "";
-        position: absolute;
-        inset: -1px;
-        border-radius: 50%;
-        border: 1px solid rgba(0,212,255,0.38);
-        box-shadow: 0 0 14px rgba(0,212,255,0.22), inset 0 0 20px rgba(0,212,255,0.04);
-        pointer-events: none;
-        z-index: 4;
+        box-shadow: 0 0 28px rgba(0,212,255,0.16);
       }
       .an-wr-gauge-wrap canvas {
         display: block;
         width: 100% !important;
         height: 100% !important;
         position: relative;
-        z-index: 3;
+        z-index: 5;
       }
       .an-wr-gauge-center {
         position: absolute;
@@ -545,7 +513,7 @@
         pointer-events: none;
         text-align: center;
         padding: 28% 18%;
-        z-index: 1;
+        z-index: 0;
       }
       .an-wr-gauge-pct {
         font-family: "Outfit",system-ui,sans-serif;
@@ -804,7 +772,6 @@
       @media (prefers-reduced-motion: reduce) {
         .an-card { transition-duration: 0.01ms !important; }
         .an-badge__dot { animation: none; }
-        .an-wr-hud .an-wr-hud-ring { animation: none; }
       }
       /* Chart.js duration is set in JS from prefers-reduced-motion */
     </style>
@@ -901,9 +868,6 @@
             <div class="an-wr-chips an-wr-chips--bar" id="an-wr-chips" aria-live="polite"></div>
             <div class="an-wr-body" id="an-wr-body">
               <div class="an-wr-stage">
-                <svg class="an-wr-hud" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                  <circle class="an-wr-hud-ring" cx="200" cy="200" r="185"/>
-                </svg>
                 <div class="an-wr-gauge-wrap">
                   <canvas id="chart-winrate-hero" aria-label="Win rate gauge"></canvas>
                   <div class="an-wr-gauge-center">
@@ -2716,26 +2680,32 @@
             });
           }
         }
-        var wrHeroGlowPlugin = {
-          id: 'wrHeroGlowRing',
+        var WR_HERO_SEGMENT_GLOW = [
+          'rgba(0,212,255,0.95)',
+          'rgba(255,90,110,0.92)',
+          'rgba(190,200,210,0.75)'
+        ];
+        var WR_HERO_SEGMENT_BORDER = [
+          'rgba(0,212,255,0.85)',
+          'rgba(255,90,110,0.82)',
+          'rgba(180,190,200,0.65)'
+        ];
+        var wrHeroSegmentGlowPlugin = {
+          id: 'wrHeroSegmentGlow',
           afterDatasetsDraw: function (chart) {
             var meta = chart.getDatasetMeta(0);
             if (!meta || !meta.data || !meta.data.length) return;
-            var el = meta.data[0];
             var ctx = chart.ctx;
-            var cx = el.x;
-            var cy = el.y;
-            var outer = el.outerRadius;
-            if (!outer) return;
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(cx, cy, outer + 4, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(0,212,255,0.38)';
-            ctx.lineWidth = 1.5;
-            ctx.shadowColor = 'rgba(0,212,255,0.55)';
-            ctx.shadowBlur = 14;
-            ctx.stroke();
-            ctx.restore();
+            meta.data.forEach(function (arc, i) {
+              if (!arc || !arc.circumference) return;
+              ctx.save();
+              ctx.shadowColor = WR_HERO_SEGMENT_GLOW[i] || WR_HERO_SEGMENT_GLOW[0];
+              ctx.shadowBlur = 16;
+              ctx.shadowOffsetX = 0;
+              ctx.shadowOffsetY = 0;
+              arc.draw(ctx);
+              ctx.restore();
+            });
           }
         };
         function wrHeroSegmentColor(ctx, i) {
@@ -2782,23 +2752,29 @@
                   backgroundColor: function (c) {
                     return wrHeroSegmentColor(c, c.dataIndex);
                   },
-                  borderColor: 'rgba(0,0,0,0.85)',
-                  borderWidth: 0,
-                  hoverOffset: 3,
-                  spacing: 3
+                  borderColor: function (c) {
+                    return WR_HERO_SEGMENT_BORDER[c.dataIndex] || WR_HERO_SEGMENT_BORDER[0];
+                  },
+                  borderWidth: 3,
+                  hoverBorderWidth: 3,
+                  hoverOffset: 4,
+                  spacing: 6,
+                  borderRadius: 3
                 }
               ]
             },
             options: {
               responsive: true,
               maintainAspectRatio: true,
-              cutout: '74%',
+              cutout: '65%',
+              backgroundColor: 'transparent',
               animation: { duration: chartAnimationDurationMs(), easing: 'easeOutQuart' },
-              layout: { padding: 2 },
+              layout: { padding: 4 },
+              interaction: { mode: 'nearest', intersect: true },
               plugins: {
                 legend: { display: false },
                 tooltip: Object.assign({}, ttBase(), {
-                  z: 999,
+                  z: 9999,
                   position: 'nearest',
                   callbacks: {
                     label: function (ctx) {
@@ -2811,7 +2787,7 @@
                 })
               }
             },
-            plugins: [wrHeroGlowPlugin]
+            plugins: [wrHeroSegmentGlowPlugin]
           });
         }
         function renderWinRateHero(trades) {
