@@ -816,7 +816,8 @@ Respond with ONLY a valid JSON object and no other text:
     if (!ar.ok) return;
     const data = await ar.json().catch(() => null);
     if (!data) return;
-    const text = extractAssistantText(data);
+    const rawText = extractAssistantText(data);
+    const text = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return;
     const profileUpdate = JSON.parse(jsonMatch[0]);
@@ -882,7 +883,7 @@ Respond with ONLY a valid JSON object and no other text:
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 1200,
+      max_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -892,7 +893,8 @@ Respond with ONLY a valid JSON object and no other text:
     throw new Error(`Anthropic error ${ar.status}: ${errText.slice(0, 200)}`);
   }
   const data = await ar.json();
-  const text = extractAssistantText(data);
+  const rawText = extractAssistantText(data);
+  const text = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error("No JSON in Anthropic response");
   const profile = JSON.parse(jsonMatch[0]);
