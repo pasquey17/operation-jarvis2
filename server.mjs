@@ -1641,16 +1641,37 @@ function findBestRrTradeIndex(arr) {
   return bestIx;
 }
 
+/** Newest-first indices of the top N trades by RR (ties broken by recency). */
+function findTopRrTradeIndices(arr, n = 5) {
+  const ranked = [];
+  for (let i = 0; i < arr.length; i++) {
+    const rr = Number(arr[i]?.rr);
+    if (Number.isFinite(rr)) ranked.push({ i, rr });
+  }
+  ranked.sort((a, b) => b.rr - a.rr || a.i - b.i);
+  const out = [];
+  for (const { i } of ranked) {
+    if (out.length >= n) break;
+    if (!out.includes(i)) out.push(i);
+  }
+  return out;
+}
+
+const TRADE_IMAGES_ROW_MATCH_RULE =
+  "Each trade row in the data may contain a trade_images array. When you reference a specific trade by date, look at that trade's row in the data and use the URL from ITS trade_images field. Never use another trade's image URL. Paste it on its own line after mentioning the trade.";
+
 /**
  * Pinned + high-R rows that should carry `trade_images` so examples map to the right chart.
- * (most recent, most recent win/loss, best RR, any trade above 3R)
+ * Priority order before cap: most recent, last win/loss, best RR, top 5 RR, then all RR > 3.0 (by RR desc).
  */
 function tradeChartContextIndices(tradesForChat) {
   const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
-  const indices = new Set();
+  const ordered = [];
 
-  const add = (i) => {
-    if (typeof i === "number" && i >= 0 && i < arr.length) indices.add(i);
+  const push = (i) => {
+    if (typeof i === "number" && i >= 0 && i < arr.length && !ordered.includes(i)) {
+      ordered.push(i);
+    }
   };
 
   const idxWin = arr.findIndex((t) =>
@@ -1661,20 +1682,21 @@ function tradeChartContextIndices(tradesForChat) {
   );
   const idxBestRr = findBestRrTradeIndex(arr);
 
-  add(0);
-  add(idxWin);
-  add(idxLoss);
-  add(idxBestRr);
+  push(0);
+  push(idxWin);
+  push(idxLoss);
+  push(idxBestRr);
+  for (const i of findTopRrTradeIndices(arr, 5)) push(i);
 
+  const highRr = [];
   for (let i = 0; i < arr.length; i++) {
     const rr = Number(arr[i]?.rr);
-    if (Number.isFinite(rr) && rr > 3) add(i);
+    if (Number.isFinite(rr) && rr > 3) highRr.push({ i, rr });
   }
+  highRr.sort((a, b) => b.rr - a.rr || a.i - b.i);
+  for (const { i } of highRr) push(i);
 
-  const sorted = [...indices]
-    .sort((a, b) => a - b)
-    .slice(0, MAX_TRADES_WITH_PHOTO_LINKS_IN_CHAT);
-  return new Set(sorted);
+  return new Set(ordered.slice(0, MAX_TRADES_WITH_PHOTO_LINKS_IN_CHAT));
 }
 
 /**
@@ -2780,8 +2802,11 @@ async function handleChat(req, res) {
     (useWebSearch
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
+    (photoIdxSet.size > 0
+      ? `\n\nTRADE PHOTOS — ${TRADE_IMAGES_ROW_MATCH_RULE} Rows with charts attached: pinned (most recent, last win, last loss, best RR), top 5 by RR, and every trade above 3.0R. Match the row using date_local, session, pair, and direction — not the most recent trade block.`
+      : "") +
     (includePhotoLinks
-      ? "\n\nTRADE PHOTOS — Chart context is ON for this turn (either you asked for screenshots, or your message is a tight review intent like last loss / walk-through / execution check). Some trade rows include a \"trade_images\" array below (ordered: \"Trade Photo\" label first when present; else first image); pinned example rows (most recent, last win, last loss, best RR) and trades above 3R include charts when stored. When you reference a specific trade by date in your response, paste that trade's image URL on its own line immediately after mentioning it. Use the trade_images URL from that specific trade row — not the most recent trade. Match by date_local on the row. If the trade you're referencing has no image, skip it silently. For other chart mentions, paste one full HTTPS URL per row on its own line so the HUD can render thumbnails — do not claim to see pixels. If the user explicitly asked for all photos/charts/screenshots, you may include more than one URL per row."
+      ? " Chart context is ON (screenshot/review intent). Paste full HTTPS URLs on their own lines so the HUD can render thumbnails; do not claim to see pixels."
       : "") +
     (wantsNotionExtras
       ? "\n\nNOTION EXTRAS — Some trades may include a selective \"notion_extras\" object (extra Notion fields). It appears only when the user asked about dimensions beyond core stats (psychology, timeframes, volume, tags, etc.). Use these values when present; do not invent fields."
