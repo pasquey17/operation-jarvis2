@@ -79,9 +79,9 @@ const MAX_BRIEFING_TRADES = 30;
 /** Cached briefing in chat system prompt — strict cap on input tokens. */
 const MAX_BRIEFING_MEMORY_CHARS = 4500;
 /** Chat turns sent to Anthropic (user/assistant pairs); excludes system. */
-const MAX_CHAT_MESSAGES = 6;
+const MAX_CHAT_MESSAGES = 4;
 /** Per-turn content cap (characters) before API send. */
-const MAX_CHAT_MESSAGE_CHARS = 800;
+const MAX_CHAT_MESSAGE_CHARS = 500;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 /** Throttle for optional server-side background kicks. Read paths return Supabase immediately; clients POST /api/notion/sync-user in parallel. */
 const NOTION_SYNC_INTERVAL_MS = (() => {
@@ -484,20 +484,9 @@ ${recentTradeCount === 0 ? "— IMPORTANT: There are NO trades in the last 7 day
 — IMPORTANT: The raw "date" field in every trade row is stored in UTC. The "date_local" field is the correct Adelaide local time (Australia/Adelaide, GMT+10:30). ALWAYS use "date_local" when telling the trader what time or date a trade occurred. Never read the time from the "date" field.`;
 
   const dataJson = JSON.stringify({ columns: columnKeys, trades });
-  let briefingSection = "";
-  if (briefingMemory && briefingMemory.trim()) {
-    briefingSection = `
-
----
-
-Prior session briefing notes (cached):
-
-${briefingMemory.trim()}`;
-  }
 
   const derivedProfile = deriveTradingProfile(forStats);
   const derivedSnapshot = deriveTradingSnapshot(forStats);
-  const crossRefStats = deriveCrossReferencedStats(forStats);
 
   let persistentMemorySection = "";
   if (userProfileHasMemory(userProfile)) {
@@ -505,20 +494,11 @@ ${briefingMemory.trim()}`;
 
 ---
 
-MEMORY (cross-session — weave into every reply, not optional filler):
+MEMORY:
 
 WHO: ${truncateProfileFieldForChat(userProfile.trading_summary)}
-PSYCH PATTERNS: ${truncateProfileFieldForChat(userProfile.psychological_patterns)}
-TRIGGERS: ${truncateProfileFieldForChat(userProfile.key_triggers)}
-STRENGTHS: ${truncateProfileFieldForChat(userProfile.strengths)}
-TRADING RULES: ${truncateProfileFieldForChat(userProfile.trading_rules)}
-EDGE MAP: ${truncateProfileFieldForChat(userProfile.edge_map)}
-PROGRESS: ${truncateProfileFieldForChat(userProfile.progress_notes)}
-OBSERVATIONS: ${truncateProfileFieldForChat(userProfile.jarvis_observations)}
-
-Use it: emotion/frustration → triggers/patterns; trade/setup → rules + edge map; broad edge questions → EDGE MAP + PROGRESS first; repeated mistake → OBSERVATIONS + TRIGGERS; improvement → PROGRESS + STRENGTHS; praise → history-specific only.
-
-MEMORY INSTRUCTION: Before every response, scan the profile above for relevant patterns. If a pattern matches what the trader just said, surface it as a QUESTION not a directive. Never tell them what to do based on pattern alone. Instead ask: "This looks like [pattern] — does this trade meet your A+ criteria?" You flag. They decide. Always ask about setup quality before making any psychological observation.`;
+PSYCH: ${truncateProfileFieldForChat(userProfile.psychological_patterns)}
+EDGE: ${truncateProfileFieldForChat(userProfile.edge_map)}`;
   }
 
   return `${dateContextBlock}
@@ -526,34 +506,16 @@ MEMORY INSTRUCTION: Before every response, scan the profile above for relevant p
 ---
 
 ${JARVIS_SYSTEM_PROMPT}${persistentMemorySection}
-${briefingSection}
 
 ---
 
-Derived trading profile (computed from all ${forStats.length} trades — prefer this over any assumptions):
-
-${derivedProfile}
+Stats (all ${forStats.length} trades): ${derivedProfile} | ${JSON.stringify(derivedSnapshot)}
 
 ---
 
-Derived trading snapshot (authoritative stats from all ${forStats.length} trades):
+Recent trade rows (newest ${trades.length}):
 
-${JSON.stringify(derivedSnapshot)}
-
----
-
-=== CROSS-REFERENCED EDGE MAP ===
-(Pre-computed from all ${forStats.length} trades. Use these for session/day/model/direction breakdowns — do not recalculate from the rows below.)
-
-${crossRefStats}
-
----
-
-Recent trade rows (newest ${trades.length}, newest first — for context only; use snapshot and edge map above for totals/rates):
-
-${dataJson}
-
-For statistical or performance questions, use the Derived trading snapshot and CROSS-REFERENCED EDGE MAP above (they cover all ${forStats.length} trades). The recent rows below are context only.`;
+${dataJson}`;
 }
 
 // === USER PROFILE MEMORY LAYER ===
@@ -996,7 +958,7 @@ const MAX_SUPABASE_ROWS = Math.min(
 /** Rows fetched from Supabase for chat (≥500 target when MAX_SUPABASE_ROWS allows; capped at 5000). */
 const CHAT_TRADE_FETCH_LIMIT = Math.min(MAX_SUPABASE_ROWS, 5000);
 /** Max trade rows sent to the model in one chat request (token budget). */
-const MAX_TRADES_IN_CHAT_PROMPT = 40;
+const MAX_TRADES_IN_CHAT_PROMPT = 20;
 /** Truncate long `notes` when building the chat payload. */
 const MAX_PROMPT_TRADE_NOTES_CHARS = 400;
 /** Cap screenshot URLs per trade when the user asks for photo links (token budget). */
