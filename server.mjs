@@ -79,9 +79,9 @@ const MAX_BRIEFING_TRADES = 30;
 /** Cached briefing in chat system prompt — strict cap on input tokens. */
 const MAX_BRIEFING_MEMORY_CHARS = 4500;
 /** Chat turns sent to Anthropic (user/assistant pairs); excludes system. */
-const MAX_CHAT_MESSAGES = 8;
+const MAX_CHAT_MESSAGES = 6;
 /** Per-turn content cap (characters) before API send. */
-const MAX_CHAT_MESSAGE_CHARS = 1200;
+const MAX_CHAT_MESSAGE_CHARS = 800;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 /** Throttle for optional server-side background kicks. Read paths return Supabase immediately; clients POST /api/notion/sync-user in parallel. */
 const NOTION_SYNC_INTERVAL_MS = (() => {
@@ -218,13 +218,8 @@ function deriveTradingProfile(trades) {
     n == null ? "n/a" : Number(n).toFixed(digits).replace(/\.0$/, "");
 
   return [
-    `Trades analyzed: ${total}`,
-    `Win/Loss decided: ${decided} (wins: ${wins}, losses: ${losses})`,
-    `Win rate: ${winRate == null ? "n/a" : `${fmt(winRate, 1)}%`}`,
-    `Average RR: ${avgRR == null ? "n/a" : fmt(avgRR, 2)}`,
-    `Most common session: ${bestSession || "n/a"}`,
-    `Best day (by wins): ${bestDay || "n/a"}`,
-    `Worst day (by losses): ${worstDay || "n/a"}`,
+    `Trades: ${total} | W/L: ${wins}W ${losses}L | WR: ${winRate == null ? "n/a" : `${fmt(winRate, 1)}%`} | Avg RR: ${avgRR == null ? "n/a" : fmt(avgRR, 2)}`,
+    `Session: ${bestSession || "n/a"} | Best day: ${bestDay || "n/a"} | Worst day: ${worstDay || "n/a"}`,
   ].join("\n");
 }
 
@@ -319,12 +314,12 @@ function deriveTradingSnapshot(trades) {
   };
 }
 
-/** ~400 tokens — cross-referenced edge map in chat system prompt. */
-const MAX_CROSS_REF_STATS_CHARS = 1600;
+/** ~300 tokens — cross-referenced edge map in chat system prompt. */
+const MAX_CROSS_REF_STATS_CHARS = 1200;
 
 /**
  * Pre-computes cross-referenced breakdowns for the chat system prompt.
- * Returns a compact text block capped at ~400 tokens.
+ * Ultra-compact format capped at ~300 tokens. Only combos ≥8 trades. Top 3 models.
  */
 function deriveCrossReferencedStats(trades) {
   if (!Array.isArray(trades) || trades.length === 0) return "";
@@ -339,175 +334,97 @@ function deriveCrossReferencedStats(trades) {
     const n = Number(v);
     return Number.isFinite(n) ? n : NaN;
   };
-
   const normSession = (v) => {
     const s = String(v ?? "").trim().toUpperCase();
     if (!s) return "";
     if (s.includes("ASIA")) return "Asia";
-    if (s.includes("LONDON")) return "London";
-    if (s.includes("NEW") || s.includes("NY") || s.includes("YORK")) return "New York";
-    return String(v).trim(); // keep as-is if unknown
+    if (s.includes("LONDON")) return "Lon";
+    if (s.includes("NEW") || s.includes("NY") || s.includes("YORK")) return "NY";
+    return String(v).trim();
   };
-
-  // weekday comes in as lowercase full name e.g. "monday"
   const normDay = (v) => {
     const s = String(v ?? "").trim().toLowerCase();
     if (!s) return "";
-    return s.charAt(0).toUpperCase() + s.slice(1);
+    return s.charAt(0).toUpperCase() + s.slice(1, 3); // "Mon", "Tue" etc.
   };
-
   const groupStats = (group) => {
     let wins = 0, losses = 0, be = 0, totalR = 0, rrWinSum = 0, rrWinCount = 0;
     for (const t of group) {
       const o = normOutcome(t);
       const rr = rrOf(t);
-      if (isWin(o)) {
-        wins++;
-        if (!isNaN(rr)) { totalR += rr; rrWinSum += rr; rrWinCount++; }
-      } else if (isLoss(o)) {
-        losses++;
-        if (!isNaN(rr)) totalR -= Math.abs(rr);
-      } else if (isBE(o)) {
-        be++;
-      }
+      if (isWin(o)) { wins++; if (!isNaN(rr)) { totalR += rr; rrWinSum += rr; rrWinCount++; } }
+      else if (isLoss(o)) { losses++; if (!isNaN(rr)) totalR -= Math.abs(rr); }
+      else if (isBE(o)) { be++; }
     }
-    return {
-      total: group.length,
-      wins, losses, be,
-      winRate: group.length > 0 ? (wins / group.length) * 100 : 0,
-      totalR,
-      avgRR: rrWinCount > 0 ? rrWinSum / rrWinCount : null,
-    };
+    return { total: group.length, wins, losses, be, winRate: group.length > 0 ? (wins / group.length) * 100 : 0, totalR, avgRR: rrWinCount > 0 ? rrWinSum / rrWinCount : null };
   };
-
   const fmtWR = (n) => Math.round(n) + "%";
-  const fmtR = (n) => !Number.isFinite(n) ? "n/aR" : (n >= 0 ? "+" : "") + n.toFixed(1) + "R";
-  const fmtRR = (n) => n != null && Number.isFinite(n) ? " avgRR:" + n.toFixed(1) : "";
-
-  const WEEKDAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const fmtR = (n) => !Number.isFinite(n) ? "" : " " + (n >= 0 ? "+" : "") + n.toFixed(1) + "R";
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const lines = [];
 
-  // 1. By session
+  // Session
   const bySession = new Map();
-  for (const t of trades) {
-    const s = normSession(t?.session);
-    if (!s) continue;
-    if (!bySession.has(s)) bySession.set(s, []);
-    bySession.get(s).push(t);
-  }
-  if (bySession.size > 0) {
-    lines.push("SESSION");
-    for (const [sess, group] of bySession) {
-      const s = groupStats(group);
-      lines.push(`  ${sess}: ${s.total}t ${fmtWR(s.winRate)}${fmtRR(s.avgRR)} ${fmtR(s.totalR)}`);
-    }
+  for (const t of trades) { const s = normSession(t?.session); if (s) { if (!bySession.has(s)) bySession.set(s, []); bySession.get(s).push(t); } }
+  if (bySession.size) {
+    lines.push("SESSION: " + [...bySession.entries()].map(([s, g]) => { const st = groupStats(g); return `${s} ${st.total}t ${fmtWR(st.winRate)}${fmtR(st.totalR)}`; }).join(" | "));
   }
 
-  // 2. By day of week (Mon–Fri)
+  // Day
   const byDay = new Map();
-  for (const t of trades) {
-    const d = normDay(t?.weekday);
-    if (!d || !WEEKDAY_ORDER.includes(d)) continue;
-    if (!byDay.has(d)) byDay.set(d, []);
-    byDay.get(d).push(t);
-  }
-  if (byDay.size > 0) {
-    lines.push("DAY");
-    for (const day of WEEKDAY_ORDER) {
-      const group = byDay.get(day);
-      if (!group) continue;
-      const s = groupStats(group);
-      lines.push(`  ${day.slice(0, 3)}: ${s.total}t ${fmtWR(s.winRate)}${fmtRR(s.avgRR)} ${fmtR(s.totalR)}`);
-    }
+  for (const t of trades) { const d = String(t?.weekday ?? "").trim(); if (d && DAYS.some(x => x.toLowerCase() === d.toLowerCase())) { const key = d.charAt(0).toUpperCase() + d.slice(1, 3); if (!byDay.has(key)) byDay.set(key, []); byDay.get(key).push(t); } }
+  if (byDay.size) {
+    const dayOrder = ["Mo", "Tu", "We", "Th", "Fr"];
+    lines.push("DAY: " + dayOrder.filter(k => byDay.has(k)).map(k => { const st = groupStats(byDay.get(k)); return `${k} ${st.total}t ${fmtWR(st.winRate)}${fmtR(st.totalR)}`; }).join(" | "));
   }
 
-  // 3. Session + day combos (≥5 trades), sorted by total R desc
+  // Session+day combos ≥8 trades
   const byCombo = new Map();
   for (const t of trades) {
     const sess = normSession(t?.session);
-    const day = normDay(t?.weekday);
-    if (!sess || !day || !WEEKDAY_ORDER.includes(day)) continue;
-    const key = `${sess} ${day.slice(0, 3)}`;
+    const day = String(t?.weekday ?? "").trim();
+    if (!sess || !day) continue;
+    const dk = day.charAt(0).toUpperCase() + day.slice(1, 3);
+    if (!["Mo","Tu","We","Th","Fr"].includes(dk)) continue;
+    const key = `${sess} ${dk}`;
     if (!byCombo.has(key)) byCombo.set(key, []);
     byCombo.get(key).push(t);
   }
-  const comboResults = [];
-  for (const [key, group] of byCombo) {
-    if (group.length < 8) continue;
-    comboResults.push({ key, ...groupStats(group) });
-  }
-  comboResults.sort((a, b) => b.totalR - a.totalR);
-  if (comboResults.length > 0) {
-    lines.push("SESSION+DAY (≥8t)");
-    for (const c of comboResults) {
-      lines.push(`  ${c.key}: ${c.total}t ${fmtWR(c.winRate)} ${fmtR(c.totalR)}`);
-    }
-  }
+  const combos = [];
+  for (const [key, group] of byCombo) { if (group.length >= 8) combos.push({ key, ...groupStats(group) }); }
+  combos.sort((a, b) => b.totalR - a.totalR);
+  if (combos.length) lines.push("COMBOS (≥8t): " + combos.map(c => `${c.key} ${c.total}t ${fmtWR(c.winRate)}${fmtR(c.totalR)}`).join(" | "));
 
-  // 4. By model/setup, sorted by total R desc
+  // Top 3 models by R
   const byModel = new Map();
-  for (const t of trades) {
-    const m = String(t?.model ?? "").trim();
-    if (!m) continue;
-    if (!byModel.has(m)) byModel.set(m, []);
-    byModel.get(m).push(t);
-  }
-  const modelResults = [];
-  for (const [model, group] of byModel) {
-    modelResults.push({ model, ...groupStats(group) });
-  }
-  modelResults.sort((a, b) => b.totalR - a.totalR);
-  const topModels = modelResults.slice(0, 5);
-  if (topModels.length > 0) {
-    lines.push("MODEL/SETUP (top 5 by R)");
-    for (const m of topModels) {
-      lines.push(`  ${m.model}: ${m.total}t ${fmtWR(m.winRate)} ${fmtR(m.totalR)}`);
-    }
-  }
+  for (const t of trades) { const m = String(t?.model ?? "").trim(); if (m) { if (!byModel.has(m)) byModel.set(m, []); byModel.get(m).push(t); } }
+  const modelResults = [...byModel.entries()].map(([model, g]) => ({ model, ...groupStats(g) })).sort((a, b) => b.totalR - a.totalR);
+  const topModels = modelResults.slice(0, 3);
+  if (topModels.length) lines.push("MODELS (top 3): " + topModels.map(m => `${m.model} ${m.total}t ${fmtWR(m.winRate)}${fmtR(m.totalR)}`).join(" | "));
 
-  // 5. Recent form (last 20)
-  const recent = trades.slice(0, 20); // trades are newest-first
+  // Recent form (last 20)
+  const recent = trades.slice(0, 20);
   const rf = groupStats(recent);
   const overall = groupStats(trades);
   let streak = 0, streakType = "";
   for (const t of recent) {
     const o = normOutcome(t);
-    if (streak === 0) {
-      if (isWin(o)) { streak = 1; streakType = "win"; }
-      else if (isLoss(o)) { streak = 1; streakType = "loss"; }
-    } else {
-      if (streakType === "win" && isWin(o)) streak++;
-      else if (streakType === "loss" && isLoss(o)) streak++;
-      else break;
-    }
+    if (streak === 0) { if (isWin(o)) { streak = 1; streakType = "W"; } else if (isLoss(o)) { streak = 1; streakType = "L"; } }
+    else { if ((streakType === "W" && isWin(o)) || (streakType === "L" && isLoss(o))) streak++; else break; }
   }
-  const streakStr = streak > 0 ? `${streak} ${streakType}${streak > 1 ? "s" : ""}` : "mixed";
   const delta = Math.round(rf.winRate - overall.winRate);
-  const deltaStr = (delta >= 0 ? "+" : "") + delta + "% vs avg";
-  lines.push(`RECENT FORM (last ${recent.length})`);
-  lines.push(`  WR:${fmtWR(rf.winRate)} ${fmtR(rf.totalR)} streak:${streakStr} (${deltaStr})`);
+  lines.push(`FORM (last 20): ${fmtWR(rf.winRate)}${fmtR(rf.totalR)} streak:${streak > 0 ? streak + streakType : "—"} (${delta >= 0 ? "+" : ""}${delta}% vs avg)`);
 
-  // 6. Best and worst edge (session+day or top model, ≥10 trades)
-  const edgeCandidates = [
-    ...comboResults.filter((c) => c.total >= 10),
-    ...topModels.filter((m) => m.total >= 10).map((m) => ({ ...m, key: m.model })),
-  ];
-  if (edgeCandidates.length > 0) {
+  // Edge summary
+  const edgeCandidates = [...combos.filter(c => c.total >= 10), ...topModels.filter(m => m.total >= 10).map(m => ({ ...m, key: m.model }))];
+  if (edgeCandidates.length > 1) {
     const best = edgeCandidates.reduce((a, b) => b.winRate > a.winRate ? b : a);
     const worst = edgeCandidates.reduce((a, b) => b.winRate < a.winRate ? b : a);
-    lines.push("EDGES");
-    lines.push(`  Strongest: ${best.key} (${fmtWR(best.winRate)} ${fmtR(best.totalR)} ${best.total}t)`);
-    if (worst.key !== best.key) {
-      lines.push(`  Biggest leak: ${worst.key} (${fmtWR(worst.winRate)} ${fmtR(worst.totalR)} ${worst.total}t)`);
-    }
+    if (best.key !== worst.key) lines.push(`EDGE: best=${best.key} ${fmtWR(best.winRate)} | leak=${worst.key} ${fmtWR(worst.winRate)}`);
   }
 
   let text = lines.join("\n");
-  if (text.length > MAX_CROSS_REF_STATS_CHARS) {
-    text =
-      text.slice(0, MAX_CROSS_REF_STATS_CHARS - 24).trimEnd() +
-      "\n[edge map truncated]";
-  }
+  if (text.length > MAX_CROSS_REF_STATS_CHARS) text = text.slice(0, MAX_CROSS_REF_STATS_CHARS - 3).trimEnd() + "…";
   return text;
 }
 
@@ -641,8 +558,8 @@ For statistical or performance questions, use the Derived trading snapshot and C
 
 // === USER PROFILE MEMORY LAYER ===
 
-/** Per-field cap for profile MEMORY block in chat system prompt (~150 chars each). */
-const MAX_PROFILE_FIELD_CHARS_IN_CHAT = 150;
+/** Per-field cap for profile MEMORY block in chat system prompt (~100 chars each). */
+const MAX_PROFILE_FIELD_CHARS_IN_CHAT = 100;
 
 function truncateProfileFieldForChat(value, fallback = "Still being established.") {
   const s = value == null ? "" : String(value).trim();
@@ -1079,7 +996,7 @@ const MAX_SUPABASE_ROWS = Math.min(
 /** Rows fetched from Supabase for chat (≥500 target when MAX_SUPABASE_ROWS allows; capped at 5000). */
 const CHAT_TRADE_FETCH_LIMIT = Math.min(MAX_SUPABASE_ROWS, 5000);
 /** Max trade rows sent to the model in one chat request (token budget). */
-const MAX_TRADES_IN_CHAT_PROMPT = 60;
+const MAX_TRADES_IN_CHAT_PROMPT = 40;
 /** Truncate long `notes` when building the chat payload. */
 const MAX_PROMPT_TRADE_NOTES_CHARS = 400;
 /** Cap screenshot URLs per trade when the user asks for photo links (token budget). */
@@ -2894,6 +2811,8 @@ async function handleChat(req, res) {
     requestHeaders["anthropic-beta"] = "web-search-2025-03-05";
     console.log("[web-search] Beta header: web-search-2025-03-05");
   }
+
+  console.log('[chat] estimated tokens:', Math.round(system.length / 4));
 
   let ar;
   try {
