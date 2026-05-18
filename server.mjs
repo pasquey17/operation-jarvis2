@@ -101,21 +101,23 @@ const OAUTH_BOOT_USER_IDS = ["aidenpasque11@gmail.com", "spasque70@gmail.com"];
 const JARVIS_SYSTEM_PROMPT = `Format rules — non-negotiable:
 Never use bold text, headers, or bullet points unless explicitly asked. Write in plain sentences like a person talking, not a report being generated.
 
-One thing rule: Every response has ONE main insight. Not two. Not five. One. Find the most important thing and say it clearly. Everything else gets cut.
+Depth rule: Match response depth to question depth. Simple question = one sharp insight. Broad question like 'where is my edge' or 'how am I trading' = go deep, cross-reference session + day + model + outcome combinations, surface the 2-3 most important patterns with specific numbers. Never pad — but never artificially limit when the question deserves more.
 
 Proactive pattern surfacing: Before answering what they asked, scan their recent trade history for anything urgent they need to know right now — a pattern repeating, a rule about to be broken, a streak forming. Surface it first if it's more important than what they asked.
 
 Never fabricate: If you reference a specific trade, date, session, or stat — it must exist in the data provided. If you're inferring, say "this looks like" not "this is." If evidence is thin, say so in one sentence and move on.
 
-Speak like this: Short sentences. No filler. Talk like someone who has watched this trader for a year and genuinely cares. Warm but direct. Never harsh. Never generic.
+Cross-reference instinct: When you have enough data, always look for intersections — not just 'your London win rate is X' but 'your London SHORT trades on XAU/USD on Mondays specifically are X% — that level of specificity is where real edge lives. Actively hunt for these combinations in the data provided.
 
 You are Jarvis — a personalised coaching OS for ONE trader and THEIR system. You are not a trading journal, not a generic chatbot, not an analytics dashboard. You combine coach + performance analyst + assistant: invested in this trader's success, grounded only in their data and rules (A+ criteria, sessions, windows, ratings when present in the rows).
 
 Purpose: Help them execute their edge consistently, skip repeated mistakes, and show up each session as the best version of themselves.
 
+Edge mapping: You are always building a mental map of where this trader's real edge is — not just overall win rate but which specific combinations of session + day + pair + model + position type produce the best outcomes. Reference these intersections whenever relevant.
+
 Stance: Direct. No padding. Honest, not harsh. Clear, not clever. Hold a mirror — never condescend or posture.
 
-Voice: Short sentences. Plain prose only — no bold text, no bullet points, no headers, ever. Not even if they ask for detail. Talk like a person, not a report. One insight per response, one question at the end. No generic AI filler. No trade signals — coaching and interpretation only.
+Voice: Short sentences. Plain prose only. Talk like someone who has been watching this trader for a year and genuinely cares about their growth. Warm but direct. Specific not generic — always use their actual numbers. Never say things like 'great question' or 'it's worth noting' or any corporate filler. If you spot something important that they didn't ask about, say it — don't wait to be asked.
 
 Memory framing: History is a map of growth, not a rap sheet. Surface patterns so today goes better — not to shame.
 
@@ -305,6 +307,212 @@ function deriveTradingSnapshot(trades) {
 }
 
 /**
+ * Pre-computes cross-referenced breakdowns for the chat system prompt.
+ * Returns a compact text block under ~800 tokens.
+ */
+function deriveCrossReferencedStats(trades) {
+  if (!Array.isArray(trades) || trades.length === 0) return "";
+
+  const normOutcome = (t) => String(t?.outcome ?? t?.Outcome ?? "").trim().toUpperCase();
+  const isWin = (o) => o === "WIN" || o === "W";
+  const isLoss = (o) => o === "LOSS" || o === "L";
+  const isBE = (o) => o === "BE" || o === "BREAKEVEN" || o === "BREAK EVEN" || o.startsWith("BREAK");
+  const rrOf = (t) => {
+    const v = t?.rr ?? t?.RR;
+    if (v === null || v === undefined || String(v).trim() === "") return NaN;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  const normSession = (v) => {
+    const s = String(v ?? "").trim().toUpperCase();
+    if (!s) return "";
+    if (s.includes("ASIA")) return "Asia";
+    if (s.includes("LONDON")) return "London";
+    if (s.includes("NEW") || s.includes("NY") || s.includes("YORK")) return "New York";
+    return String(v).trim(); // keep as-is if unknown
+  };
+
+  // weekday comes in as lowercase full name e.g. "monday"
+  const normDay = (v) => {
+    const s = String(v ?? "").trim().toLowerCase();
+    if (!s) return "";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  const normDir = (v) => {
+    const s = String(v ?? "").trim().toUpperCase();
+    if (!s) return "";
+    if (s === "LONG" || s === "L" || s === "BUY") return "Long";
+    if (s === "SHORT" || s === "S" || s === "SELL") return "Short";
+    return "";
+  };
+
+  const groupStats = (group) => {
+    let wins = 0, losses = 0, be = 0, totalR = 0, rrWinSum = 0, rrWinCount = 0;
+    for (const t of group) {
+      const o = normOutcome(t);
+      const rr = rrOf(t);
+      if (isWin(o)) {
+        wins++;
+        if (!isNaN(rr)) { totalR += rr; rrWinSum += rr; rrWinCount++; }
+      } else if (isLoss(o)) {
+        losses++;
+        if (!isNaN(rr)) totalR -= Math.abs(rr);
+      } else if (isBE(o)) {
+        be++;
+      }
+    }
+    return {
+      total: group.length,
+      wins, losses, be,
+      winRate: group.length > 0 ? (wins / group.length) * 100 : 0,
+      totalR,
+      avgRR: rrWinCount > 0 ? rrWinSum / rrWinCount : null,
+    };
+  };
+
+  const fmtWR = (n) => Math.round(n) + "%";
+  const fmtR = (n) => !Number.isFinite(n) ? "n/aR" : (n >= 0 ? "+" : "") + n.toFixed(1) + "R";
+  const fmtRR = (n) => n != null && Number.isFinite(n) ? " avgRR:" + n.toFixed(1) : "";
+
+  const WEEKDAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const lines = [];
+
+  // 1. By session
+  const bySession = new Map();
+  for (const t of trades) {
+    const s = normSession(t?.session);
+    if (!s) continue;
+    if (!bySession.has(s)) bySession.set(s, []);
+    bySession.get(s).push(t);
+  }
+  if (bySession.size > 0) {
+    lines.push("SESSION");
+    for (const [sess, group] of bySession) {
+      const s = groupStats(group);
+      lines.push(`  ${sess}: ${s.total}t ${fmtWR(s.winRate)}${fmtRR(s.avgRR)} ${fmtR(s.totalR)}`);
+    }
+  }
+
+  // 2. By day of week (Mon–Fri)
+  const byDay = new Map();
+  for (const t of trades) {
+    const d = normDay(t?.weekday);
+    if (!d || !WEEKDAY_ORDER.includes(d)) continue;
+    if (!byDay.has(d)) byDay.set(d, []);
+    byDay.get(d).push(t);
+  }
+  if (byDay.size > 0) {
+    lines.push("DAY");
+    for (const day of WEEKDAY_ORDER) {
+      const group = byDay.get(day);
+      if (!group) continue;
+      const s = groupStats(group);
+      lines.push(`  ${day.slice(0, 3)}: ${s.total}t ${fmtWR(s.winRate)}${fmtRR(s.avgRR)} ${fmtR(s.totalR)}`);
+    }
+  }
+
+  // 3. Session + day combos (≥5 trades), sorted by total R desc
+  const byCombo = new Map();
+  for (const t of trades) {
+    const sess = normSession(t?.session);
+    const day = normDay(t?.weekday);
+    if (!sess || !day || !WEEKDAY_ORDER.includes(day)) continue;
+    const key = `${sess} ${day.slice(0, 3)}`;
+    if (!byCombo.has(key)) byCombo.set(key, []);
+    byCombo.get(key).push(t);
+  }
+  const comboResults = [];
+  for (const [key, group] of byCombo) {
+    if (group.length < 5) continue;
+    comboResults.push({ key, ...groupStats(group) });
+  }
+  comboResults.sort((a, b) => b.totalR - a.totalR);
+  if (comboResults.length > 0) {
+    lines.push("SESSION+DAY (≥5t)");
+    for (const c of comboResults) {
+      lines.push(`  ${c.key}: ${c.total}t ${fmtWR(c.winRate)} ${fmtR(c.totalR)}`);
+    }
+  }
+
+  // 4. By model/setup, sorted by total R desc
+  const byModel = new Map();
+  for (const t of trades) {
+    const m = String(t?.model ?? "").trim();
+    if (!m) continue;
+    if (!byModel.has(m)) byModel.set(m, []);
+    byModel.get(m).push(t);
+  }
+  const modelResults = [];
+  for (const [model, group] of byModel) {
+    modelResults.push({ model, ...groupStats(group) });
+  }
+  modelResults.sort((a, b) => b.totalR - a.totalR);
+  if (modelResults.length > 0) {
+    lines.push("MODEL/SETUP");
+    for (const m of modelResults) {
+      lines.push(`  ${m.model}: ${m.total}t ${fmtWR(m.winRate)} ${fmtR(m.totalR)}`);
+    }
+  }
+
+  // 5. Long vs Short
+  const byDir = new Map();
+  for (const t of trades) {
+    const d = normDir(t?.direction);
+    if (!d) continue;
+    if (!byDir.has(d)) byDir.set(d, []);
+    byDir.get(d).push(t);
+  }
+  if (byDir.size > 0) {
+    lines.push("DIRECTION");
+    for (const [dir, group] of byDir) {
+      const s = groupStats(group);
+      lines.push(`  ${dir}: ${s.total}t ${fmtWR(s.winRate)}${fmtRR(s.avgRR)} ${fmtR(s.totalR)}`);
+    }
+  }
+
+  // 6. Recent form (last 20)
+  const recent = trades.slice(0, 20); // trades are newest-first
+  const rf = groupStats(recent);
+  const overall = groupStats(trades);
+  let streak = 0, streakType = "";
+  for (const t of recent) {
+    const o = normOutcome(t);
+    if (streak === 0) {
+      if (isWin(o)) { streak = 1; streakType = "win"; }
+      else if (isLoss(o)) { streak = 1; streakType = "loss"; }
+    } else {
+      if (streakType === "win" && isWin(o)) streak++;
+      else if (streakType === "loss" && isLoss(o)) streak++;
+      else break;
+    }
+  }
+  const streakStr = streak > 0 ? `${streak} ${streakType}${streak > 1 ? "s" : ""}` : "mixed";
+  const delta = Math.round(rf.winRate - overall.winRate);
+  const deltaStr = (delta >= 0 ? "+" : "") + delta + "% vs avg";
+  lines.push(`RECENT FORM (last ${recent.length})`);
+  lines.push(`  WR:${fmtWR(rf.winRate)} ${fmtR(rf.totalR)} streak:${streakStr} (${deltaStr})`);
+
+  // 7. Best and worst edge (session+day or model, ≥10 trades)
+  const edgeCandidates = [
+    ...comboResults.filter((c) => c.total >= 10),
+    ...modelResults.filter((m) => m.total >= 10).map((m) => ({ ...m, key: m.model })),
+  ];
+  if (edgeCandidates.length > 0) {
+    const best = edgeCandidates.reduce((a, b) => b.winRate > a.winRate ? b : a);
+    const worst = edgeCandidates.reduce((a, b) => b.winRate < a.winRate ? b : a);
+    lines.push("EDGES");
+    lines.push(`  Strongest: ${best.key} (${fmtWR(best.winRate)} ${fmtR(best.totalR)} ${best.total}t)`);
+    if (worst.key !== best.key) {
+      lines.push(`  Biggest leak: ${worst.key} (${fmtWR(worst.winRate)} ${fmtR(worst.totalR)} ${worst.total}t)`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
  * @param {string[]} columnKeys
  * @param {object[]} trades - recent trades sent as context (may be limited to 100)
  * @param {string} [briefingMemory]
@@ -373,6 +581,7 @@ ${briefingMemory.trim()}`;
 
   const derivedProfile = deriveTradingProfile(forStats);
   const derivedSnapshot = deriveTradingSnapshot(forStats);
+  const crossRefStats = deriveCrossReferencedStats(forStats);
 
   let persistentMemorySection = "";
   if (userProfile && (userProfile.trading_summary || userProfile.psychological_patterns)) {
@@ -411,11 +620,20 @@ Derived trading snapshot (authoritative stats from all ${forStats.length} trades
 
 ${JSON.stringify(derivedSnapshot)}
 
-Recent trade rows (newest ${trades.length}, newest first — for context only; use snapshot above for totals/rates):
+---
+
+=== CROSS-REFERENCED EDGE MAP ===
+(Pre-computed from all ${forStats.length} trades. Use these for session/day/model/direction breakdowns — do not recalculate from the rows below.)
+
+${crossRefStats}
+
+---
+
+Recent trade rows (newest ${trades.length}, newest first — for context only; use snapshot and edge map above for totals/rates):
 
 ${dataJson}
 
-For statistical or performance questions, use the Derived trading snapshot numbers above (they cover all ${forStats.length} trades). The recent rows below are context only.`;
+For statistical or performance questions, use the Derived trading snapshot and CROSS-REFERENCED EDGE MAP above (they cover all ${forStats.length} trades). The recent rows below are context only.`;
 }
 
 // === USER PROFILE MEMORY LAYER ===
@@ -1668,6 +1886,7 @@ function slimTradeRowForPrompt(t, options = {}) {
     rr: readField(t, ["rr", "RR"]) ?? null,
     model: readField(t, ["model", "MODEL", "Model"]) ?? "",
     account: readField(t, ["account", "Account", "ACCOUNT"]) ?? "",
+    direction: readField(t, ["direction", "Direction", "DIRECTION"]) ?? "",
     notes,
   };
   if (includeTradeImages) {
