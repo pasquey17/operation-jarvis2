@@ -25,6 +25,13 @@ import {
   generateIntelligenceFile,
   getIntelligenceFile,
 } from "./intelligence-file.mjs";
+import {
+  extractAndStoreMemories,
+  formatMemoriesForPrompt,
+  getRelevantMemories,
+  listMemoriesForUser,
+  pruneMemories,
+} from "./memory-system.mjs";
 
 function fireIntelligenceRegen(userId) {
   generateIntelligenceFile(userId).catch((e) =>
@@ -2571,6 +2578,7 @@ async function handleChat(req, res) {
   }
 
   const profilePromise = fetchUserProfile(userId);
+  const memoriesPromise = getRelevantMemories(userId, messageSource);
   const intelligencePromise = getIntelligenceFile(userId).catch((e) => {
     console.warn("[chat] intelligence file fetch failed:", e.message);
     return null;
@@ -2712,9 +2720,11 @@ async function handleChat(req, res) {
 
   messages = clampChatMessagesForTokens(messages, MAX_CHAT_MESSAGES);
 
-  // Await profile and intelligence file
+  // Await profile, memories, and intelligence file
   const userProfile = await profilePromise.catch(() => null);
+  const relevantMemories = await memoriesPromise.catch(() => []);
   const intelFile = await intelligencePromise;
+  const memoriesBlock = formatMemoriesForPrompt(relevantMemories);
 
   const apiKey =
     (typeof payload.apiKey === "string" && payload.apiKey.trim()) ||
@@ -2735,6 +2745,7 @@ async function handleChat(req, res) {
 
   const system =
     buildJarvisChatSystem(intelFile, userProfile, pinnedTrades, dynamicRows) +
+    (memoriesBlock ? `\n\n${memoriesBlock}` : "") +
     (useWebSearch
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
@@ -2826,6 +2837,35 @@ async function handleChat(req, res) {
   ).catch((e) =>
     console.warn("[profile-update] Background update failed:", e instanceof Error ? e.message : e)
   );
+
+  void extractAndStoreMemories(userId, messageSource, reply, apiKey).catch((e) =>
+    console.warn("[memory-system] Background extract failed:", e instanceof Error ? e.message : e)
+  );
+}
+
+async function handleMemories(req, res) {
+  try {
+    const u = new URL(req.url, `http://localhost:${PORT}`);
+    let userId = (u.searchParams.get("user_id") || "").trim();
+    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    if (!userId) {
+      json(res, 400, { error: "user_id required" });
+      return;
+    }
+    const memories = await listMemoriesForUser(userId);
+    json(res, 200, { user_id: userId, count: memories.length, memories });
+  } catch (e) {
+    console.error("[memories]", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("PGRST205") || /does not exist/i.test(msg)) {
+      json(res, 503, {
+        error:
+          "jarvis_memories table not found — run schema/jarvis_memories.sql in Supabase SQL editor",
+      });
+      return;
+    }
+    json(res, 500, { error: msg });
+  }
 }
 
 /**
@@ -4361,6 +4401,11 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/intelligence-file")) {
     await handleIntelligenceFile(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/memories")) {
+    await handleMemories(req, res);
     return;
   }
 
