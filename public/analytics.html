@@ -500,21 +500,40 @@
       }
       .an-wr-hud .an-wr-hud-ring {
         fill: none;
-        stroke: rgba(0,212,255,0.15);
+        stroke: rgba(0,212,255,0.28);
         stroke-width: 1;
+        transform-origin: center;
+        transform-box: fill-box;
+        animation: an-wr-hud-spin 20s linear infinite;
+      }
+      @keyframes an-wr-hud-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
       .an-wr-gauge-wrap {
         position: absolute;
         inset: 11%;
         z-index: 2;
-        filter: drop-shadow(0 0 24px rgba(0,191,255,0.12));
+        border-radius: 50%;
+        box-shadow: 0 0 32px rgba(0,212,255,0.2), 0 0 56px rgba(0,191,255,0.1);
+        filter: drop-shadow(0 0 24px rgba(0,191,255,0.14));
+      }
+      .an-wr-gauge-wrap::after {
+        content: "";
+        position: absolute;
+        inset: -1px;
+        border-radius: 50%;
+        border: 1px solid rgba(0,212,255,0.38);
+        box-shadow: 0 0 14px rgba(0,212,255,0.22), inset 0 0 20px rgba(0,212,255,0.04);
+        pointer-events: none;
+        z-index: 4;
       }
       .an-wr-gauge-wrap canvas {
         display: block;
         width: 100% !important;
         height: 100% !important;
         position: relative;
-        z-index: 2;
+        z-index: 3;
       }
       .an-wr-gauge-center {
         position: absolute;
@@ -526,15 +545,15 @@
         pointer-events: none;
         text-align: center;
         padding: 28% 18%;
-        z-index: 5;
+        z-index: 1;
       }
       .an-wr-gauge-pct {
         font-family: "Outfit",system-ui,sans-serif;
-        font-weight: 200;
-        font-size: clamp(3.5rem, 11vw, 4.5rem);
+        font-weight: 100;
+        font-size: clamp(2.75rem, 12vw, 52px);
         line-height: 1;
         color: #fff;
-        text-shadow: 0 0 40px rgba(0,212,255,0.35);
+        text-shadow: 0 0 30px rgba(0,212,255,0.5);
         letter-spacing: -0.02em;
       }
       .an-wr-gauge-pct--muted { color: rgba(255,255,255,0.35); font-size: 1.75rem; text-shadow: none; }
@@ -542,9 +561,9 @@
         margin-top: 8px;
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 10px;
-        letter-spacing: 0.22em;
+        letter-spacing: 0.34em;
         text-transform: uppercase;
-        color: rgba(0,212,255,0.82);
+        color: #00d4ff;
       }
       .an-wr-gauge-sub {
         margin-top: 6px;
@@ -573,13 +592,22 @@
       .an-wr-stat strong {
         font-family: "Outfit",sans-serif;
         font-weight: 500;
-        font-size: 1.08rem;
+        font-size: 1.32rem;
         letter-spacing: 0;
         margin-left: 4px;
       }
-      .an-wr-stat--w strong { color: rgba(0,255,195,1); }
-      .an-wr-stat--l strong { color: rgba(255,115,135,1); }
-      .an-wr-stat--b strong { color: rgba(210,215,225,0.95); }
+      .an-wr-stat--w strong {
+        color: rgba(0,255,195,1);
+        text-shadow: 0 0 14px rgba(0,255,195,0.5);
+      }
+      .an-wr-stat--l strong {
+        color: rgba(255,115,135,1);
+        text-shadow: 0 0 14px rgba(255,115,135,0.45);
+      }
+      .an-wr-stat--b strong {
+        color: rgba(210,215,225,0.95);
+        text-shadow: 0 0 12px rgba(192,192,192,0.35);
+      }
       .an-wr-stat-sep { color: rgba(0,212,255,0.25); user-select: none; }
       .an-wr-stack {
         display: flex;
@@ -776,6 +804,7 @@
       @media (prefers-reduced-motion: reduce) {
         .an-card { transition-duration: 0.01ms !important; }
         .an-badge__dot { animation: none; }
+        .an-wr-hud .an-wr-hud-ring { animation: none; }
       }
       /* Chart.js duration is set in JS from prefers-reduced-motion */
     </style>
@@ -879,7 +908,7 @@
                   <canvas id="chart-winrate-hero" aria-label="Win rate gauge"></canvas>
                   <div class="an-wr-gauge-center">
                     <div class="an-wr-gauge-pct" id="an-wr-pct">—</div>
-                    <div class="an-wr-gauge-label">Win rate</div>
+                    <div class="an-wr-gauge-label">WIN RATE</div>
                     <div class="an-wr-gauge-sub" id="an-wr-sub">Wins / all trades (incl. BE)</div>
                   </div>
                 </div>
@@ -2701,10 +2730,10 @@
             ctx.save();
             ctx.beginPath();
             ctx.arc(cx, cy, outer + 4, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(0,212,255,0.22)';
-            ctx.lineWidth = 1.25;
-            ctx.shadowColor = 'rgba(0,212,255,0.45)';
-            ctx.shadowBlur = 10;
+            ctx.strokeStyle = 'rgba(0,212,255,0.38)';
+            ctx.lineWidth = 1.5;
+            ctx.shadowColor = 'rgba(0,212,255,0.55)';
+            ctx.shadowBlur = 14;
             ctx.stroke();
             ctx.restore();
           }
@@ -2718,11 +2747,15 @@
           var cx = (area.left + area.right) / 2;
           var cy = (area.top + area.bottom) / 2;
           var r = Math.min(area.right - area.left, area.bottom - area.top) / 2;
-          var g = chart.ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
           if (i === 0) {
-            g.addColorStop(0, 'rgba(0,230,255,0.92)');
-            g.addColorStop(1, 'rgba(0,140,210,0.55)');
-          } else if (i === 1) {
+            var gWin = chart.ctx.createLinearGradient(cx, area.top, cx, area.bottom);
+            gWin.addColorStop(0, 'rgba(0,245,255,0.98)');
+            gWin.addColorStop(0.45, 'rgba(0,212,255,0.88)');
+            gWin.addColorStop(1, 'rgba(0,120,200,0.52)');
+            return gWin;
+          }
+          var g = chart.ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
+          if (i === 1) {
             g.addColorStop(0, 'rgba(255,95,115,0.88)');
             g.addColorStop(1, 'rgba(150,35,50,0.48)');
           } else {
@@ -2765,6 +2798,8 @@
               plugins: {
                 legend: { display: false },
                 tooltip: Object.assign({}, ttBase(), {
+                  z: 999,
+                  position: 'nearest',
                   callbacks: {
                     label: function (ctx) {
                       var v = ctx.parsed;
