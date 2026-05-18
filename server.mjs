@@ -79,9 +79,9 @@ const MAX_BRIEFING_TRADES = 30;
 /** Cached briefing in chat system prompt — strict cap on input tokens. */
 const MAX_BRIEFING_MEMORY_CHARS = 4500;
 /** Chat turns sent to Anthropic (user/assistant pairs); excludes system. */
-const MAX_CHAT_MESSAGES = 12;
+const MAX_CHAT_MESSAGES = 8;
 /** Per-turn content cap (characters) before API send. */
-const MAX_CHAT_MESSAGE_CHARS = 1800;
+const MAX_CHAT_MESSAGE_CHARS = 1200;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 /** Throttle for optional server-side background kicks. Read paths return Supabase immediately; clients POST /api/notion/sync-user in parallel. */
 const NOTION_SYNC_INTERVAL_MS = (() => {
@@ -308,9 +308,12 @@ function deriveTradingSnapshot(trades) {
   };
 }
 
+/** ~400 tokens — cross-referenced edge map in chat system prompt. */
+const MAX_CROSS_REF_STATS_CHARS = 1600;
+
 /**
  * Pre-computes cross-referenced breakdowns for the chat system prompt.
- * Returns a compact text block under ~800 tokens.
+ * Returns a compact text block capped at ~400 tokens.
  */
 function deriveCrossReferencedStats(trades) {
   if (!Array.isArray(trades) || trades.length === 0) return "";
@@ -340,14 +343,6 @@ function deriveCrossReferencedStats(trades) {
     const s = String(v ?? "").trim().toLowerCase();
     if (!s) return "";
     return s.charAt(0).toUpperCase() + s.slice(1);
-  };
-
-  const normDir = (v) => {
-    const s = String(v ?? "").trim().toUpperCase();
-    if (!s) return "";
-    if (s === "LONG" || s === "L" || s === "BUY") return "Long";
-    if (s === "SHORT" || s === "S" || s === "SELL") return "Short";
-    return "";
   };
 
   const groupStats = (group) => {
@@ -427,12 +422,12 @@ function deriveCrossReferencedStats(trades) {
   }
   const comboResults = [];
   for (const [key, group] of byCombo) {
-    if (group.length < 5) continue;
+    if (group.length < 8) continue;
     comboResults.push({ key, ...groupStats(group) });
   }
   comboResults.sort((a, b) => b.totalR - a.totalR);
   if (comboResults.length > 0) {
-    lines.push("SESSION+DAY (≥5t)");
+    lines.push("SESSION+DAY (≥8t)");
     for (const c of comboResults) {
       lines.push(`  ${c.key}: ${c.total}t ${fmtWR(c.winRate)} ${fmtR(c.totalR)}`);
     }
@@ -451,30 +446,15 @@ function deriveCrossReferencedStats(trades) {
     modelResults.push({ model, ...groupStats(group) });
   }
   modelResults.sort((a, b) => b.totalR - a.totalR);
-  if (modelResults.length > 0) {
-    lines.push("MODEL/SETUP");
-    for (const m of modelResults) {
+  const topModels = modelResults.slice(0, 5);
+  if (topModels.length > 0) {
+    lines.push("MODEL/SETUP (top 5 by R)");
+    for (const m of topModels) {
       lines.push(`  ${m.model}: ${m.total}t ${fmtWR(m.winRate)} ${fmtR(m.totalR)}`);
     }
   }
 
-  // 5. Long vs Short
-  const byDir = new Map();
-  for (const t of trades) {
-    const d = normDir(t?.direction);
-    if (!d) continue;
-    if (!byDir.has(d)) byDir.set(d, []);
-    byDir.get(d).push(t);
-  }
-  if (byDir.size > 0) {
-    lines.push("DIRECTION");
-    for (const [dir, group] of byDir) {
-      const s = groupStats(group);
-      lines.push(`  ${dir}: ${s.total}t ${fmtWR(s.winRate)}${fmtRR(s.avgRR)} ${fmtR(s.totalR)}`);
-    }
-  }
-
-  // 6. Recent form (last 20)
+  // 5. Recent form (last 20)
   const recent = trades.slice(0, 20); // trades are newest-first
   const rf = groupStats(recent);
   const overall = groupStats(trades);
@@ -496,10 +476,10 @@ function deriveCrossReferencedStats(trades) {
   lines.push(`RECENT FORM (last ${recent.length})`);
   lines.push(`  WR:${fmtWR(rf.winRate)} ${fmtR(rf.totalR)} streak:${streakStr} (${deltaStr})`);
 
-  // 7. Best and worst edge (session+day or model, ≥10 trades)
+  // 6. Best and worst edge (session+day or top model, ≥10 trades)
   const edgeCandidates = [
     ...comboResults.filter((c) => c.total >= 10),
-    ...modelResults.filter((m) => m.total >= 10).map((m) => ({ ...m, key: m.model })),
+    ...topModels.filter((m) => m.total >= 10).map((m) => ({ ...m, key: m.model })),
   ];
   if (edgeCandidates.length > 0) {
     const best = edgeCandidates.reduce((a, b) => b.winRate > a.winRate ? b : a);
@@ -511,12 +491,18 @@ function deriveCrossReferencedStats(trades) {
     }
   }
 
-  return lines.join("\n");
+  let text = lines.join("\n");
+  if (text.length > MAX_CROSS_REF_STATS_CHARS) {
+    text =
+      text.slice(0, MAX_CROSS_REF_STATS_CHARS - 24).trimEnd() +
+      "\n[edge map truncated]";
+  }
+  return text;
 }
 
 /**
  * @param {string[]} columnKeys
- * @param {object[]} trades - recent trades sent as context (may be limited to 100)
+ * @param {object[]} trades - recent trades sent as context (may be limited to 60)
  * @param {string} [briefingMemory]
  * @param {object[]} [allTrades] - full dataset used for stats; falls back to `trades` when omitted
  */
@@ -593,14 +579,14 @@ ${briefingMemory.trim()}`;
 
 MEMORY (cross-session — weave into every reply, not optional filler):
 
-WHO: ${userProfile.trading_summary || "Still being established."}
-PSYCH PATTERNS: ${userProfile.psychological_patterns || "Still being established."}
-TRIGGERS: ${userProfile.key_triggers || "Still being established."}
-STRENGTHS: ${userProfile.strengths || "Still being established."}
-TRADING RULES: ${userProfile.trading_rules || "Still being established."}
-EDGE MAP: ${userProfile.edge_map || "Still being established."}
-PROGRESS: ${userProfile.progress_notes || "Still being established."}
-OBSERVATIONS: ${userProfile.jarvis_observations || "Still being established."}
+WHO: ${truncateProfileFieldForChat(userProfile.trading_summary)}
+PSYCH PATTERNS: ${truncateProfileFieldForChat(userProfile.psychological_patterns)}
+TRIGGERS: ${truncateProfileFieldForChat(userProfile.key_triggers)}
+STRENGTHS: ${truncateProfileFieldForChat(userProfile.strengths)}
+TRADING RULES: ${truncateProfileFieldForChat(userProfile.trading_rules)}
+EDGE MAP: ${truncateProfileFieldForChat(userProfile.edge_map)}
+PROGRESS: ${truncateProfileFieldForChat(userProfile.progress_notes)}
+OBSERVATIONS: ${truncateProfileFieldForChat(userProfile.jarvis_observations)}
 
 Use it: emotion/frustration → triggers/patterns; trade/setup → rules + edge map; broad edge questions → EDGE MAP + PROGRESS first; repeated mistake → OBSERVATIONS + TRIGGERS; improvement → PROGRESS + STRENGTHS; praise → history-specific only.
 
@@ -643,6 +629,16 @@ For statistical or performance questions, use the Derived trading snapshot and C
 }
 
 // === USER PROFILE MEMORY LAYER ===
+
+/** Per-field cap for profile MEMORY block in chat system prompt (~150 chars each). */
+const MAX_PROFILE_FIELD_CHARS_IN_CHAT = 150;
+
+function truncateProfileFieldForChat(value, fallback = "Still being established.") {
+  const s = value == null ? "" : String(value).trim();
+  if (!s) return fallback;
+  if (s.length <= MAX_PROFILE_FIELD_CHARS_IN_CHAT) return s;
+  return `${s.slice(0, MAX_PROFILE_FIELD_CHARS_IN_CHAT)}…`;
+}
 
 function userProfileHasMemory(userProfile) {
   if (!userProfile || typeof userProfile !== "object") return false;
@@ -1072,7 +1068,7 @@ const MAX_SUPABASE_ROWS = Math.min(
 /** Rows fetched from Supabase for chat (≥500 target when MAX_SUPABASE_ROWS allows; capped at 5000). */
 const CHAT_TRADE_FETCH_LIMIT = Math.min(MAX_SUPABASE_ROWS, 5000);
 /** Max trade rows sent to the model in one chat request (token budget). */
-const MAX_TRADES_IN_CHAT_PROMPT = 100;
+const MAX_TRADES_IN_CHAT_PROMPT = 60;
 /** Truncate long `notes` when building the chat payload. */
 const MAX_PROMPT_TRADE_NOTES_CHARS = 400;
 /** Cap screenshot URLs per trade when the user asks for photo links (token budget). */
