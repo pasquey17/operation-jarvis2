@@ -32,11 +32,25 @@ import {
   listMemoriesForUser,
   pruneMemories,
 } from "./memory-system.mjs";
+import {
+  fireDeepThinkIfNeeded,
+  getDeepThinkForPrompt,
+  getDeepThinkStatus,
+  runDeepThink,
+} from "./deep-think.mjs";
 
-function fireIntelligenceRegen(userId) {
-  generateIntelligenceFile(userId).catch((e) =>
-    console.warn(`[intelligence-file] background regen failed for ${userId}:`, e.message)
-  );
+/** After Notion sync: regen intelligence file, then deep-think if triggers match. */
+function firePostSyncBrain(userId) {
+  generateIntelligenceFile(userId)
+    .then(() => {
+      fireDeepThinkIfNeeded(userId);
+    })
+    .catch((e) =>
+      console.warn(
+        `[post-sync-brain] intelligence regen failed for ${userId}:`,
+        e instanceof Error ? e.message : e
+      )
+    );
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -502,7 +516,13 @@ function deriveCrossReferencedStats(trades) {
   return text;
 }
 
-function buildJarvisChatSystem(intelFile, userProfile, pinnedTrades, dynamicRows) {
+function buildJarvisChatSystem(
+  intelFile,
+  userProfile,
+  pinnedTrades,
+  dynamicRows,
+  deepThinkText = ""
+) {
   const now = new Date();
   const today = now.toLocaleDateString("en-AU", {
     timeZone: "Australia/Adelaide",
@@ -531,6 +551,11 @@ function buildJarvisChatSystem(intelFile, userProfile, pinnedTrades, dynamicRows
       ? `\n\nDYNAMIC CONTEXT (${dynamicRows.length} filtered rows — newest first):\n${JSON.stringify(dynamicRows)}`
       : "";
 
+  const deepThinkBlock =
+    deepThinkText && String(deepThinkText).trim()
+      ? `\n\n=== DEEP ANALYSIS ===\n${String(deepThinkText).trim()}\n===`
+      : "";
+
   return `${dateBlock}
 
 ---
@@ -541,7 +566,7 @@ ${JARVIS_SYSTEM_PROMPT}${memorySection}
 
 === TRADER INTELLIGENCE FILE ===
 ${formatIntelligenceFileForPrompt(intelFile)}
-==================================
+==================================${deepThinkBlock}
 ${pinnedBlock}${dynamicBlock}`;
 }
 
@@ -2200,7 +2225,7 @@ async function handleSyncNotion(req, res) {
     if (userId.startsWith("eq.")) userId = userId.slice(3);
     const syncMeta = await maybeSyncNotion(userId, { force: true });
     if (syncMeta.ok && !syncMeta.skipped) {
-      fireIntelligenceRegen(userId);
+      firePostSyncBrain(userId);
       json(res, 200, {
         success: true,
         fetched: syncMeta.fetched,
@@ -2583,6 +2608,10 @@ async function handleChat(req, res) {
     console.warn("[chat] intelligence file fetch failed:", e.message);
     return null;
   });
+  const deepThinkPromise = getDeepThinkForPrompt(userId).catch((e) => {
+    console.warn("[chat] deep-think fetch failed:", e.message);
+    return "";
+  });
   void maybeSyncNotion(userId, { force: true });
 
   let trades;
@@ -2724,6 +2753,7 @@ async function handleChat(req, res) {
   const userProfile = await profilePromise.catch(() => null);
   const relevantMemories = await memoriesPromise.catch(() => []);
   const intelFile = await intelligencePromise;
+  const deepThinkText = await deepThinkPromise;
   const memoriesBlock = formatMemoriesForPrompt(relevantMemories);
 
   const apiKey =
@@ -2744,7 +2774,13 @@ async function handleChat(req, res) {
   );
 
   const system =
-    buildJarvisChatSystem(intelFile, userProfile, pinnedTrades, dynamicRows) +
+    buildJarvisChatSystem(
+      intelFile,
+      userProfile,
+      pinnedTrades,
+      dynamicRows,
+      deepThinkText
+    ) +
     (memoriesBlock ? `\n\n${memoriesBlock}` : "") +
     (useWebSearch
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
@@ -2861,6 +2897,45 @@ async function handleMemories(req, res) {
       json(res, 503, {
         error:
           "jarvis_memories table not found — run schema/jarvis_memories.sql in Supabase SQL editor",
+      });
+      return;
+    }
+    json(res, 500, { error: msg });
+  }
+}
+
+function parseUserIdFromQuery(reqUrl) {
+  const u = new URL(reqUrl, `http://localhost:${PORT}`);
+  let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
+  if (userId.startsWith("eq.")) userId = userId.slice(3);
+  return userId;
+}
+
+async function handleDeepThinkStatus(req, res) {
+  try {
+    const userId = parseUserIdFromQuery(req.url);
+    const status = await getDeepThinkStatus(userId);
+    json(res, 200, status);
+  } catch (e) {
+    console.error("[deep-think-status]", e);
+    json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function handleDeepThink(req, res) {
+  try {
+    const userId = parseUserIdFromQuery(req.url);
+    const t0 = Date.now();
+    const result = await runDeepThink(userId);
+    console.log(`[deep-think] forced run for ${userId} ms=${Date.now() - t0}`);
+    json(res, 200, { user_id: userId, ...result });
+  } catch (e) {
+    console.error("[deep-think]", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/deep_think|column/i.test(msg)) {
+      json(res, 503, {
+        error:
+          "deep_think columns missing — run schema/intelligence_files_deep_think.sql in Supabase",
       });
       return;
     }
@@ -4409,6 +4484,16 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/deep-think-status")) {
+    await handleDeepThinkStatus(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/deep-think")) {
+    await handleDeepThink(req, res);
+    return;
+  }
+
   if (req.method === "GET" && req.url.startsWith("/api/regenerate-intelligence")) {
     await handleRegenerateIntelligence(req, res);
     return;
@@ -4554,7 +4639,7 @@ async function requestListener(req, res) {
   if (req.method === "GET" && req.url.startsWith("/api/sync-mum")) {
     try {
       const syncMeta = await maybeSyncNotion("spasque70@gmail.com", { force: true });
-      if (syncMeta.ok && !syncMeta.skipped) fireIntelligenceRegen("spasque70@gmail.com");
+      if (syncMeta.ok && !syncMeta.skipped) firePostSyncBrain("spasque70@gmail.com");
       res.setHeader("Content-Type", "application/json");
       res.end(
         JSON.stringify(
@@ -5698,7 +5783,7 @@ async function handleNotionSyncUser(req, res) {
     return;
   }
 
-  fireIntelligenceRegen(user_id);
+  firePostSyncBrain(user_id);
   json(res, 200, { synced: syncMeta.upserted ?? 0, fetched: syncMeta.fetched ?? null });
 }
 
@@ -5733,6 +5818,7 @@ if (!process.env.VERCEL) {
             console.log(
               `[notion-sync] Startup OAuth sync ${uid}: fetched ${r.fetched}, upserted ${r.upserted}`
             );
+            firePostSyncBrain(uid);
           } else if (r.skipped && r.oauthRequired) {
             console.log(`[notion-sync] Startup skip ${uid}: ${r.reason}`);
           } else if (!r.ok) {
