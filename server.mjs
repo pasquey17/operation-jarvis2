@@ -1445,35 +1445,58 @@ function mergeReplyWithTradeImageUrls(
   const indices =
     photoIdxSet && photoIdxSet.size ? [...photoIdxSet].sort((a, b) => a - b) : [];
   const wantsAll = userWantsAllTradePhotos(messageSource);
-  const toAdd = [];
-  const seen = new Set();
 
+  if (wantsAll) {
+    const toAdd = [];
+    const seen = new Set();
+    for (const i of indices) {
+      const t = tradesForChat[i];
+      if (!t || typeof t !== "object") continue;
+      const imgs = normalizeTradeImagesForPrompt(t.trade_images ?? t.Trade_images);
+      for (const row of imgs) {
+        const url = row.url;
+        if (!url || seen.has(url) || base.includes(url)) continue;
+        seen.add(url);
+        toAdd.push(url);
+      }
+    }
+    if (toAdd.length === 0) return base;
+    const trimmed = base.trimEnd();
+    const sep = trimmed.length ? "\n\n" : "";
+    return `${trimmed}${sep}${toAdd.join("\n")}`;
+  }
+
+  // Single-photo path: if Claude already cited ANY scoped trade's URL, don't append another.
+  for (const i of indices) {
+    const t = tradesForChat[i];
+    if (!t) continue;
+    const imgs = normalizeTradeImagesForPrompt(t.trade_images ?? t.Trade_images);
+    for (const row of imgs) {
+      if (row.url && base.includes(row.url)) return base;
+    }
+  }
+
+  // Fallback: Claude didn't paste a URL. Use the highest-RR scoped trade that has images,
+  // so the chart shown matches the trade most likely being discussed (not just most recent).
+  let bestUrl = null;
+  let bestRr = -Infinity;
   for (const i of indices) {
     const t = tradesForChat[i];
     if (!t || typeof t !== "object") continue;
     const imgs = normalizeTradeImagesForPrompt(t.trade_images ?? t.Trade_images);
-    if (wantsAll) {
-      for (const row of imgs) {
-        const url = row.url;
-        if (!url || seen.has(url)) continue;
-        if (base.includes(url)) continue;
-        seen.add(url);
-        toAdd.push(url);
-      }
-    } else {
-      const first = imgs[0];
-      const url = first?.url;
-      if (url && !seen.has(url) && !base.includes(url)) {
-        seen.add(url);
-        toAdd.push(url);
-      }
-      break;
+    if (!imgs.length) continue;
+    const rr = Number(t.rr ?? t.RR);
+    const score = Number.isFinite(rr) ? rr : 0;
+    if (bestUrl === null || score > bestRr) {
+      bestRr = score;
+      bestUrl = imgs[0].url;
     }
   }
-  if (toAdd.length === 0) return base;
+
+  if (!bestUrl) return base;
   const trimmed = base.trimEnd();
   const sep = trimmed.length ? "\n\n" : "";
-  return `${trimmed}${sep}${toAdd.join("\n")}`;
+  return `${trimmed}${sep}${bestUrl}`;
 }
 
 /**
@@ -2689,7 +2712,16 @@ async function handleChat(req, res) {
 
   if (photoIdxSet.size > 0) {
     console.log(
-      `[chat] trade chart URLs — rows with image URLs (0=newest): ${[...photoIdxSet].sort((a, b) => a - b).join(",")}`
+      `[chat] trade chart context (0=newest): ${
+        [...photoIdxSet].sort((a, b) => a - b).map(i => {
+          const t = tradesForChat[i];
+          if (!t) return `${i}:?`;
+          const hasImg = Array.isArray(t.trade_images) ? t.trade_images.length > 0 : !!t.trade_images;
+          const d = t.date_local || t.date || "?";
+          const label = `${i}:${String(t.pair||"?").replace("/","")} RR:${t.rr??"?"} ${String(t.outcome||"?").slice(0,1).toUpperCase()} ${hasImg?"📷":"no-img"}`;
+          return label;
+        }).join(" | ")
+      }`
     );
   }
   if (wantsNotionExtras) {
