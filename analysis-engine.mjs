@@ -24,6 +24,7 @@ const SKIP_NE_KEYS = new Set([
   "Name", "name", "title", "Title", "URL", "url",
   // Outcome-duplicating fields — show trivial correlation, not real patterns
   "Win %", "win %", "Outcome", "outcome", "Result", "result", "W/L", "w/l",
+  "win", "Win", "loss", "Loss",
 ]);
 
 // Returns true if a notion_extras key is an outcome-duplicate (win rate, result, etc.)
