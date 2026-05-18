@@ -20,6 +20,7 @@ import {
 } from "./sync-journal-fields-notion.mjs";
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 import { serializeNotionProperties } from "./notion-serialize-props.mjs";
+import { runAnalysisEngine } from "./analysis-engine.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Static assets live under `public/` (Vercel convention + predictable Lambda layout). On Vercel, bundled files sit under `cwd`; locally `__dirname` is the repo root next to `server.mjs`. */
@@ -2203,6 +2204,21 @@ async function handleSyncNotion(req, res) {
   }
 }
 
+async function handleAnalysisEngine(req, res) {
+  try {
+    const u = new URL(req.url, `http://localhost:${PORT}`);
+    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
+    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const t0 = Date.now();
+    const report = await runAnalysisEngine(userId);
+    console.log(`[analysis-engine] user=${userId} trades=${report.tradeCount} ms=${Date.now() - t0}`);
+    json(res, 200, report);
+  } catch (e) {
+    console.error("[analysis-engine]", e);
+    json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 async function handleTrades(req, res) {
   try {
     const u = new URL(req.url, `http://localhost:${PORT}`);
@@ -4351,6 +4367,11 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/proxy-image")) {
     await handleImageProxy(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/analysis-engine")) {
+    await handleAnalysisEngine(req, res);
     return;
   }
 
