@@ -2778,13 +2778,31 @@ async function handleChat(req, res) {
     "Most recent break-even:\n" +
     JSON.stringify(slimBE);
 
-  // All trades slimmed for stats — covers the full dataset regardless of context cap.
+  // Stats layer: always all trades, never filtered — session/day filter must not distort stats.
+  const allTradesForStats = trades.map((t) => slimTradeRowForPrompt(t, {}));
+
+  // Context rows: filtered trades with images/extras — capped for token budget.
   const allTradesSlimmed = tradesForChat.map((t, i) =>
     slimTradeRowForPrompt(t, slimOptsAt(i))
   );
-
-  // Recent trades for prompt context — capped at MAX_TRADES_IN_CHAT_PROMPT for token budget.
   const tradesForPrompt = allTradesSlimmed.slice(0, MAX_TRADES_IN_CHAT_PROMPT);
+
+  // Debug: confirm what's being sent to the API
+  const sessionBreakdown = {};
+  trades.forEach((t) => {
+    const s = String(t.session || "unknown").trim() || "unknown";
+    sessionBreakdown[s] = (sessionBreakdown[s] || 0) + 1;
+  });
+  const dayBreakdown = {};
+  trades.forEach((t) => {
+    const d = String(t.weekday || "unknown").trim() || "unknown";
+    dayBreakdown[d] = (dayBreakdown[d] || 0) + 1;
+  });
+  console.log(
+    `[chat] trades for stats: ${allTradesForStats.length} (all) | context rows: ${tradesForChat.length} (session filter="${requestedSession || "none"}" day filter="${requestedDay || "none"}")`
+  );
+  console.log(`[chat] session breakdown: ${JSON.stringify(sessionBreakdown)}`);
+  console.log(`[chat] day breakdown: ${JSON.stringify(dayBreakdown)}`);
 
   messages = clampChatMessagesForTokens(messages, MAX_CHAT_MESSAGES);
 
@@ -2833,7 +2851,7 @@ async function handleChat(req, res) {
   );
 
   const system =
-    buildJarvisChatSystem(columnKeys, tradesForPrompt, briefingMemory, allTradesSlimmed, userProfile) +
+    buildJarvisChatSystem(columnKeys, tradesForPrompt, briefingMemory, allTradesForStats, userProfile) +
     "\n\nThe most recent trade is:\n" +
     JSON.stringify(slimRecent ?? null) +
     "\n\nWhen asked about the most recent trade, ALWAYS use this object (weekday comes from date in Australia/Adelaide). Do not search the list." +
