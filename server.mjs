@@ -1544,6 +1544,23 @@ function userWantsTradePhotoLinks(message) {
     const pWalk =
       /\b(walk|talk)\s+me\s+through\b/.test(s) &&
       /\b(last|recent|that|trade|loss|setup|chart)\b/.test(s);
+    const pExampleCoaching =
+      /\bbest\s+setup\b/.test(s) ||
+      /\bbest\s+trade\b/.test(s) ||
+      /\bwhat\s+does\s+my\b/.test(s) ||
+      /\bshow\s+me\b/.test(s) ||
+      /\bexample\s+of\b/.test(s) ||
+      /\bwalk\s+me\s+through\b/.test(s) ||
+      /\bwhat\s+went\s+well\b/.test(s) ||
+      /\bstrongest\s+edge\b/.test(s) ||
+      /\bwhat\s+does\s+a\s+good\b/.test(s) ||
+      /\bperfect\s+entry\b/.test(s) ||
+      /\bideal\s+setup\b/.test(s) ||
+      /\byour\s+best\b/.test(s) ||
+      /\brecent\s+win\b/.test(s) ||
+      /\brecent\s+loss\b/.test(s) ||
+      (/\b(describe|explain|break\s*down)\b/.test(s) &&
+        /\b(setup|trade|entry|execution|chart)\b/.test(s));
     const pShowChart =
       /\b(show|see)\s+me\b/.test(s) && /\b(on\s+)?(the\s+)?chart\b/.test(s);
     const pChartTrade =
@@ -1565,6 +1582,7 @@ function userWantsTradePhotoLinks(message) {
       pReview ||
       pExec ||
       pWalk ||
+      pExampleCoaching ||
       pShowChart ||
       pChartTrade ||
       pLastLoss ||
@@ -1633,6 +1651,12 @@ function tradePhotoLinkIndices(tradesForChat, messageSource) {
       String(t.outcome || "").toLowerCase().includes("be") ||
       String(t.outcome || "").toLowerCase().includes("break")
   );
+
+  /* Pinned anchors — always attach charts when photo mode is on (handleChat slim rows). */
+  add(0);
+  add(idxWin);
+  add(idxLoss);
+  add(idxBe);
 
   if (
     /\blast\s+win\b|\bmost\s+recent\s+win\b|\bmy\s+last\s+win\b/.test(s) ||
