@@ -21,6 +21,16 @@ import {
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 import { serializeNotionProperties } from "./notion-serialize-props.mjs";
 import { runAnalysisEngine } from "./analysis-engine.mjs";
+import {
+  generateIntelligenceFile,
+  getIntelligenceFile,
+} from "./intelligence-file.mjs";
+
+function fireIntelligenceRegen(userId) {
+  generateIntelligenceFile(userId).catch((e) =>
+    console.warn(`[intelligence-file] background regen failed for ${userId}:`, e.message)
+  );
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Static assets live under `public/` (Vercel convention + predictable Lambda layout). On Vercel, bundled files sit under `cwd`; locally `__dirname` is the repo root next to `server.mjs`. */
@@ -2174,6 +2184,7 @@ async function handleSyncNotion(req, res) {
     if (userId.startsWith("eq.")) userId = userId.slice(3);
     const syncMeta = await maybeSyncNotion(userId, { force: true });
     if (syncMeta.ok && !syncMeta.skipped) {
+      fireIntelligenceRegen(userId);
       json(res, 200, {
         success: true,
         fetched: syncMeta.fetched,
@@ -2215,6 +2226,34 @@ async function handleAnalysisEngine(req, res) {
     json(res, 200, report);
   } catch (e) {
     console.error("[analysis-engine]", e);
+    json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function handleIntelligenceFile(req, res) {
+  try {
+    const u = new URL(req.url, `http://localhost:${PORT}`);
+    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
+    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const file = await getIntelligenceFile(userId);
+    json(res, 200, file);
+  } catch (e) {
+    console.error("[intelligence-file]", e);
+    json(res, 500, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+async function handleRegenerateIntelligence(req, res) {
+  try {
+    const u = new URL(req.url, `http://localhost:${PORT}`);
+    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
+    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const t0 = Date.now();
+    const file = await generateIntelligenceFile(userId);
+    console.log(`[intelligence-file] forced regen for ${userId} ms=${Date.now() - t0}`);
+    json(res, 200, { ok: true, version: file.version, tradeCount: file.tradeCount, generatedAt: file.generatedAt });
+  } catch (e) {
+    console.error("[intelligence-file] regen error", e);
     json(res, 500, { error: e instanceof Error ? e.message : String(e) });
   }
 }
@@ -4375,6 +4414,16 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/intelligence-file")) {
+    await handleIntelligenceFile(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/regenerate-intelligence")) {
+    await handleRegenerateIntelligence(req, res);
+    return;
+  }
+
   if (req.method === "GET" && req.url.startsWith("/api/trades")) {
     await handleTrades(req, res);
     return;
@@ -4515,6 +4564,7 @@ async function requestListener(req, res) {
   if (req.method === "GET" && req.url.startsWith("/api/sync-mum")) {
     try {
       const syncMeta = await maybeSyncNotion("spasque70@gmail.com", { force: true });
+      if (syncMeta.ok && !syncMeta.skipped) fireIntelligenceRegen("spasque70@gmail.com");
       res.setHeader("Content-Type", "application/json");
       res.end(
         JSON.stringify(
@@ -5658,6 +5708,7 @@ async function handleNotionSyncUser(req, res) {
     return;
   }
 
+  fireIntelligenceRegen(user_id);
   json(res, 200, { synced: syncMeta.upserted ?? 0, fetched: syncMeta.fetched ?? null });
 }
 

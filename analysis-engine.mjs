@@ -22,7 +22,23 @@ const SKIP_NE_KEYS = new Set([
   "trade_images", "id", "user_id", "created_at", "updated_at",
   "notion_last_edited", "archived", "notion_sync_source",
   "Name", "name", "title", "Title", "URL", "url",
+  // Outcome-duplicating fields — show trivial correlation, not real patterns
+  "Win %", "win %", "Outcome", "outcome", "Result", "result", "W/L", "w/l",
 ]);
+
+// Returns true if a notion_extras key is an outcome-duplicate (win rate, result, etc.)
+function isOutcomeDuplicateKey(k) {
+  const kl = k.toLowerCase().replace(/\s/g, "");
+  return (
+    kl.includes("win%") ||
+    kl.includes("winpct") ||
+    kl.includes("winrate") ||
+    kl === "outcome" ||
+    kl === "result" ||
+    kl === "w/l" ||
+    kl === "wl"
+  );
+}
 
 // ─── Low-level helpers ────────────────────────────────────────────────────────
 
@@ -46,6 +62,14 @@ function isLoss(o) { return o.includes("loss"); }
 function getRR(t) {
   const n = Number(t?.rr);
   return Number.isFinite(n) ? n : null;
+}
+
+// For internal maths only (expectancy, totalR, drawdown): losses stored as 0/null
+// are treated as -1R so the numbers reflect real risk.
+function getEffectiveLossRR(t) {
+  const n = Number(t?.rr);
+  if (Number.isFinite(n) && n < 0) return n;
+  return -1;
 }
 
 function getWeekday(t) {
@@ -80,11 +104,10 @@ function groupStats(trades) {
       }
     } else if (isLoss(o)) {
       losses++;
-      if (rr !== null) {
-        rrLossSum += rr; rrLossCt++;
-        totalR += rr;
-        if (rr < worst) worst = rr;
-      }
+      const effLoss = getEffectiveLossRR(t);
+      rrLossSum += effLoss; rrLossCt++;
+      totalR += effLoss;
+      if (effLoss < worst) worst = effLoss;
     } else {
       bes++;
     }
@@ -303,14 +326,18 @@ function buildDrawdown(trades) {
   let maxDrawdown = 0;
 
   for (const t of trades) {
-    const rr = getRR(t);
     const o = normOutcome(t);
-    if (rr !== null && (isWin(o) || isLoss(o))) {
-      cumulativeR += rr;
-      if (cumulativeR > peak) peak = cumulativeR;
-      const dd = peak - cumulativeR;
-      if (dd > maxDrawdown) maxDrawdown = dd;
+    if (isWin(o)) {
+      const rr = getRR(t);
+      if (rr !== null) cumulativeR += rr;
+    } else if (isLoss(o)) {
+      cumulativeR += getEffectiveLossRR(t);
+    } else {
+      continue;
     }
+    if (cumulativeR > peak) peak = cumulativeR;
+    const dd = peak - cumulativeR;
+    if (dd > maxDrawdown) maxDrawdown = dd;
   }
 
   return {
@@ -382,7 +409,7 @@ function buildEdgeDetection(trades) {
     const ne = t.notion_extras;
     if (ne && typeof ne === "object" && !Array.isArray(ne)) {
       for (const [k, v] of Object.entries(ne)) {
-        if (SKIP_NE_KEYS.has(k)) continue;
+        if (SKIP_NE_KEYS.has(k) || isOutcomeDuplicateKey(k)) continue;
         for (const val of extractNotionValues(v)) {
           inc(k, val);
         }
@@ -461,7 +488,7 @@ function buildNotionExtrasPatterns(trades) {
     const ne = t.notion_extras;
     if (!ne || typeof ne !== "object" || Array.isArray(ne)) return kvs;
     for (const [k, v] of Object.entries(ne)) {
-      if (SKIP_NE_KEYS.has(k)) continue;
+      if (SKIP_NE_KEYS.has(k) || isOutcomeDuplicateKey(k)) continue;
       for (const val of extractNotionValues(v)) {
         if (val && val !== "false" && val.length < 100) {
           kvs.add(`${k}::${val}`);
