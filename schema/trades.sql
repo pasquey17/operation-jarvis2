@@ -35,6 +35,10 @@ create table if not exists public.user_profiles (
   psychological_patterns text,
   key_triggers text,
   strengths text,
+  trading_rules text,
+  edge_map text,
+  progress_notes text,
+  jarvis_observations text,
   last_updated timestamptz not null default now()
 );
 

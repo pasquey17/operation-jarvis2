@@ -584,7 +584,7 @@ ${briefingMemory.trim()}`;
   const crossRefStats = deriveCrossReferencedStats(forStats);
 
   let persistentMemorySection = "";
-  if (userProfile && (userProfile.trading_summary || userProfile.psychological_patterns)) {
+  if (userProfileHasMemory(userProfile)) {
     persistentMemorySection = `
 
 ---
@@ -595,8 +595,12 @@ WHO: ${userProfile.trading_summary || "Still being established."}
 PSYCH PATTERNS: ${userProfile.psychological_patterns || "Still being established."}
 TRIGGERS: ${userProfile.key_triggers || "Still being established."}
 STRENGTHS: ${userProfile.strengths || "Still being established."}
+TRADING RULES: ${userProfile.trading_rules || "Still being established."}
+EDGE MAP: ${userProfile.edge_map || "Still being established."}
+PROGRESS: ${userProfile.progress_notes || "Still being established."}
+OBSERVATIONS: ${userProfile.jarvis_observations || "Still being established."}
 
-Use it: emotion/frustration → tie to triggers/patterns above; trade/setup/outcome → name pattern if it matches; repeated mistake memory shows → say so plainly; genuine improvement → acknowledge specifically; praise → history-specific only.
+Use it: emotion/frustration → triggers/patterns; trade/setup → rules + edge map; broad edge questions → EDGE MAP + PROGRESS first; repeated mistake → OBSERVATIONS + TRIGGERS; improvement → PROGRESS + STRENGTHS; praise → history-specific only.
 
 MEMORY INSTRUCTION: Before every response, scan the profile above for relevant patterns. If a pattern matches what the trader just said, surface it as a QUESTION not a directive. Never tell them what to do based on pattern alone. Instead ask: "This looks like [pattern] — does this trade meet your A+ criteria?" You flag. They decide. Always ask about setup quality before making any psychological observation.`;
   }
@@ -638,6 +642,34 @@ For statistical or performance questions, use the Derived trading snapshot and C
 
 // === USER PROFILE MEMORY LAYER ===
 
+function userProfileHasMemory(userProfile) {
+  if (!userProfile || typeof userProfile !== "object") return false;
+  return [
+    userProfile.trading_summary,
+    userProfile.psychological_patterns,
+    userProfile.key_triggers,
+    userProfile.strengths,
+    userProfile.trading_rules,
+    userProfile.edge_map,
+    userProfile.progress_notes,
+    userProfile.jarvis_observations,
+  ].some((v) => v != null && String(v).trim());
+}
+
+function formatExistingProfileBlock(currentProfile) {
+  if (!currentProfile) {
+    return "No existing profile yet — build it from scratch based on what you observe.";
+  }
+  return `WHO (trading_summary): ${currentProfile.trading_summary || "None"}
+PSYCH PATTERNS: ${currentProfile.psychological_patterns || "None"}
+TRIGGERS: ${currentProfile.key_triggers || "None"}
+STRENGTHS: ${currentProfile.strengths || "None"}
+TRADING RULES: ${currentProfile.trading_rules || "None"}
+EDGE MAP: ${currentProfile.edge_map || "None"}
+PROGRESS: ${currentProfile.progress_notes || "None"}
+OBSERVATIONS: ${currentProfile.jarvis_observations || "None"}`;
+}
+
 async function fetchUserProfile(userId) {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) return null;
@@ -669,6 +701,10 @@ async function upsertUserProfile(userId, fields) {
     psychological_patterns: fields.psychological_patterns ?? null,
     key_triggers: fields.key_triggers ?? null,
     strengths: fields.strengths ?? null,
+    trading_rules: fields.trading_rules ?? null,
+    edge_map: fields.edge_map ?? null,
+    progress_notes: fields.progress_notes ?? null,
+    jarvis_observations: fields.jarvis_observations ?? null,
     last_updated: new Date().toISOString(),
   };
   await fetch(`${url}/rest/v1/user_profiles`, {
@@ -697,12 +733,7 @@ async function generateAndUpdateProfile(userId, messages, reply, currentProfile,
     day: "numeric",
   });
 
-  const existing = currentProfile
-    ? `Trading Summary: ${currentProfile.trading_summary || "None"}
-Psychological Patterns: ${currentProfile.psychological_patterns || "None"}
-Key Triggers: ${currentProfile.key_triggers || "None"}
-Strengths: ${currentProfile.strengths || "None"}`
-    : "No existing profile yet — build it from scratch based on what you observe.";
+  const existing = formatExistingProfileBlock(currentProfile);
 
   const tradeStats = deriveTradingProfile(allTrades.slice(0, 200));
   const evidence = buildProfileEvidenceBundle(allTrades, 30);
@@ -726,35 +757,46 @@ ${JSON.stringify(evidence.notesWithDates, null, 2)}
 THIS SESSION'S CONVERSATION:
 ${fullConversation}
 
-Your task is to produce an UPDATED profile that is richer than the existing one. You must do three things:
+Your task is to produce an UPDATED profile that is richer than the existing one. You must do four things:
 
 1. CAPTURE WHAT HAPPENED THIS SESSION — summarise the key topic, emotional state, trades or decisions discussed, and anything notable the trader revealed about themselves.
 2. EVOLVE THE PATTERNS — if this session reinforced an existing pattern, note it with more specificity. If a new pattern appeared, add it. If something has genuinely changed or improved, reflect that.
-3. TRACK PROGRESS OR REGRESSION — compare this session to what was previously known. Is the trader improving on something that was flagged before? Or repeating a mistake that was already in the profile? Note it explicitly.
+3. TRACK PROGRESS OR REGRESSION — compare this session to what was previously known. Is the trader improving on something that was flagged before? Or repeating a mistake that was already in the profile? Note it explicitly in progress_notes.
+4. UPDATE RULES & EDGE — if the trader stated or refined system rules (A+, entries, sessions, risk), merge into trading_rules. Refresh edge_map from stats + conversation when patterns strengthen or weaken.
 
-Rules:
+Rules (all 8 fields):
 — Accumulate. Never erase existing insights unless they are clearly contradicted.
 — Be specific. Use the actual words, situations, and behaviours from the conversation, not abstract generalisations.
 — Include dates where relevant. Prefer the trade's date_local string (Australia/Adelaide).
 — Include instruments/setups where relevant. If you mention a trade event, include pair + entry model when available.
 — Avoid vague labels. Do not write "revenge trading" / "tilt" / "overtrading" unless you anchor it to a concrete example with a date (and pair/model if available).
 — Avoid fuzzy frequency words ("often", "sometimes", "tends to") unless you add either a count or an example date.
-— Output formatting matters: each field must be 5–8 SHORT LINES max.
-— Use this exact line style inside each field string:
-   - "• " prefix per line (bullet), newline separated (\n).
-   - Each line should include at least ONE of: date_local, pair, model, or an explicit count.
-— Keep it concise: coach-notes style. No essays.
-— For trading_summary: include both long-term profile AND a brief note from this session (e.g. "Session ${today}: ...").
-— For psychological_patterns and key_triggers: if a pattern appeared in this session, mark it as recently observed.
-— For strengths: if progress was made on something previously flagged as weak, note it.
 — Write as a coach taking notes for their own future reference, not for the trader to read.
+
+Field-specific:
+— trading_summary (WHO): 5–8 bullet lines; include one line starting with "Session ${today}:".
+— psychological_patterns: 5–8 bullets; each anchored to date_local/pair/model or a count; mark patterns observed this session.
+— key_triggers: 5–8 bullets; each trigger anchored to at least one dated example.
+— strengths: 5–8 bullets; anchor to examples or counts; note progress/regression.
+— trading_rules: bullet lines for rules the trader has explicitly stated (A+ criteria, entry rules, session windows, risk rules). Update when new rules appear in this conversation; keep prior rules unless contradicted. Direct and specific — no generic advice.
+— edge_map: 3–6 compact lines. Living edge from data: best/worst session+day combos, models, position types. Use WR% or counts when STATISTICAL CONTEXT supports it. Line style example: "Best: London Monday (67% WR) — Worst: Asia Friday (28% WR)". Refresh when patterns shift.
+— progress_notes: 3–6 lines, week-by-week where possible. Improving vs regressing with dates and numbers. Example: "Week of 12 May 2026: win rate up to 58% from 48% — re-entry leak quieter in last 10 trades".
+— jarvis_observations: 3–6 candid coach-note bullets — behavioural quirks, chat habits, what lands in coaching (e.g. goes quiet after losses, asks about re-entries often). Does not need to fit other fields; private notebook tone.
+
+Formatting for bullet fields (trading_summary, psychological_patterns, key_triggers, strengths, trading_rules, jarvis_observations):
+— 5–8 SHORT lines max (3–6 for edge_map and progress_notes as above).
+— "• " prefix per line, newline separated (\\n).
 
 Respond with ONLY a valid JSON object and no other text:
 {
-  "trading_summary": "5–8 bullet lines total (\\n separated). Include one line starting with: \\"Session ${today}:\\"",
-  "psychological_patterns": "5–8 bullet lines total (\\n separated). Each line anchored to date_local/pair/model or a count.",
-  "key_triggers": "5–8 bullet lines total (\\n separated). Each trigger anchored to at least one dated example.",
-  "strengths": "5–8 bullet lines total (\\n separated). Anchor strengths to examples or counts; note progress/regression."
+  "trading_summary": "5–8 bullet lines (\\n separated). Include one line: \\"Session ${today}:\\"",
+  "psychological_patterns": "5–8 bullet lines (\\n separated).",
+  "key_triggers": "5–8 bullet lines (\\n separated).",
+  "strengths": "5–8 bullet lines (\\n separated).",
+  "trading_rules": "bullet lines (\\n separated) — explicit system rules only.",
+  "edge_map": "3–6 compact edge lines (\\n separated).",
+  "progress_notes": "3–6 week/progress lines (\\n separated) with dates and numbers.",
+  "jarvis_observations": "3–6 candid observation bullets (\\n separated)."
 }`;
 
   try {
@@ -767,7 +809,7 @@ Respond with ONLY a valid JSON object and no other text:
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 768,
+        max_tokens: 1200,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -803,24 +845,32 @@ SNAPSHOT: ${JSON.stringify(snapshot)}
 SAMPLE RECENT TRADES (up to 30):
 ${JSON.stringify(allSlimmed.slice(0, 30), null, 2)}
 
-Based purely on their trade data, build an initial profile capturing their trading style, psychological tendencies, strengths, and triggers.
+Based on trade data (and any explicit rules visible in notes), build an initial 8-field coach profile.
 
 Rules:
 — Be specific. Avoid vague summaries.
 — When you claim a psychological pattern/trigger, anchor it to at least one concrete example: include date_local plus instrument (pair) and/or entry model when available.
 — If you cannot support something from the data, do not include it.
-— Output formatting matters: each field must be 5–8 SHORT LINES max.
-— Use this exact line style inside each field string:
-   - "• " prefix per line (bullet), newline separated (\n).
-   - Each line should include at least ONE of: date_local, pair, model, or an explicit count.
-— Keep it concise and coach-notes style.
+— Coach-notes style — not copy for the trader to read.
+— trading_rules: only rules clearly stated in trade notes or strongly implied by repeated session/model discipline in data; if none, one line "• No explicit rules logged yet — infer from data only with dates."
+— edge_map: 3–6 lines from stats — best/worst session+day, models, position types with WR% or counts when possible. Example: "Best: London Monday (67% WR) — Worst: Asia Friday (28% WR)".
+— progress_notes: 3–6 lines — week-by-week trend from dated trades if enough history; else recent window vs prior with numbers.
+— jarvis_observations: 3–6 lines — data-backed behavioural hints only (e.g. loss clusters after Asia); leave thin if insufficient evidence.
+
+Formatting:
+— Bullet fields: "• " per line, newline separated (\\n); 5–8 lines (3–6 for edge_map and progress_notes).
+— Each bullet line should include at least ONE of: date_local, pair, model, or an explicit count (edge_map/progress_notes may use week labels + WR%).
 
 Respond with ONLY a valid JSON object and no other text:
 {
-  "trading_summary": "5–8 bullet lines total (\\n separated).",
-  "psychological_patterns": "5–8 bullet lines total (\\n separated). Each line anchored to date_local/pair/model or a count.",
-  "key_triggers": "5–8 bullet lines total (\\n separated). Each trigger anchored to at least one dated example.",
-  "strengths": "5–8 bullet lines total (\\n separated). Anchor strengths to examples or counts."
+  "trading_summary": "5–8 bullet lines (\\n separated).",
+  "psychological_patterns": "5–8 bullet lines (\\n separated).",
+  "key_triggers": "5–8 bullet lines (\\n separated).",
+  "strengths": "5–8 bullet lines (\\n separated).",
+  "trading_rules": "bullet lines (\\n separated).",
+  "edge_map": "3–6 compact edge lines (\\n separated).",
+  "progress_notes": "3–6 progress lines (\\n separated) with dates and numbers.",
+  "jarvis_observations": "3–6 observation bullets (\\n separated)."
 }`;
 
   const ar = await fetch("https://api.anthropic.com/v1/messages", {
@@ -832,7 +882,7 @@ Respond with ONLY a valid JSON object and no other text:
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 512,
+      max_tokens: 1200,
       messages: [{ role: "user", content: prompt }],
     }),
   });
