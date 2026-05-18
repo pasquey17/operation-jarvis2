@@ -347,163 +347,121 @@
       .an-wr-meta-chip--warn {
         color: rgba(255,200,100,0.9);
       }
-      /* ── Global filter bar ── */
-      .an-fb {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 8px;
-        margin: 0 0 20px;
-        padding: 0 2px;
-      }
-      .an-fb-rows {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 8px;
-        width: 100%;
-      }
-      .an-fb-row {
-        display: inline-flex;
-        align-items: center;
-        flex-wrap: nowrap;
-        gap: 8px;
-        width: fit-content;
-        max-width: 100%;
-        padding: 8px 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(0,212,255,0.12);
-        background: rgba(5,10,20,0.6);
-        backdrop-filter: blur(8px);
-      }
-      .an-fb-dim-sel,
-      .an-fb-val-sel,
-      .an-fb-preset-sel {
-        box-sizing: border-box;
-        height: 36px;
-        min-height: 36px;
-        max-height: 36px;
-        padding: 0 10px;
+      /* ── Win Rate filter panel (Notion style) ── */
+      .an-wr-filter-wrap { position: relative; flex-shrink: 0; z-index: 50; }
+      .an-wr-filter-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 11px 5px 9px;
         border-radius: 8px;
-        border: 1px solid rgba(0,212,255,0.2);
-        background: rgba(255,255,255,0.05);
-        color: #ffffff;
-        font-family: "Outfit", system-ui, sans-serif;
-        font-size: 13px;
-        letter-spacing: 0;
-        line-height: 1.2;
-        outline: none;
-        color-scheme: dark;
-        cursor: pointer;
-      }
-      .an-fb-dim-sel {
-        width: 140px;
-        max-width: 140px;
-        flex: 0 0 auto;
-      }
-      .an-fb-val-wrap {
-        display: inline-flex;
-        align-items: center;
-        flex-wrap: nowrap;
-        gap: 8px;
-        flex: 0 0 auto;
-        min-width: 0;
-      }
-      .an-fb-val-sel,
-      .an-fb-preset-sel {
-        width: 160px;
-        max-width: 160px;
-        flex: 0 0 auto;
-      }
-      .an-fb-dim-sel:focus,
-      .an-fb-val-sel:focus,
-      .an-fb-preset-sel:focus {
-        border-color: rgba(0,212,255,0.45);
-      }
-      .an-fb-date-inputs {
-        display: none;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-      .an-fb-date-inputs.an-fb-date-inputs--visible { display: flex; }
-      .an-fb-date-inputs input[type="date"] {
-        box-sizing: border-box;
-        height: 36px;
-        min-height: 36px;
-        padding: 0 8px;
-        border-radius: 8px;
-        border: 1px solid rgba(0,212,255,0.2);
-        background: rgba(255,255,255,0.05);
-        color: #ffffff;
-        font-family: "Outfit", system-ui, sans-serif;
-        font-size: 13px;
-        outline: none;
-        color-scheme: dark;
-        cursor: pointer;
-        width: 128px;
-      }
-      .an-fb-date-inputs input[type="date"]:focus { border-color: rgba(0,212,255,0.5); }
-      .an-fb-date-sep {
-        color: rgba(180,200,220,0.5);
+        border: 1px solid rgba(0,212,255,0.28);
+        background: rgba(0,212,255,0.06);
+        color: rgba(0,212,255,0.85);
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px;
-        flex-shrink: 0;
+        font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+        cursor: pointer; white-space: nowrap; min-height: 32px;
+        transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
       }
-      .an-fb-row-remove {
+      .an-wr-filter-btn:hover { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.5); }
+      .an-wr-filter-btn[aria-expanded="true"] {
+        background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.55);
+        box-shadow: 0 0 14px rgba(0,191,255,0.18);
+      }
+      .an-wr-filter-btn__badge {
+        display: none; align-items: center; justify-content: center;
+        min-width: 18px; height: 18px; padding: 0 5px;
+        border-radius: 99px; background: rgba(0,212,255,0.22); color: #00d4ff;
+        font-size: 9px; letter-spacing: 0; font-weight: 700;
+      }
+      .an-wr-filter-btn__badge--visible { display: inline-flex; }
+      /* Panel */
+      .an-wr-filter-panel {
+        position: absolute; top: calc(100% + 8px); right: 0;
+        min-width: 400px; width: max-content;
+        max-width: min(500px, calc(100vw - 32px));
+        border-radius: 12px;
+        border: 1px solid rgba(0,212,255,0.2);
+        background: rgba(8,16,32,0.98);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 24px 60px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,212,255,0.06);
+        z-index: 60; overflow: hidden;
+      }
+      .an-wr-filter-panel[hidden] { display: none !important; }
+      /* Row container */
+      .an-wr-fp-rows { padding: 4px 0 0; }
+      /* Each filter row */
+      .an-wr-fp-row {
+        display: flex; align-items: center; gap: 2px;
+        height: 40px; padding: 0 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+      }
+      /* Custom selects */
+      .an-wr-fp-sel {
+        appearance: none; -webkit-appearance: none;
+        height: 32px; padding: 0 24px 0 9px;
+        border: 1px solid transparent; border-radius: 6px;
+        background-color: transparent;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='rgba(0%2C191%2C255%2C0.45)' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 7px center; background-size: 10px;
+        color: rgba(255,255,255,0.88); font-family: "Outfit",system-ui,sans-serif;
+        font-size: 13px; outline: none; cursor: pointer; color-scheme: dark;
+        transition: background-color 0.14s, border-color 0.14s;
+      }
+      .an-wr-fp-sel:hover { background-color: rgba(255,255,255,0.05); border-color: rgba(0,212,255,0.2); }
+      .an-wr-fp-sel:focus { background-color: rgba(0,212,255,0.07); border-color: rgba(0,212,255,0.38); }
+      .an-wr-fp-dim { flex: 0 0 110px; color: rgba(220,235,255,0.8); }
+      .an-wr-fp-cond { flex: 0 0 80px; color: rgba(160,200,230,0.75); font-size: 12px; }
+      .an-wr-fp-val { flex: 1; }
+      /* Date custom range inputs */
+      .an-wr-fp-date-wrap {
+        flex: 1; display: none; align-items: center; gap: 4px;
+      }
+      .an-wr-fp-date-wrap--visible { display: flex; }
+      .an-wr-fp-date-wrap input[type="date"] {
+        flex: 1; min-width: 0; height: 32px; padding: 0 7px;
+        border-radius: 6px; border: 1px solid rgba(0,212,255,0.18);
+        background: rgba(0,0,0,0.3); color: rgba(255,255,255,0.88);
+        font-family: "Outfit",system-ui,sans-serif; font-size: 12px;
+        outline: none; cursor: pointer; color-scheme: dark;
+      }
+      .an-wr-fp-date-wrap input[type="date"]:focus { border-color: rgba(0,212,255,0.45); }
+      .an-wr-fp-date-sep { color: rgba(180,200,220,0.4); font-size: 11px; flex-shrink: 0; }
+      /* Remove button */
+      .an-wr-fp-remove {
         display: inline-flex; align-items: center; justify-content: center;
-        width: 28px; height: 28px; flex-shrink: 0;
-        border-radius: 6px;
-        border: 1px solid rgba(255,90,110,0.25);
-        background: rgba(255,90,110,0.08);
-        color: rgba(255,90,110,0.7);
-        font-size: 16px; line-height: 1; cursor: pointer;
-        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        width: 26px; height: 26px; flex-shrink: 0; margin-left: 2px;
+        border-radius: 5px; border: none; background: transparent;
+        color: rgba(255,255,255,0.22); font-size: 18px; line-height: 1; cursor: pointer;
+        transition: background 0.12s, color 0.12s;
       }
-      .an-fb-row-remove:hover {
-        background: rgba(255,90,110,0.2);
-        border-color: rgba(255,90,110,0.5);
-        color: rgba(255,90,110,1);
+      .an-wr-fp-remove:hover { background: rgba(255,70,70,0.1); color: rgba(255,100,100,0.85); }
+      /* Footer */
+      .an-wr-fp-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 7px 10px 9px;
+        border-top: 1px solid rgba(255,255,255,0.06);
       }
-      .an-fb-foot {
-        display: inline-flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 12px;
-        width: fit-content;
-        max-width: 100%;
-        min-height: 36px;
+      .an-wr-fp-add {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 5px 9px; border-radius: 6px; border: none; background: transparent;
+        color: rgba(0,212,255,0.7); font-family: "Outfit",system-ui,sans-serif;
+        font-size: 13px; cursor: pointer; transition: background 0.14s, color 0.14s;
       }
-      .an-fb-count {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        letter-spacing: 0.15em;
-        color: #00d4ff;
-        text-transform: uppercase;
+      .an-wr-fp-add:hover { background: rgba(0,212,255,0.08); color: #00d4ff; }
+      .an-wr-fp-clear {
+        background: none; border: none; padding: 4px 7px; border-radius: 5px;
+        color: rgba(255,255,255,0.28); font-family: "Outfit",system-ui,sans-serif;
+        font-size: 12px; cursor: pointer; transition: color 0.14s, background 0.14s;
       }
-      .an-fb-add-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 7px;
-        box-sizing: border-box;
-        height: 36px;
-        min-height: 36px;
-        padding: 0 16px;
-        border-radius: 8px;
-        border: 1px solid rgba(0,212,255,0.3);
-        background: rgba(0,212,255,0.08);
-        color: #00d4ff;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s;
+      .an-wr-fp-clear:hover { color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.05); }
+      /* Filtered trade count */
+      .an-wr-filter-count {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; letter-spacing: 0.12em;
+        color: rgba(0,212,255,0.55); text-transform: uppercase;
+        text-align: center; margin-top: 8px; min-height: 14px;
       }
-      .an-fb-add-btn:hover {
-        background: rgba(0,212,255,0.15);
-        border-color: rgba(0,212,255,0.45);
+      @media (max-width: 768px) {
+        .an-wr-filter-panel { min-width: unset; width: calc(100vw - 32px); right: -8px; }
       }
       .an-wr-body {
         display: flex;
@@ -641,14 +599,7 @@
         .an-winrate-hero { padding: 4px 0 4px; margin-bottom: 28px; }
         .an-wr-toolbar { flex-direction: column; align-items: stretch; }
         .an-wr-toolbar__left { justify-content: center; text-align: center; }
-        .an-fb { align-items: stretch; }
-        .an-fb-rows { align-items: stretch; }
-        .an-fb-row { width: 100%; flex-wrap: wrap; }
-        .an-fb-foot { width: 100%; justify-content: space-between; }
-        .an-fb-dim-sel,
-        .an-fb-val-sel,
-        .an-fb-preset-sel { max-width: none; width: 100%; }
-        .an-fb-date-inputs input[type="date"] { width: 100%; flex: 1; }
+        .an-wr-filter-wrap { align-self: flex-end; }
         .an-wr-stage { width: min(92vw, 340px); }
         .an-wr-sys-eyebrow { text-align: center; font-size: 8px; letter-spacing: 0.2em; }
         .an-wr-gauge-wrap { inset: 10%; }
@@ -884,17 +835,6 @@
           </div>
         </header>
 
-        <div class="an-fb" id="an-fb">
-          <div class="an-fb-rows" id="an-fb-rows"></div>
-          <div class="an-fb-foot">
-            <span class="an-fb-count" id="an-fb-count"></span>
-            <button type="button" class="an-fb-add-btn" id="an-fb-add-btn" aria-label="Add filter">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Filter
-            </button>
-          </div>
-        </div>
-
         <section class="an-winrate-hero" id="an-winrate-hero" aria-label="Win rate overview">
           <div class="an-wr-inner">
             <p class="an-wr-sys-eyebrow">System-level performance diagnostics</p>
@@ -903,6 +843,23 @@
                 <h2 class="an-wr-eyebrow">Win rate</h2>
                 <span class="an-wr-meta-chip" id="an-wr-meta-trades">— trades</span>
                 <span class="an-wr-meta-chip an-wr-meta-chip--warn" id="an-wr-meta-sample" hidden>Low sample</span>
+              </div>
+              <div class="an-wr-filter-wrap" id="an-wr-filter-wrap">
+                <button type="button" class="an-wr-filter-btn" id="an-wr-filter-btn" aria-expanded="false" aria-controls="an-wr-filter-panel">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                  <span id="an-wr-filter-label">Filter</span>
+                  <span class="an-wr-filter-btn__badge" id="an-wr-filter-badge" aria-label="Active filters"></span>
+                </button>
+                <div class="an-wr-filter-panel" id="an-wr-filter-panel" hidden>
+                  <div class="an-wr-fp-rows" id="an-wr-fp-rows"></div>
+                  <div class="an-wr-fp-footer">
+                    <button type="button" class="an-wr-fp-add" id="an-wr-fp-add">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      Add filter
+                    </button>
+                    <button type="button" class="an-wr-fp-clear" id="an-wr-fp-clear">Clear all</button>
+                  </div>
+                </div>
               </div>
             </header>
             <div class="an-wr-body" id="an-wr-body">
@@ -928,6 +885,7 @@
                 <i class="an-wr-stack__l" id="an-wr-bar-loss" style="width:0%"></i>
                 <i class="an-wr-stack__b" id="an-wr-bar-be" style="width:0%"></i>
               </div>
+              <div class="an-wr-filter-count" id="an-wr-filter-count"></div>
             </div>
           </div>
         </section>
@@ -2560,7 +2518,7 @@
           filteredTrades.forEach(function (t) {
             netR += rDelta(t);
           });
-          var scope = fbActiveFilters.length ? 'filtered' : 'full dataset';
+          var scope = wrActiveFilters.length ? 'filtered' : 'full dataset';
           var wrStr = stats.wr != null ? stats.wr.toFixed(1) + '% WR' : '—';
           var badge = document.getElementById('an-badge-text');
           var foot = document.getElementById('an-foot');
@@ -2576,7 +2534,7 @@
           if (badge) badge.textContent = line;
           if (foot) {
             foot.textContent =
-              (fbActiveFilters.length ? 'Filtered' : 'Full dataset') +
+              (wrActiveFilters.length ? 'Filtered' : 'Full dataset') +
               ': ' +
               stats.n +
               ' trades  ·  Win rate: ' +
@@ -2720,273 +2678,296 @@
           }
         }
         /* ══════════════════════════════════════════════════
-           GLOBAL FILTER BAR — affects all 8 charts
+           WIN RATE FILTER PANEL (Notion-style)
+           Only affects the win rate donut chart.
         ══════════════════════════════════════════════════ */
-        var fbActiveFilters = [];
-        var fbUiBound = false;
+        var wrActiveFilters = [];
+        var wrFilterPanelBound = false;
+        var wrFiltersHydrated = false;
+        var WR_FP_LS = 'jarvis_wr_filters_v3_';
+        var wrDynamicDims = [];
 
-        var FB_DIMS = [
-          { id: 'date',      label: 'Date' },
+        var WR_FP_DIMS = [
           { id: 'session',   label: 'Session' },
           { id: 'weekday',   label: 'Day' },
           { id: 'pair',      label: 'Pair' },
           { id: 'model',     label: 'Model' },
-          { id: 'direction', label: 'Position' },
           { id: 'account',   label: 'Account' },
-          { id: 'outcome',   label: 'Outcome' }
+          { id: 'outcome',   label: 'Outcome' },
+          { id: 'direction', label: 'Position' },
+          { id: 'date',      label: 'Date' }
         ];
 
-        var FB_DATE_PRESETS = [
-          { id: 'today',         label: 'Today' },
-          { id: 'yesterday',     label: 'Yesterday' },
-          { id: 'this_week',     label: 'This week' },
-          { id: 'last_week',     label: 'Last week' },
-          { id: 'this_month',    label: 'This month' },
-          { id: 'last_month',    label: 'Last month' },
-          { id: 'last_3_months', label: 'Last 3 months' },
-          { id: 'this_year',     label: 'This year' },
-          { id: 'custom',        label: 'Custom range…' }
+        var WR_DATE_PRESETS = [
+          { id: 'today',      label: 'Today' },
+          { id: 'yesterday',  label: 'Yesterday' },
+          { id: 'this_week',  label: 'This week' },
+          { id: 'last_week',  label: 'Last week' },
+          { id: 'this_month', label: 'This month' },
+          { id: 'last_month', label: 'Last month' },
+          { id: 'custom',     label: 'Custom range' }
         ];
 
-        var fbDateFmt = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Australia/Adelaide',
-          year: 'numeric', month: '2-digit', day: '2-digit'
+        var wrFpDateFmt = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit'
         });
 
-        function fbTradeIsoDate(t) {
+        function wrFpTradeIso(t) {
           var d = tradeDate(t);
           if (!d || isNaN(d.getTime())) return '';
-          try { return fbDateFmt.format(d); } catch (e) { return d.toISOString().slice(0, 10); }
+          try { return wrFpDateFmt.format(d); } catch (e) { return d.toISOString().slice(0, 10); }
         }
 
-        function fbTodayIso() {
-          try { return fbDateFmt.format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); }
+        function wrFpTodayIso() {
+          try { return wrFpDateFmt.format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); }
         }
 
-        function fbIsoAdd(iso, days) {
+        function wrFpIsoAdd(iso, days) {
           var p = iso.split('-');
           var d = new Date(Date.UTC(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10)));
           d.setUTCDate(d.getUTCDate() + days);
           return d.toISOString().slice(0, 10);
         }
 
-        function fbDateRangeForPreset(id) {
-          var today = fbTodayIso();
+        function wrFpDateRange(id) {
+          var today = wrFpTodayIso();
           var p = today.split('-');
           var y = parseInt(p[0], 10), mo = parseInt(p[1], 10), d = parseInt(p[2], 10);
-          var dow = new Date(Date.UTC(y, mo - 1, d)).getUTCDay(); // 0=Sun
-          var daysFromMon = (dow + 6) % 7; // Mon=0 … Sun=6
+          var dow = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+          var daysFromMon = (dow + 6) % 7;
           switch (id) {
-            case 'today': return { from: today, to: today };
-            case 'yesterday': { var y2 = fbIsoAdd(today, -1); return { from: y2, to: y2 }; }
-            case 'this_week': { var mon = fbIsoAdd(today, -daysFromMon); return { from: mon, to: fbIsoAdd(mon, 6) }; }
-            case 'last_week': { var lm = fbIsoAdd(today, -daysFromMon - 7); return { from: lm, to: fbIsoAdd(lm, 6) }; }
-            case 'this_month': {
-              var ms = p[0] + '-' + p[1] + '-01';
-              var me = new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10);
-              return { from: ms, to: me };
-            }
+            case 'today':      return { from: today, to: today };
+            case 'yesterday':  { var y2 = wrFpIsoAdd(today, -1); return { from: y2, to: y2 }; }
+            case 'this_week':  { var mon = wrFpIsoAdd(today, -daysFromMon); return { from: mon, to: wrFpIsoAdd(mon, 6) }; }
+            case 'last_week':  { var lmon = wrFpIsoAdd(today, -daysFromMon - 7); return { from: lmon, to: wrFpIsoAdd(lmon, 6) }; }
+            case 'this_month': { var ms = p[0]+'-'+p[1]+'-01'; return { from: ms, to: new Date(Date.UTC(y, mo, 0)).toISOString().slice(0, 10) }; }
             case 'last_month': {
-              var lmo = mo === 1 ? 12 : mo - 1;
-              var ly = mo === 1 ? y - 1 : y;
-              var lms = ly + '-' + (lmo < 10 ? '0' + lmo : lmo) + '-01';
-              var lme = new Date(Date.UTC(y, mo - 1, 0)).toISOString().slice(0, 10);
-              return { from: lms, to: lme };
+              var lmo = mo === 1 ? 12 : mo - 1; var ly = mo === 1 ? y - 1 : y;
+              return { from: ly+'-'+(lmo<10?'0'+lmo:lmo)+'-01', to: new Date(Date.UTC(y, mo-1, 0)).toISOString().slice(0, 10) };
             }
-            case 'last_3_months': {
-              return { from: new Date(Date.UTC(y, mo - 1 - 3, d)).toISOString().slice(0, 10), to: today };
-            }
-            case 'this_year': return { from: p[0] + '-01-01', to: p[0] + '-12-31' };
             default: return null;
           }
         }
 
-        function fbApplyFilters(trades) {
-          if (!fbActiveFilters.length) return trades.slice();
+        function applyWrFilters(trades, filters) {
+          if (!filters || !filters.length) return trades.slice();
           return trades.filter(function (t) {
-            return fbActiveFilters.every(function (f) {
+            return filters.every(function (f) {
+              var isNot = f.condition === 'is_not';
               if (f.dim === 'date') {
-                var tIso = fbTradeIsoDate(t);
-                if (!tIso) return false;
+                var tIso = wrFpTradeIso(t);
+                if (!tIso) return isNot;
+                var match;
                 if (f.preset === 'custom') {
-                  if (f.from && tIso < f.from) return false;
-                  if (f.to && tIso > f.to) return false;
-                  return true;
+                  match = (!f.from || tIso >= f.from) && (!f.to || tIso <= f.to);
+                } else {
+                  var range = wrFpDateRange(f.preset || 'today');
+                  match = range ? (tIso >= range.from && tIso <= range.to) : true;
                 }
-                var range = fbDateRangeForPreset(f.preset);
-                return range ? (tIso >= range.from && tIso <= range.to) : true;
+                return isNot ? !match : match;
               }
               var got = String(wrGetByDim(t, f.dim) || '').trim().toLowerCase();
               var want = String(f.val || '').trim().toLowerCase();
-              return got && got === want;
+              var match2 = got && got === want;
+              return isNot ? !match2 : match2;
             });
           });
         }
 
-        function fbGetFilteredTrades() { return fbApplyFilters(allTrades); }
+        function wrFpAllDims() { return WR_FP_DIMS.concat(wrDynamicDims); }
 
-        function fbUpdateCount() {
-          var el = document.getElementById('an-fb-count');
+        function wrFpLsKey() { return WR_FP_LS + (currentUserId || DEFAULT_USER); }
+        function wrFpSave() { try { localStorage.setItem(wrFpLsKey(), JSON.stringify(wrActiveFilters)); } catch (e) {} }
+        function wrFpLoad() {
+          try {
+            var r = localStorage.getItem(wrFpLsKey());
+            if (!r) return [];
+            var p = JSON.parse(r);
+            return Array.isArray(p) ? p.filter(function (f) { return f && f.dim; }) : [];
+          } catch (e) { return []; }
+        }
+
+        function wrFpUpdateBadge() {
+          var badge = document.getElementById('an-wr-filter-badge');
+          if (!badge) return;
+          var n = wrActiveFilters.length;
+          badge.textContent = String(n);
+          if (n > 0) { badge.classList.add('an-wr-filter-btn__badge--visible'); }
+          else { badge.classList.remove('an-wr-filter-btn__badge--visible'); }
+        }
+
+        function wrFpUpdateCount(filteredN) {
+          var el = document.getElementById('an-wr-filter-count');
           if (!el) return;
-          if (!fbActiveFilters.length) { el.textContent = ''; return; }
-          el.textContent = fbGetFilteredTrades().length + ' / ' + allTrades.length + ' trades';
+          el.textContent = wrActiveFilters.length ? filteredN + ' of ' + allTrades.length + ' trades' : '';
         }
 
-        function fbRenderAll() {
-          fbUpdateCount();
-          renderAll(fbGetFilteredTrades());
+        function wrFpClose() {
+          var panel = document.getElementById('an-wr-filter-panel');
+          var btn = document.getElementById('an-wr-filter-btn');
+          if (panel) panel.hidden = true;
+          if (btn) btn.setAttribute('aria-expanded', 'false');
         }
 
-        function fbMakeRow() {
-          var rowDiv = document.createElement('div');
-          rowDiv.className = 'an-fb-row';
+        function wrFpOpen() {
+          var panel = document.getElementById('an-wr-filter-panel');
+          var btn = document.getElementById('an-wr-filter-btn');
+          if (panel) panel.hidden = false;
+          if (btn) btn.setAttribute('aria-expanded', 'true');
+        }
+
+        function wrFpRebuild() {
+          var box = document.getElementById('an-wr-fp-rows');
+          if (!box) return;
+          box.innerHTML = '';
+          wrActiveFilters.forEach(function (f) { box.appendChild(wrFpMakeRow(f)); });
+        }
+
+        function wrFpMakeRow(state) {
+          var row = document.createElement('div');
+          row.className = 'an-wr-fp-row';
 
           var dimSel = document.createElement('select');
-          dimSel.className = 'an-fb-dim-sel';
-          dimSel.setAttribute('aria-label', 'Filter variable');
-          FB_DIMS.forEach(function (dim) {
-            var o = document.createElement('option');
-            o.value = dim.id; o.textContent = dim.label;
+          dimSel.className = 'an-wr-fp-sel an-wr-fp-dim';
+          dimSel.setAttribute('aria-label', 'Variable');
+          wrFpAllDims().forEach(function (d) {
+            var o = document.createElement('option'); o.value = d.id; o.textContent = d.label;
             dimSel.appendChild(o);
           });
+          dimSel.value = state.dim;
 
-          var valWrap = document.createElement('div');
-          valWrap.className = 'an-fb-val-wrap';
+          var condSel = document.createElement('select');
+          condSel.className = 'an-wr-fp-sel an-wr-fp-cond';
+          condSel.setAttribute('aria-label', 'Condition');
+          [{ id: 'is', label: 'is' }, { id: 'is_not', label: 'is not' }].forEach(function (c) {
+            var o = document.createElement('option'); o.value = c.id; o.textContent = c.label;
+            condSel.appendChild(o);
+          });
+          condSel.value = state.condition || 'is';
 
-          var removeBtn = document.createElement('button');
-          removeBtn.type = 'button';
-          removeBtn.className = 'an-fb-row-remove';
-          removeBtn.setAttribute('aria-label', 'Remove filter');
-          removeBtn.textContent = '×';
+          var valArea = document.createElement('div');
+          valArea.style.cssText = 'flex:1;min-width:0;display:flex;align-items:center;gap:4px;';
 
-          rowDiv.appendChild(dimSel);
-          rowDiv.appendChild(valWrap);
-          rowDiv.appendChild(removeBtn);
-
-          var state = { dim: dimSel.value, val: '', preset: 'today', from: '', to: '' };
-          fbActiveFilters.push(state);
-
-          function buildValUI() {
-            valWrap.innerHTML = '';
-            state.dim = dimSel.value;
-            var dim = state.dim;
-
+          function buildValArea() {
+            valArea.innerHTML = '';
+            var dim = dimSel.value;
             if (dim === 'date') {
+              condSel.style.display = 'none';
               var presetSel = document.createElement('select');
-              presetSel.className = 'an-fb-preset-sel';
+              presetSel.className = 'an-wr-fp-sel an-wr-fp-val';
               presetSel.setAttribute('aria-label', 'Date range');
-              FB_DATE_PRESETS.forEach(function (pr) {
-                var o = document.createElement('option');
-                o.value = pr.id; o.textContent = pr.label;
+              WR_DATE_PRESETS.forEach(function (pr) {
+                var o = document.createElement('option'); o.value = pr.id; o.textContent = pr.label;
                 presetSel.appendChild(o);
               });
               presetSel.value = state.preset || 'today';
+              state.preset = presetSel.value;
 
               var customWrap = document.createElement('div');
-              customWrap.className = 'an-fb-date-inputs';
-              if (state.preset === 'custom') customWrap.classList.add('an-fb-date-inputs--visible');
+              customWrap.className = 'an-wr-fp-date-wrap' + (state.preset === 'custom' ? ' an-wr-fp-date-wrap--visible' : '');
 
               var fromIn = document.createElement('input');
               fromIn.type = 'date'; fromIn.value = state.from || '';
-              fromIn.setAttribute('aria-label', 'From date');
-
-              var sep = document.createElement('span');
-              sep.className = 'an-fb-date-sep'; sep.textContent = '→';
-
+              fromIn.setAttribute('aria-label', 'From');
+              var dsep = document.createElement('span');
+              dsep.className = 'an-wr-fp-date-sep'; dsep.textContent = '→';
               var toIn = document.createElement('input');
               toIn.type = 'date'; toIn.value = state.to || '';
-              toIn.setAttribute('aria-label', 'To date');
-
-              customWrap.appendChild(fromIn);
-              customWrap.appendChild(sep);
-              customWrap.appendChild(toIn);
-              valWrap.appendChild(presetSel);
-              valWrap.appendChild(customWrap);
-
-              state.preset = presetSel.value;
+              toIn.setAttribute('aria-label', 'To');
+              customWrap.appendChild(fromIn); customWrap.appendChild(dsep); customWrap.appendChild(toIn);
+              valArea.appendChild(presetSel); valArea.appendChild(customWrap);
 
               presetSel.addEventListener('change', function () {
                 state.preset = presetSel.value;
-                if (state.preset === 'custom') {
-                  customWrap.classList.add('an-fb-date-inputs--visible');
-                } else {
-                  customWrap.classList.remove('an-fb-date-inputs--visible');
-                  state.from = ''; state.to = '';
-                  fbRenderAll();
-                }
+                if (state.preset === 'custom') { customWrap.classList.add('an-wr-fp-date-wrap--visible'); }
+                else { customWrap.classList.remove('an-wr-fp-date-wrap--visible'); state.from = ''; state.to = ''; wrFpApplyRender(); }
               });
-              fromIn.addEventListener('change', function () {
-                state.from = fromIn.value; fbRenderAll();
-              });
-              toIn.addEventListener('change', function () {
-                state.to = toIn.value; fbRenderAll();
-              });
+              fromIn.addEventListener('change', function () { state.from = fromIn.value; wrFpApplyRender(); });
+              toIn.addEventListener('change', function () { state.to = toIn.value; wrFpApplyRender(); });
 
             } else {
+              condSel.style.display = '';
               var valSel = document.createElement('select');
-              valSel.className = 'an-fb-val-sel';
-              valSel.setAttribute('aria-label', 'Filter value');
-
+              valSel.className = 'an-wr-fp-sel an-wr-fp-val';
+              valSel.setAttribute('aria-label', 'Value');
               var vals = wrDistinctValues(allTrades, dim);
               if (!vals.length) {
-                var eo = document.createElement('option');
-                eo.value = ''; eo.textContent = '— no values —';
+                var eo = document.createElement('option'); eo.value = ''; eo.textContent = '— no values —';
                 valSel.appendChild(eo); valSel.disabled = true;
               } else {
-                valSel.disabled = false;
                 vals.forEach(function (v) {
-                  var o = document.createElement('option');
-                  o.value = v; o.textContent = v;
+                  var o = document.createElement('option'); o.value = v; o.textContent = v;
                   valSel.appendChild(o);
                 });
-                if (state.val && vals.indexOf(state.val) !== -1) {
-                  valSel.value = state.val;
-                } else {
-                  valSel.value = vals[0];
-                  state.val = vals[0];
-                }
+                valSel.value = (state.val && vals.indexOf(state.val) !== -1) ? state.val : vals[0];
+                state.val = valSel.value;
               }
-              valWrap.appendChild(valSel);
-              state.val = valSel.value;
-
-              valSel.addEventListener('change', function () {
-                state.val = valSel.value; fbRenderAll();
-              });
+              valArea.appendChild(valSel);
+              valSel.addEventListener('change', function () { state.val = valSel.value; wrFpApplyRender(); });
             }
           }
 
-          buildValUI();
-          fbRenderAll();
+          buildValArea();
 
           dimSel.addEventListener('change', function () {
-            state.dim = dimSel.value;
-            state.val = ''; state.preset = 'today'; state.from = ''; state.to = '';
-            buildValUI(); fbRenderAll();
+            state.dim = dimSel.value; state.val = ''; state.preset = 'today'; state.from = ''; state.to = '';
+            buildValArea(); wrFpApplyRender();
+          });
+          condSel.addEventListener('change', function () { state.condition = condSel.value; wrFpApplyRender(); });
+
+          var rmBtn = document.createElement('button');
+          rmBtn.type = 'button'; rmBtn.className = 'an-wr-fp-remove';
+          rmBtn.setAttribute('aria-label', 'Remove filter'); rmBtn.textContent = '×';
+          rmBtn.addEventListener('click', function () {
+            var i = wrActiveFilters.indexOf(state);
+            if (i !== -1) wrActiveFilters.splice(i, 1);
+            wrFpSave(); wrFpRebuild(); wrFpApplyRender();
           });
 
-          removeBtn.addEventListener('click', function () {
-            var idx = fbActiveFilters.indexOf(state);
-            if (idx !== -1) fbActiveFilters.splice(idx, 1);
-            var container = document.getElementById('an-fb-rows');
-            if (container && container.contains(rowDiv)) container.removeChild(rowDiv);
-            fbUpdateCount(); fbRenderAll();
+          row.appendChild(dimSel); row.appendChild(condSel); row.appendChild(valArea); row.appendChild(rmBtn);
+          return row;
+        }
+
+        function wrFpApplyRender() {
+          wrFpSave();
+          wrFpUpdateBadge();
+          var filtered = applyWrFilters(allTrades, wrActiveFilters);
+          wrFpUpdateCount(filtered.length);
+          renderWinRateHero(filtered);
+        }
+
+        function wrFpAddFilter() {
+          var dims = wrFpAllDims();
+          var dim = dims[0].id;
+          var vals = wrDistinctValues(allTrades, dim);
+          wrActiveFilters.push({ dim: dim, condition: 'is', val: vals[0] || '', preset: 'today', from: '', to: '' });
+          wrFpSave(); wrFpRebuild(); wrFpApplyRender();
+        }
+
+        function wrBindFilterPanel() {
+          if (wrFilterPanelBound) return;
+          wrFilterPanelBound = true;
+          var btn = document.getElementById('an-wr-filter-btn');
+          var panel = document.getElementById('an-wr-filter-panel');
+          var addBtn = document.getElementById('an-wr-fp-add');
+          var clearBtn = document.getElementById('an-wr-fp-clear');
+          if (btn) {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              if (panel && !panel.hidden) { wrFpClose(); } else { wrFpOpen(); }
+            });
+          }
+          document.addEventListener('click', function (e) {
+            var wrap = document.getElementById('an-wr-filter-wrap');
+            if (!wrap || !panel || panel.hidden) return;
+            if (!wrap.contains(e.target)) wrFpClose();
           });
-
-          return rowDiv;
-        }
-
-        function fbAddRow() {
-          var container = document.getElementById('an-fb-rows');
-          if (!container) return;
-          container.appendChild(fbMakeRow());
-          fbUpdateCount();
-        }
-
-        function fbBindUiOnce() {
-          if (fbUiBound) return;
-          fbUiBound = true;
-          var addBtn = document.getElementById('an-fb-add-btn');
-          if (addBtn) addBtn.addEventListener('click', function () { fbAddRow(); });
+          if (addBtn) addBtn.addEventListener('click', function () { wrFpAddFilter(); });
+          if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+              wrActiveFilters = []; wrFpSave(); wrFpRebuild(); wrFpApplyRender();
+            });
+          }
         }
 
         var WR_HERO_SEGMENT_GLOW = [
@@ -3100,7 +3081,18 @@
           });
         }
         function renderWinRateHero(trades) {
-          var stats = computeWrStats(trades);
+          wrBindFilterPanel();
+          wrDynamicDims = wrCollectDynamicDims(trades.length ? trades : allTrades);
+          if (!wrFiltersHydrated) {
+            wrFiltersHydrated = true;
+            wrActiveFilters = wrFpLoad();
+            wrFpRebuild();
+          }
+          wrFpUpdateBadge();
+          var filtered = applyWrFilters(trades, wrActiveFilters);
+          wrFpUpdateCount(filtered.length);
+          var stats = computeWrStats(filtered);
+          trades = filtered;
           var elMeta = document.getElementById('an-wr-meta-trades');
           var elSample = document.getElementById('an-wr-meta-sample');
           var elPct = document.getElementById('an-wr-pct');
@@ -3392,17 +3384,15 @@
               var el = document.getElementById(id);
               if (el) el.textContent = id.indexOf('line') >= 0 ? '' : '—';
             });
-            fbBindUiOnce();
             renderAll([]);
             return;
           }
           bindMonteCarloRiskControlsOnce();
-          fbBindUiOnce();
-          fbRenderAll();
+          renderAll(allTrades);
           bindMonteCarloScenarioClicksOnce();
           initScrollAnim();
 
-          window.addEventListener('resize', debounce(function () { fbRenderAll(); }, 320));
+          window.addEventListener('resize', debounce(function () { renderAll(allTrades); }, 320));
 
           function runParticles() {
             try { initParticles(); } catch (e2) {}
@@ -3422,7 +3412,7 @@
                     allTrades = t;
                     if (allTrades.length) {
                       bindMonteCarloRiskControlsOnce();
-                      fbRenderAll();
+                      renderAll(allTrades);
                       bindMonteCarloScenarioClicksOnce();
                     }
                   }
