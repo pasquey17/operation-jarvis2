@@ -1,4 +1,4 @@
-import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=f9a2c6d4";
+import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=a3e8b1c0";
 import { startNotionAutoSync } from "/js/notion-sync-client.js";
 
 const API_CHAT = "/api/chat";
@@ -733,7 +733,7 @@ function getRecentTradesForChat(records) {
 
 /* ═══════════ Open greeting (STEP 1 — stats from loaded ledger only; no extra API calls) ═══════════ */
 
-const MAX_OPEN_GREETING_CHARS = 720;
+const MAX_OPEN_GREETING_CHARS = 300;
 
 /** Adelaide weekday + daypart — matches server/journal date tone. */
 function getAdelaideDayContext() {
@@ -792,6 +792,194 @@ function lossStreakFromNewest(sortedDesc) {
   return n;
 }
 
+function winStreakFromNewest(sortedDesc) {
+  let n = 0;
+  for (const r of sortedDesc) {
+    if (normOutcomeGreeting(r.outcome ?? r.Outcome) === "WIN") n += 1;
+    else break;
+  }
+  return n;
+}
+
+function hourAdelaideFromMs(ms) {
+  if (!Number.isFinite(ms)) return NaN;
+  try {
+    const parts = new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Adelaide",
+      hour: "numeric",
+      hour12: false,
+    }).formatToParts(new Date(ms));
+    for (const p of parts) {
+      if (p.type === "hour") return parseInt(p.value, 10);
+    }
+  } catch {
+    /* fall through */
+  }
+  return NaN;
+}
+
+function weekdayAdelaideFromMs(ms) {
+  if (!Number.isFinite(ms)) return "";
+  try {
+    return new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Adelaide",
+      weekday: "long",
+    }).format(new Date(ms));
+  } catch {
+    return "";
+  }
+}
+
+function daypartFromHour(h) {
+  if (h < 12) return "morning";
+  if (h < 17) return "afternoon";
+  return "evening";
+}
+
+function recordWeekday(rec) {
+  const w = String(rec.weekday ?? rec.Weekday ?? "").trim();
+  if (w) return w;
+  return weekdayAdelaideFromMs(parseRecordDateMs(rec));
+}
+
+function recordSession(rec) {
+  return String(rec.session ?? rec.Session ?? "").trim();
+}
+
+function normSessionKey(s) {
+  const u = String(s || "")
+    .trim()
+    .toUpperCase();
+  if (!u) return "";
+  if (u.includes("ASIA") || u.includes("TOKYO") || u.includes("SYD")) return "asia";
+  if (u.includes("LONDON") || u === "LDN") return "london";
+  if (u.includes("NEW YORK") || u.includes("NYC") || /\bNY\b/.test(u)) return "ny";
+  return u.toLowerCase();
+}
+
+/** Rough Adelaide clock session label for open greeting context. */
+function inferCurrentSessionLabel(hour) {
+  if (hour >= 7 && hour < 15) return "Asia";
+  if (hour >= 15 && hour < 23) return "London";
+  return "New York";
+}
+
+function sessionLabelPretty(key) {
+  if (key === "asia") return "Asia";
+  if (key === "london") return "London";
+  if (key === "ny") return "New York";
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function subsetWinRatePct(records) {
+  if (!records.length) return null;
+  let wins = 0;
+  for (const r of records) {
+    if (normOutcomeGreeting(r.outcome ?? r.Outcome) === "WIN") wins += 1;
+  }
+  return (wins / records.length) * 100;
+}
+
+function filterTradesByWeekday(records, weekday) {
+  const w = weekday.toLowerCase();
+  return records.filter((r) => recordWeekday(r).toLowerCase() === w);
+}
+
+function filterTradesByDaypart(records, daypart) {
+  return records.filter((r) => {
+    const h = hourAdelaideFromMs(parseRecordDateMs(r));
+    return Number.isFinite(h) && daypartFromHour(h) === daypart;
+  });
+}
+
+function filterTradesBySessionKey(records, sessionKey) {
+  if (!sessionKey) return [];
+  return records.filter((r) => normSessionKey(recordSession(r)) === sessionKey);
+}
+
+/**
+ * One contextual stat line for the current day + session window.
+ * Prefers the tightest slice with enough sample size.
+ */
+function buildContextStatLine(recs, weekday, daypart, currentSessionKey, bestSession) {
+  const minN = 4;
+  const dayLower = weekday.toLowerCase();
+  const dayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const daypartCap = daypart.charAt(0).toUpperCase() + daypart.slice(1);
+
+  const daySession = filterTradesBySessionKey(
+    filterTradesByWeekday(recs, dayLower),
+    currentSessionKey
+  );
+  if (daySession.length >= minN) {
+    const wr = subsetWinRatePct(daySession);
+    const label = sessionLabelPretty(currentSessionKey);
+    if (wr != null) {
+      return `${dayCap} ${label} you're at ${wr.toFixed(0)}% across ${daySession.length} trades.`;
+    }
+  }
+
+  const dayPartTrades = filterTradesByDaypart(
+    filterTradesByWeekday(recs, dayLower),
+    daypart
+  );
+  if (dayPartTrades.length >= minN) {
+    const wr = subsetWinRatePct(dayPartTrades);
+    if (wr != null) {
+      return `${dayCap} ${daypartCap.toLowerCase()}s sit around ${wr.toFixed(0)}% on ${dayPartTrades.length} fills.`;
+    }
+  }
+
+  const sessionTrades = filterTradesBySessionKey(recs, currentSessionKey);
+  if (sessionTrades.length >= minN) {
+    const wr = subsetWinRatePct(sessionTrades);
+    const label = sessionLabelPretty(currentSessionKey);
+    if (wr != null) {
+      return `Your ${label} book is running ${wr.toFixed(0)}% over ${sessionTrades.length} trades.`;
+    }
+  }
+
+  const dayTrades = filterTradesByWeekday(recs, dayLower);
+  if (dayTrades.length >= minN) {
+    const wr = subsetWinRatePct(dayTrades);
+    if (wr != null) {
+      return `${dayCap}s have been ${wr >= 50 ? "solid" : "tough"} at ${wr.toFixed(0)}% across ${dayTrades.length} trades.`;
+    }
+  }
+
+  const bestKey = normSessionKey(bestSession);
+  if (bestKey && bestKey !== currentSessionKey) {
+    const bestTrades = filterTradesBySessionKey(recs, bestKey);
+    if (bestTrades.length >= minN) {
+      const wr = subsetWinRatePct(bestTrades);
+      const label = sessionLabelPretty(bestKey);
+      if (wr != null) {
+        return `${label} has been your strongest window at ${wr.toFixed(0)}% on ${bestTrades.length} trades.`;
+      }
+    }
+  }
+
+  const wrAll = subsetWinRatePct(recs);
+  if (wrAll != null && recs.length >= 3) {
+    return `Overall you're at ${wrAll.toFixed(0)}% across ${recs.length} logged trades.`;
+  }
+  return `You've got ${recs.length} trades on the book to work with.`;
+}
+
+function buildCoachingLine(sortedDesc, winRate, weekday) {
+  const winStreak = winStreakFromNewest(sortedDesc);
+  const lossStreak = lossStreakFromNewest(sortedDesc);
+  const day = weekday.toLowerCase();
+
+  if (winStreak >= 2) return "You're running hot. Execute, don't improvise.";
+  if (lossStreak >= 2) return "Slow it down. Size down until the edge comes back.";
+  if (winRate != null && winRate > 50) return "Edge is there. Let the setups come to you.";
+  if (winRate != null && winRate < 40) return "A+ setups only today. Quality over quantity.";
+  if (day === "friday") return "End the week clean. Nothing you need to prove today.";
+  if (day === "monday") return "Fresh week. Take the first trade slow.";
+  return "Stay in your process.";
+}
+
 function traderDisplayName(userId) {
   const id = String(userId || "").trim();
   if (id === DEFAULT_USER_ID) return "Aiden";
@@ -844,102 +1032,54 @@ function gleanLedgerSnapshotClause(sortedNewestFirst, latestPairUpper) {
 }
 
 /**
- * Cold-open copy: grounded, human, no API call. Uses `td` + optional `userId` for first name only.
+ * Cold-open copy: three short lines, coach tone. Uses `td` + optional `userId` for first name only.
  */
 function buildSmartOpenGreeting(td, userId) {
-  const { weekday, daypart } = getAdelaideDayContext();
+  const { weekday, daypart, hour } = getAdelaideDayContext();
   const capDay = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const sessionLabel = inferCurrentSessionLabel(hour);
+  const currentSessionKey = normSessionKey(sessionLabel);
   const name = traderDisplayName(userId);
-  const lead = name ? `${name}, ${capDay} ${daypart}` : `${capDay} ${daypart}`;
+  const line1 = name
+    ? `${name}, ${capDay} ${sessionLabel}.`
+    : `${capDay} ${sessionLabel}.`;
 
   if (!td || td.loadError) {
-    return `${lead} — I couldn't pull your ledger just now. Try a refresh once; if it still won't load, it's usually sync or access, not you.`;
+    return `${line1}\nCouldn't load your ledger. Refresh once and we'll pick it up.`.slice(
+      0,
+      MAX_OPEN_GREETING_CHARS
+    );
   }
 
   const recs = Array.isArray(td.records) ? td.records : [];
   if (!recs.length) {
-    return `${lead} — nothing's on the book for this profile yet. Log a trade or sync Notion and we'll work from real lines.`;
+    return `${line1}\nNothing on the book yet. Log a trade and we'll work from real lines.`.slice(
+      0,
+      MAX_OPEN_GREETING_CHARS
+    );
   }
 
   const snap = td.snapshot != null && typeof td.snapshot === "object" ? td.snapshot : null;
   const sorted = sortedTradeRecordsDesc(recs);
-  const latest = sorted[0];
-  const streak = lossStreakFromNewest(sorted);
-
-  const total =
-    snap && snap.total != null && Number.isFinite(Number(snap.total))
-      ? Number(snap.total)
-      : recs.length;
   const winRate =
     snap && snap.winRate != null && Number.isFinite(Number(snap.winRate))
       ? Number(snap.winRate)
-      : null;
-  const expectancy =
-    snap && snap.expectancy != null && Number.isFinite(Number(snap.expectancy))
-      ? Number(snap.expectancy)
-      : null;
+      : subsetWinRatePct(recs);
   const bestSession = snap && snap.bestSession ? String(snap.bestSession).trim() : "";
 
-  let latestPairUpper = "";
-  let latestPhrase = "";
-  if (latest) {
-    const o = normOutcomeGreeting(latest.outcome ?? latest.Outcome);
-    const pair = String(latest.pair ?? latest.Pair ?? "")
-      .trim()
-      .toUpperCase() || "—";
-    latestPairUpper = pair;
-    const sess = String(latest.session ?? latest.Session ?? "").trim();
-    const tail =
-      o === "WIN"
-        ? "a win"
-        : o === "LOSS"
-          ? "a loss"
-          : o === "BE"
-            ? "flat / break-even"
-            : o
-              ? String(o)
-              : "something to review";
-    latestPhrase = sess
-      ? `Most recent fill: ${sess} ${pair}, ${tail}.`
-      : `Most recent fill: ${pair}, ${tail}.`;
-  }
+  const line2 = buildContextStatLine(
+    recs,
+    weekday,
+    daypart,
+    currentSessionKey,
+    bestSession
+  );
+  const line3 = buildCoachingLine(sorted, winRate, weekday);
 
-  const glean = gleanLedgerSnapshotClause(sorted, latestPairUpper);
-
-  const statsPhrase =
-    winRate != null
-      ? `You've got ${total} trades logged; win rate is about ${winRate.toFixed(1)}%.`
-      : `You've got ${total} trades logged.`;
-
-  let nudge = "";
-  if (streak >= 2 && total >= 2) {
-    nudge = `You've got ${streak} losses stacked at the top of the book — size down and restate the rule before the next entry.`;
-  } else if (expectancy != null && expectancy < 0 && total >= 8) {
-    nudge =
-      "Expectancy is negative across this sample — trade a little less until you fix one clear leak.";
-  } else if (winRate != null && winRate < 40 && total >= 6) {
-    nudge = "Win rate's soft on this volume — A+ setups only until the stats lift.";
-  } else if (weekday.toLowerCase() === "friday" && total >= 5) {
-    nudge =
-      "It's Friday — match size to how sharp you feel; sloppy execution shows up fast when you read the log back.";
-  } else if (bestSession && total >= 8) {
-    nudge = `Most of your trades sit in ${bestSession} — make sure that's real edge, not autopilot volume.`;
-  } else {
-    nudge = "Pick one lane — last loss, a session, or one stat — and we'll run it tight to what you logged.";
-  }
-
-  const s1Parts = [statsPhrase];
-  if (latestPhrase) s1Parts.push(latestPhrase);
-  if (glean) s1Parts.push(glean);
-  const sentence1 = `${lead} — ${s1Parts.join(" ")}`.replace(/\s+/g, " ").trim();
-  const s1Closed = sentence1.endsWith(".") ? sentence1 : `${sentence1}.`;
-  const sentence2 = nudge.trim();
-  const s2Closed = sentence2.endsWith(".") ? sentence2 : `${sentence2}.`;
-  let out = `${s1Closed} ${s2Closed}`.replace(/\s+/g, " ").trim();
-
-  if (typeof td.warning === "string" && td.warning.trim()) {
-    out = `${out} — heads up: ${td.warning.trim()}`;
-  }
+  let out = `${line1}\n${line2}\n${line3}`
+    .split("\n")
+    .map((l) => l.replace(/\s+/g, " ").trim())
+    .join("\n");
 
   if (out.length > MAX_OPEN_GREETING_CHARS) {
     out = `${out.slice(0, MAX_OPEN_GREETING_CHARS - 1).trimEnd()}…`;
