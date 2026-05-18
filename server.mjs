@@ -1627,6 +1627,56 @@ function findTradeIndexByInstrumentMention(arr, messageLower) {
   return -1;
 }
 
+/** Newest-first index of the single highest-R trade in the list. */
+function findBestRrTradeIndex(arr) {
+  let bestIx = -1;
+  let bestRr = -Infinity;
+  for (let i = 0; i < arr.length; i++) {
+    const rr = Number(arr[i]?.rr);
+    if (Number.isFinite(rr) && rr > bestRr) {
+      bestRr = rr;
+      bestIx = i;
+    }
+  }
+  return bestIx;
+}
+
+/**
+ * Pinned + high-R rows that should carry `trade_images` so examples map to the right chart.
+ * (most recent, most recent win/loss, best RR, any trade above 3R)
+ */
+function tradeChartContextIndices(tradesForChat) {
+  const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
+  const indices = new Set();
+
+  const add = (i) => {
+    if (typeof i === "number" && i >= 0 && i < arr.length) indices.add(i);
+  };
+
+  const idxWin = arr.findIndex((t) =>
+    String(t.outcome || "").toLowerCase().includes("win")
+  );
+  const idxLoss = arr.findIndex((t) =>
+    String(t.outcome || "").toLowerCase().includes("loss")
+  );
+  const idxBestRr = findBestRrTradeIndex(arr);
+
+  add(0);
+  add(idxWin);
+  add(idxLoss);
+  add(idxBestRr);
+
+  for (let i = 0; i < arr.length; i++) {
+    const rr = Number(arr[i]?.rr);
+    if (Number.isFinite(rr) && rr > 3) add(i);
+  }
+
+  const sorted = [...indices]
+    .sort((a, b) => a - b)
+    .slice(0, MAX_TRADES_WITH_PHOTO_LINKS_IN_CHAT);
+  return new Set(sorted);
+}
+
 /**
  * Which rows in `tradesForChat` (newest first) should include `trade_images` URLs.
  * Notion signed URLs are massive — attaching them to every row exceeds model context limits.
@@ -1634,7 +1684,7 @@ function findTradeIndexByInstrumentMention(arr, messageLower) {
 function tradePhotoLinkIndices(tradesForChat, messageSource) {
   const arr = Array.isArray(tradesForChat) ? tradesForChat : [];
   const s = String(messageSource || "").trim().toLowerCase();
-  const indices = new Set();
+  const indices = new Set(tradeChartContextIndices(arr));
 
   const add = (i) => {
     if (typeof i === "number" && i >= 0 && i < arr.length) indices.add(i);
@@ -1651,12 +1701,6 @@ function tradePhotoLinkIndices(tradesForChat, messageSource) {
       String(t.outcome || "").toLowerCase().includes("be") ||
       String(t.outcome || "").toLowerCase().includes("break")
   );
-
-  /* Pinned anchors — always attach charts when photo mode is on (handleChat slim rows). */
-  add(0);
-  add(idxWin);
-  add(idxLoss);
-  add(idxBe);
 
   if (
     /\blast\s+win\b|\bmost\s+recent\s+win\b|\bmy\s+last\s+win\b/.test(s) ||
@@ -2607,13 +2651,14 @@ async function handleChat(req, res) {
       String(t.outcome || "").toLowerCase().includes("break")
   );
 
+  const chartContextIdxSet = tradeChartContextIndices(tradesForChat);
   const photoIdxSet = includePhotoLinks
     ? tradePhotoLinkIndices(tradesForChat, messageSource)
-    : new Set();
+    : chartContextIdxSet;
 
   const slimOptsAt = (i) => {
     const o = {};
-    if (includePhotoLinks && photoIdxSet.has(i)) o.includeTradeImages = true;
+    if (photoIdxSet.has(i)) o.includeTradeImages = true;
     if (wantsNotionExtras && extrasIdxSet.has(i)) {
       const slice = pickNotionExtrasSlice(
         tradesForChat[i]?.notion_extras,
@@ -2624,9 +2669,9 @@ async function handleChat(req, res) {
     return o;
   };
 
-  if (includePhotoLinks) {
+  if (photoIdxSet.size > 0) {
     console.log(
-      `[chat] trade photo links — rows with image URLs (0=newest): ${[...photoIdxSet].sort((a, b) => a - b).join(",")}`
+      `[chat] trade chart URLs — rows with image URLs (0=newest): ${[...photoIdxSet].sort((a, b) => a - b).join(",")}`
     );
   }
   if (wantsNotionExtras) {
@@ -2709,7 +2754,7 @@ async function handleChat(req, res) {
           "model",
           "notes",
         ];
-  if (includePhotoLinks && !columnKeys.includes("trade_images")) {
+  if (photoIdxSet.size > 0 && !columnKeys.includes("trade_images")) {
     columnKeys = [...columnKeys, "trade_images"];
   }
   if (
@@ -2736,7 +2781,7 @@ async function handleChat(req, res) {
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
     (includePhotoLinks
-      ? "\n\nTRADE PHOTOS — Chart context is ON for this turn (either you asked for screenshots, or your message is a tight review intent like last loss / walk-through / execution check). Some trade rows include a \"trade_images\" array below (ordered: \"Trade Photo\" label first when present; else first image). When you discuss a row that still has charts, paste the primary chart as one full HTTPS URL on its own line at the end of your reply so the HUD can render a thumbnail — do not claim to see pixels. If multiple scoped rows have images, at most one URL per row unless the user explicitly asked for all photos/charts/screenshots. If trade_images is missing for that row, say no screenshot is stored."
+      ? "\n\nTRADE PHOTOS — Chart context is ON for this turn (either you asked for screenshots, or your message is a tight review intent like last loss / walk-through / execution check). Some trade rows include a \"trade_images\" array below (ordered: \"Trade Photo\" label first when present; else first image); pinned example rows (most recent, last win, last loss, best RR) and trades above 3R include charts when stored. When you reference a specific trade by date in your response, paste that trade's image URL on its own line immediately after mentioning it. Use the trade_images URL from that specific trade row — not the most recent trade. Match by date_local on the row. If the trade you're referencing has no image, skip it silently. For other chart mentions, paste one full HTTPS URL per row on its own line so the HUD can render thumbnails — do not claim to see pixels. If the user explicitly asked for all photos/charts/screenshots, you may include more than one URL per row."
       : "") +
     (wantsNotionExtras
       ? "\n\nNOTION EXTRAS — Some trades may include a selective \"notion_extras\" object (extra Notion fields). It appears only when the user asked about dimensions beyond core stats (psychology, timeframes, volume, tags, etc.). Use these values when present; do not invent fields."
