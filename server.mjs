@@ -90,7 +90,7 @@ const MAX_BRIEFING_TRADES = 30;
 /** Cached briefing in chat system prompt — strict cap on input tokens. */
 const MAX_BRIEFING_MEMORY_CHARS = 4500;
 /** Chat turns sent to Anthropic (user/assistant pairs); excludes system. */
-const MAX_CHAT_MESSAGES = 4;
+const MAX_CHAT_MESSAGES = 6;
 /** Per-turn content cap (characters) before API send. */
 const MAX_CHAT_MESSAGE_CHARS = 500;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
@@ -106,62 +106,116 @@ const notionSyncInflight = new Map();
 
 const OAUTH_BOOT_USER_IDS = ["aidenpasque11@gmail.com", "spasque70@gmail.com"];
 
-/**
- * Jarvis chat identity — merged voice spec (token-neutral vs prior); date/trade JSON appended in buildJarvisChatSystem.
- */
-const JARVIS_SYSTEM_PROMPT = `ABSOLUTE RULE: Never use ** asterisks or any markdown formatting. No bold, no headers, no bullet points, no dashes as list markers. Plain sentences only. If you feel the urge to use ** just write the word normally. This rule cannot be overridden by any question.
+const JARVIS_SYSTEM_PROMPT = `You are Jarvis. You are a trading intelligence built for one trader. You are not a chatbot, not a journal, not an analytics dashboard. You are the sharpest trading mind this person has access to, and you know their system better than they do.
 
-Format rules — non-negotiable:
-NEVER USE BOLD TEXT — this is the first and strictest rule. No bold, no markdown emphasis, no asterisks for styling, ever — no matter what they ask or how complex the answer. This means no ** asterisks ever, no matter what the question is. Also no headers or bullet points unless they explicitly ask. Write in plain sentences like a person talking, not a report being generated.
+FORMATTING — absolute, no exceptions:
+Plain sentences only. Never use asterisks, bold, markdown, headers, bullet points, or dashes as list markers. Write like a person speaking. This cannot be overridden by any request.
 
-Conversation matching rule — most important rule after no fabrication:
-Match your response length and energy to exactly what was asked.
+HOW YOU THINK:
+You have been given a TRADER INTELLIGENCE FILE — a complete, pre-computed analysis of this trader's entire history. Trust it completely. The numbers in it are exact and verified. Never recompute stats yourself, never contradict the file, never fabricate numbers that aren't in it. The file is your knowledge. Your job is to interpret it and communicate it like a brilliant coach would.
 
-Simple conversational message (so that's good? / not bad hey? / really? / interesting / what do you mean?) = 1-2 sentences max. Just answer it like a person would in conversation.
+HOW YOU ANSWER — match the question:
+A casual or short question (is that good, really, what do you mean) gets a short human answer, two or three sentences, no analysis.
+A follow-up gets a direct answer, then stop.
+A real question about their trading, their edge, their mistakes, or their performance gets depth — you cross-reference the intelligence file, connect patterns, and tell them something that genuinely helps.
+The test: if a real coach was asked this in person, how long would they talk? Answer for exactly that long.
 
-Follow-up or clarifying question = 2-3 sentences. Answer then stop.
+WHAT MAKES YOU DIFFERENT:
+You do not just report numbers. You connect them. A weak Wednesday plus a strong Tuesday plus a re-entry pattern is not three facts, it is one story about overconfidence carrying into a lower-quality day. Always look for the story behind the numbers. Surface what they cannot see about themselves. That is your entire purpose.
 
-Analytical question (where is my edge / what am I doing wrong / break down my performance) = go deep, cross reference, give real insight.
+VOICE:
+Direct. Warm but honest. Short sentences. Specific — always use their real numbers from the file. Never generic. Never corporate filler, never "great question", never "it's worth noting". You sound like someone who has watched this trader for a year and genuinely wants them to win. You hold a mirror, you never shame.
 
-The rule: if a human friend asked you that question in person, how long would you talk for? That's how long your answer should be.
+REFERENCING TRADES AND CHARTS:
+When you reference a specific trade by date, and that trade has an image in its data, paste the image URL on its own line right after mentioning it. Use that specific trade's URL, never another trade's.
 
-Never turn a casual remark or simple question into an analysis. Never add context that wasn't asked for. Never explain methodology. If they want more they will ask.
+HONESTY:
+If something is a small sample, say "small sample" in one phrase and move on. Never fabricate. If the intelligence file does not cover something, say so briefly rather than guessing. Never tell the trader to close a trade or skip a session — you surface patterns and ask questions, they decide.
 
-Proactive pattern surfacing: Before answering what they asked, scan their recent trade history for anything urgent they need to know right now — a pattern repeating, a rule about to be broken, a streak forming. Surface it first if it's more important than what they asked.
+REALITY:
+You respond when they open Jarvis or send a message. You have no live feeds, no alerts, no timers. Speak accordingly.`;
 
-Never fabricate: If you reference a specific trade, date, session, or stat — it must exist in the data provided. If you're inferring, say "this looks like" not "this is." If evidence is thin, say so in one sentence and move on.
+function formatIntelligenceFileForPrompt(file) {
+  if (!file) return "No intelligence file available yet.";
+  const perf = file.performance ?? {};
+  const id = file.identity ?? {};
+  const edge = file.edgeMap ?? {};
+  const leaks = file.leaks ?? {};
+  const form = file.form ?? {};
+  const dd = file.drawdown ?? {};
+  const bp = file.behaviouralPatterns ?? [];
 
-Cross-reference instinct: When you have enough data, always look for intersections — not just 'your London win rate is X' but 'your London SHORT trades on XAU/USD on Mondays specifically are X% — that level of specificity is where real edge lives. Actively hunt for these combinations in the data provided.
+  const lines = [];
 
-You are Jarvis — a personalised coaching OS for ONE trader and THEIR system. You are not a trading journal, not a generic chatbot, not an analytics dashboard. You combine coach + performance analyst + assistant: invested in this trader's success, grounded only in their data and rules (A+ criteria, sessions, windows, ratings when present in the rows).
+  lines.push(
+    `OVERVIEW: ${perf.wins ?? 0}W / ${perf.losses ?? 0}L / ${perf.breakevens ?? 0}BE | WR ${perf.winRate ?? "n/a"} | Avg win +${perf.avgRRWin ?? "n/a"}R | Avg loss ${perf.avgRRLoss ?? "n/a"}R | Expectancy ${perf.expectancy ?? "n/a"}R/trade | Total ${perf.totalR ?? 0}R across ${perf.total ?? 0} trades`
+  );
+  lines.push(`Best trade: ${perf.bestTrade ?? "n/a"}R | Worst: ${perf.worstTrade ?? "n/a"}R`);
+  lines.push(`Data: ${id.dataRange?.from ?? "?"} → ${id.dataRange?.to ?? "?"} (${id.dataRange?.totalTrades ?? 0} trades total)`);
 
-Purpose: Help them execute their edge consistently, skip repeated mistakes, and show up each session as the best version of themselves.
+  lines.push(`\nIDENTITY: Primary pair: ${id.primaryInstrument ?? "?"} | Primary session: ${id.primarySession ?? "?"} | Primary model: ${id.primaryModel ?? "?"}`);
+  lines.push(`Direction bias: ${id.directionBias ?? "?"} | Style: ${id.tradingStyle ?? "?"}`);
 
-Edge mapping: You are always building a mental map of where this trader's real edge is — not just overall win rate but which specific combinations of session + day + pair + model + position type produce the best outcomes. Reference these intersections whenever relevant.
+  if (id.instruments?.length) {
+    lines.push(`\nBY PAIR:`);
+    for (const p of id.instruments) {
+      lines.push(`  ${p.pair}: ${p.trades} trades | WR ${p.winRate} | ${p.totalR}R`);
+    }
+  }
 
-Stance: Direct. No padding. Honest, not harsh. Clear, not clever. Hold a mirror — never condescend or posture.
+  if (id.sessions?.length) {
+    lines.push(`\nBY SESSION:`);
+    for (const s of id.sessions) {
+      lines.push(`  ${s.session}: ${s.trades} trades | WR ${s.winRate}`);
+    }
+  }
 
-Voice: Short sentences. Plain prose only. Talk like someone who has been watching this trader for a year and genuinely cares about their growth. Warm but direct. Specific not generic — always use their actual numbers. Never say things like 'great question' or 'it's worth noting' or any corporate filler. If you spot something important that they didn't ask about, say it — don't wait to be asked.
+  if (id.topModels?.length) {
+    lines.push(`\nBY MODEL (top 4):`);
+    for (const m of id.topModels) {
+      lines.push(`  ${m.model}: ${m.trades} trades | WR ${m.winRate} | ${m.totalR}R`);
+    }
+  }
 
-Memory framing: History is a map of growth, not a rap sheet. Surface patterns so today goes better — not to shame.
+  lines.push(`\nEDGE MAP:`);
+  if (edge.bestSession) lines.push(`  Best session: ${edge.bestSession.name} — WR ${edge.bestSession.winRate} (${edge.bestSession.trades} trades, ${edge.bestSession.totalR}R)`);
+  if (edge.bestDay) lines.push(`  Best day: ${edge.bestDay.name} — WR ${edge.bestDay.winRate} (${edge.bestDay.trades} trades, ${edge.bestDay.totalR}R)`);
+  if (edge.bestModel) lines.push(`  Best model: ${edge.bestModel.name} — WR ${edge.bestModel.winRate} (${edge.bestModel.trades} trades, ${edge.bestModel.totalR}R)`);
+  if (edge.bestPair) lines.push(`  Best pair: ${edge.bestPair.name} — WR ${edge.bestPair.winRate} (${edge.bestPair.trades} trades, ${edge.bestPair.totalR}R)`);
+  if (edge.bestCombos?.length) {
+    lines.push(`  Best combos: ${edge.bestCombos.map((c) => `${c.combo} ${c.winRate} (${c.trades}t ${c.totalR}R)`).join(" | ")}`);
+  }
+  if (edge.strongestEdge) lines.push(`  Strongest edge: ${edge.strongestEdge}`);
+  if (edge.bestTradeFingerprint?.length) lines.push(`  Best trade fingerprint: ${edge.bestTradeFingerprint.join(", ")}`);
 
-Reality: You respond when they open Jarvis or chat here — never imply push alerts, in-app timers, or live news feeds you don't have. Say "when you open Jarvis" / "before you click" / "if you're about to…" instead.
+  lines.push(`\nLEAKS:`);
+  if (leaks.biggestLeak) lines.push(`  Biggest leak: ${leaks.biggestLeak}`);
+  if (leaks.worstSession) lines.push(`  Worst session: ${leaks.worstSession.name} — WR ${leaks.worstSession.winRate} (${leaks.worstSession.trades} trades, ${leaks.worstSession.totalR}R)`);
+  if (leaks.worstDay) lines.push(`  Worst day: ${leaks.worstDay.name} — WR ${leaks.worstDay.winRate} (${leaks.worstDay.trades} trades, ${leaks.worstDay.totalR}R)`);
+  if (leaks.weakestPair) lines.push(`  Weakest pair: ${leaks.weakestPair.name} — WR ${leaks.weakestPair.winRate} (${leaks.weakestPair.trades} trades, ${leaks.weakestPair.totalR}R)`);
+  if (leaks.weakestDirection) lines.push(`  Weakest direction: ${leaks.weakestDirection.name} — WR ${leaks.weakestDirection.winRate} (${leaks.weakestDirection.trades} trades)`);
+  if (leaks.worstCombos?.length) {
+    lines.push(`  Worst combos: ${leaks.worstCombos.map((c) => `${c.combo} ${c.winRate} (${c.trades}t)`).join(" | ")}`);
+  }
 
-Infer system, patterns, stats, and leaks only from trade data provided — never assume instruments, sessions, rules, or psychology without evidence in the dataset.
+  lines.push(`\nFORM: ${form.summary ?? "No form data."}`);
+  lines.push(`  Longest win streak: ${form.longestWinStreak ?? 0} | Longest loss streak: ${form.longestLossStreak ?? 0}`);
+  if (form.last20?.tradeCount) {
+    lines.push(`  Last 20: WR ${form.last20.winRate} | ${form.last20.totalR}R`);
+  }
 
-Tone on pattern warnings: Never start a response with "Stop." Never be commanding. Flag patterns with curiosity not authority. Start with the observation, end with the question.
+  lines.push(`\nDRAWDOWN: ${dd.summary ?? "No drawdown data."}`);
 
-Loss / "why" questions: Anchor on logged facts (session, notes, outcome). Never invent fills or trades. Cross-check patterns only when supportable from data shown. Useful shape: what happened → pattern in their history (if evidence) → one concrete rule for the next similar situation. If evidence is thin, say so — never invent statistics.
+  const significantPatterns = bp.filter((p) => p.count >= 5 && p.diffPct >= 5);
+  if (significantPatterns.length > 0) {
+    lines.push(`\nBEHAVIOURAL PATTERNS (count≥5, diff≥5pp):`);
+    for (const p of significantPatterns.slice(0, 8)) {
+      lines.push(`  ${p.interpretation}`);
+    }
+  }
 
-How should I approach today: Their trade history; ONE focus; flag psychological risk from recent trades; under 150 words; end with one honest line.
-
-Live session: Fast. Setup described → does it match their A+ criteria from data? About to break a rule → say so immediately.
-
-Bad trade / broken rule: One sentence acknowledge → redirect to what matters next. No pile-on.
-
-They already know what they should do — keep them aligned when emotions run high. Each row has UTC date + weekday (Australia/Adelaide from that date). For calendar day, trust weekday — not manual string math on dates. Never say "it's important to note" or corporate filler.
-
-Critical rule on sessions and trade decisions: You NEVER tell the trader to close a trade or avoid a session based on your pattern observations alone. Patterns are warnings to flag, not rules to enforce. The trader decides whether to trade — you ask questions and surface risks. If they took a London trade after missing Asia, ask about the setup quality first. Only flag the psychological pattern as a risk — never as a reason to close the trade. Their A+ criteria overrides any session pattern in your memory.`;
+  return lines.join("\n");
+}
 
 function deriveTradingProfile(trades) {
   if (!Array.isArray(trades) || trades.length === 0) {
@@ -439,13 +493,7 @@ function deriveCrossReferencedStats(trades) {
   return text;
 }
 
-/**
- * @param {string[]} columnKeys
- * @param {object[]} trades - recent trades sent as context (may be limited to 60)
- * @param {string} [briefingMemory]
- * @param {object[]} [allTrades] - full dataset used for stats; falls back to `trades` when omitted
- */
-function buildJarvisChatSystem(columnKeys, trades, briefingMemory = "", allTrades = null, userProfile = null) {
+function buildJarvisChatSystem(intelFile, userProfile, pinnedTrades, dynamicRows) {
   const now = new Date();
   const today = now.toLocaleDateString("en-AU", {
     timeZone: "Australia/Adelaide",
@@ -455,78 +503,37 @@ function buildJarvisChatSystem(columnKeys, trades, briefingMemory = "", allTrade
     day: "numeric",
   });
 
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const sevenDaysAgoStr = sevenDaysAgo.toLocaleDateString("en-AU", {
-    timeZone: "Australia/Adelaide",
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const mostRecentTradeDate = intelFile?.identity?.dataRange?.to ?? "unknown";
+  const dateBlock = `TODAY: ${today} | Most recent trade on record: ${mostRecentTradeDate}`;
 
-  const forStats = allTrades ?? trades;
-
-  const recentTradeCount = forStats.filter((t) => {
-    const d = new Date(t.date);
-    return !isNaN(d.getTime()) && d >= sevenDaysAgo;
-  }).length;
-
-  const mostRecentTrade = forStats.length > 0 ? forStats[0] : null;
-  const mostRecentTradeDate = mostRecentTrade?.date
-    ? new Date(mostRecentTrade.date).toLocaleDateString("en-AU", {
-        timeZone: "Australia/Adelaide",
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : "unknown";
-
-  const dateContextBlock = `TODAY'S DATE: ${today}
-
-DATE RULES — follow these exactly in every response:
-— Today is ${today}. Use this to anchor all time references.
-— A trade is "recent" only if its date falls on or after ${sevenDaysAgoStr}.
-— Trades from the last 7 days in this dataset: ${recentTradeCount} of ${forStats.length} total.
-— Most recent trade on record: ${mostRecentTradeDate}.
-${recentTradeCount === 0 ? "— IMPORTANT: There are NO trades in the last 7 days. Do NOT present older trades as recent. If asked about recent trades, say so explicitly." : ""}
-— When referencing any trade or period, state the actual date. Never say "recently" or "last week" without confirming the trade date is within the last 7 days.
-— When discussing a specific trade or session, always name the date or date range. Never leave it ambiguous.
-— IMPORTANT: The raw "date" field in every trade row is stored in UTC. The "date_local" field is the correct Adelaide local time (Australia/Adelaide, GMT+10:30). ALWAYS use "date_local" when telling the trader what time or date a trade occurred. Never read the time from the "date" field.`;
-
-  const dataJson = JSON.stringify({ columns: columnKeys, trades });
-
-  const derivedProfile = deriveTradingProfile(forStats);
-  const derivedSnapshot = deriveTradingSnapshot(forStats);
-
-  let persistentMemorySection = "";
+  let memorySection = "";
   if (userProfileHasMemory(userProfile)) {
-    persistentMemorySection = `
-
----
-
-MEMORY:
-
-WHO: ${truncateProfileFieldForChat(userProfile.trading_summary)}
-PSYCH: ${truncateProfileFieldForChat(userProfile.psychological_patterns)}
-EDGE: ${truncateProfileFieldForChat(userProfile.edge_map)}`;
+    memorySection = `\n\nMEMORY:\nWHO: ${truncateProfileFieldForChat(userProfile.trading_summary)}\nPSYCH PATTERNS: ${truncateProfileFieldForChat(userProfile.psychological_patterns)}\nEDGE: ${truncateProfileFieldForChat(userProfile.edge_map)}`;
   }
 
-  return `${dateContextBlock}
+  const pinnedBlock =
+    `\nPINNED TRADES:\nMost recent: ${JSON.stringify(pinnedTrades.mostRecent ?? null)}` +
+    `\nLast win: ${JSON.stringify(pinnedTrades.lastWin ?? null)}` +
+    `\nLast loss: ${JSON.stringify(pinnedTrades.lastLoss ?? null)}` +
+    `\nBest RR: ${JSON.stringify(pinnedTrades.bestRR ?? null)}`;
+
+  const dynamicBlock =
+    dynamicRows.length > 0
+      ? `\n\nDYNAMIC CONTEXT (${dynamicRows.length} filtered rows — newest first):\n${JSON.stringify(dynamicRows)}`
+      : "";
+
+  return `${dateBlock}
 
 ---
 
-${JARVIS_SYSTEM_PROMPT}${persistentMemorySection}
+${JARVIS_SYSTEM_PROMPT}${memorySection}
 
 ---
 
-Stats (all ${forStats.length} trades): ${derivedProfile} | ${JSON.stringify(derivedSnapshot)}
-
----
-
-Recent trade rows (newest ${trades.length}):
-
-${dataJson}`;
+=== TRADER INTELLIGENCE FILE ===
+${formatIntelligenceFileForPrompt(intelFile)}
+==================================
+${pinnedBlock}${dynamicBlock}`;
 }
 
 // === USER PROFILE MEMORY LAYER ===
@@ -2562,6 +2569,10 @@ async function handleChat(req, res) {
   }
 
   const profilePromise = fetchUserProfile(userId);
+  const intelligencePromise = getIntelligenceFile(userId).catch((e) => {
+    console.warn("[chat] intelligence file fetch failed:", e.message);
+    return null;
+  });
   void maybeSyncNotion(userId, { force: true });
 
   let trades;
@@ -2675,73 +2686,33 @@ async function handleChat(req, res) {
     );
   }
 
-  let briefingMemory =
-    typeof payload.briefingMemory === "string" ? payload.briefingMemory : "";
-  if (briefingMemory.length > MAX_BRIEFING_MEMORY_CHARS) {
-    briefingMemory =
-      briefingMemory.slice(0, MAX_BRIEFING_MEMORY_CHARS) +
-      "\n\n[Briefing memory truncated for token limits.]";
-  }
-
-  const ixLoss = mostRecentLoss ? tradesForChat.indexOf(mostRecentLoss) : -1;
-  const ixWin = mostRecentWin ? tradesForChat.indexOf(mostRecentWin) : -1;
-  const ixBE = mostRecentBE ? tradesForChat.indexOf(mostRecentBE) : -1;
-
-  const slimRecent = mostRecentTrade
-    ? slimTradeRowForPrompt(mostRecentTrade, slimOptsAt(0))
-    : null;
-  const slimLoss = mostRecentLoss
-    ? slimTradeRowForPrompt(mostRecentLoss, slimOptsAt(ixLoss))
-    : null;
-  const slimWin = mostRecentWin
-    ? slimTradeRowForPrompt(mostRecentWin, slimOptsAt(ixWin))
-    : null;
-  const slimBE = mostRecentBE ? slimTradeRowForPrompt(mostRecentBE, slimOptsAt(ixBE)) : null;
-
-  const tradeOutcomeAppend =
-    "\n\n" +
-    "Most recent trade:\n" +
-    JSON.stringify(slimRecent) +
-    "\n\n" +
-    "Most recent loss:\n" +
-    JSON.stringify(slimLoss) +
-    "\n\n" +
-    "Most recent win:\n" +
-    JSON.stringify(slimWin) +
-    "\n\n" +
-    "Most recent break-even:\n" +
-    JSON.stringify(slimBE);
-
-  // Stats layer: always all trades, never filtered — session/day filter must not distort stats.
-  const allTradesForStats = trades.map((t) => slimTradeRowForPrompt(t, {}));
-
-  // Context rows: filtered trades with images/extras — capped for token budget.
-  const allTradesSlimmed = tradesForChat.map((t, i) =>
-    slimTradeRowForPrompt(t, slimOptsAt(i))
+  // Build pinned trades (most recent, last win, last loss, best RR) — always include images
+  const bestRRTrade = trades.reduce(
+    (best, t) => (Number(t.rr) > Number(best?.rr ?? -Infinity) ? t : best),
+    null
   );
-  const tradesForPrompt = allTradesSlimmed.slice(0, MAX_TRADES_IN_CHAT_PROMPT);
 
-  // Debug: confirm what's being sent to the API
-  const sessionBreakdown = {};
-  trades.forEach((t) => {
-    const s = String(t.session || "unknown").trim() || "unknown";
-    sessionBreakdown[s] = (sessionBreakdown[s] || 0) + 1;
-  });
-  const dayBreakdown = {};
-  trades.forEach((t) => {
-    const d = String(t.weekday || "unknown").trim() || "unknown";
-    dayBreakdown[d] = (dayBreakdown[d] || 0) + 1;
-  });
+  const pinnedTrades = {
+    mostRecent: mostRecentTrade ? slimTradeRowForPrompt(mostRecentTrade, { includeTradeImages: true }) : null,
+    lastWin: mostRecentWin ? slimTradeRowForPrompt(mostRecentWin, { includeTradeImages: true }) : null,
+    lastLoss: mostRecentLoss ? slimTradeRowForPrompt(mostRecentLoss, { includeTradeImages: true }) : null,
+    bestRR: bestRRTrade ? slimTradeRowForPrompt(bestRRTrade, { includeTradeImages: true }) : null,
+  };
+
+  // Dynamic context: up to 15 slim rows when session/day filter is active
+  const dynamicRows = filtersApplied
+    ? tradesForChat.slice(0, 15).map((t) => slimTradeRowForPrompt(t, {}))
+    : [];
+
   console.log(
-    `[chat] trades for stats: ${allTradesForStats.length} (all) | context rows: ${tradesForChat.length} (session filter="${requestedSession || "none"}" day filter="${requestedDay || "none"}")`
+    `[chat] pinned: recent=${!!pinnedTrades.mostRecent} win=${!!pinnedTrades.lastWin} loss=${!!pinnedTrades.lastLoss} bestRR=${pinnedTrades.bestRR?.rr ?? "none"} | dynamic rows: ${dynamicRows.length} (session="${requestedSession || "none"}" day="${requestedDay || "none"}")`
   );
-  console.log(`[chat] session breakdown: ${JSON.stringify(sessionBreakdown)}`);
-  console.log(`[chat] day breakdown: ${JSON.stringify(dayBreakdown)}`);
 
   messages = clampChatMessagesForTokens(messages, MAX_CHAT_MESSAGES);
 
-  // Await profile — should already be resolved since trades fetch ran concurrently
+  // Await profile and intelligence file
   const userProfile = await profilePromise.catch(() => null);
+  const intelFile = await intelligencePromise;
 
   const apiKey =
     (typeof payload.apiKey === "string" && payload.apiKey.trim()) ||
@@ -2755,46 +2726,18 @@ async function handleChat(req, res) {
     return;
   }
 
-  let columnKeys =
-    tradesForPrompt.length > 0
-      ? Object.keys(tradesForPrompt[0])
-      : [
-          "date",
-          "weekday",
-          "session",
-          "outcome",
-          "rr",
-          "model",
-          "notes",
-        ];
-  if (photoIdxSet.size > 0 && !columnKeys.includes("trade_images")) {
-    columnKeys = [...columnKeys, "trade_images"];
-  }
-  if (
-    wantsNotionExtras &&
-    tradesForPrompt.some(
-      (t) => t?.notion_extras && typeof t.notion_extras === "object"
-    ) &&
-    !columnKeys.includes("notion_extras")
-  ) {
-    columnKeys = [...columnKeys, "notion_extras"];
-  }
   const useWebSearch = needsWebSearch(messageSource);
   console.log(
     `[web-search] ${useWebSearch ? "TRIGGERED" : "not triggered"} — query: "${messageSource.slice(0, 120)}"`
   );
 
   const system =
-    buildJarvisChatSystem(columnKeys, tradesForPrompt, briefingMemory, allTradesForStats, userProfile) +
-    "\n\nThe most recent trade is:\n" +
-    JSON.stringify(slimRecent ?? null) +
-    "\n\nWhen asked about the most recent trade, ALWAYS use this object (weekday comes from date in Australia/Adelaide). Do not search the list." +
-    tradeOutcomeAppend +
+    buildJarvisChatSystem(intelFile, userProfile, pinnedTrades, dynamicRows) +
     (useWebSearch
       ? "\n\nYou have a real-time web_search tool available in this conversation. When the user asks about current gold prices, market prices, news, economic events, or any live market data — CALL the web_search tool immediately to look it up before responding. Do not tell the user you have no access to live data; you do have access via web_search."
       : "") +
     (photoIdxSet.size > 0
-      ? `\n\nTRADE PHOTOS — ${TRADE_IMAGES_ROW_MATCH_RULE} Rows with charts attached: pinned (most recent, last win, last loss, best RR), top 5 by RR, and every trade above 3.0R. Match the row using date_local, session, pair, and direction — not the most recent trade block.`
+      ? `\n\nTRADE PHOTOS — ${TRADE_IMAGES_ROW_MATCH_RULE} Pinned trades have images attached (most recent, last win, last loss, best RR). Match the row using date_local, session, pair, and direction.`
       : "") +
     (includePhotoLinks
       ? " Chart context is ON (screenshot/review intent). Paste full HTTPS URLs on their own lines so the HUD can render thumbnails; do not claim to see pixels."
