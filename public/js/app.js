@@ -1,4 +1,4 @@
-import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=a3e8b1c0";
+import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=d4f7e2a1";
 import { startNotionAutoSync } from "/js/notion-sync-client.js";
 
 const API_CHAT = "/api/chat";
@@ -899,13 +899,18 @@ function filterTradesBySessionKey(records, sessionKey) {
 
 /**
  * One contextual stat line for the current day + session window.
- * Prefers the tightest slice with enough sample size.
+ * Prefers the tightest slice with enough sample size. Returns { line, wr } for coaching.
  */
 function buildContextStatLine(recs, weekday, daypart, currentSessionKey, bestSession) {
   const minN = 4;
   const dayLower = weekday.toLowerCase();
   const dayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-  const daypartCap = daypart.charAt(0).toUpperCase() + daypart.slice(1);
+  const daypartLabel = daypart.toLowerCase();
+
+  const pack = (line, slice) => {
+    const wr = subsetWinRatePct(slice);
+    return { line, wr, n: slice.length };
+  };
 
   const daySession = filterTradesBySessionKey(
     filterTradesByWeekday(recs, dayLower),
@@ -913,9 +918,11 @@ function buildContextStatLine(recs, weekday, daypart, currentSessionKey, bestSes
   );
   if (daySession.length >= minN) {
     const wr = subsetWinRatePct(daySession);
-    const label = sessionLabelPretty(currentSessionKey);
     if (wr != null) {
-      return `${dayCap} ${label} you're at ${wr.toFixed(0)}% across ${daySession.length} trades.`;
+      return pack(
+        `You're at ${wr.toFixed(0)}% across ${daySession.length} trades in this window.`,
+        daySession
+      );
     }
   }
 
@@ -926,16 +933,21 @@ function buildContextStatLine(recs, weekday, daypart, currentSessionKey, bestSes
   if (dayPartTrades.length >= minN) {
     const wr = subsetWinRatePct(dayPartTrades);
     if (wr != null) {
-      return `${dayCap} ${daypartCap.toLowerCase()}s sit around ${wr.toFixed(0)}% on ${dayPartTrades.length} fills.`;
+      return pack(
+        `${daypartLabel}s on ${dayCap} sit around ${wr.toFixed(0)}% on ${dayPartTrades.length} fills.`,
+        dayPartTrades
+      );
     }
   }
 
   const sessionTrades = filterTradesBySessionKey(recs, currentSessionKey);
   if (sessionTrades.length >= minN) {
     const wr = subsetWinRatePct(sessionTrades);
-    const label = sessionLabelPretty(currentSessionKey);
     if (wr != null) {
-      return `Your ${label} book is running ${wr.toFixed(0)}% over ${sessionTrades.length} trades.`;
+      return pack(
+        `You're at ${wr.toFixed(0)}% across ${sessionTrades.length} trades in this session.`,
+        sessionTrades
+      );
     }
   }
 
@@ -943,7 +955,10 @@ function buildContextStatLine(recs, weekday, daypart, currentSessionKey, bestSes
   if (dayTrades.length >= minN) {
     const wr = subsetWinRatePct(dayTrades);
     if (wr != null) {
-      return `${dayCap}s have been ${wr >= 50 ? "solid" : "tough"} at ${wr.toFixed(0)}% across ${dayTrades.length} trades.`;
+      return pack(
+        `${dayCap}s have been ${wr >= 50 ? "solid" : "tough"} at ${wr.toFixed(0)}% across ${dayTrades.length} trades.`,
+        dayTrades
+      );
     }
   }
 
@@ -954,27 +969,37 @@ function buildContextStatLine(recs, weekday, daypart, currentSessionKey, bestSes
       const wr = subsetWinRatePct(bestTrades);
       const label = sessionLabelPretty(bestKey);
       if (wr != null) {
-        return `${label} has been your strongest window at ${wr.toFixed(0)}% on ${bestTrades.length} trades.`;
+        return pack(
+          `${label} has been your strongest window at ${wr.toFixed(0)}% on ${bestTrades.length} trades.`,
+          bestTrades
+        );
       }
     }
   }
 
   const wrAll = subsetWinRatePct(recs);
   if (wrAll != null && recs.length >= 3) {
-    return `Overall you're at ${wrAll.toFixed(0)}% across ${recs.length} logged trades.`;
+    return pack(
+      `Overall you're at ${wrAll.toFixed(0)}% across ${recs.length} logged trades.`,
+      recs
+    );
   }
-  return `You've got ${recs.length} trades on the book to work with.`;
+  return { line: `You've got ${recs.length} trades on the book to work with.`, wr: wrAll, n: recs.length };
 }
 
-function buildCoachingLine(sortedDesc, winRate, weekday) {
+function buildCoachingLine(sortedDesc, contextWinRate, weekday) {
   const winStreak = winStreakFromNewest(sortedDesc);
   const lossStreak = lossStreakFromNewest(sortedDesc);
   const day = weekday.toLowerCase();
+  const wr = contextWinRate;
+
+  if (wr != null && wr < 45) {
+    return "A+ setups only today. Quality over quantity.";
+  }
 
   if (winStreak >= 2) return "You're running hot. Execute, don't improvise.";
   if (lossStreak >= 2) return "Slow it down. Size down until the edge comes back.";
-  if (winRate != null && winRate > 50) return "Edge is there. Let the setups come to you.";
-  if (winRate != null && winRate < 40) return "A+ setups only today. Quality over quantity.";
+  if (wr != null && wr > 50) return "Edge is there. Let the setups come to you.";
   if (day === "friday") return "End the week clean. Nothing you need to prove today.";
   if (day === "monday") return "Fresh week. Take the first trade slow.";
   return "Stay in your process.";
@@ -1061,20 +1086,23 @@ function buildSmartOpenGreeting(td, userId) {
 
   const snap = td.snapshot != null && typeof td.snapshot === "object" ? td.snapshot : null;
   const sorted = sortedTradeRecordsDesc(recs);
-  const winRate =
-    snap && snap.winRate != null && Number.isFinite(Number(snap.winRate))
-      ? Number(snap.winRate)
-      : subsetWinRatePct(recs);
   const bestSession = snap && snap.bestSession ? String(snap.bestSession).trim() : "";
 
-  const line2 = buildContextStatLine(
+  const ctx = buildContextStatLine(
     recs,
     weekday,
     daypart,
     currentSessionKey,
     bestSession
   );
-  const line3 = buildCoachingLine(sorted, winRate, weekday);
+  const line2 = ctx.line;
+  const contextWinRate =
+    ctx.wr != null && Number.isFinite(ctx.wr)
+      ? ctx.wr
+      : snap && snap.winRate != null && Number.isFinite(Number(snap.winRate))
+        ? Number(snap.winRate)
+        : subsetWinRatePct(recs);
+  const line3 = buildCoachingLine(sorted, contextWinRate, weekday);
 
   let out = `${line1}\n${line2}\n${line3}`
     .split("\n")
