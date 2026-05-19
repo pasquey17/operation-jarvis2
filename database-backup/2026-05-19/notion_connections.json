@@ -1,0 +1,10 @@
+[
+  {
+    "user_id": "aidenpasque11@gmail.com",
+    "access_token": "[REDACTED — Notion OAuth token; retrieve from Supabase notion_connections table]",
+    "workspace_name": "Aiden's Notion",
+    "workspace_id": "6c6965b0-c438-46d6-b905-77a359768d8a",
+    "bot_id": "35de0ffd-0a52-8191-a9e1-0027aa9dab0c",
+    "created_at": "2026-05-11 06:10:42.931+00"
+  }
+]

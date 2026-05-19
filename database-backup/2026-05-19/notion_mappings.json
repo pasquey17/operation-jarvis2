@@ -1,0 +1,42 @@
+[
+  {
+    "user_id": "aidenpasque11@gmail.com",
+    "database_id": "262e0ffd-0a52-8176-80b7-e534597b5262",
+    "mapping": {
+      "rr": "RR",
+      "day": "DAY",
+      "date": "DATE",
+      "pair": "PAIR",
+      "year": "year",
+      "model": "ENTRY MODEL",
+      "month": "Month",
+      "notes": "TRADE SUMMARY",
+      "risk_%": "Risk %",
+      "rr_aim": "RR Aim",
+      "account": "ACCOUNT",
+      "outcome": "Outcome",
+      "session": "SESSION",
+      "direction": "POSITION TYPE",
+      "re-entry?": "Re-entry?",
+      "tp_target": "TP TARGET",
+      "conditions": "CONDITIONS",
+      "news_1hr_<": "News 1HR <",
+      "rej_candle": "REJ CANDLE",
+      "confluences": "CONFLUENCES",
+      "sl_criteria": "SL criteria",
+      "trade_lenth": "TRADE LENTH",
+      "physch_after": "PHYSCH AFTER",
+      "trade_rating": "Trade rating",
+      "physch_before": "PHYSCH BEFORE",
+      "rules_followed": "RULES FOLLOWED ",
+      "review/teaching": "Review/Teaching",
+      "__data_source_id": "262e0ffd0a52818abf00000bc795ba54",
+      "trade_taken_on...": "TRADE TAKEN ON...",
+      "range/continuation": "Range/Continuation",
+      "early_close_criteria": "Early close criteria",
+      "rules_broken_(explantion)": "Rules broken (explantion)",
+      "confirmed_entry_or_risk_entry": "CONFIRMED ENTRY OR RISK ENTRY"
+    },
+    "created_at": "2026-05-11 11:23:26.584+00"
+  }
+]

@@ -1,0 +1,120 @@
+JARVIS DATABASE BACKUP SUMMARY
+Date: 2026-05-19
+Supabase Project: oiyyrpfphefswaesddgw (ap-southeast-1, Postgres 17.6)
+Reason: Full manual backup before Supabase Auth migration
+
+============================================================
+TABLE BACKUP VERIFICATION
+============================================================
+
+TABLE                        LIVE ROWS   BACKUP ROWS   STATUS
+------------------------------------------------------------
+trades                           289         289        PASS
+  └─ aidenpasque11@gmail.com      273         273        PASS
+  └─ spasque70@gmail.com           16          16        PASS
+Jarvis_data_source               265         265        PASS
+journal_fields                    65          65        PASS
+intelligence_files                 2           2        PASS
+jarvis_memories                    6           6        PASS
+journal_trades                     3           3        PASS
+journal_photo_slots                3           3        PASS
+user_profiles                      2           2        PASS
+notion_connections                 1           1        PASS
+notion_mappings                    1           1        PASS
+trading_accounts                   1           1        PASS
+sync_state                         2           2        PASS
+account_equity_snapshots           0           0        PASS
+
+OVERALL RESULT: ALL 13 TABLES VERIFIED — BACKUP COMPLETE
+
+============================================================
+FILE INVENTORY
+============================================================
+
+trades.json                 289 rows    1,983,089 bytes
+Jarvis_data_source.json     265 rows      430,158 bytes
+journal_fields.json          65 rows       23,541 bytes
+user_profiles.json            2 rows       13,346 bytes
+journal_trades.json           3 rows      363,021 bytes
+intelligence_files.json       2 rows        6,117 bytes
+jarvis_memories.json          6 rows        2,597 bytes
+journal_photo_slots.json      3 rows          531 bytes
+notion_connections.json       1 row           337 bytes
+notion_mappings.json          1 row         1,412 bytes
+trading_accounts.json         1 row           332 bytes
+sync_state.json               2 rows          132 bytes
+account_equity_snapshots.json 0 rows            3 bytes
+
+Total backup size: ~2.8 MB
+
+============================================================
+TABLES WITH user_id (AUTH MIGRATION TARGETS)
+============================================================
+
+These 11 tables use email strings as user_id and will need
+row-level updates when migrating to Supabase Auth UUIDs:
+
+  1. trades
+  2. intelligence_files
+  3. jarvis_memories
+  4. journal_fields
+  5. journal_photo_slots
+  6. journal_trades
+  7. notion_connections
+  8. notion_mappings
+  9. trading_accounts
+ 10. account_equity_snapshots
+ 11. user_profiles
+
+============================================================
+RLS STATUS AT BACKUP TIME
+============================================================
+
+CRITICAL: Row Level Security is DISABLED on 4 tables:
+  - trades
+  - notion_connections
+  - notion_mappings
+  - intelligence_files
+
+These must have RLS enabled and policies applied as part of
+the auth migration. Do not migrate to UUID user_ids without
+simultaneously enabling RLS.
+
+============================================================
+RESTORE PROCESS (if auth migration goes wrong)
+============================================================
+
+To restore any table from these JSON backup files:
+
+1. Go to https://supabase.com/dashboard/project/oiyyrpfphefswaesddgw
+2. Open the SQL Editor (left sidebar)
+3. For each table you need to restore:
+   a. First TRUNCATE the table:
+      TRUNCATE TABLE table_name;
+   b. Then insert rows via the REST API or SQL Editor
+      using the JSON data from the backup file.
+
+Preferred restore method using the Supabase REST API:
+  - Read the JSON file for the target table
+  - POST to: https://oiyyrpfphefswaesddgw.supabase.co/rest/v1/table_name
+  - Header: Authorization: Bearer <SERVICE_ROLE_KEY>
+  - Header: Content-Type: application/json
+  - Header: Prefer: resolution=merge-duplicates
+  - Body: the JSON array from the backup file
+
+For trades specifically (289 rows, upsert by notion_id):
+  - Use: Prefer: resolution=merge-duplicates
+  - Conflict key: notion_id
+  - This is safe to run even if partial data already exists
+
+For tables with no unique conflict key (jarvis_memories,
+journal_fields, etc.):
+  - TRUNCATE first, then INSERT the full array
+
+The backup files in this directory represent the complete
+database state as of 2026-05-19, before any auth changes.
+They are also committed to git (branch: main) as a
+second copy in repository history.
+
+============================================================
+END OF BACKUP SUMMARY

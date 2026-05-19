@@ -1,0 +1,652 @@
+[
+  {
+    "id": "00540c7a-7dd1-4b3e-9ed9-1f474a44291c",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Early close criteria",
+    "field_type": "dropdown",
+    "field_options": "[\"Yes\",\"No\"]",
+    "is_required": false,
+    "display_order": 11,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "0474a9a9-f85c-4b86-97e8-503182884960",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Range/Continuation",
+    "field_type": "dropdown",
+    "field_options": "[\"Trending Continuation\",\"Range setup\"]",
+    "is_required": false,
+    "display_order": 23,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "065766c9-b8b7-4c71-9f6f-fa39e3329615",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "RR Aim",
+    "field_type": "dropdown",
+    "field_options": "[\"+10rr\",\"8-9RR\",\"7-8RR\",\"6-7RR\",\"5-6RR\",\"4-5RR\",\"3-4RR\",\"2-3RR\",\"1-2RR\"]",
+    "is_required": false,
+    "display_order": 11,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "06ae4157-789b-46a6-a568-8360beaa528a",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Trade rating",
+    "field_type": "dropdown",
+    "field_options": "[\"⭐⭐⭐⭐⭐\",\"⭐⭐⭐⭐\",\"⭐⭐⭐\",\"⭐⭐\",\"⭐\"]",
+    "is_required": false,
+    "display_order": 1,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "07176838-ee86-479f-a365-57ba7f149d6a",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "DAY",
+    "field_type": "dropdown",
+    "field_options": "[\"FRIDAY\",\"THURSDAY\",\"TUESDAY\",\"WEDNESDAY\",\"MONDAY\"]",
+    "is_required": false,
+    "display_order": 17,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "07d823bb-4137-42df-862e-2d37893ddd4e",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "TP TARGET",
+    "field_type": "dropdown",
+    "field_options": "[\"ATHS\",\"GAP\",\"Secondary WH/WL\",\"HTF WH/WL\",\"MTF WH/WL\",\"IMEDIATE WH/WL\"]",
+    "is_required": false,
+    "display_order": 18,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "08d1d2a4-5b55-4a71-85cd-8585f04444c2",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "PHYSCH AFTER",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 14,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "0a3d1b94-999b-469a-9a98-3fa1cea52ea1",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "win",
+    "field_type": "dropdown",
+    "field_options": "[\"WIN\",\"LOSS\",\"BE\"]",
+    "is_required": false,
+    "display_order": 7,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "114804f0-4dab-48b9-ab76-4ab71741bc96",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "News 1HR <",
+    "field_type": "dropdown",
+    "field_options": "[\"Yes\",\"No\"]",
+    "is_required": false,
+    "display_order": 6,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "14abbcec-ff09-439e-b5ef-ac8ca006449e",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "year",
+    "field_type": "dropdown",
+    "field_options": "[\"2026\"]",
+    "is_required": false,
+    "display_order": 25,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "1517e7ce-d966-45f6-80fd-10280c48b695",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Date",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": true,
+    "display_order": 1,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "1592b1aa-69ae-441b-bcd9-27861d4b6bf3",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Early close criteria",
+    "field_type": "dropdown",
+    "field_options": "[\"Yes\",\"No\"]",
+    "is_required": false,
+    "display_order": 7,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "1b8535c1-42c8-4293-8d3f-543ac309c446",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "SL criteria",
+    "field_type": "dropdown",
+    "field_options": "[\"Structure invalide\",\"Just structure\",\"2 pips covering PS (au)\",\"200 pip above whick/PS\",\"Covering just whick\"]",
+    "is_required": false,
+    "display_order": 3,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "1f699821-85a2-42fb-abd3-78273181020e",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "year",
+    "field_type": "dropdown",
+    "field_options": "[\"2026\"]",
+    "is_required": false,
+    "display_order": 21,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "2b7286de-9099-4617-a60c-0260055a6376",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "News 1HR <",
+    "field_type": "dropdown",
+    "field_options": "[\"Yes\",\"No\"]",
+    "is_required": false,
+    "display_order": 9,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "2c02f82a-426f-4d0c-8298-37fa35a88c82",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "RR",
+    "field_type": "number",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 4,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "2c1d539f-dcc2-4133-b369-7c01902e66f4",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "RR Aim",
+    "field_type": "multiselect",
+    "field_options": "[\"8-9RR\",\"7-8RR\",\"6-7RR\",\"5-6RR\",\"4-5RR\",\"3-4RR\",\"2-3RR\",\"1-2RR\"]",
+    "is_required": false,
+    "display_order": 15,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "2f2a4bcb-7c40-4526-964e-8b0634e31d0c",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "TRADE TAKEN ON...",
+    "field_type": "multiselect",
+    "field_options": "[\"FUNDED LIVE\",\"FUNDED CHALLENGE\",\"FORWARD TEST\",\"LIVE\"]",
+    "is_required": false,
+    "display_order": 9,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "3013c65f-7304-4ba8-975e-1ae88bc24bf1",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "CONFLUENCES",
+    "field_type": "multiselect",
+    "field_options": "[\"FVG\",\"HTF WEAK STRUCTURE\",\"MTF WEAK STRUCTURE\",\"LTF NC\",\"MTF NC\",\"HTF NC\",\"NQ GAP\",\"TIER 3 PRICING\",\"END OF THE LEG\",\"DOUBLE SWEEP\",\"PRO TREND\",\"COUNTER TREND\",\"CONTINUATION\",\"WEAK STRUCTURE\",\"SWEEP\",\"DIVERGANCE\",\"MTF ALLIGNMENT\",\"HTF ALLIGNMENT\",\"FUNDAMENTAL ALLIGNMENT\",\"DXY ALLIGNMENT\",\"DXY GAP\",\"GOLD GAP\",\"AUD GAP\"]",
+    "is_required": false,
+    "display_order": 20,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "33d30f01-097e-4449-8316-8e9231bc4c25",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Trade Summary",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 6,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "37c53cb0-cf98-4885-9325-c598fc37eda1",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Rules broken (explantion)",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 26,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "40ea1c21-a2ab-4490-9d7d-e4f58df616cf",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "RULES FOLLOWED",
+    "field_type": "dropdown",
+    "field_options": "[\"Micro broke\",\"NO\",\"YES\"]",
+    "is_required": false,
+    "display_order": 14,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "428fbc5a-55bd-41ce-aaee-50ecb4d1902f",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "CONDITIONS",
+    "field_type": "multiselect",
+    "field_options": "[\"CONSILDATION HTF\",\"TRENDING HTF\",\"CONSOLIDATION MTF\",\"TRENDING MTF\",\"CONSOLIDATION LTF\",\"Trending LTF\"]",
+    "is_required": false,
+    "display_order": 2,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "43d48ac2-35a1-483b-ad0b-eaa3784f2a6c",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "PHYSCH AFTER",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 10,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "520b3a93-4fee-43a7-b565-bf62713cf763",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Month",
+    "field_type": "dropdown",
+    "field_options": "[\"DECEMBER\",\"NOVEMBER\",\"OCTOBER\",\"SEPTEMBER\",\"AUGUST\",\"JULY\",\"JUNE\",\"MAY\",\"APRIL\",\"MARCH\",\"FEBUARY\",\"JANUARY\"]",
+    "is_required": false,
+    "display_order": 5,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "52382134-4be6-4067-bb99-bdf008bbc0cf",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Month",
+    "field_type": "multiselect",
+    "field_options": "[\"DECEMBER\",\"NOVEMBER\",\"OCTOBER\",\"SEPTEMBER\",\"AUGUST\",\"JULY\",\"JUNE\",\"MAY\",\"APRIL\",\"MARCH\",\"FEBUARY\",\"JANUARY\"]",
+    "is_required": false,
+    "display_order": 8,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "59bf4e13-1901-4e58-bfdb-934190a1b73a",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "POSITION TYPE",
+    "field_type": "dropdown",
+    "field_options": "[\"LONG\",\"SHORT\"]",
+    "is_required": false,
+    "display_order": 2,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "59ff84ba-2448-43e9-9da8-fe52adc4a038",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "CONFIRMED ENTRY OR RISK ENTRY",
+    "field_type": "multiselect",
+    "field_options": "[\"CONFIRMED ENTRY\",\"RISK ENTRY\"]",
+    "is_required": false,
+    "display_order": 27,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "63608992-773a-4b74-bf05-d5b9cd03bf26",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "TRADE SUMMARY",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 4,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "6d051f7d-e4ad-4561-abca-bc4c4b81b7bc",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Trade rating",
+    "field_type": "dropdown",
+    "field_options": "[\"⭐⭐⭐⭐⭐\",\"⭐⭐⭐⭐\",\"⭐⭐⭐\",\"⭐⭐\",\"⭐\"]",
+    "is_required": false,
+    "display_order": 1,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "6da82fb9-8002-44ae-9d73-ec16e444ea43",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "DAY",
+    "field_type": "multiselect",
+    "field_options": "[\"FRIDAY\",\"THURSDAY\",\"TUESDAY\",\"WEDNESDAY\",\"MONDAY\"]",
+    "is_required": false,
+    "display_order": 21,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "6ead84d1-df10-49b9-8aaf-18539bacf27f",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "ENTRY MODEL",
+    "field_type": "dropdown",
+    "field_options": "[\"Internal NC Model + DIV + SWEEP\",\"Internal FBoS Continutation + Sweep\",\"Internal FBoS Continutation + DIV\",\"External NC Model + Sweep\",\"External Protected Structure Continuation + DIV\",\"External Protected Structure Continuation + Sweep\",\"Internal NC Model + Sweep\",\"Internal NC Model + DIV\",\"Internal Protected Structure Continuation + DIV\",\"Internal Protected Structure Continuation + Sweep\"]",
+    "is_required": false,
+    "display_order": 10,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "706eaf61-06dc-46de-8e91-0bd9c2bef8d9",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "RULES FOLLOWED",
+    "field_type": "dropdown",
+    "field_options": "[\"NO\",\"YES\"]",
+    "is_required": false,
+    "display_order": 18,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "775ce3bb-8da0-42d5-afd9-519632e681ea",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Outcome",
+    "field_type": "dropdown",
+    "field_options": "[\"Win\",\"Loss\",\"BE\",\"W/L\"]",
+    "is_required": true,
+    "display_order": 3,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "7bf18a74-9570-4c1e-9a4b-30252d20a789",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Risk %",
+    "field_type": "multiselect",
+    "field_options": "[\"0.5%\",\"1%\"]",
+    "is_required": false,
+    "display_order": 19,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "8174e882-2e21-4604-a6c8-3d791aa15b54",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "POSITION TYPE",
+    "field_type": "dropdown",
+    "field_options": "[\"LONG\",\"SHORT\"]",
+    "is_required": false,
+    "display_order": 2,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "86d86eaa-4c90-4cba-a973-94b88bba2f6e",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "TRADE LENTH",
+    "field_type": "multiselect",
+    "field_options": "[\"10 HOURS +\",\"8-9 HOURS\",\"7-8 HOURS\",\"6-7 HOURS\",\"5-6 HOURS\",\"4-5 HOURS\",\"3-4 HOURS\",\"2-3 HOURS\",\"1-2 HOURS\",\"<1 HOUR\"]",
+    "is_required": false,
+    "display_order": 13,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "89a1dc80-33d1-4c85-9f53-6dee21b7a8a5",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Date",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": true,
+    "display_order": 1,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "98b4010f-f45f-47ac-8927-96f4a9fe666d",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Range/Continuation",
+    "field_type": "dropdown",
+    "field_options": "[\"Trending Continuation\",\"Range setup\"]",
+    "is_required": false,
+    "display_order": 19,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "9b8e4c75-4695-4363-a038-e42a3beceb57",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Re-entry?",
+    "field_type": "dropdown",
+    "field_options": "[\"Yes\",\"No\"]",
+    "is_required": false,
+    "display_order": 20,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "9f885766-6bd4-4fe8-85d4-e77ab512fb74",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Risk %",
+    "field_type": "multiselect",
+    "field_options": "[\"0.5%\",\"1%\"]",
+    "is_required": false,
+    "display_order": 15,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "a16c2a56-2403-4690-a629-460934a701d2",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "CONFIRMED ENTRY OR RISK ENTRY",
+    "field_type": "dropdown",
+    "field_options": "[\"CONFIRMED ENTRY\",\"RISK ENTRY\"]",
+    "is_required": false,
+    "display_order": 23,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "a311a33d-28db-4f04-9ae4-e2cbca474d4c",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "REJ CANDLE",
+    "field_type": "multiselect",
+    "field_options": "[\"1HR\",\"1M\",\"30M\",\"15M\",\"5M\",\"3M\"]",
+    "is_required": false,
+    "display_order": 16,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "a45f1835-427a-4432-aa7e-842a2bea4453",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Entry Model",
+    "field_type": "dropdown",
+    "field_options": "[\"BOS\",\"MTF Weak Structure\",\"Swing Fail\",\"LTF Range\",\"Premium/Discount\",\"Other\"]",
+    "is_required": false,
+    "display_order": 5,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "a89cb727-0341-4aea-8ec5-e034b55a0921",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "PHYSCH BEFORE",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 8,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "ae8bba6d-9d1f-4fb0-8723-693184d140e4",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Review/Teaching",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 6,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "afd07c77-3332-4e1c-a7e5-b6f0430dadaf",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Session",
+    "field_type": "dropdown",
+    "field_options": "[\"Asia\",\"London\",\"New York\",\"London/New York\"]",
+    "is_required": true,
+    "display_order": 2,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "b6fd2f74-960b-45e7-b5ae-dfba2e0b73ef",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Review/Teaching",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 4,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "c0244cfc-a7c5-404f-b68e-4423035d1602",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Outcome",
+    "field_type": "dropdown",
+    "field_options": "[\"Win\",\"Loss\",\"BE\"]",
+    "is_required": true,
+    "display_order": 3,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "c40f35d3-7734-4c7b-9239-17ceeb9eb769",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "CONDITIONS",
+    "field_type": "multiselect",
+    "field_options": "[\"CONSILDATION HTF\",\"TRENDING HTF\",\"CONSOLIDATION MTF\",\"TRENDING MTF\",\"CONSOLIDATION LTF\",\"Trending LTF\"]",
+    "is_required": false,
+    "display_order": 3,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "c6fefe76-6f42-4d49-a80f-fb5493d1a981",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "CONFLUENCES",
+    "field_type": "multiselect",
+    "field_options": "[\"FVG\",\"HTF WEAK HIGH\",\"MTF WEAK HIGH\",\"LTF NC\",\"MTF NC\",\"HTF NC\",\"NQ GAP\",\"TIER 3 PRICING\",\"END OF THE LEG\",\"DOUBLE SWEEP\",\"PRO TREND\",\"COUNTER TREND\",\"CONTINUATION\",\"WEAK STRUCTURE\",\"SWEEP\",\"DIVERGANCE\",\"MTF ALLIGNMENT\",\"HTF ALLIGNMENT\",\"FUNDAMENTAL ALLIGNMENT\",\"DXY ALLIGNMENT\",\"DXY GAP\",\"GOLD GAP\",\"AUD GAP\"]",
+    "is_required": false,
+    "display_order": 24,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "c70dd730-0506-4042-ab98-f556ba15381e",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "TP TARGET",
+    "field_type": "dropdown",
+    "field_options": "[\"ATHS\",\"GAP\",\"Secondary WH/WL\",\"HTF WH/WL\",\"MTF WH/WL\",\"IMEDIATE WH/WL\"]",
+    "is_required": false,
+    "display_order": 22,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "d9268226-a35e-45db-a306-ca586bd53a23",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "TRADE LENGTH",
+    "field_type": "multiselect",
+    "field_options": "[\"10 HOURS +\",\"8-9 HOURS\",\"7-8 HOURS\",\"6-7 HOURS\",\"5-6 HOURS\",\"4-5 HOURS\",\"3-4 HOURS\",\"2-3 HOURS\",\"1-2 HOURS\",\"<1 HOUR\"]",
+    "is_required": false,
+    "display_order": 17,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "dabf1a9e-adda-4028-ac1e-f60818142ef0",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "TRADE SUMMARY",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 4,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "dbd4e1d3-c7fb-48ee-a6af-f6d4e78fa476",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "SL criteria",
+    "field_type": "dropdown",
+    "field_options": "[\"Structure invalide\",\"Just structure\",\"2 pips covering PS (au)\",\"200 pip above whick/PS\",\"Covering just whick\"]",
+    "is_required": false,
+    "display_order": 5,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "dbdb96ec-3aee-40e4-9ac6-0f4e4090804c",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "TRADE TAKEN ON...",
+    "field_type": "dropdown",
+    "field_options": "[\"FUNDED LIVE\",\"FUNDED CHALLENGE\",\"FORWARD TEST\",\"LIVE\"]",
+    "is_required": false,
+    "display_order": 13,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "dd4cdbd8-3e1c-4f43-afa8-2cc27f727b5f",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Session",
+    "field_type": "dropdown",
+    "field_options": "[\"Asia\",\"London\",\"New York\",\"London/New York\"]",
+    "is_required": true,
+    "display_order": 2,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "e3102e7c-abe2-4c6d-b450-9832a1a0b108",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "Entry Model",
+    "field_type": "dropdown",
+    "field_options": "[\"BOS\",\"MTF Weak Structure\",\"Swing Fail\",\"LTF Range\",\"Premium/Discount\",\"Other\"]",
+    "is_required": false,
+    "display_order": 5,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "e5f67740-c58d-4f89-9198-22ca0454ec14",
+    "user_id": "spasque70@gmail.com",
+    "field_name": "PHYSCH BEFORE",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 12,
+    "created_at": "2026-05-10 08:25:35.424636+00"
+  },
+  {
+    "id": "e9f2f912-dcee-448d-b944-b6f9ab26eaa2",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Rules broken (explantion)",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 22,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "f1d29323-055e-4fe4-8354-78dd83e75c01",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "RR",
+    "field_type": "number",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 4,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "f1fcc14b-394d-42be-92d5-3919078dcb12",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "ENTRY MODEL",
+    "field_type": "dropdown",
+    "field_options": "[\"Internal NC Model + DIV + SWEEP\",\"Internal FBoS Continutation + Sweep\",\"Internal FBoS Continutation + DIV\",\"External NC Model + Sweep\",\"External Protected Structure Continuation + DIV\",\"External Protected Structure Continuation + Sweep\",\"Internal NC Model + Sweep\",\"Internal NC Model + DIV\",\"Internal Protected Structure Continuation + DIV\",\"Internal Protected Structure Continuation + Sweep\"]",
+    "is_required": false,
+    "display_order": 9,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "f7250748-1abb-411c-a1fa-86939a1ded0d",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Re-entry?",
+    "field_type": "dropdown",
+    "field_options": "[\"Yes\",\"No\"]",
+    "is_required": false,
+    "display_order": 16,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  },
+  {
+    "id": "fb71e640-e854-4d19-a7ab-6d76dda631a8",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "Trade Summary",
+    "field_type": "text",
+    "field_options": null,
+    "is_required": false,
+    "display_order": 6,
+    "created_at": "2026-05-07 02:16:05.329234+00"
+  },
+  {
+    "id": "ffd3600d-8c08-46cb-97e7-a0c654c241cf",
+    "user_id": "aidenpasque11@gmail.com",
+    "field_name": "REJ CANDLE",
+    "field_type": "multiselect",
+    "field_options": "[\"1HR\",\"1M\",\"30M\",\"15M\",\"5M\",\"3M\"]",
+    "is_required": false,
+    "display_order": 12,
+    "created_at": "2026-05-10 08:22:48.466796+00"
+  }
+]
