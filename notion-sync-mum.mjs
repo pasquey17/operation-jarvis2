@@ -323,7 +323,7 @@ export async function syncNotionToSupabaseMum() {
   ).trim();
   const supabaseUrl = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
   const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!notionKey) {
     console.warn("[notion-sync-mum] NOTION_API_KEY_MUM not set — skipping mum sync.");

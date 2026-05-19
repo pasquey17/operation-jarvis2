@@ -2,7 +2,7 @@
  * Serves the static app, GET /api/trades (Supabase → JSON), POST /api/briefing → Anthropic Claude.
  *
  * Usage:
- *   Set ANTHROPIC_API_KEY and SUPABASE_URL + SUPABASE_ANON_KEY in .env next to this file, then:
+ *   Set ANTHROPIC_API_KEY, SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY in .env next to this file, then:
  *   node server.mjs
  *
  * Open http://localhost:8787
@@ -625,7 +625,7 @@ async function fetchUserProfile(userId) {
   if (!url || !key) return null;
   try {
     const res = await fetch(
-      `${url}/rest/v1/user_profiles?auth_auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      `${url}/rest/v1/user_profiles?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
       {
         headers: {
           apikey: key,
@@ -855,12 +855,10 @@ Respond with ONLY a valid JSON object and no other text:
 
 // === AUTO NOTION SYNC ===
 
-/** sync_state reads/writes use service role when set so RLS cannot block server sync bookkeeping. */
+/** sync_state reads/writes use the service role key so RLS cannot block server sync bookkeeping. */
 function getSupabaseUrlAndServerKey() {
   const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.SUPABASE_ANON_KEY?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   return { url, key };
 }
 
@@ -1242,7 +1240,7 @@ function json(res, status, obj) {
 
 function getSupabaseConfig() {
   const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
-  const key = process.env.SUPABASE_ANON_KEY?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const tableRaw = (process.env.SUPABASE_TABLE || DEFAULT_SUPABASE_TABLE).trim() || DEFAULT_SUPABASE_TABLE;
   return { url, key, tableRaw };
 }
@@ -2061,7 +2059,7 @@ async function getRecentTrades(userId, options = {}) {
   const { url, key, tableRaw } = getSupabaseConfig();
   if (!url || !key) {
     const err = new Error(
-      "Missing SUPABASE_URL or SUPABASE_ANON_KEY. Set them in .env next to server.mjs."
+      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Set them in .env next to server.mjs."
     );
     err.code = "SUPABASE_CONFIG";
     throw err;
@@ -2165,7 +2163,7 @@ async function fetchTradesFromSupabase(userId, options = {}) {
   const { url, key, tableRaw } = getSupabaseConfig();
   if (!url || !key) {
     const err = new Error(
-      "Missing SUPABASE_URL or SUPABASE_ANON_KEY. Set them in .env next to server.mjs."
+      "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Set them in .env next to server.mjs."
     );
     err.code = "SUPABASE_CONFIG";
     throw err;
@@ -3179,8 +3177,7 @@ function normalizeJournalPhotoSlotRow(row) {
 
 /** GET /api/journal-photo-slots?auth_user_id=eq.{email} */
 async function handleJournalPhotoSlotsGet(req, res) {
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3232,8 +3229,7 @@ async function handleJournalPhotoSlotsPatch(req, res) {
     return;
   }
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3352,8 +3348,7 @@ async function handleLogTrade(req, res) {
   let body;
   try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
 
   const rrVal = body.rr != null && body.rr !== "" ? Number(body.rr) : null;
@@ -3431,8 +3426,7 @@ async function handleJournalTradePatch(req, res) {
     return;
   }
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3496,8 +3490,7 @@ async function handleJournalTradeDelete(req, res) {
     return;
   }
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3558,8 +3551,7 @@ async function handleTradeRowPatch(req, res) {
     return;
   }
 
-  const { url, key: anonKey, tableRaw } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key, tableRaw } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3632,8 +3624,7 @@ async function handleTradeRowDelete(req, res) {
     return;
   }
 
-  const { url, key: anonKey, tableRaw } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key, tableRaw } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3788,8 +3779,7 @@ function parseSupabaseUserIdParam(req) {
 
 /** GET /api/accounts?auth_user_id=eq.{email}&include_archived=true */
 async function handleTradingAccountsGet(req, res) {
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3867,8 +3857,7 @@ async function handleTradingAccountsPost(req, res) {
     return;
   }
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -3992,8 +3981,7 @@ async function handleTradingAccountsPatch(req, res) {
     return;
   }
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -4118,8 +4106,7 @@ async function handleAccountSnapshotsGet(req, res) {
   if (!Number.isFinite(limit) || limit < 1) limit = 120;
   limit = Math.min(500, Math.floor(limit));
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -4195,8 +4182,7 @@ async function handleAccountSnapshotsPost(req, res) {
   const note =
     body.note != null && body.note !== "" ? String(body.note).trim().slice(0, 500) : null;
 
-  const { url, key: anonKey } = getSupabaseConfig();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
+  const { url, key } = getSupabaseConfig();
   if (!url || !key) {
     json(res, 503, { error: "Supabase not configured" });
     return;
@@ -4957,7 +4943,7 @@ async function handleNotionDatabases(req, res) {
 // === NOTION COLUMN MAPPING & USER SYNC ===
 
 function getServiceRoleKey() {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 }
 
 function notionPropValue(prop) {
@@ -5868,7 +5854,7 @@ if (!process.env.VERCEL) {
     const { url, key } = getSupabaseConfig();
     if (!url || !key) {
       console.warn(
-        "[warn] SUPABASE_URL / SUPABASE_ANON_KEY not fully set — /api/trades will fail until configured."
+        "[warn] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not fully set — /api/trades will fail until configured."
       );
     }
 

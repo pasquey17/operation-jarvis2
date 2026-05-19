@@ -313,7 +313,7 @@ export async function syncNotionToSupabase() {
   ).trim();
   const supabaseUrl = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
   const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!notionKey) {
     console.warn("[notion-sync] NOTION_API_KEY not set — skipping sync.");

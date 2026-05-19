@@ -11,7 +11,7 @@ import { runAnalysisEngine } from "./analysis-engine.mjs";
 
 function sbConfig() {
   const url = (process.env.SUPABASE_URL ?? "").trim().replace(/\/$/, "");
-  const key = process.env.SUPABASE_ANON_KEY?.trim() || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   return { url, key };
 }
 

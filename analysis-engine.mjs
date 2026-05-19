@@ -143,10 +143,7 @@ function groupStats(trades) {
 
 async function fetchAllTradesForAnalysis(userId) {
   const url = (process.env.SUPABASE_URL ?? "").trim().replace(/\/$/, "");
-  const key =
-    process.env.SUPABASE_ANON_KEY?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   const table = (process.env.SUPABASE_TABLE ?? "trades").trim() || "trades";
 
   if (!url || !key) throw new Error("Missing SUPABASE_URL or Supabase key env vars");
