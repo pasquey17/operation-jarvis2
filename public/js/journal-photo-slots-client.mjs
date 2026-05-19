@@ -1,6 +1,7 @@
 /**
  * Per-user photo slot templates for LOG TRADE (Supabase + localStorage fallback).
  */
+import { apiFetch } from "./jarvis-auth.js";
 
 export const AIDEN_USER_ID = "aidenpasque11@gmail.com";
 
@@ -64,7 +65,7 @@ export function makePhotoSlotId() {
 
 export async function fetchPhotoSlotsFromApi(userId) {
   const q = new URLSearchParams({ user_id: `eq.${userId}` });
-  const res = await fetch(`/api/journal-photo-slots?${q.toString()}`, { cache: "no-store" });
+  const res = await apiFetch(`/api/journal-photo-slots?${q.toString()}`, { cache: "no-store" });
   if (!res.ok) {
     const err = new Error(`Photo slots fetch failed (${res.status})`);
     err.status = res.status;
@@ -76,7 +77,7 @@ export async function fetchPhotoSlotsFromApi(userId) {
 }
 
 export async function savePhotoSlotsToApi(userId, slots) {
-  const res = await fetch("/api/journal-photo-slots", {
+  const res = await apiFetch("/api/journal-photo-slots", {
     method: "PATCH",
     cache: "no-store",
     headers: { "Content-Type": "application/json" },

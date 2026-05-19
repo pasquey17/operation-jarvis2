@@ -2430,7 +2430,7 @@
             url = "/api/accounts/" + encodeURIComponent(editId);
             method = "PATCH";
           }
-          fetch(url, {
+          JarvisAuth.fetch(url, {
             method: method,
             headers: { "Content-Type": "application/json" },
             cache: "no-store",

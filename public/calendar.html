@@ -2479,7 +2479,7 @@
                 el.dataset.imgRefreshed = "1";
               });
               var uid = currentUserId || DEFAULT_USER_ID;
-              fetch(
+              JarvisAuth.fetch(
                 "/api/refresh-trade-image?notion_id=" +
                   encodeURIComponent(notionId) +
                   "&user_id=" +
