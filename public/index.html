@@ -184,20 +184,6 @@
 
     <script>
       (function () {
-        var user =
-          localStorage.getItem("jarvis_user") || localStorage.getItem("user_id");
-        if (user)
-          document.getElementById("jv-nav-user").textContent = user;
-        var logoutBtn = document.getElementById("logout-btn");
-        if (logoutBtn) {
-          logoutBtn.addEventListener("click", function () {
-            try {
-              localStorage.removeItem("jarvis_user");
-              localStorage.removeItem("user_id");
-            } catch (e) {}
-            window.location.href = "/index.html";
-          });
-        }
         var btn = document.getElementById("jv-nav-hamburger");
         var dropdown = document.getElementById("jv-nav-dropdown");
         btn.addEventListener("click", function () {
@@ -766,6 +752,7 @@
       </figure>
     </div>
 
+    <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
     <script type="module" src="/js/app.js?v=d4f7e2a1"></script>
   </body>
 </html>

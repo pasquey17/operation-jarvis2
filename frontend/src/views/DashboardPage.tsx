@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
-import { ensureUserId, fetchTrades } from "../lib/trades";
+import { apiFetch } from "../lib/jarvisAuth";
+import { fetchTrades } from "../lib/trades";
 
 type Snapshot = {
   total?: number;
@@ -61,7 +62,6 @@ function useTypingText(lines: string[], speed = 28) {
 }
 
 export function DashboardPage() {
-  const [userId] = useState<string>(() => ensureUserId());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -83,18 +83,17 @@ export function DashboardPage() {
   const { displayed: typedBriefing, done: briefingDone } = useTypingText(briefingLines, 18);
 
   useEffect(() => {
-    void load(userId);
-  }, [userId]);
+    void load();
+  }, []);
 
-  async function loadBriefing(u: string) {
+  async function loadBriefing() {
     setBriefingLoading(true);
     setBriefing(null);
     try {
-      const r = await fetch("/api/briefing", {
+      const r = await apiFetch("/api/briefing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: u }),
-        cache: "no-store",
+        body: JSON.stringify({}),
       });
       if (r.ok) {
         const data = await r.json();
@@ -110,11 +109,11 @@ export function DashboardPage() {
     }
   }
 
-  async function load(u: string) {
+  async function load() {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetchTrades(u);
+      const r = await fetchTrades();
       setSnapshot((r.snapshot || null) as Snapshot | null);
       setRecentTrades(Array.isArray(r.records) ? r.records.slice(0, 10) : []);
       if (!r.ok) {
@@ -158,7 +157,7 @@ export function DashboardPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-2 font-mono text-[10px] tracking-[0.18em] text-white/55">
-            USER: {userId}
+            SIGNED IN
           </span>
           <a
             href="/app/onboarding/"
@@ -225,7 +224,7 @@ export function DashboardPage() {
                 <Button
                   as="button"
                   variant="primary"
-                  onClick={() => loadBriefing(userId)}
+                  onClick={() => loadBriefing()}
                 >
                   GENERATE BRIEFING
                 </Button>
@@ -244,7 +243,7 @@ export function DashboardPage() {
                 <Button
                   as="button"
                   variant="secondary"
-                  onClick={() => loadBriefing(userId)}
+                  onClick={() => loadBriefing()}
                 >
                   REFRESH
                 </Button>

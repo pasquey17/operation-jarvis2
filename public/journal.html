@@ -864,18 +864,7 @@
 
     <script>
       (function () {
-        var user = localStorage.getItem('jarvis_user') || localStorage.getItem('user_id');
-        if (user) document.getElementById('jv-nav-user').textContent = user;
-        var logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-          logoutBtn.addEventListener('click', function () {
-            try {
-              localStorage.removeItem('jarvis_user');
-              localStorage.removeItem('user_id');
-            } catch (e) {}
-            window.location.href = '/index.html';
-          });
-        }
+        
         var btn = document.getElementById('jv-nav-hamburger');
         var dd  = document.getElementById('jv-nav-dropdown');
         btn.addEventListener('click', function () {
@@ -1115,7 +1104,7 @@
       const PAGE_SIZE   = 20;
 
       /* ── State ── */
-      let currentUserId  = 'aidenpasque11@gmail.com';
+      let currentUserId  = '';
       let allTrades      = [];
       let filteredTrades = [];
       let displayedCount = 0;
@@ -1162,8 +1151,8 @@
       }
 
       async function jnPostNotionReconcile(dryRun, secret) {
-        var userId = currentUserId || 'aidenpasque11@gmail.com';
-        var r = await fetch('/api/notion/reconcile-archive', {
+        var userId = currentUserId || '';
+        var r = await JarvisAuth.fetch('/api/notion/reconcile-archive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-store',
@@ -2017,30 +2006,14 @@
         requestAnimationFrame(drawFrame);
       }
 
-      var DEFAULT_USER_ID = 'aidenpasque11@gmail.com';
-
-      /** Match app.js: jarvis_user wins so mum’s profile overrides stale user_id. */
       function ensureUserId() {
-        return new Promise(function (resolve) {
-          var ju = (localStorage.getItem('jarvis_user') || '').trim();
-          var uid = (localStorage.getItem('user_id') || '').trim();
-          if (ju) {
-            currentUserId = ju;
-            if (uid !== ju) {
-              try { localStorage.setItem('user_id', ju); } catch (e) {}
-            }
-          } else if (uid) {
-            currentUserId = uid;
-          } else {
-            currentUserId = DEFAULT_USER_ID;
-            try {
-              localStorage.setItem('user_id', DEFAULT_USER_ID);
-              localStorage.setItem('jarvis_user', DEFAULT_USER_ID);
-            } catch (e) {}
-          }
-          var navUser = document.getElementById('jv-nav-user');
-          if (navUser) navUser.textContent = currentUserId;
-          resolve(currentUserId);
+        return JarvisAuth.getUserId().then(function (id) {
+          currentUserId = id || "";
+          return JarvisAuth.getEmail().then(function (email) {
+            var navUser = document.getElementById("jv-nav-user");
+            if (navUser && email) navUser.textContent = email;
+            return currentUserId;
+          });
         });
       }
 
@@ -2052,14 +2025,12 @@
 
       /* ── Data fetching ── */
       async function fetchAllTrades() {
-        var userId = currentUserId || 'aidenpasque11@gmail.com';
-        var tradesUrl = '/api/trades?user_id=eq.' + encodeURIComponent(userId);
         var promises = [
-          fetch(tradesUrl, { cache: 'no-store' }).then(function (r) { return r.json(); })
+          JarvisAuth.fetch("/api/trades").then(function (r) { return r.json(); })
         ];
         if (jnSourceFilters.includeManualJournal) {
           promises.push(
-            fetch('/api/journal-trades?user_id=eq.' + encodeURIComponent(userId), { cache: 'no-store' }).then(function (r) {
+            JarvisAuth.fetch('/api/journal-trades').then(function (r) {
               return r.json();
             })
           );
@@ -2843,9 +2814,7 @@
               getUserId: function () {
                 return (
                   currentUserId ||
-                  localStorage.getItem('jarvis_user') ||
-                  localStorage.getItem('user_id') ||
-                  'aidenpasque11@gmail.com'
+                  currentUserId
                 );
               },
               fetchTradeRowsForPrefill: async function () {
@@ -2882,9 +2851,7 @@
       function getJournalUserIdForApi() {
         return (
           currentUserId ||
-          localStorage.getItem('jarvis_user') ||
-          localStorage.getItem('user_id') ||
-          'aidenpasque11@gmail.com'
+          currentUserId
         );
       }
 
@@ -2899,8 +2866,8 @@
           if (!confirm('Delete this trade from your journal? This cannot be undone.')) return;
           try {
             var uid = getJournalUserIdForApi();
-            var q = new URLSearchParams({ id: String(rowId), user_id: 'eq.' + uid });
-            var res = await fetch('/api/journal-trades?' + q.toString(), { method: 'DELETE', cache: 'no-store' });
+            var q = new URLSearchParams({ id: String(rowId),  });
+            var res = await JarvisAuth.fetch('/api/journal-trades?' + q.toString(), { method: 'DELETE', cache: 'no-store' });
             if (!res.ok) {
               var errJ = await res.json().catch(function () {
                 return {};
@@ -2928,7 +2895,7 @@
               encodeURIComponent(String(rowId)) +
               '&user_id=' +
               encodeURIComponent('eq.' + uid2);
-            var res2 = await fetch('/api/trades-row?' + q2, { method: 'DELETE', cache: 'no-store' });
+            var res2 = await JarvisAuth.fetch('/api/trades-row?' + q2, { method: 'DELETE', cache: 'no-store' });
             if (!res2.ok) {
               var errJ2 = await res2.json().catch(function () {
                 return {};
@@ -2969,9 +2936,7 @@
         }
         var uid =
           currentUserId ||
-          localStorage.getItem('jarvis_user') ||
-          localStorage.getItem('user_id') ||
-          'aidenpasque11@gmail.com';
+          currentUserId;
 
         var dateRaw = trade.date || trade.Date || trade.traded_at || '';
         var dateStr =
@@ -3087,7 +3052,7 @@
             if (!d) throw new Error('Date is required');
             var payload = {
               id: String(rowId),
-              user_id: uid,
+              
               date: d + 'T00:00:00.000Z',
               pair: document.getElementById('jn-ne-pair').value.trim() || '',
               session: document.getElementById('jn-ne-session').value.trim() || '',
@@ -3112,7 +3077,7 @@
               }
               payload.notion_extras = mergedX;
             }
-            var res = await fetch('/api/trades-row', {
+            var res = await JarvisAuth.fetch('/api/trades-row', {
               method: 'PATCH',
               cache: 'no-store',
               headers: { 'Content-Type': 'application/json' },
@@ -3151,7 +3116,7 @@
               encodeURIComponent(String(rowId)) +
               '&user_id=' +
               encodeURIComponent('eq.' + uid);
-            var res = await fetch('/api/trades-row?' + q, { method: 'DELETE', cache: 'no-store' });
+            var res = await JarvisAuth.fetch('/api/trades-row?' + q, { method: 'DELETE', cache: 'no-store' });
             if (!res.ok) {
               var errJ = await res.json().catch(function () {
                 return {};
@@ -3486,9 +3451,7 @@
             getUserId: function () {
               return (
                 currentUserId ||
-                localStorage.getItem('jarvis_user') ||
-                localStorage.getItem('user_id') ||
-                'aidenpasque11@gmail.com'
+                currentUserId
               );
             },
             fetchTradeRowsForPrefill: async function () {
@@ -3541,7 +3504,7 @@
         document.querySelectorAll('img[data-notion-id="' + notionId + '"]').forEach(function (el) {
           el.dataset.imgRefreshed = '1';
         });
-        fetch('/api/refresh-trade-image?notion_id=' + encodeURIComponent(notionId) + '&user_id=' + encodeURIComponent(currentUserId || ''), { cache: 'no-store' })
+        JarvisAuth.fetch('/api/refresh-trade-image?notion_id=' + encodeURIComponent(notionId), { cache: 'no-store' })
           .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
           .then(function (data) {
             if (!Array.isArray(data.images) || !data.images.length) return;
@@ -3652,5 +3615,6 @@
       boot();
     })();
     </script>
-  </body>
+      <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
+</body>
 </html>

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JARVIS · Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #050a14;
+      color: #fff;
+      font-family: "Outfit", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    canvas#login-particles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .login-wrap {
+      position: relative;
+      z-index: 1;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: min(440px, 100%);
+      background: rgba(5, 10, 20, 0.88);
+      border: 1px solid rgba(0, 212, 255, 0.18);
+      border-radius: 20px;
+      box-shadow:
+        0 0 0 1px rgba(0, 212, 255, 0.06) inset,
+        0 32px 80px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 40px 36px 36px;
+    }
+
+    .login-brand {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 11px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: #00d4ff;
+      margin-bottom: 28px;
+    }
+
+    .login-headline {
+      font-weight: 200;
+      font-size: 28px;
+      line-height: 1.2;
+      color: rgba(255, 255, 255, 0.92);
+      margin-bottom: 8px;
+    }
+
+    .login-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.38);
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    .login-google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 212, 255, 0.35);
+      background: rgba(0, 212, 255, 0.1);
+      color: rgba(255, 255, 255, 0.95);
+      font-family: "Share Tech Mono", monospace;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+
+    .login-google-btn:hover:not(:disabled) {
+      background: rgba(0, 212, 255, 0.18);
+      border-color: rgba(0, 212, 255, 0.65);
+      transform: translateY(-1px);
+    }
+
+    .login-google-btn:disabled { opacity: 0.55; cursor: wait; }
+
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 28px 0 22px;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: rgba(255, 255, 255, 0.25);
+      text-transform: uppercase;
+    }
+
+    .login-divider::before,
+    .login-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(0, 212, 255, 0.12);
+    }
+
+    .login-magic-label {
+      display: block;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+      margin-bottom: 8px;
+    }
+
+    .login-magic-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .login-magic-input {
+      flex: 1;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      background: rgba(0, 0, 0, 0.45);
+      color: #fff;
+      padding: 12px 14px;
+      font-family: "Outfit", sans-serif;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .login-magic-input:focus {
+      border-color: rgba(0, 212, 255, 0.55);
+      box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+    }
+
+    .login-magic-btn {
+      flex-shrink: 0;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 212, 255, 0.28);
+      background: rgba(0, 212, 255, 0.06);
+      color: rgba(0, 212, 255, 0.9);
+      font-family: "Share Tech Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .login-magic-btn:hover:not(:disabled) {
+      background: rgba(0, 212, 255, 0.14);
+    }
+
+    .login-magic-btn:disabled { opacity: 0.5; cursor: wait; }
+
+    .login-msg {
+      margin-top: 18px;
+      font-size: 12px;
+      line-height: 1.45;
+      min-height: 18px;
+    }
+
+    .login-msg--ok { color: rgba(0, 212, 255, 0.85); }
+    .login-msg--err { color: rgba(255, 120, 120, 0.9); }
+
+    .login-spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0, 212, 255, 0.25);
+      border-top-color: #00d4ff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .login-spinner.visible { display: inline-block; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <canvas id="login-particles" aria-hidden="true"></canvas>
+
+  <div class="login-wrap">
+    <div class="login-card" id="login-card">
+      <div class="login-brand">Jarvis · Trading OS</div>
+      <h1 class="login-headline">Sign in</div>
+      <p class="login-sub">Your journal, intelligence, and coach — secured to your account.</p>
+
+      <button type="button" class="login-google-btn" id="google-btn">
+        <span id="google-spinner" class="login-spinner" aria-hidden="true"></span>
+        <span id="google-btn-text">Continue with Google</span>
+      </button>
+
+      <div class="login-divider">or</div>
+
+      <label class="login-magic-label" for="magic-email">Magic link</label>
+      <div class="login-magic-row">
+        <input class="login-magic-input" id="magic-email" type="email" autocomplete="email" placeholder="you@email.com" />
+        <button type="button" class="login-magic-btn" id="magic-btn">Send link</button>
+      </div>
+
+      <div id="login-success" class="login-msg login-msg--ok" role="status"></div>
+      <div id="login-error" class="login-msg login-msg--err" role="alert"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getSupabaseClient, APP_HOME_PATH } from "/js/jarvis-auth.js";
+
+    const sb = getSupabaseClient();
+    const params = new URLSearchParams(window.location.search);
+    const nextPath = params.get("next") || APP_HOME_PATH;
+
+    const googleBtn = document.getElementById("google-btn");
+    const googleBtnText = document.getElementById("google-btn-text");
+    const googleSpinner = document.getElementById("google-spinner");
+    const magicBtn = document.getElementById("magic-btn");
+    const magicEmailInput = document.getElementById("magic-email");
+    const successEl = document.getElementById("login-success");
+    const errorEl = document.getElementById("login-error");
+
+    function showSuccess(msg) {
+      successEl.textContent = msg;
+      errorEl.textContent = "";
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      successEl.textContent = "";
+    }
+
+    async function redirectIfSession() {
+      const { data } = await sb.auth.getSession();
+      if (data?.session) {
+        window.location.replace(nextPath.startsWith("/") ? nextPath : APP_HOME_PATH);
+        return true;
+      }
+      return false;
+    }
+
+    googleBtn.addEventListener("click", async () => {
+      showError("");
+      googleBtn.disabled = true;
+      googleBtnText.textContent = "Redirecting…";
+      googleSpinner.classList.add("visible");
+
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/login.html?next=" + encodeURIComponent(nextPath),
+        },
+      });
+
+      if (error) {
+        showError(error.message || "Google sign-in failed.");
+        googleBtn.disabled = false;
+        googleBtnText.textContent = "Continue with Google";
+        googleSpinner.classList.remove("visible");
+      }
+    });
+
+    magicBtn.addEventListener("click", async () => {
+      showError("");
+      const email = magicEmailInput.value.trim();
+      if (!email) {
+        showError("Enter your email first.");
+        return;
+      }
+
+      magicBtn.disabled = true;
+      const { error } = await sb.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin + "/login.html?next=" + encodeURIComponent(nextPath),
+          shouldCreateUser: true,
+        },
+      });
+      magicBtn.disabled = false;
+
+      if (error) {
+        showError(error.message || "Could not send link.");
+      } else {
+        showSuccess("Check your inbox — click the link to sign in.");
+      }
+    });
+
+    magicEmailInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") magicBtn.click();
+    });
+
+    void redirectIfSession();
+
+    (function particles() {
+      const canvas = document.getElementById("login-particles");
+      const ctx = canvas.getContext("2d");
+      const pts = [];
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener("resize", resize);
+      for (let i = 0; i < 55; i++) {
+        pts.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          r: Math.random() * 1.2 + 0.3,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25,
+          a: Math.random() * 0.4 + 0.1,
+        });
+      }
+      function frame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const p of pts) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = canvas.width;
+          if (p.x > canvas.width) p.x = 0;
+          if (p.y < 0) p.y = canvas.height;
+          if (p.y > canvas.height) p.y = 0;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(0,212,255," + p.a + ")";
+          ctx.fill();
+        }
+        requestAnimationFrame(frame);
+      }
+      frame();
+    })();
+  </script>
+</body>
+</html>

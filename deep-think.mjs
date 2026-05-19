@@ -125,7 +125,7 @@ async function fetchRecentTradesForDeepThink(userId, limit = TRADE_SAMPLE_LIMIT)
   const path =
     `/rest/v1/${encodeURIComponent(table)}` +
     `?select=date,session,pair,direction,outcome,rr,model,notes,notion_extras` +
-    `&user_id=eq.${encodeURIComponent(userId)}&archived=is.false` +
+    `&auth_user_id=eq.${encodeURIComponent(userId)}&archived=is.false` +
     `&order=date.desc&limit=${limit}`;
 
   const res = await sbFetch(path, { headers: { Accept: "application/json" } });
@@ -140,7 +140,7 @@ async function fetchRecentTradesForDeepThink(userId, limit = TRADE_SAMPLE_LIMIT)
 async function countActiveTrades(userId) {
   const table = (process.env.SUPABASE_TABLE ?? "trades").trim() || "trades";
   const res = await sbFetch(
-    `/rest/v1/${encodeURIComponent(table)}?user_id=eq.${encodeURIComponent(userId)}&archived=is.false&select=id`,
+    `/rest/v1/${encodeURIComponent(table)}?auth_user_id=eq.${encodeURIComponent(userId)}&archived=is.false&select=id`,
     {
       headers: {
         Accept: "application/json",
@@ -159,7 +159,7 @@ async function countActiveTrades(userId) {
 
 async function readIntelligenceRow(userId) {
   const res = await sbFetch(
-    `/rest/v1/intelligence_files?user_id=eq.${encodeURIComponent(userId)}&select=user_id,deep_think,deep_think_at,deep_think_trade_count,trade_count_at_generation,generated_at`,
+    `/rest/v1/intelligence_files?auth_user_id=eq.${encodeURIComponent(userId)}&select=auth_user_id,deep_think,deep_think_at,deep_think_trade_count,trade_count_at_generation,generated_at`,
     { headers: { Accept: "application/json" } }
   );
   if (!res.ok) {
@@ -172,7 +172,7 @@ async function readIntelligenceRow(userId) {
 
 async function saveDeepThink(userId, text, tradeCount) {
   const res = await sbFetch(
-    `/rest/v1/intelligence_files?user_id=eq.${encodeURIComponent(userId)}`,
+    `/rest/v1/intelligence_files?auth_user_id=eq.${encodeURIComponent(userId)}`,
     {
       method: "PATCH",
       headers: {

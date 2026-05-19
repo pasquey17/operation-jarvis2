@@ -1414,30 +1414,7 @@
     </div>
     <script>
       (function () {
-        var u = localStorage.getItem("jarvis_user") || localStorage.getItem("user_id");
-        if (u) document.getElementById("jv-nav-user").textContent = u;
-        document.getElementById("logout-btn").addEventListener("click", function () {
-          try {
-            localStorage.removeItem("jarvis_user");
-            localStorage.removeItem("user_id");
-          } catch (e) {}
-          window.location.href = "/index.html";
-        });
-        var btn = document.getElementById("jv-nav-hamburger");
-        var dd = document.getElementById("jv-nav-dropdown");
-        btn.addEventListener("click", function () {
-          var open = dd.classList.toggle("jv-nav--open");
-          btn.setAttribute("aria-expanded", open ? "true" : "false");
-          dd.setAttribute("aria-hidden", open ? "false" : "true");
-        });
-        document.addEventListener("click", function (e) {
-          if (!btn.contains(e.target) && !dd.contains(e.target)) {
-            dd.classList.remove("jv-nav--open");
-            btn.setAttribute("aria-expanded", "false");
-            dd.setAttribute("aria-hidden", "true");
-          }
-        });
-      })();
+        )();
     </script>
 
     <!-- Economic calendar: GET /api/economic-calendar (server-side; Adelaide “today”). -->
@@ -1675,7 +1652,7 @@
 
     <script>
       (function () {
-        var DEFAULT_USER_ID = "aidenpasque11@gmail.com";
+        var DEFAULT_USER_ID = "";
         var currentUserId = DEFAULT_USER_ID;
         /** localStorage v3: { tab, fx:{ pairSymbol, pipAuto, ... }, ft:{...} } — migrate from v2 key on first read */
         var LS_CALC = "jarvis.accountLotCalc.v3";
@@ -1701,29 +1678,15 @@
           return Number.isFinite(n) ? n : NaN;
         }
 
-        /** Match app.js: jarvis_user wins; sync user_id to match. */
         function ensureUserId() {
-          var ju = (localStorage.getItem("jarvis_user") || "").trim();
-          var uid = (localStorage.getItem("user_id") || "").trim();
-          if (ju) {
-            currentUserId = ju;
-            if (uid !== ju) {
-              try {
-                localStorage.setItem("user_id", ju);
-              } catch (e) {}
-            }
-          } else if (uid) {
-            currentUserId = uid;
-          } else {
-            currentUserId = DEFAULT_USER_ID;
-            try {
-              localStorage.setItem("user_id", DEFAULT_USER_ID);
-              localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
-            } catch (e) {}
-          }
-          var navUser = document.getElementById("jv-nav-user");
-          if (navUser) navUser.textContent = currentUserId;
-          return currentUserId;
+          return JarvisAuth.getUserId().then(function (id) {
+            currentUserId = id || "";
+            return JarvisAuth.getEmail().then(function (email) {
+              var navUser = document.getElementById("jv-nav-user");
+              if (navUser && email) navUser.textContent = email;
+              return currentUserId;
+            });
+          });
         }
 
         /**
@@ -2139,9 +2102,9 @@
         }
 
         async function loadAccounts() {
-          ensureUserId();
-          var q = "/api/accounts?user_id=eq." + encodeURIComponent(currentUserId);
-          var res = await fetch(q, { cache: "no-store" });
+          await ensureUserId();
+          var q = "/api/accounts";
+          var res = await JarvisAuth.fetch(q, { cache: "no-store" });
           var data = await res.json().catch(function () {
             return {};
           });
@@ -2182,7 +2145,7 @@
           var equity = Number(eq.value);
           if (!Number.isFinite(equity)) return;
           ensureUserId();
-          fetch("/api/account-snapshots", {
+          JarvisAuth.fetch("/api/account-snapshots", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             cache: "no-store",
@@ -2246,7 +2209,7 @@
             var next = !a.archived;
             if (!confirm(next ? "Archive this account?" : "Restore this account?")) return;
             ensureUserId();
-            fetch("/api/accounts/" + encodeURIComponent(aid), {
+            JarvisAuth.fetch("/api/accounts/" + encodeURIComponent(aid), {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               cache: "no-store",
@@ -2316,7 +2279,7 @@
           bar.classList.remove("ac-news-bar--err");
           bar.classList.remove("ac-news-bar--compact");
 
-          fetch("/api/economic-calendar", { cache: "no-store" })
+          JarvisAuth.fetch("/api/economic-calendar", { cache: "no-store" })
             .then(function (r) {
               return r.json().then(function (j) {
                 return { ok: r.ok, j: j };
@@ -2848,5 +2811,6 @@
         });
       })();
     </script>
-  </body>
+      <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
+</body>
 </html>

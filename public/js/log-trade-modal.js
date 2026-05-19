@@ -18,6 +18,7 @@ import {
   makePhotoSlotId,
   sortPhotoSlots,
 } from "./journal-photo-slots-client.mjs";
+import { apiFetch } from "./jarvis-auth.js";
 
 export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1";
 const FIELD_ORDER_KEY_PREFIX = "jarvis_field_order_v4_";
@@ -152,9 +153,7 @@ function inferAdelaideSession() {
 
 async function fetchAccounts(userId) {
   try {
-    const r = await fetch(`/api/accounts?user_id=eq.${encodeURIComponent(userId)}`, {
-      cache: "no-store",
-    });
+    const r = await apiFetch("/api/accounts");
     const data = await r.json().catch(() => ({}));
     return Array.isArray(data.accounts) ? data.accounts : [];
   } catch {
@@ -164,9 +163,7 @@ async function fetchAccounts(userId) {
 
 async function fetchJournalTradesForPrefill(userId) {
   try {
-    const r = await fetch(`/api/journal-trades?user_id=eq.${encodeURIComponent(userId)}`, {
-      cache: "no-store",
-    });
+    const r = await apiFetch("/api/journal-trades");
     const data = await r.json().catch(() => []);
     return Array.isArray(data) ? data : [];
   } catch {
@@ -1283,7 +1280,7 @@ export async function openLogTradeModal(options) {
       : Promise.resolve([]),
     fetchJournalTradesForPrefill(userId),
     fetchAccounts(userId),
-    fetch(`/api/journal-fields?user_id=${encodeURIComponent(userId)}`, { cache: "no-store" })
+    apiFetch("/api/journal-fields")
       .then((r) => r.json().catch(() => ({})))
       .catch(() => ({})),
     loadPhotoSlotsForUser(userId),
@@ -1424,13 +1421,9 @@ export async function openLogTradeModal(options) {
         if (!confirm("Delete this trade from your journal? This cannot be undone.")) return;
         delBtn.disabled = true;
         try {
-          const q = new URLSearchParams({
-            id: editId,
-            user_id: `eq.${getUserId()}`,
-          });
-          const res = await fetch(`/api/journal-trades?${q.toString()}`, {
+          const q = new URLSearchParams({ id: editId });
+          const res = await apiFetch(`/api/journal-trades?${q.toString()}`, {
             method: "DELETE",
-            cache: "no-store",
           });
           if (!res.ok) {
             const d = await res.json().catch(() => ({}));
@@ -1572,7 +1565,6 @@ export async function openLogTradeModal(options) {
 
     try {
       const basePayload = {
-        user_id: getUserId(),
         traded_at: `${dateVal}T00:00:00.000Z`,
         pair: pair || null,
         outcome,
@@ -1581,9 +1573,8 @@ export async function openLogTradeModal(options) {
         account: account || null,
         custom_data,
       };
-      const res = await fetch(editId ? "/api/journal-trades" : "/api/log-trade", {
+      const res = await apiFetch(editId ? "/api/journal-trades" : "/api/log-trade", {
         method: editId ? "PATCH" : "POST",
-        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editId ? { id: editId, ...basePayload } : basePayload),
       });

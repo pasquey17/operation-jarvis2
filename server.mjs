@@ -38,6 +38,14 @@ import {
   getDeepThinkStatus,
   runDeepThink,
 } from "./deep-think.mjs";
+import {
+  verifyRequestAuth,
+  isPublicApiPath,
+  resolveAuthUserIdFromOAuthState,
+  legacyEmailForAuthUserId,
+  OAUTH_BOOT_AUTH_USER_IDS,
+  AUTH_USER_ID_MUM,
+} from "./jarvis-auth-server.mjs";
 
 /** After Notion sync: regen intelligence file, then deep-think if triggers match. */
 function firePostSyncBrain(userId) {
@@ -125,7 +133,9 @@ const NOTION_SYNC_INTERVAL_MS = (() => {
 /** One in-flight OAuth sync per user — parallel /api/trades calls share the same promise. */
 const notionSyncInflight = new Map();
 
-const OAUTH_BOOT_USER_IDS = ["aidenpasque11@gmail.com", "spasque70@gmail.com"];
+function authUserIdFromReq(req) {
+  return req.jarvisAuth?.authUserId ?? null;
+}
 
 const JARVIS_SYSTEM_PROMPT = `You are Jarvis. You are a trading intelligence built for one trader. You are not a chatbot, not a journal, not an analytics dashboard. You are the sharpest trading mind this person has access to, and you know their system better than they do.
 
@@ -615,7 +625,7 @@ async function fetchUserProfile(userId) {
   if (!url || !key) return null;
   try {
     const res = await fetch(
-      `${url}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      `${url}/rest/v1/user_profiles?auth_auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
       {
         headers: {
           apikey: key,
@@ -636,7 +646,8 @@ async function upsertUserProfile(userId, fields) {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) return;
   const body = {
-    user_id: userId,
+    auth_user_id: userId,
+    user_id: legacyEmailForAuthUserId(userId) || userId,
     trading_summary: fields.trading_summary ?? null,
     psychological_patterns: fields.psychological_patterns ?? null,
     key_triggers: fields.key_triggers ?? null,
@@ -904,7 +915,10 @@ async function setSyncState(syncKey) {
  * @returns {Promise<{ ok: boolean, skipped?: boolean, reason?: string, fetched?: number, upserted?: number, oauthRequired?: boolean, oauthAuthError?: boolean }>}
  */
 async function maybeSyncNotion(userId, options = {}) {
-  const uid = String(userId || "").trim() || "aidenpasque11@gmail.com";
+  const uid = String(userId || "").trim();
+  if (!uid) {
+    return { ok: false, skipped: true, reason: "no_user" };
+  }
   if (notionSyncInflight.has(uid)) {
     return notionSyncInflight.get(uid);
   }
@@ -916,7 +930,7 @@ async function maybeSyncNotion(userId, options = {}) {
 }
 
 async function runMaybeSyncNotion(userId, options = {}) {
-  const syncKey = userId === "spasque70@gmail.com" ? "notion_mum" : "notion_aiden";
+  const syncKey = userId === AUTH_USER_ID_MUM ? "notion_mum" : "notion_aiden";
   const force = options.force === true;
   try {
     if (!force) {
@@ -2061,7 +2075,7 @@ async function getRecentTrades(userId, options = {}) {
   const includeArchived = options.includeArchived === true;
   const archQ =
     TRADE_ARCHIVED_ACTIVE && !includeArchived ? "&archived=is.false" : "";
-  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}&order=date.desc&limit=${limit}${archQ}`;
+  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&auth_user_id=eq.${encodeURIComponent(userId)}&order=date.desc&limit=${limit}${archQ}`;
   const res = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -2161,7 +2175,7 @@ async function fetchTradesFromSupabase(userId, options = {}) {
   const includeArchived = options.includeArchived === true;
   const archQ =
     TRADE_ARCHIVED_ACTIVE && !includeArchived ? "&archived=is.false" : "";
-  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&user_id=eq.${encodeURIComponent(userId)}${archQ}`;
+  const endpoint = `${url}/rest/v1/${tableEnc}?select=*&auth_user_id=eq.${encodeURIComponent(userId)}${archQ}`;
   const res = await fetch(endpoint, {
     method: "GET",
     headers: {
@@ -2220,9 +2234,11 @@ function formatSupabaseError(responseText, status) {
 
 async function handleSyncNotion(req, res) {
   try {
-    const u = new URL(req.url, `http://localhost:${PORT}`);
-    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
-    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const userId = authUserIdFromReq(req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
     const syncMeta = await maybeSyncNotion(userId, { force: true });
     if (syncMeta.ok && !syncMeta.skipped) {
       firePostSyncBrain(userId);
@@ -2258,9 +2274,11 @@ async function handleSyncNotion(req, res) {
 
 async function handleAnalysisEngine(req, res) {
   try {
-    const u = new URL(req.url, `http://localhost:${PORT}`);
-    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
-    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const userId = authUserIdFromReq(req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
     const t0 = Date.now();
     const report = await runAnalysisEngine(userId);
     console.log(`[analysis-engine] user=${userId} trades=${report.tradeCount} ms=${Date.now() - t0}`);
@@ -2273,9 +2291,11 @@ async function handleAnalysisEngine(req, res) {
 
 async function handleIntelligenceFile(req, res) {
   try {
-    const u = new URL(req.url, `http://localhost:${PORT}`);
-    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
-    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const userId = authUserIdFromReq(req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
     const file = await getIntelligenceFile(userId);
     json(res, 200, file);
   } catch (e) {
@@ -2286,9 +2306,11 @@ async function handleIntelligenceFile(req, res) {
 
 async function handleRegenerateIntelligence(req, res) {
   try {
-    const u = new URL(req.url, `http://localhost:${PORT}`);
-    let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
-    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const userId = authUserIdFromReq(req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
     const t0 = Date.now();
     const file = await generateIntelligenceFile(userId);
     console.log(`[intelligence-file] forced regen for ${userId} ms=${Date.now() - t0}`);
@@ -2301,9 +2323,12 @@ async function handleRegenerateIntelligence(req, res) {
 
 async function handleTrades(req, res) {
   try {
+    const userId = authUserIdFromReq(req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
     const u = new URL(req.url, `http://localhost:${PORT}`);
-    const userIdRaw = u.searchParams.get("user_id") || "aidenpasque11@gmail.com";
-    const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
     const includeArchived = u.searchParams.get("include_archived") === "1";
     const tDb = Date.now();
     const payload = await fetchTradesFromSupabase(userId, { includeArchived });
@@ -2313,10 +2338,7 @@ async function handleTrades(req, res) {
       );
     }
     if (!payload.records.length) {
-      json(res, 200, {
-        ...payload,
-        warning: "Table returned zero rows. Add data or check RLS/policies for anon access.",
-      });
+      json(res, 200, payload);
       return;
     }
     json(res, 200, payload);
@@ -2335,10 +2357,11 @@ async function handleTrades(req, res) {
 
 async function handleSnapshot(req, res) {
   try {
-    const userIdRaw =
-      new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
-      "aidenpasque11@gmail.com";
-    const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+    const userId = authUserIdFromReq(req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
 
     const tDb = Date.now();
     const trades = await getRecentTrades(userId, { limit: MAX_SUPABASE_ROWS });
@@ -2392,8 +2415,11 @@ async function handleBriefing(req, res) {
     return;
   }
 
-  const { email } = payload;
-  const userId = email || "aidenpasque11@gmail.com";
+  const userId = authUserIdFromReq(req);
+  if (!userId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
 
   let trades;
   try {
@@ -2555,8 +2581,11 @@ async function handleChat(req, res) {
     return;
   }
 
-  const { email } = payload;
-  const userId = email || "aidenpasque11@gmail.com";
+  const userId = authUserIdFromReq(req);
+  if (!userId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
 
   const messageSource =
     typeof payload.message === "string"
@@ -2881,11 +2910,9 @@ async function handleChat(req, res) {
 
 async function handleMemories(req, res) {
   try {
-    const u = new URL(req.url, `http://localhost:${PORT}`);
-    let userId = (u.searchParams.get("user_id") || "").trim();
-    if (userId.startsWith("eq.")) userId = userId.slice(3);
+    const userId = authUserIdFromReq(req);
     if (!userId) {
-      json(res, 400, { error: "user_id required" });
+      json(res, 401, { error: "Unauthorized" });
       return;
     }
     const memories = await listMemoriesForUser(userId);
@@ -2904,16 +2931,17 @@ async function handleMemories(req, res) {
   }
 }
 
-function parseUserIdFromQuery(reqUrl) {
-  const u = new URL(reqUrl, `http://localhost:${PORT}`);
-  let userId = (u.searchParams.get("user_id") || "aidenpasque11@gmail.com").trim();
-  if (userId.startsWith("eq.")) userId = userId.slice(3);
-  return userId;
+function parseUserIdFromQuery(_reqUrl, req) {
+  return authUserIdFromReq(req) || "";
 }
 
 async function handleDeepThinkStatus(req, res) {
   try {
-    const userId = parseUserIdFromQuery(req.url);
+    const userId = parseUserIdFromQuery(req.url, req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
     const status = await getDeepThinkStatus(userId);
     json(res, 200, status);
   } catch (e) {
@@ -2924,7 +2952,11 @@ async function handleDeepThinkStatus(req, res) {
 
 async function handleDeepThink(req, res) {
   try {
-    const userId = parseUserIdFromQuery(req.url);
+    const userId = parseUserIdFromQuery(req.url, req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
     const t0 = Date.now();
     const result = await runDeepThink(userId);
     console.log(`[deep-think] forced run for ${userId} ms=${Date.now() - t0}`);
@@ -3030,12 +3062,12 @@ async function handleAdminSyncJournalFields(req, res) {
   }
 
   const source = body.source || "notion";
-  const userId = typeof body.user_id === "string" ? body.user_id.trim() : "";
+  const userId = authUserIdFromReq(req);
   const supabaseUrl = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!userId) {
-    json(res, 400, { error: "user_id required" });
+    json(res, 401, { error: "Unauthorized" });
     return;
   }
   if (!supabaseUrl || !supabaseKey) {
@@ -3111,13 +3143,14 @@ async function handleAdminSyncJournalFields(req, res) {
 async function handleJournalFields(req, res) {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
-  const userIdRaw =
-    new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
-    "aidenpasque11@gmail.com";
-  const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+  const userId = authUserIdFromReq(req);
+  if (!userId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
   try {
     const r = await fetch(
-      `${url}/rest/v1/journal_fields?user_id=eq.${encodeURIComponent(userId)}&order=display_order.asc`,
+      `${url}/rest/v1/journal_fields?auth_user_id=eq.${encodeURIComponent(userId)}&order=display_order.asc`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
     const text = await r.text();
@@ -3130,10 +3163,7 @@ async function handleJournalFields(req, res) {
 }
 
 function parseJournalPhotoSlotsUserId(req) {
-  const userIdRaw =
-    new URL(req.url, `http://localhost:${PORT}`).searchParams.get("user_id") ||
-    "aidenpasque11@gmail.com";
-  return userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+  return authUserIdFromReq(req) || "";
 }
 
 function normalizeJournalPhotoSlotRow(row) {
@@ -3147,7 +3177,7 @@ function normalizeJournalPhotoSlotRow(row) {
   };
 }
 
-/** GET /api/journal-photo-slots?user_id=eq.{email} */
+/** GET /api/journal-photo-slots?auth_user_id=eq.{email} */
 async function handleJournalPhotoSlotsGet(req, res) {
   const { url, key: anonKey } = getSupabaseConfig();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
@@ -3157,7 +3187,7 @@ async function handleJournalPhotoSlotsGet(req, res) {
   }
   const userId = parseJournalPhotoSlotsUserId(req);
   try {
-    const endpoint = `${url}/rest/v1/journal_photo_slots?user_id=eq.${encodeURIComponent(userId)}&select=slot_id,label,display_order&order=display_order.asc`;
+    const endpoint = `${url}/rest/v1/journal_photo_slots?auth_user_id=eq.${encodeURIComponent(userId)}&select=slot_id,label,display_order&order=display_order.asc`;
     const r = await fetch(endpoint, {
       headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
     });
@@ -3209,9 +3239,9 @@ async function handleJournalPhotoSlotsPatch(req, res) {
     return;
   }
 
-  const userId = String(body.user_id || "").trim();
+  const userId = authUserIdFromReq(req);
   if (!userId) {
-    json(res, 400, { error: "user_id required" });
+    json(res, 401, { error: "Unauthorized" });
     return;
   }
 
@@ -3230,7 +3260,7 @@ async function handleJournalPhotoSlotsPatch(req, res) {
 
   try {
     const del = await fetch(
-      `${url}/rest/v1/journal_photo_slots?user_id=eq.${encodeURIComponent(userId)}`,
+      `${url}/rest/v1/journal_photo_slots?auth_user_id=eq.${encodeURIComponent(userId)}`,
       { method: "DELETE", headers: { ...headers, Prefer: "return=minimal" } }
     );
     if (!del.ok) {
@@ -3241,7 +3271,8 @@ async function handleJournalPhotoSlotsPatch(req, res) {
 
     if (slots.length) {
       const rows = slots.map((s) => ({
-        user_id: userId,
+        auth_user_id: userId,
+    user_id: legacyEmailForAuthUserId(userId) || userId,
         slot_id: s.slot_id,
         label: s.label,
         display_order: s.display_order,
@@ -3276,7 +3307,7 @@ async function handleJournalPhotoSlotsPatch(req, res) {
   }
 }
 
-/** GET /api/journal-trades?user_id=eq.{email} — manual LOG TRADE rows (journal_trades). */
+/** GET /api/journal-trades?auth_user_id=eq.{email} — manual LOG TRADE rows (journal_trades). */
 async function handleJournalTradesGet(req, res) {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) {
@@ -3285,7 +3316,7 @@ async function handleJournalTradesGet(req, res) {
   }
   const userId = parseSupabaseUserIdParam(req);
   try {
-    const endpoint = `${url}/rest/v1/journal_trades?user_id=eq.${encodeURIComponent(userId)}&select=*&order=traded_at.desc`;
+    const endpoint = `${url}/rest/v1/journal_trades?auth_user_id=eq.${encodeURIComponent(userId)}&select=*&order=traded_at.desc`;
     const r = await fetch(endpoint, {
       method: "GET",
       headers: {
@@ -3326,8 +3357,14 @@ async function handleLogTrade(req, res) {
   if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
 
   const rrVal = body.rr != null && body.rr !== "" ? Number(body.rr) : null;
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
   const row = {
-    user_id: body.user_id || "aidenpasque11@gmail.com",
+    auth_user_id: authUserId,
+    user_id: legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId,
     traded_at: body.traded_at || new Date().toISOString(),
     pair: body.pair || "XAU/USD",
     outcome: body.outcome || null,
@@ -3388,9 +3425,9 @@ async function handleJournalTradePatch(req, res) {
   }
 
   const id = typeof body.id === "string" ? body.id.trim() : "";
-  const userId = typeof body.user_id === "string" ? body.user_id.trim() : "";
+  const userId = authUserIdFromReq(req);
   if (!isUuidString(id) || !userId) {
-    json(res, 400, { error: "Valid id and user_id required" });
+    json(res, 400, { error: "Valid id required" });
     return;
   }
 
@@ -3419,7 +3456,7 @@ async function handleJournalTradePatch(req, res) {
   }
 
   try {
-    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`;
     const r = await fetch(endpoint, {
       method: "PATCH",
       headers: {
@@ -3449,7 +3486,7 @@ async function handleJournalTradePatch(req, res) {
   }
 }
 
-/** DELETE /api/journal-trades?id={uuid}&user_id=eq.{email} */
+/** DELETE /api/journal-trades?id={uuid}&auth_user_id=eq.{email} */
 async function handleJournalTradeDelete(req, res) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
   const id = (u.searchParams.get("id") || "").trim();
@@ -3467,7 +3504,7 @@ async function handleJournalTradeDelete(req, res) {
   }
 
   try {
-    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`;
     const r = await fetch(endpoint, {
       method: "DELETE",
       headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -3515,9 +3552,9 @@ async function handleTradeRowPatch(req, res) {
   }
 
   const id = typeof body.id === "string" ? body.id.trim() : "";
-  const userId = typeof body.user_id === "string" ? body.user_id.trim() : "";
+  const userId = authUserIdFromReq(req);
   if (!isUuidString(id) || !userId) {
-    json(res, 400, { error: "Valid id and user_id required" });
+    json(res, 400, { error: "Valid id required" });
     return;
   }
 
@@ -3555,7 +3592,7 @@ async function handleTradeRowPatch(req, res) {
   patch.updated_at = new Date().toISOString();
 
   try {
-    const endpoint = `${url}/rest/v1/${tableEnc}?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const endpoint = `${url}/rest/v1/${tableEnc}?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`;
     const r = await fetch(endpoint, {
       method: "PATCH",
       headers: {
@@ -3585,7 +3622,7 @@ async function handleTradeRowPatch(req, res) {
   }
 }
 
-/** DELETE /api/trades-row?id={uuid}&user_id=eq.{email} */
+/** DELETE /api/trades-row?id={uuid}&auth_user_id=eq.{email} */
 async function handleTradeRowDelete(req, res) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
   const id = (u.searchParams.get("id") || "").trim();
@@ -3604,7 +3641,7 @@ async function handleTradeRowDelete(req, res) {
   const tableEnc = encodeURIComponent(tableRaw);
 
   try {
-    const endpoint = `${url}/rest/v1/${tableEnc}?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
+    const endpoint = `${url}/rest/v1/${tableEnc}?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`;
     const r = await fetch(endpoint, {
       method: "DELETE",
       headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -3746,18 +3783,10 @@ async function handleEconomicCalendar(req, res) {
 }
 
 function parseSupabaseUserIdParam(req) {
-  const u = new URL(req.url, `http://localhost:${PORT}`);
-  let raw = (u.searchParams.get("user_id") || "").trim();
-  if (raw.startsWith("eq.")) raw = raw.slice(3);
-  try {
-    raw = decodeURIComponent(raw);
-  } catch {
-    /* keep raw */
-  }
-  return raw || "aidenpasque11@gmail.com";
+  return authUserIdFromReq(req) || "";
 }
 
-/** GET /api/accounts?user_id=eq.{email}&include_archived=true */
+/** GET /api/accounts?auth_user_id=eq.{email}&include_archived=true */
 async function handleTradingAccountsGet(req, res) {
   const { url, key: anonKey } = getSupabaseConfig();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || anonKey;
@@ -3771,7 +3800,7 @@ async function handleTradingAccountsGet(req, res) {
   const includeArchived =
     u.searchParams.get("include_archived") === "true" || u.searchParams.get("include_archived") === "1";
 
-  let q = `${url}/rest/v1/trading_accounts?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`;
+  let q = `${url}/rest/v1/trading_accounts?auth_user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`;
   if (!includeArchived) q += "&archived=eq.false";
 
   try {
@@ -3789,7 +3818,7 @@ async function handleTradingAccountsGet(req, res) {
     if (accounts.length) {
       const ids = accounts.map((a) => a.id).join(",");
       const r2 = await fetch(
-        `${url}/rest/v1/account_equity_snapshots?user_id=eq.${encodeURIComponent(userId)}&account_id=in.(${ids})&select=id,account_id,equity,recorded_at,note&order=recorded_at.asc`,
+        `${url}/rest/v1/account_equity_snapshots?auth_user_id=eq.${encodeURIComponent(userId)}&account_id=in.(${ids})&select=id,account_id,equity,recorded_at,note&order=recorded_at.asc`,
         { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
       );
       const t2 = await r2.text();
@@ -3845,7 +3874,11 @@ async function handleTradingAccountsPost(req, res) {
     return;
   }
 
-  const userId = String(body.user_id || "aidenpasque11@gmail.com").trim();
+  const userId = authUserIdFromReq(req);
+  if (!userId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
   const name = String(body.name || "Account").trim().slice(0, 200);
   const accountType = String(body.account_type || "eval").toLowerCase();
   if (!["eval", "funded", "live"].includes(accountType)) {
@@ -3884,7 +3917,8 @@ async function handleTradingAccountsPost(req, res) {
   }
 
   const row = {
-    user_id: userId,
+    auth_user_id: userId,
+    user_id: legacyEmailForAuthUserId(userId) || userId,
     name,
     account_type: accountType,
     starting_balance: startingBalance,
@@ -3952,9 +3986,9 @@ async function handleTradingAccountsPatch(req, res) {
     return;
   }
 
-  const userId = String(body.user_id || "").trim();
+  const userId = authUserIdFromReq(req);
   if (!userId) {
-    json(res, 400, { error: "user_id required" });
+    json(res, 401, { error: "Unauthorized" });
     return;
   }
 
@@ -3967,7 +4001,7 @@ async function handleTradingAccountsPatch(req, res) {
 
   try {
     const check = await fetch(
-      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}&select=id`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
     const checkText = await check.text();
@@ -4039,7 +4073,7 @@ async function handleTradingAccountsPatch(req, res) {
     }
 
     const r = await fetch(
-      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`,
       {
         method: "PATCH",
         headers: {
@@ -4093,7 +4127,7 @@ async function handleAccountSnapshotsGet(req, res) {
 
   try {
     const verify = await fetch(
-      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(accountId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(accountId)}&auth_user_id=eq.${encodeURIComponent(userId)}&select=id`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
     const vText = await verify.text();
@@ -4108,7 +4142,7 @@ async function handleAccountSnapshotsGet(req, res) {
     }
 
     const r = await fetch(
-      `${url}/rest/v1/account_equity_snapshots?user_id=eq.${encodeURIComponent(userId)}&account_id=eq.${encodeURIComponent(accountId)}&order=recorded_at.desc&limit=${limit}`,
+      `${url}/rest/v1/account_equity_snapshots?auth_user_id=eq.${encodeURIComponent(userId)}&account_id=eq.${encodeURIComponent(accountId)}&order=recorded_at.desc&limit=${limit}`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
     const text = await r.text();
@@ -4141,12 +4175,12 @@ async function handleAccountSnapshotsPost(req, res) {
     return;
   }
 
-  const userId = String(body.user_id || "").trim();
+  const userId = authUserIdFromReq(req);
   const accountId = String(body.account_id || "").trim();
   const equity = Number(body.equity);
 
   if (!userId) {
-    json(res, 400, { error: "user_id required" });
+    json(res, 401, { error: "Unauthorized" });
     return;
   }
   if (!accountId) {
@@ -4170,7 +4204,7 @@ async function handleAccountSnapshotsPost(req, res) {
 
   try {
     const verify = await fetch(
-      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(accountId)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(accountId)}&auth_user_id=eq.${encodeURIComponent(userId)}&select=id`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
     const vText = await verify.text();
@@ -4185,7 +4219,8 @@ async function handleAccountSnapshotsPost(req, res) {
     }
 
     const row = {
-      user_id: userId,
+      auth_user_id: userId,
+    user_id: legacyEmailForAuthUserId(userId) || userId,
       account_id: accountId,
       equity,
       note,
@@ -4252,11 +4287,12 @@ function extractFilesFromNotionProps(props) {
 async function handleRefreshTradeImage(req, res) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
   const notionId = (u.searchParams.get("notion_id") || "").trim();
-  const userId = (u.searchParams.get("user_id") || "").trim();
+  const userId = authUserIdFromReq(req);
 
   if (!notionId) { json(res, 400, { error: "Missing notion_id" }); return; }
+  if (!userId) { json(res, 401, { error: "Unauthorized" }); return; }
 
-  const conn = await loadNotionOAuthConnection(userId || "aidenpasque11@gmail.com");
+  const conn = await loadNotionOAuthConnection(userId);
   if (!conn.ok) {
     json(res, 503, {
       error:
@@ -4406,7 +4442,7 @@ async function handleInitProfiles(req, res) {
     return;
   }
 
-  const users = ["aidenpasque11@gmail.com", "spasque70@gmail.com"];
+  const users = OAUTH_BOOT_AUTH_USER_IDS;
   const results = {};
 
   for (const userId of users) {
@@ -4428,10 +4464,20 @@ async function requestListener(req, res) {
   if (req.method === "OPTIONS") {
     send(res, 204, "", {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
     return;
+  }
+
+  const pathOnly = req.url.split("?")[0];
+  if (pathOnly.startsWith("/api/") && !isPublicApiPath(pathOnly)) {
+    const auth = await verifyRequestAuth(req);
+    if (!auth) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
+    req.jarvisAuth = auth;
   }
 
   if (!process.env.VERCEL && req.method === "GET" && req.url.split("?")[0] === "/__livereload") {
@@ -4638,8 +4684,8 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/sync-mum")) {
     try {
-      const syncMeta = await maybeSyncNotion("spasque70@gmail.com", { force: true });
-      if (syncMeta.ok && !syncMeta.skipped) firePostSyncBrain("spasque70@gmail.com");
+      const syncMeta = await maybeSyncNotion(AUTH_USER_ID_MUM, { force: true });
+      if (syncMeta.ok && !syncMeta.skipped) firePostSyncBrain(AUTH_USER_ID_MUM);
       res.setHeader("Content-Type", "application/json");
       res.end(
         JSON.stringify(
@@ -4708,9 +4754,12 @@ async function handleNotionConnect(req, res) {
     json(res, 500, { error: "NOTION_OAUTH_CLIENT_ID not configured" });
     return;
   }
-  const { searchParams } = new URL(req.url, `http://localhost`);
-  const userId = searchParams.get("user_id") || "aidenpasque11@gmail.com";
-  const state = encodeURIComponent(userId);
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
+  const state = encodeURIComponent(authUserId);
   const authUrl =
     `https://api.notion.com/v1/oauth/authorize` +
     `?client_id=${encodeURIComponent(clientId)}` +
@@ -4732,10 +4781,14 @@ async function handleNotionCallback(req, res) {
   const { searchParams } = new URL(req.url, `http://localhost`);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const userId = state ? decodeURIComponent(state) : "aidenpasque11@gmail.com";
+  const authUserId = resolveAuthUserIdFromOAuthState(state);
 
   if (!code) {
     json(res, 400, { error: "Missing code from Notion callback" });
+    return;
+  }
+  if (!authUserId) {
+    json(res, 400, { error: "Invalid OAuth state — sign in and connect Notion again." });
     return;
   }
 
@@ -4773,7 +4826,8 @@ async function handleNotionCallback(req, res) {
   }
 
   const row = {
-    user_id: userId,
+    auth_user_id: authUserId,
+    user_id: legacyEmailForAuthUserId(authUserId) || authUserId,
     access_token: tokenData.access_token,
     workspace_name: tokenData.workspace_name ?? null,
     workspace_id: tokenData.workspace_id ?? null,
@@ -4796,7 +4850,7 @@ async function handleNotionCallback(req, res) {
       const errText = await upsertRes.text().catch(() => "unknown");
       console.error("[notion/callback] Supabase upsert failed:", upsertRes.status, errText);
     } else {
-      console.log("[notion/callback] Supabase upsert success for user:", userId, "workspace:", row.workspace_name);
+      console.log("[notion/callback] Supabase upsert success for user:", authUserId, "workspace:", row.workspace_name);
     }
   } catch (e) {
     console.error("[notion/callback] Supabase upsert error:", String(e.message ?? e));
@@ -4806,9 +4860,11 @@ async function handleNotionCallback(req, res) {
 }
 
 async function handleNotionDatabases(req, res) {
-  const { searchParams } = new URL(req.url, `http://localhost`);
-  const userIdRaw = searchParams.get("user_id") || "aidenpasque11@gmail.com";
-  const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+  const userId = authUserIdFromReq(req);
+  if (!userId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
 
   const { url, key } = getSupabaseConfig();
   if (!url || !key) {
@@ -4819,7 +4875,7 @@ async function handleNotionDatabases(req, res) {
   let accessToken;
   try {
     const cr = await fetch(
-      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      `${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
     const rows = await cr.json().catch(() => null);
@@ -4925,8 +4981,11 @@ function notionPropValue(prop) {
 
 async function handleNotionColumns(req, res) {
   const sp = new URL(req.url, "http://localhost").searchParams;
-  const userIdRaw = sp.get("user_id") || "aidenpasque11@gmail.com";
-  const userId = userIdRaw.startsWith("eq.") ? userIdRaw.slice(3) : userIdRaw;
+  const userId = authUserIdFromReq(req);
+  if (!userId) {
+    json(res, 401, { error: "Unauthorized" });
+    return;
+  }
   const databaseId = sp.get("database_id") || "";
   if (!databaseId) { json(res, 400, { error: "database_id required" }); return; }
 
@@ -4937,7 +4996,7 @@ async function handleNotionColumns(req, res) {
   let accessToken;
   try {
     const cr = await fetch(
-      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      `${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
       { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }
     );
     const rows = await cr.json().catch(() => null);
@@ -5071,9 +5130,11 @@ async function handleNotionSaveMapping(req, res) {
     body = JSON.parse(Buffer.concat(chunks).toString());
   } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
 
-  const { user_id, database_id, mapping, data_source_id } = body ?? {};
+  const user_id = authUserIdFromReq(req);
+  const { database_id, mapping, data_source_id } = body ?? {};
   if (!user_id || !database_id || !mapping) {
-    json(res, 400, { error: "user_id, database_id, and mapping required" }); return;
+    json(res, 400, { error: "database_id and mapping required" });
+    return;
   }
 
   // Embed data_source_id (for merged DBs) into the mapping JSON so sync can use it
@@ -5248,10 +5309,10 @@ async function loadNotionOAuthConnection(userId) {
 
   try {
     const [connRes, mapRes] = await Promise.all([
-      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
         headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
       }),
-      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_mappings?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
         headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
       }),
     ]);
@@ -5467,7 +5528,7 @@ async function patchTradesArchivedByNotionIds(supabaseUrl, tableEnc, srKey, user
   for (let i = 0; i < notionIds.length; i += CH) {
     const chunk = notionIds.slice(i, i + CH);
     const inList = chunk.map((id) => encodeURIComponent(id)).join(",");
-    const patchUrl = `${supabaseUrl}/rest/v1/${tableEnc}?user_id=eq.${encUser}&notion_id=in.(${inList})`;
+    const patchUrl = `${supabaseUrl}/rest/v1/${tableEnc}?auth_user_id=eq.${encUser}&notion_id=in.(${inList})`;
     const pr = await fetch(patchUrl, {
       method: "PATCH",
       headers: {
@@ -5494,7 +5555,7 @@ async function fetchTradeRowsNotionIdArchived(supabaseUrl, tableEnc, srKey, user
   const pageSize = 1000;
   for (let start = 0; ; start += pageSize) {
     const end = start + pageSize - 1;
-    const endpoint = `${supabaseUrl}/rest/v1/${tableEnc}?user_id=eq.${encUser}&select=${archSelect}&notion_id=not.is.null`;
+    const endpoint = `${supabaseUrl}/rest/v1/${tableEnc}?auth_user_id=eq.${encUser}&select=${archSelect}&notion_id=not.is.null`;
     const res = await fetch(endpoint, {
       method: "GET",
       headers: {
@@ -5688,7 +5749,8 @@ async function syncNotionOAuthForUser(userId) {
     batchPages.push(page);
     batch.push({
       notion_id: page.id,
-      user_id: userId,
+      auth_user_id: userId,
+      user_id: legacyEmailForAuthUserId(userId) || userId,
       date: dateVal,
       outcome: get("outcome"),
       rr: rrNum != null && !isNaN(rrNum) ? rrNum : null,
@@ -5712,7 +5774,7 @@ async function syncNotionOAuthForUser(userId) {
 
   if (batch.length > 0) {
     const upsertCols =
-      "notion_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,notion_extras,notion_sync_source,archived,updated_at";
+      "notion_id,auth_user_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,notion_extras,notion_sync_source,archived,updated_at";
     try {
       for (let i = 0; i < batch.length; i += OAUTH_TRADE_UPSERT_BATCH) {
         const slice = batch.slice(i, i + OAUTH_TRADE_UPSERT_BATCH);
@@ -5758,9 +5820,9 @@ async function handleNotionSyncUser(req, res) {
     return;
   }
 
-  const { user_id } = body ?? {};
+  const user_id = authUserIdFromReq(req);
   if (!user_id) {
-    json(res, 400, { error: "user_id required" });
+    json(res, 401, { error: "Unauthorized" });
     return;
   }
 
@@ -5811,7 +5873,7 @@ if (!process.env.VERCEL) {
     }
 
     void (async () => {
-      for (const uid of OAUTH_BOOT_USER_IDS) {
+      for (const uid of OAUTH_BOOT_AUTH_USER_IDS) {
         try {
           const r = await maybeSyncNotion(uid, { force: true });
           if (r.ok && !r.skipped) {

@@ -443,7 +443,10 @@
     <script>
       (function () {
         // ── user ──
-        const userId = localStorage.getItem("jarvis_user") || localStorage.getItem("user_id") || "aidenpasque11@gmail.com";
+        let userId = "";
+        (async () => {
+          userId = (await JarvisAuth.getUserId()) || "";
+        })();
         if (!userId) { location.href = "/index.html"; return; }
         const navUser = document.getElementById("jv-nav-user");
         if (navUser) navUser.textContent = userId;
@@ -499,7 +502,7 @@
           const listEl = document.getElementById("db-list");
           const errEl  = document.getElementById("db-error");
           try {
-            const r = await fetch(`/api/notion/databases?user_id=${encodeURIComponent(userId)}`, { cache: "no-store" });
+            const r = await JarvisAuth.JarvisAuth.fetch(`/api/notion/databases`, { cache: "no-store" });
             const data = await r.json();
             if (!r.ok) throw new Error(data.error || "Failed to load databases");
             const { databases } = data;
@@ -534,7 +537,7 @@
           setStep(2);
 
           try {
-            const r = await fetch(`/api/notion/columns?user_id=${encodeURIComponent(userId)}&database_id=${encodeURIComponent(dbId)}`, { cache: "no-store" });
+            const r = await JarvisAuth.JarvisAuth.fetch(`/api/notion/columns?database_id=${encodeURIComponent(dbId)}`, { cache: "no-store" });
             const data = await r.json();
             if (!r.ok) throw new Error(data.error || "Failed to load columns");
             notionColumns = Array.isArray(data.columns) ? data.columns : [];
@@ -739,10 +742,10 @@
           statusEl.className = "status-msg";
 
           try {
-            const r = await fetch("/api/notion/save-mapping", {
+            const r = await JarvisAuth.fetch("/api/notion/save-mapping", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ user_id: userId, database_id: selectedDbId, mapping, data_source_id: notionDataSourceId }),
+              body: JSON.stringify({ database_id: selectedDbId, mapping, data_source_id: notionDataSourceId }),
               cache: "no-store",
             });
             const data = await r.json();
@@ -770,10 +773,10 @@
           statusEl.className = "status-msg";
 
           try {
-            const r = await fetch("/api/notion/sync-user", {
+            const r = await JarvisAuth.fetch("/api/notion/sync-user", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ user_id: userId }),
+              body: JSON.stringify({}),
               cache: "no-store",
             });
             const data = await r.json();
@@ -837,5 +840,6 @@
         loadDatabases();
       })();
     </script>
-  </body>
+      <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
+</body>
 </html>

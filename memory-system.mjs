@@ -125,7 +125,7 @@ function parseMemoriesJson(text) {
 
 async function fetchAllMemoriesForUser(userId) {
   const res = await sbFetch(
-    `/rest/v1/${MEMORY_TABLE}?user_id=eq.${encodeURIComponent(userId)}&select=id,memory,category,importance,created_at,last_referenced,reference_count&order=importance.desc,reference_count.desc,created_at.desc`,
+    `/rest/v1/${MEMORY_TABLE}?auth_user_id=eq.${encodeURIComponent(userId)}&select=id,memory,category,importance,created_at,last_referenced,reference_count&order=importance.desc,reference_count.desc,created_at.desc`,
     { headers: { Accept: "application/json" } }
   );
   if (!res.ok) {
@@ -147,6 +147,7 @@ async function insertMemory(userId, entry) {
       Prefer: "return=representation",
     },
     body: JSON.stringify({
+      auth_user_id: userId,
       user_id: userId,
       memory: entry.memory,
       category,

@@ -1,10 +1,9 @@
 import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=d4f7e2a1";
 import { startNotionAutoSync } from "/js/notion-sync-client.js";
+import { apiFetch, getAuthEmail, getAuthUserId, signOut } from "/js/jarvis-auth.js";
 
 const API_CHAT = "/api/chat";
 const API_TRADES = "/api/trades";
-const DEFAULT_USER_ID = "aidenpasque11@gmail.com";
-const USER_MUM_ID = "spasque70@gmail.com";
 const STORAGE_KEY_CHAT = "operationJarvis.chat.v1";
 const CHAT_RECENT_TRADES = 15;
 const MAX_CHAT_MESSAGES_API = 5;
@@ -26,241 +25,19 @@ const CHAT_PLACEHOLDER_EXAMPLES = [
   "How should I size the next session after yesterday's result?",
 ];
 
-let currentUserId = DEFAULT_USER_ID;
 let snapshotRequestSeq = 0;
-
-function setUserId(userId) {
-  currentUserId = userId;
-  try {
-    localStorage.setItem("jarvis_user", userId);
-    localStorage.setItem("user_id", userId);
-  } catch {}
-}
-
-function getStoredUserId() {
-  const jarvisUser = (localStorage.getItem("jarvis_user") || "").trim();
-  const storedUserId = (localStorage.getItem("user_id") || "").trim();
-  return jarvisUser || storedUserId || DEFAULT_USER_ID;
-}
-
-function clearUserId() {
-  try {
-    localStorage.removeItem("jarvis_user");
-    localStorage.removeItem("user_id");
-  } catch {}
-  currentUserId = DEFAULT_USER_ID;
-}
-
-function promptForUser() {
-  return new Promise((resolve) => {
-    const existing = (localStorage.getItem("jarvis_user") || localStorage.getItem("user_id") || "").trim();
-
-    const style = document.createElement("style");
-    style.textContent = `
-      .jv-login-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        display: grid;
-        place-items: center;
-        background: rgba(0, 0, 0, 0.82);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-      }
-      .jv-login-card {
-        width: min(520px, calc(100vw - 44px));
-        border-radius: 18px;
-        border: 1px solid rgba(0, 191, 255, 0.22);
-        background: rgba(0, 0, 0, 0.78);
-        box-shadow:
-          0 0 0 1px rgba(0, 191, 255, 0.08) inset,
-          0 24px 90px rgba(0, 0, 0, 0.78);
-        padding: 18px;
-        color: rgba(255, 255, 255, 0.92);
-        font-family: "Share Tech Mono","Courier New",monospace;
-      }
-      .jv-login-title {
-        margin: 0 0 10px 0;
-        font-size: 12px;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        color: rgba(0, 191, 255, 0.85);
-      }
-      .jv-login-sub {
-        margin: 0 0 14px 0;
-        font-size: 10px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.32);
-      }
-      .jv-login-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-      .jv-login-btn {
-        border-radius: 12px;
-        border: 1px solid rgba(0, 191, 255, 0.28);
-        background: rgba(0, 191, 255, 0.08);
-        color: rgba(255, 255, 255, 0.9);
-        padding: 12px 12px;
-        cursor: pointer;
-        font-family: inherit;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        font-size: 11px;
-        transition: background 0.2s, border-color 0.2s, transform 0.2s;
-      }
-      .jv-login-btn:hover {
-        background: rgba(0, 191, 255, 0.16);
-        border-color: rgba(0, 191, 255, 0.6);
-        transform: translateY(-1px);
-      }
-      .jv-login-input {
-        width: 100%;
-        box-sizing: border-box;
-        border-radius: 12px;
-        border: 1px solid rgba(0, 191, 255, 0.22);
-        background: rgba(0, 0, 0, 0.45);
-        color: rgba(255, 255, 255, 0.9);
-        padding: 12px 12px;
-        outline: none;
-        font-family: inherit;
-        letter-spacing: 0.04em;
-      }
-      .jv-login-input:focus {
-        border-color: rgba(0, 191, 255, 0.7);
-        box-shadow: 0 0 0 2px rgba(0, 191, 255, 0.12);
-      }
-      .jv-login-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 12px;
-        align-items: center;
-        justify-content: flex-end;
-      }
-      .jv-login-continue {
-        border-radius: 12px;
-        border: 1px solid rgba(0, 191, 255, 0.65);
-        background: rgba(0, 191, 255, 0.14);
-        color: rgba(0, 191, 255, 0.95);
-        padding: 10px 14px;
-        cursor: pointer;
-        font-family: inherit;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        font-size: 11px;
-      }
-    `;
-
-    const overlay = document.createElement("div");
-    overlay.className = "jv-login-overlay";
-
-    const card = document.createElement("div");
-    card.className = "jv-login-card";
-
-    const title = document.createElement("h2");
-    title.className = "jv-login-title";
-    title.textContent = "LOGIN";
-
-    const sub = document.createElement("p");
-    sub.className = "jv-login-sub";
-    sub.textContent = "Select user profile";
-
-    const row = document.createElement("div");
-    row.className = "jv-login-row";
-
-    const btnAiden = document.createElement("button");
-    btnAiden.type = "button";
-    btnAiden.className = "jv-login-btn";
-    btnAiden.textContent = "Aiden";
-
-    const btnMum = document.createElement("button");
-    btnMum.type = "button";
-    btnMum.className = "jv-login-btn";
-    btnMum.textContent = "Mum";
-
-    const input = document.createElement("input");
-    input.className = "jv-login-input";
-    input.type = "email";
-    input.autocomplete = "email";
-    input.inputMode = "email";
-    input.placeholder = "Or enter email…";
-    input.value = existing;
-
-    const actions = document.createElement("div");
-    actions.className = "jv-login-actions";
-
-    const cont = document.createElement("button");
-    cont.type = "button";
-    cont.className = "jv-login-continue";
-    cont.textContent = "Continue";
-
-    function submit(value) {
-      const email = (value || "").trim() || DEFAULT_USER_ID;
-      setUserId(email);
-      overlay.remove();
-      style.remove();
-      resolve(email);
-    }
-
-    btnAiden.addEventListener("click", () => submit(DEFAULT_USER_ID));
-    btnMum.addEventListener("click", () => submit(USER_MUM_ID));
-    cont.addEventListener("click", () => submit(input.value));
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") submit(input.value);
-    });
-
-    row.appendChild(btnAiden);
-    row.appendChild(btnMum);
-    actions.appendChild(cont);
-
-    card.appendChild(title);
-    card.appendChild(sub);
-    card.appendChild(row);
-    card.appendChild(input);
-    card.appendChild(actions);
-
-    overlay.appendChild(card);
-
-    document.head.appendChild(style);
-    document.body.appendChild(overlay);
-    input.focus();
-    input.select();
-  });
-}
-
-function ensureUserId() {
-  const jarvisUser = (localStorage.getItem("jarvis_user") || "").trim();
-  const storedUserId = (localStorage.getItem("user_id") || "").trim();
-
-  if (jarvisUser) {
-    setUserId(jarvisUser);
-    if (storedUserId !== jarvisUser) {
-      try {
-        localStorage.setItem("user_id", jarvisUser);
-      } catch {}
-    }
-    return Promise.resolve(jarvisUser);
-  }
-
-  if (storedUserId) {
-    setUserId(storedUserId);
-    return Promise.resolve(storedUserId);
-  }
-
-  return promptForUser();
-}
 
 function initLogoutButton() {
   const btn = document.getElementById("logout-btn");
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    clearUserId();
-    // reload so the app re-initializes cleanly into the login prompt
-    window.location.reload();
-  });
+  if (!btn || btn.dataset.jarvisAuthBound) return;
+  btn.dataset.jarvisAuthBound = "1";
+  btn.addEventListener("click", () => { void signOut(); });
+}
+
+async function updateNavUserLabel() {
+  const email = await getAuthEmail();
+  const el = document.getElementById("jv-nav-user");
+  if (el && email) el.textContent = email;
 }
 
 /** Normalize /api/trades JSON (handles optional `payload` wrapper or bad shapes). */
@@ -1005,12 +782,7 @@ function buildCoachingLine(sortedDesc, contextWinRate, weekday) {
   return "Stay in your process.";
 }
 
-function traderDisplayName(userId) {
-  const id = String(userId || "").trim();
-  if (id === DEFAULT_USER_ID) return "Aiden";
-  if (id === USER_MUM_ID) return "Mum";
-  return "";
-}
+function traderDisplayName() { return ""; }
 
 /**
  * One honest extra line from recent rows only (newest-first `sorted`).
@@ -1119,12 +891,7 @@ async function showColdOpenGreeting() {
   if (coldOpenGreetingDoneThisPage || chatSending) return;
   coldOpenGreetingDoneThisPage = true;
 
-  const uid =
-    currentUserId ||
-    localStorage.getItem("jarvis_user") ||
-    localStorage.getItem("user_id") ||
-    DEFAULT_USER_ID;
-  const text = buildSmartOpenGreeting(tradeData, uid);
+  const text = buildSmartOpenGreeting(tradeData, "");
   const msg = { role: "assistant", content: text, coldOpen: true };
   const hadHistory = chatMessages.length > 0;
 
@@ -1461,17 +1228,10 @@ function initMic() {
 
 /* ═══════════ Trade data ═══════════ */
 async function loadTradesAttempt() {
-  const userId =
-    currentUserId ||
-    localStorage.getItem("jarvis_user") ||
-    localStorage.getItem("user_id") ||
-    DEFAULT_USER_ID;
   if (els.snapInsight) {
     els.snapInsight.textContent = "Fetching ledger…";
   }
-  const res = await fetch(`${API_TRADES}?user_id=eq.${encodeURIComponent(userId)}`, {
-    cache: "no-store",
-  });
+  const res = await apiFetch(API_TRADES);
   const data = await res.json().catch(() => ({}));
   console.log("FRONTEND RAW DATA:", data);
 
@@ -1523,16 +1283,11 @@ async function loadTrades() {
 }
 
 function runBackgroundNotionSync() {
-  const userId =
-    currentUserId ||
-    localStorage.getItem("jarvis_user") ||
-    localStorage.getItem("user_id") ||
-    DEFAULT_USER_ID;
   const prevInsight = els.snapInsight?.textContent || "";
   if (els.snapInsight && !tradeData?.notionSyncWarning) {
     els.snapInsight.textContent = "Syncing Notion…";
   }
-  return startNotionAutoSync(userId, {
+  return startNotionAutoSync(undefined, {
     onComplete: async () => {
       const countBefore = tradeData?.records?.length ?? 0;
       await loadTrades();
@@ -1622,9 +1377,10 @@ async function sendChatMessage(text) {
     return;
   }
   if (!tradeData?.records?.length) {
-    const msg = "No trade data yet. Check the server and Supabase, then refresh the page.";
-    chatMessages.push({ role: "error", content: msg });
-    chatUiMessages.push({ role: "error", content: msg });
+    const msg =
+      "Your journal is empty. Connect Notion from Account when you are ready — I can still answer general coaching questions.";
+    chatMessages.push({ role: "assistant", content: msg });
+    chatUiMessages.push({ role: "assistant", content: msg });
     renderChatHistory({ animateLast: true });
     return;
   }
@@ -1651,16 +1407,10 @@ async function sendChatMessage(text) {
   );
 
   try {
-    const res = await fetch(API_CHAT, {
+    const res = await apiFetch(API_CHAT, {
       method: "POST",
-      cache: "no-store",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email:
-          currentUserId ||
-          localStorage.getItem("jarvis_user") ||
-          localStorage.getItem("user_id") ||
-          DEFAULT_USER_ID,
         headers: tradeData.headers,
         trades: tradeData.records,
         messages: apiMessages,
@@ -2318,11 +2068,7 @@ async function openTradeForm() {
     `/js/log-trade-modal.js?v=${JARVIS_ASSET_V}`
   );
   await openLogTradeModal({
-    getUserId: () =>
-      currentUserId ||
-      localStorage.getItem("jarvis_user") ||
-      localStorage.getItem("user_id") ||
-      DEFAULT_USER_ID,
+    getUserId: () => getAuthUserId(),
     fetchTradeRowsForPrefill: async () => {
       await loadTrades();
       return Array.isArray(tradeData?.records) ? tradeData.records : [];
@@ -2370,7 +2116,7 @@ function initLogTradeBtn() {
 }
 
 async function boot() {
-  await ensureUserId();
+  await updateNavUserLabel();
 
   try {
     sessionStorage.removeItem(COLD_OPEN_GREETING_SESSION_KEY);

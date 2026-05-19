@@ -853,12 +853,7 @@
     </div>
     <script>
       (function () {
-        var u = localStorage.getItem('jarvis_user') || localStorage.getItem('user_id');
-        if (u) document.getElementById('jv-nav-user').textContent = u;
-        document.getElementById('logout-btn').addEventListener('click', function () {
-          try { localStorage.removeItem('jarvis_user'); localStorage.removeItem('user_id'); } catch (e) {}
-          window.location.href = '/index.html';
-        });
+        );
         var btn = document.getElementById('jv-nav-hamburger');
         var dd = document.getElementById('jv-nav-dropdown');
         btn.addEventListener('click', function () {
@@ -1132,16 +1127,17 @@
       (function () {
         'use strict';
 
-        /* ── User ── */
-        var DEFAULT_USER = 'aidenpasque11@gmail.com';
-        var currentUserId = DEFAULT_USER;
+        /* ── User (Supabase Auth session) ── */
+        var currentUserId = "";
         function ensureUserId() {
-          var ju = (localStorage.getItem('jarvis_user') || '').trim();
-          var uid = (localStorage.getItem('user_id') || '').trim();
-          if (ju) { currentUserId = ju; if (uid !== ju) try { localStorage.setItem('user_id', ju); } catch(e){} }
-          else if (uid) { currentUserId = uid; }
-          else { currentUserId = DEFAULT_USER; try { localStorage.setItem('user_id', DEFAULT_USER); localStorage.setItem('jarvis_user', DEFAULT_USER); } catch(e){} }
-          var el = document.getElementById('jv-nav-user'); if (el) el.textContent = currentUserId;
+          return JarvisAuth.getUserId().then(function (id) {
+            currentUserId = id || "";
+            return JarvisAuth.getEmail().then(function (email) {
+              var el = document.getElementById("jv-nav-user");
+              if (el && email) el.textContent = email;
+              return currentUserId;
+            });
+          });
         }
 
         /* ── Helpers ── */
@@ -1252,10 +1248,10 @@
           return Array.isArray(inner.records) ? inner.records : (Array.isArray(inner.trades) ? inner.trades : []);
         }
         async function fetchAllTrades() {
-          var uid = currentUserId||DEFAULT_USER;
+          var uid = currentUserId;
           var res = await Promise.allSettled([
-            fetch('/api/trades?user_id=eq.'+encodeURIComponent(uid),{cache:'no-store'}).then(function(r){return r.json();}),
-            fetch('/api/journal-trades?user_id=eq.'+encodeURIComponent(uid),{cache:'no-store'}).then(function(r){return r.json();})
+            JarvisAuth.fetch('/api/trades').then(function(r){return r.json();}),
+            JarvisAuth.fetch('/api/journal-trades').then(function(r){return r.json();})
           ]);
           var merged = [];
           if (res[0].status==='fulfilled') merged = merged.concat(normalizeBody(res[0].value));
@@ -2521,7 +2517,7 @@
           });
         }
         function wrFiltersLsKey() {
-          return WR_FILTER_LS + (currentUserId || DEFAULT_USER);
+          return WR_FILTER_LS + currentUserId;
         }
         function wrLoadFilters() {
           try {
@@ -2833,7 +2829,7 @@
 
         function wrFpAllDims() { return WR_FP_DIMS.concat(wrDynamicDims); }
 
-        function wrFpLsKey() { return WR_FP_LS + (currentUserId || DEFAULT_USER); }
+        function wrFpLsKey() { return WR_FP_LS + currentUserId; }
         function wrFpSave() { try { localStorage.setItem(wrFpLsKey(), JSON.stringify(wrActiveFilters)); } catch (e) {} }
         function wrFpLoad() {
           try {
@@ -3419,7 +3415,7 @@
 
         /* ── Boot ── */
         async function boot() {
-          ensureUserId();
+          await ensureUserId();
           if (!window.Chart) { document.getElementById('an-foot').textContent='Charts offline. CDN blocked.'; return; }
           try { allTrades = await fetchAllTrades(); } catch(e){ allTrades=[]; }
           if (!allTrades.length) {
@@ -3482,5 +3478,6 @@
         boot();
       })();
     </script>
-  </body>
+      <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
+</body>
 </html>

@@ -1227,19 +1227,7 @@
 
     <script>
       (function () {
-        var user = localStorage.getItem("jarvis_user") || localStorage.getItem("user_id");
-        if (user) document.getElementById("jv-nav-user").textContent = user;
-
-        var logoutBtn = document.getElementById("logout-btn");
-        if (logoutBtn) {
-          logoutBtn.addEventListener("click", function () {
-            try {
-              localStorage.removeItem("jarvis_user");
-              localStorage.removeItem("user_id");
-            } catch (e) {}
-            window.location.href = "/index.html";
-          });
-        }
+        
 
         var btn = document.getElementById("jv-nav-hamburger");
         var dropdown = document.getElementById("jv-nav-dropdown");
@@ -1351,7 +1339,7 @@
       (function () {
         "use strict";
 
-        var DEFAULT_USER_ID = "aidenpasque11@gmail.com";
+        var DEFAULT_USER_ID = "";
         var currentUserId = DEFAULT_USER_ID;
         var TZ = "Australia/Adelaide";
         var viewMode = "week"; // week | month
@@ -1364,28 +1352,13 @@
         var calendarModalTradeForAsk = null;
 
         function ensureUserId() {
-          return new Promise(function (resolve) {
-            var ju = (localStorage.getItem("jarvis_user") || "").trim();
-            var uid = (localStorage.getItem("user_id") || "").trim();
-            if (ju) {
-              currentUserId = ju;
-              if (uid !== ju) {
-                try {
-                  localStorage.setItem("user_id", ju);
-                } catch (e) {}
-              }
-            } else if (uid) {
-              currentUserId = uid;
-            } else {
-              currentUserId = DEFAULT_USER_ID;
-              try {
-                localStorage.setItem("user_id", DEFAULT_USER_ID);
-                localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
-              } catch (e) {}
-            }
-            var navUser = document.getElementById("jv-nav-user");
-            if (navUser) navUser.textContent = currentUserId;
-            resolve(currentUserId);
+          return JarvisAuth.getUserId().then(function (id) {
+            currentUserId = id || "";
+            return JarvisAuth.getEmail().then(function (email) {
+              var navUser = document.getElementById("jv-nav-user");
+              if (navUser && email) navUser.textContent = email;
+              return currentUserId;
+            });
           });
         }
 
@@ -1485,12 +1458,11 @@
         }
 
         async function fetchAllTrades() {
-          var userId = currentUserId || DEFAULT_USER_ID;
           var reqs = [
-            fetch("/api/trades?user_id=eq." + encodeURIComponent(userId), { cache: "no-store" }).then(function (r) {
+            JarvisAuth.fetch("/api/trades").then(function (r) {
               return r.json();
             }),
-            fetch("/api/journal-trades?user_id=eq." + encodeURIComponent(userId), { cache: "no-store" }).then(function (r) {
+            JarvisAuth.fetch("/api/journal-trades").then(function (r) {
               return r.json();
             }),
           ];
@@ -2810,6 +2782,7 @@
         boot();
       })();
     </script>
-  </body>
+      <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
+</body>
 </html>
 

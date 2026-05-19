@@ -32,7 +32,7 @@ async function sbFetch(path, opts = {}) {
 
 async function readRawRow(userId) {
   const res = await sbFetch(
-    `/rest/v1/intelligence_files?user_id=eq.${encodeURIComponent(userId)}&select=*`,
+    `/rest/v1/intelligence_files?auth_user_id=eq.${encodeURIComponent(userId)}&select=*`,
     { headers: { Accept: "application/json" } }
   );
   if (!res.ok) {
@@ -48,6 +48,7 @@ async function upsertFile(userId, file) {
   if (!url || !key) throw new Error("Missing Supabase config");
 
   const body = {
+    auth_user_id: userId,
     user_id: userId,
     report: file,
     generated_at: file.generatedAt,
@@ -363,7 +364,7 @@ export async function shouldRegenerateIntelligenceFile(userId) {
       const table = (process.env.SUPABASE_TABLE ?? "trades").trim() || "trades";
       const { url, key } = sbConfig();
       const res = await fetch(
-        `${url}/rest/v1/${encodeURIComponent(table)}?user_id=eq.${encodeURIComponent(userId)}&archived=is.false&select=id`,
+        `${url}/rest/v1/${encodeURIComponent(table)}?auth_user_id=eq.${encodeURIComponent(userId)}&archived=is.false&select=id`,
         {
           headers: {
             apikey: key,

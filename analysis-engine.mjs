@@ -153,7 +153,7 @@ async function fetchAllTradesForAnalysis(userId) {
 
   const endpoint =
     `${url}/rest/v1/${encodeURIComponent(table)}` +
-    `?select=*&user_id=eq.${encodeURIComponent(userId)}&archived=is.false&order=date.asc`;
+    `?select=*&auth_user_id=eq.${encodeURIComponent(userId)}&archived=is.false&order=date.asc`;
 
   const res = await fetch(endpoint, {
     method: "GET",

@@ -1,39 +1,28 @@
-export const DEFAULT_USER_ID = "aidenpasque11@gmail.com";
+import { apiFetch, getAuthUserId } from "./jarvisAuth";
+
 export const ADELAIDE_TZ = "Australia/Adelaide";
 
 export type TradeLike = Record<string, unknown>;
 
-export function ensureUserId(): string {
-  const ju = (localStorage.getItem("jarvis_user") || "").trim();
-  const uid = (localStorage.getItem("user_id") || "").trim();
-  if (ju) {
-    if (uid !== ju) {
-      try {
-        localStorage.setItem("user_id", ju);
-      } catch {}
-    }
-    return ju;
-  }
-  if (uid) return uid;
-  try {
-    localStorage.setItem("jarvis_user", DEFAULT_USER_ID);
-    localStorage.setItem("user_id", DEFAULT_USER_ID);
-  } catch {}
-  return DEFAULT_USER_ID;
+export async function ensureUserId(): Promise<string> {
+  return (await getAuthUserId()) || "";
 }
 
-export function normalizeTradesApiBody(data: unknown): { records: TradeLike[]; snapshot?: any } {
+export function normalizeTradesApiBody(data: unknown): { records: TradeLike[]; snapshot?: unknown } {
   if (!data || typeof data !== "object") return { records: [] };
-  const anyData: any = data as any;
-  const inner = anyData.payload && typeof anyData.payload === "object" ? anyData.payload : anyData;
+  const anyData = data as Record<string, unknown>;
+  const inner =
+    anyData.payload && typeof anyData.payload === "object"
+      ? (anyData.payload as Record<string, unknown>)
+      : anyData;
   const trades = Array.isArray(inner.trades) ? inner.trades : null;
   const records = Array.isArray(inner.records) ? inner.records : null;
   const out = (trades || records || []) as TradeLike[];
   return { records: out, snapshot: inner.snapshot };
 }
 
-export async function fetchTrades(userId: string) {
-  const r = await fetch(`/api/trades?user_id=eq.${encodeURIComponent(userId)}`, { cache: "no-store" });
+export async function fetchTrades(_userId?: string) {
+  const r = await apiFetch("/api/trades");
   const data = await r.json().catch(() => ({}));
   const norm = normalizeTradesApiBody(data);
   return { ok: r.ok, status: r.status, data, records: norm.records, snapshot: norm.snapshot };
@@ -41,14 +30,16 @@ export async function fetchTrades(userId: string) {
 
 export function getField(t: TradeLike, ...keys: string[]) {
   for (const k of keys) {
-    const v = (t as any)[k];
+    const v = t[k];
     if (v !== undefined && v !== null && v !== "") return v;
   }
   return "";
 }
 
 export function outcomeOf(t: TradeLike) {
-  const raw = String(getField(t, "outcome", "Outcome", "OUTCOME") || "").trim().toLowerCase();
+  const raw = String(getField(t, "outcome", "Outcome", "OUTCOME") || "")
+    .trim()
+    .toLowerCase();
   if (raw.includes("win") || raw === "w") return "win";
   if (raw.includes("loss") || raw === "l") return "loss";
   if (raw === "be" || raw.includes("break")) return "be";
@@ -78,4 +69,3 @@ export function dateLocalString(dateValue: unknown) {
     return d.toString();
   }
 }
-
