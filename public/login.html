@@ -169,6 +169,15 @@
       box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.08);
     }
 
+    .login-magic-hint {
+      font-size: 12px;
+      color: #8899aa;
+      line-height: 1.45;
+      text-align: center;
+      margin: 0 0 10px;
+      opacity: 0.85;
+    }
+
     .login-magic-btn {
       display: block;
       width: 100%;
@@ -233,7 +242,7 @@
     <div class="login-card" id="login-card">
 
       <div class="login-eyebrow">JARVIS · TRADING OS</div>
-      <h1 class="login-headline">Sign in</h1>
+      <h1 class="login-headline">Create account or sign in</h1>
       <p class="login-sub">Your journal, intelligence, and coach — secured to your account</p>
 
       <button type="button" class="login-google-btn" id="google-btn">
@@ -249,9 +258,10 @@
 
       <div class="login-divider">or</div>
 
-      <label class="login-magic-label" for="magic-email">Email login</label>
+      <label class="login-magic-label" for="magic-email">Email</label>
       <input class="login-magic-input" id="magic-email" type="email" autocomplete="email" placeholder="you@email.com" />
-      <button type="button" class="login-magic-btn" id="magic-btn">Send login link</button>
+      <p class="login-magic-hint">New? Just enter your email — we'll create your account automatically.</p>
+      <button type="button" class="login-magic-btn" id="magic-btn">Continue with email</button>
 
       <div id="login-success" class="login-msg login-msg--ok" role="status"></div>
       <div id="login-error" class="login-msg login-msg--err" role="alert"></div>
