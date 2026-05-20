@@ -224,7 +224,7 @@ export function OnboardingPage() {
       onboarding_complete: true,
       onboarding_completed_at: new Date().toISOString(),
     });
-    window.location.href = "/app/dashboard/";
+    window.location.href = "/index.html";
   }
 
   const progress = Math.max(0, stepIx.i) / (STEP_ORDER.length - 1);

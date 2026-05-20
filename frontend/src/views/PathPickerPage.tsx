@@ -55,7 +55,7 @@ export function PathPickerPage() {
 
         switch (step) {
           case "complete":
-            redirect("/app/dashboard/");
+            redirect("/index.html");
             return;
           case "mapping":
             redirect("/notion-setup.html?onboarding=true");
