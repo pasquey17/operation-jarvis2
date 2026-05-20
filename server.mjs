@@ -4687,6 +4687,16 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "POST" && req.url.startsWith("/api/user/profile")) {
+    await handleUserProfile(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/user/onboarding-state")) {
+    await handleOnboardingState(req, res);
+    return;
+  }
+
   if (req.method !== "GET") {
     send(res, 405, "Method not allowed");
     return;
@@ -4842,7 +4852,7 @@ async function handleNotionCallback(req, res) {
     console.error("[notion/callback] Supabase upsert error:", String(e.message ?? e));
   }
 
-  send(res, 302, "", { Location: "/app/onboarding/" });
+  send(res, 302, "", { Location: "/notion-setup.html?onboarding=true" });
 }
 
 async function handleNotionDatabases(req, res) {
@@ -5833,6 +5843,92 @@ async function handleNotionSyncUser(req, res) {
 
   firePostSyncBrain(user_id);
   json(res, 200, { synced: syncMeta.upserted ?? 0, fetched: syncMeta.fetched ?? null });
+}
+
+async function handleUserProfile(req, res) {
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) {
+    json(res, 401, { error: "Unauthorised" });
+    return;
+  }
+
+  let body;
+  try {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    body = JSON.parse(Buffer.concat(chunks).toString());
+  } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
+
+  const ALLOWED_FIELDS = ["trading_style", "markets", "trading_windows", "biggest_struggle", "goals", "timezone", "onboarding_complete", "onboarding_completed_at"];
+  const row = { auth_user_id: authUserId, updated_at: new Date().toISOString() };
+  for (const field of ALLOWED_FIELDS) {
+    if (body[field] !== undefined) row[field] = body[field];
+  }
+
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 500, { error: "Supabase not configured" }); return; }
+
+  try {
+    const upsertRes = await fetch(`${url}/rest/v1/user_profiles`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify(row),
+    });
+    if (!upsertRes.ok) {
+      const err = await upsertRes.text().catch(() => "unknown");
+      json(res, 502, { error: `Profile upsert failed: ${err}` }); return;
+    }
+    json(res, 200, { success: true });
+  } catch (e) {
+    json(res, 502, { error: `Profile upsert error: ${String(e.message ?? e)}` });
+  }
+}
+
+async function handleOnboardingState(req, res) {
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) {
+    json(res, 401, { error: "Unauthorised" });
+    return;
+  }
+
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 500, { error: "Supabase not configured" }); return; }
+
+  let profileRow = null;
+  let hasNotionConnection = false;
+
+  try {
+    const [profileRes, notionRes] = await Promise.all([
+      fetch(`${url}/rest/v1/user_profiles?auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
+      }),
+      fetch(`${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
+      }),
+    ]);
+    const profileRows = await profileRes.json().catch(() => null);
+    profileRow = Array.isArray(profileRows) && profileRows.length > 0 ? profileRows[0] : null;
+    const notionRows = await notionRes.json().catch(() => null);
+    hasNotionConnection = Array.isArray(notionRows) && notionRows.length > 0;
+  } catch (e) {
+    json(res, 500, { error: `State check failed: ${String(e.message ?? e)}` });
+    return;
+  }
+
+  if (!profileRow) {
+    json(res, 200, { step: "path-picker" });
+    return;
+  }
+  if (profileRow.onboarding_complete) {
+    json(res, 200, { step: "complete" });
+    return;
+  }
+  json(res, 200, { step: hasNotionConnection ? "mapping" : "profile" });
 }
 
 const server = http.createServer(requestListener);
