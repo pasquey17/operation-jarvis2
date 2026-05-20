@@ -1096,7 +1096,8 @@
       </figure>
     </div>
 
-    <script>
+    <script type="module">
+      import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
     (function () {
       'use strict';
 
@@ -1152,7 +1153,7 @@
 
       async function jnPostNotionReconcile(dryRun, secret) {
         var userId = currentUserId || '';
-        var r = await JarvisAuth.fetch('/api/notion/reconcile-archive', {
+        var r = await apiFetch('/api/notion/reconcile-archive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-store',
@@ -2007,9 +2008,9 @@
       }
 
       function ensureUserId() {
-        return JarvisAuth.getUserId().then(function (id) {
+        return getAuthUserId().then(function (id) {
           currentUserId = id || "";
-          return JarvisAuth.getEmail().then(function (email) {
+          return getAuthEmail().then(function (email) {
             var navUser = document.getElementById("jv-nav-user");
             if (navUser && email) navUser.textContent = email;
             return currentUserId;
@@ -2026,11 +2027,11 @@
       /* ── Data fetching ── */
       async function fetchAllTrades() {
         var promises = [
-          JarvisAuth.fetch("/api/trades").then(function (r) { return r.json(); })
+          apiFetch("/api/trades").then(function (r) { return r.json(); })
         ];
         if (jnSourceFilters.includeManualJournal) {
           promises.push(
-            JarvisAuth.fetch('/api/journal-trades').then(function (r) {
+            apiFetch('/api/journal-trades').then(function (r) {
               return r.json();
             })
           );
@@ -2867,7 +2868,7 @@
           try {
             var uid = getJournalUserIdForApi();
             var q = new URLSearchParams({ id: String(rowId),  });
-            var res = await JarvisAuth.fetch('/api/journal-trades?' + q.toString(), { method: 'DELETE', cache: 'no-store' });
+            var res = await apiFetch('/api/journal-trades?' + q.toString(), { method: 'DELETE', cache: 'no-store' });
             if (!res.ok) {
               var errJ = await res.json().catch(function () {
                 return {};
@@ -2895,7 +2896,7 @@
               encodeURIComponent(String(rowId)) +
               '&user_id=' +
               encodeURIComponent('eq.' + uid2);
-            var res2 = await JarvisAuth.fetch('/api/trades-row?' + q2, { method: 'DELETE', cache: 'no-store' });
+            var res2 = await apiFetch('/api/trades-row?' + q2, { method: 'DELETE', cache: 'no-store' });
             if (!res2.ok) {
               var errJ2 = await res2.json().catch(function () {
                 return {};
@@ -3077,7 +3078,7 @@
               }
               payload.notion_extras = mergedX;
             }
-            var res = await JarvisAuth.fetch('/api/trades-row', {
+            var res = await apiFetch('/api/trades-row', {
               method: 'PATCH',
               cache: 'no-store',
               headers: { 'Content-Type': 'application/json' },
@@ -3116,7 +3117,7 @@
               encodeURIComponent(String(rowId)) +
               '&user_id=' +
               encodeURIComponent('eq.' + uid);
-            var res = await JarvisAuth.fetch('/api/trades-row?' + q, { method: 'DELETE', cache: 'no-store' });
+            var res = await apiFetch('/api/trades-row?' + q, { method: 'DELETE', cache: 'no-store' });
             if (!res.ok) {
               var errJ = await res.json().catch(function () {
                 return {};
@@ -3504,7 +3505,7 @@
         document.querySelectorAll('img[data-notion-id="' + notionId + '"]').forEach(function (el) {
           el.dataset.imgRefreshed = '1';
         });
-        JarvisAuth.fetch('/api/refresh-trade-image?notion_id=' + encodeURIComponent(notionId), { cache: 'no-store' })
+        apiFetch('/api/refresh-trade-image?notion_id=' + encodeURIComponent(notionId), { cache: 'no-store' })
           .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
           .then(function (data) {
             if (!Array.isArray(data.images) || !data.images.length) return;

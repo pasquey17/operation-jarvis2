@@ -1335,7 +1335,8 @@
       </figure>
     </div>
 
-    <script>
+    <script type="module">
+      import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
       (function () {
         "use strict";
 
@@ -1352,9 +1353,9 @@
         var calendarModalTradeForAsk = null;
 
         function ensureUserId() {
-          return JarvisAuth.getUserId().then(function (id) {
+          return getAuthUserId().then(function (id) {
             currentUserId = id || "";
-            return JarvisAuth.getEmail().then(function (email) {
+            return getAuthEmail().then(function (email) {
               var navUser = document.getElementById("jv-nav-user");
               if (navUser && email) navUser.textContent = email;
               return currentUserId;
@@ -1459,10 +1460,10 @@
 
         async function fetchAllTrades() {
           var reqs = [
-            JarvisAuth.fetch("/api/trades").then(function (r) {
+            apiFetch("/api/trades").then(function (r) {
               return r.json();
             }),
-            JarvisAuth.fetch("/api/journal-trades").then(function (r) {
+            apiFetch("/api/journal-trades").then(function (r) {
               return r.json();
             }),
           ];
@@ -2479,7 +2480,7 @@
                 el.dataset.imgRefreshed = "1";
               });
               var uid = currentUserId || DEFAULT_USER_ID;
-              JarvisAuth.fetch(
+              apiFetch(
                 "/api/refresh-trade-image?notion_id=" +
                   encodeURIComponent(notionId) +
                   "&user_id=" +

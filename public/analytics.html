@@ -1123,16 +1123,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-    <script>
+    <script type="module">
+      import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
       (function () {
         'use strict';
 
         /* ── User (Supabase Auth session) ── */
         var currentUserId = "";
         function ensureUserId() {
-          return JarvisAuth.getUserId().then(function (id) {
+          return getAuthUserId().then(function (id) {
             currentUserId = id || "";
-            return JarvisAuth.getEmail().then(function (email) {
+            return getAuthEmail().then(function (email) {
               var el = document.getElementById("jv-nav-user");
               if (el && email) el.textContent = email;
               return currentUserId;
@@ -1250,8 +1251,8 @@
         async function fetchAllTrades() {
           var uid = currentUserId;
           var res = await Promise.allSettled([
-            JarvisAuth.fetch('/api/trades').then(function(r){return r.json();}),
-            JarvisAuth.fetch('/api/journal-trades').then(function(r){return r.json();})
+            apiFetch('/api/trades').then(function(r){return r.json();}),
+            apiFetch('/api/journal-trades').then(function(r){return r.json();})
           ]);
           var merged = [];
           if (res[0].status==='fulfilled') merged = merged.concat(normalizeBody(res[0].value));

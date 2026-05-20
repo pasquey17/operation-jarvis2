@@ -1650,7 +1650,8 @@
       </div>
     </div>
 
-    <script>
+    <script type="module">
+      import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
       (function () {
         var DEFAULT_USER_ID = "";
         var currentUserId = DEFAULT_USER_ID;
@@ -1679,9 +1680,9 @@
         }
 
         function ensureUserId() {
-          return JarvisAuth.getUserId().then(function (id) {
+          return getAuthUserId().then(function (id) {
             currentUserId = id || "";
-            return JarvisAuth.getEmail().then(function (email) {
+            return getAuthEmail().then(function (email) {
               var navUser = document.getElementById("jv-nav-user");
               if (navUser && email) navUser.textContent = email;
               return currentUserId;
@@ -2104,7 +2105,7 @@
         async function loadAccounts() {
           await ensureUserId();
           var q = "/api/accounts";
-          var res = await JarvisAuth.fetch(q, { cache: "no-store" });
+          var res = await apiFetch(q, { cache: "no-store" });
           var data = await res.json().catch(function () {
             return {};
           });
@@ -2145,7 +2146,7 @@
           var equity = Number(eq.value);
           if (!Number.isFinite(equity)) return;
           ensureUserId();
-          JarvisAuth.fetch("/api/account-snapshots", {
+          apiFetch("/api/account-snapshots", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             cache: "no-store",
@@ -2209,7 +2210,7 @@
             var next = !a.archived;
             if (!confirm(next ? "Archive this account?" : "Restore this account?")) return;
             ensureUserId();
-            JarvisAuth.fetch("/api/accounts/" + encodeURIComponent(aid), {
+            apiFetch("/api/accounts/" + encodeURIComponent(aid), {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               cache: "no-store",
@@ -2279,7 +2280,7 @@
           bar.classList.remove("ac-news-bar--err");
           bar.classList.remove("ac-news-bar--compact");
 
-          JarvisAuth.fetch("/api/economic-calendar", { cache: "no-store" })
+          apiFetch("/api/economic-calendar", { cache: "no-store" })
             .then(function (r) {
               return r.json().then(function (j) {
                 return { ok: r.ok, j: j };
@@ -2430,7 +2431,7 @@
             url = "/api/accounts/" + encodeURIComponent(editId);
             method = "PATCH";
           }
-          JarvisAuth.fetch(url, {
+          apiFetch(url, {
             method: method,
             headers: { "Content-Type": "application/json" },
             cache: "no-store",
