@@ -4832,7 +4832,6 @@ async function handleNotionCallback(req, res) {
   }
 
   const row = {
-    auth_user_id: authUserId,
     user_id: legacyEmailForAuthUserId(authUserId) || authUserId,
     access_token: tokenData.access_token,
     workspace_name: tokenData.workspace_name ?? null,
@@ -4842,13 +4841,13 @@ async function handleNotionCallback(req, res) {
   };
 
   try {
-    const upsertRes = await fetch(`${url}/rest/v1/notion_connections`, {
+    const upsertRes = await fetch(`${url}/rest/v1/notion_connections?on_conflict=user_id`, {
       method: "POST",
       headers: {
         apikey: key,
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates",
+        Prefer: "resolution=merge-duplicates,return=minimal",
       },
       body: JSON.stringify(row),
     });
@@ -4866,11 +4865,13 @@ async function handleNotionCallback(req, res) {
 }
 
 async function handleNotionDatabases(req, res) {
-  const userId = authUserIdFromReq(req);
-  if (!userId) {
+  const authUid = authUserIdFromReq(req);
+  if (!authUid) {
     json(res, 401, { error: "Unauthorized" });
     return;
   }
+  // notion_connections.user_id stores email, not UUID
+  const userId = legacyEmailForAuthUserId(authUid) || authUid;
 
   const { url, key } = getSupabaseConfig();
   if (!url || !key) {
@@ -4995,11 +4996,13 @@ function notionPropValue(prop) {
 
 async function handleNotionColumns(req, res) {
   const sp = new URL(req.url, "http://localhost").searchParams;
-  const userId = authUserIdFromReq(req);
-  if (!userId) {
+  const authUid = authUserIdFromReq(req);
+  if (!authUid) {
     json(res, 401, { error: "Unauthorized" });
     return;
   }
+  // notion_connections.user_id stores email, not UUID
+  const userId = legacyEmailForAuthUserId(authUid) || authUid;
   const databaseId = sp.get("database_id") || "";
   if (!databaseId) { json(res, 400, { error: "database_id required" }); return; }
 
@@ -5161,15 +5164,15 @@ async function handleNotionSaveMapping(req, res) {
   if (!url || !srKey) { json(res, 500, { error: "Supabase not configured" }); return; }
 
   try {
-    const upsertRes = await fetch(`${url}/rest/v1/notion_mappings`, {
+    const upsertRes = await fetch(`${url}/rest/v1/notion_mappings?on_conflict=user_id`, {
       method: "POST",
       headers: {
         apikey: srKey,
         Authorization: `Bearer ${srKey}`,
         "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates",
+        Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify({ user_id: legacyEmailForAuthUserId(user_id) || user_id, auth_user_id: user_id, database_id, mapping: mappingWithMeta, created_at: new Date().toISOString() }),
+      body: JSON.stringify({ user_id: legacyEmailForAuthUserId(user_id) || user_id, database_id, mapping: mappingWithMeta, created_at: new Date().toISOString() }),
     });
     if (!upsertRes.ok) {
       const err = await upsertRes.text().catch(() => "unknown");
@@ -5321,12 +5324,15 @@ async function loadNotionOAuthConnection(userId) {
     return { ok: false, skipped: false, reason: "Supabase not configured" };
   }
 
+  // notion_connections and notion_mappings use user_id TEXT (email), not auth_user_id (UUID)
+  const resolvedUserId = legacyEmailForAuthUserId(userId) || userId;
+
   try {
     const [connRes, mapRes] = await Promise.all([
-      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(resolvedUserId)}&limit=1`, {
         headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
       }),
-      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(resolvedUserId)}&limit=1`, {
         headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
       }),
     ]);
@@ -5914,6 +5920,8 @@ async function handleOnboardingState(req, res) {
     json(res, 401, { error: "Unauthorised" });
     return;
   }
+  // notion_connections and notion_mappings use user_id TEXT (email), not auth_user_id (UUID)
+  const emailUserId = legacyEmailForAuthUserId(authUserId) || authUserId;
 
   const { url, key } = getSupabaseConfig();
   if (!url || !key) { json(res, 500, { error: "Supabase not configured" }); return; }
@@ -5927,12 +5935,10 @@ async function handleOnboardingState(req, res) {
       fetch(`${url}/rest/v1/user_profiles?auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
       }),
-      // notion_connections uses user_id (TEXT), not auth_user_id
-      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(emailUserId)}&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
       }),
-      // notion_mappings exists once the user has saved their column mapping
-      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(emailUserId)}&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
       }),
     ]);
