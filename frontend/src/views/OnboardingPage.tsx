@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { apiFetch } from "../lib/jarvisAuth";
 
 type StepKey =
   | "welcome"
@@ -8,6 +9,7 @@ type StepKey =
   | "windows"
   | "struggle"
   | "goals"
+  | "timezone"
   | "calibrating";
 
 type OnboardingState = {
@@ -17,7 +19,28 @@ type OnboardingState = {
   windows: string[];
   struggle: string;
   goals: string;
+  timezone: string;
 };
+
+const FEATURED_TIMEZONES = [
+  "Australia/Adelaide",
+  "Australia/Sydney",
+  "Australia/Melbourne",
+  "Australia/Brisbane",
+  "America/New_York",
+  "America/Chicago",
+  "Europe/London",
+  "Asia/Tokyo",
+  "Asia/Singapore",
+] as const;
+
+function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
 
 const DEFAULT: OnboardingState = {
   email: "",
@@ -26,6 +49,7 @@ const DEFAULT: OnboardingState = {
   windows: [],
   struggle: "",
   goals: "",
+  timezone: browserTimezone(),
 };
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -37,6 +61,7 @@ const STEP_ORDER: StepKey[] = [
   "windows",
   "struggle",
   "goals",
+  "timezone",
   "calibrating",
 ];
 
@@ -49,16 +74,101 @@ const CALIBRATING_LINES = [
   "// SYSTEM READY",
 ];
 
+const inputCls =
+  "w-full rounded-[14px] border border-white/10 bg-white/5 px-4 py-3 text-[14px] text-white/80 outline-none transition focus:border-[color:rgba(0,212,255,0.55)] focus:bg-[color:rgba(0,212,255,0.04)] focus:shadow-[0_0_0_3px_rgba(0,212,255,0.12)]";
+
+function getAllTimezones(): string[] {
+  try {
+    const intl = Intl as typeof Intl & { supportedValuesOf?: (key: string) => string[] };
+    if (typeof intl.supportedValuesOf === "function") {
+      return intl.supportedValuesOf("timeZone");
+    }
+  } catch {
+    /* ignore */
+  }
+  return [
+    ...FEATURED_TIMEZONES,
+    "UTC",
+    "America/Los_Angeles",
+    "America/Denver",
+    "America/Phoenix",
+    "America/Toronto",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Asia/Hong_Kong",
+    "Asia/Dubai",
+    "Pacific/Auckland",
+  ];
+}
+
+function buildTimezoneOptions(query: string): { featured: string[]; rest: string[] } {
+  const all = getAllTimezones();
+  const q = query.trim().toLowerCase();
+  const featuredSet = new Set<string>(FEATURED_TIMEZONES);
+
+  if (q) {
+    const matched = all.filter((tz) => tz.toLowerCase().includes(q));
+    const featured = FEATURED_TIMEZONES.filter((tz) => matched.includes(tz));
+    const rest = matched.filter((tz) => !featuredSet.has(tz)).sort();
+    return { featured, rest };
+  }
+
+  const featured = FEATURED_TIMEZONES.filter((tz) => all.includes(tz));
+  const rest = all.filter((tz) => !featuredSet.has(tz)).sort();
+  return { featured, rest };
+}
+
+/** Fire-and-forget profile sync — never blocks UX or surfaces errors. */
+function syncProfile(data: Record<string, unknown>) {
+  void (async () => {
+    try {
+      await apiFetch("/api/user/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    } catch {
+      /* silent */
+    }
+  })();
+}
+
+function profilePayloadForCompletedStep(
+  completedStep: StepKey,
+  state: OnboardingState
+): Record<string, unknown> | null {
+  switch (completedStep) {
+    case "style":
+      return state.style ? { trading_style: state.style } : null;
+    case "markets":
+      return { markets: state.markets };
+    case "windows":
+      return { trading_windows: state.windows };
+    case "struggle":
+      return state.struggle.trim() ? { biggest_struggle: state.struggle.trim() } : null;
+    case "goals":
+      return state.goals.trim() ? { goals: state.goals.trim() } : null;
+    case "timezone":
+      return state.timezone ? { timezone: state.timezone } : null;
+    default:
+      return null;
+  }
+}
+
 export function OnboardingPage() {
   const [step, setStep] = useState<StepKey>("welcome");
-  const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
+  const [direction, setDirection] = useState(1);
   const [s, setS] = useState<OnboardingState>(() => {
     try {
       const raw = localStorage.getItem("jarvis_onboarding");
-      return raw ? { ...DEFAULT, ...JSON.parse(raw) } : DEFAULT;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<OnboardingState>;
+        return { ...DEFAULT, ...parsed, timezone: parsed.timezone || browserTimezone() };
+      }
     } catch {
-      return DEFAULT;
+      /* ignore */
     }
+    return { ...DEFAULT };
   });
 
   const stepIx = useMemo(() => {
@@ -70,15 +180,24 @@ export function OnboardingPage() {
     setS(merged);
     try {
       localStorage.setItem("jarvis_onboarding", JSON.stringify(merged));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function advanceFrom(current: StepKey) {
+    const payload = profilePayloadForCompletedStep(current, s);
+    if (payload) syncProfile(payload);
   }
 
   function next() {
     const i = stepIx.i;
     if (i < 0 || i >= STEP_ORDER.length - 1) return;
+    advanceFrom(step);
     setDirection(1);
     setStep(STEP_ORDER[i + 1]);
   }
+
   function back() {
     const i = stepIx.i;
     if (i <= 0) return;
@@ -86,15 +205,25 @@ export function OnboardingPage() {
     setStep(STEP_ORDER[i - 1]);
   }
 
-  async function finish() {
+  async function beginCalibrating() {
+    advanceFrom("timezone");
+
     const email = (s.email || "").trim() || "aidenpasque11@gmail.com";
     try {
       localStorage.setItem("jarvis_user", email);
       localStorage.setItem("user_id", email);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
+
     setDirection(1);
     setStep("calibrating");
     await sleep(CALIBRATING_LINES.length * 420 + 800);
+
+    syncProfile({
+      onboarding_complete: true,
+      onboarding_completed_at: new Date().toISOString(),
+    });
     window.location.href = "/app/dashboard/";
   }
 
@@ -121,7 +250,6 @@ export function OnboardingPage() {
       </div>
 
       <div className="overflow-hidden rounded-[22px] border border-white/10 bg-[color:var(--panel)] backdrop-blur-2xl">
-        {/* Progress bar */}
         <div className="border-b border-white/10 bg-black/20 px-7 py-5">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
             <motion.div
@@ -158,7 +286,7 @@ export function OnboardingPage() {
                     value={s.email}
                     onChange={(e) => persist({ email: e.target.value })}
                     placeholder="e.g. aidenpasque11@gmail.com"
-                    className="w-full rounded-[14px] border border-white/10 bg-white/5 px-4 py-3 text-[14px] text-white/80 outline-none transition focus:border-[color:rgba(0,212,255,0.55)] focus:bg-[color:rgba(0,212,255,0.04)] focus:shadow-[0_0_0_3px_rgba(0,212,255,0.12)]"
+                    className={inputCls}
                   />
                 </Field>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -253,9 +381,20 @@ export function OnboardingPage() {
                   placeholder="e.g. 4 weeks of rule adherence + consistent execution..."
                   className="w-full rounded-[16px] border border-white/10 bg-white/5 px-4 py-3 text-[14px] leading-[1.6] text-white/80 outline-none transition focus:border-[color:rgba(0,212,255,0.55)] focus:shadow-[0_0_0_3px_rgba(0,212,255,0.12)]"
                 />
+                <NavRow onBack={back} onNext={next} />
+              </Step>
+            )}
+
+            {step === "timezone" && (
+              <Step
+                eyebrow="TIMEZONE"
+                title="What timezone do you trade in?"
+                desc="Jarvis uses this to analyse your session timing and patterns."
+              >
+                <TimezoneSelect value={s.timezone} onChange={(timezone) => persist({ timezone })} />
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <SecondaryButton onClick={back}>BACK</SecondaryButton>
-                  <PrimaryButton onClick={finish}>CALIBRATE</PrimaryButton>
+                  <PrimaryButton onClick={() => void beginCalibrating()}>CALIBRATE</PrimaryButton>
                 </div>
               </Step>
             )}
@@ -265,6 +404,113 @@ export function OnboardingPage() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+
+function TimezoneSelect({ value, onChange }: { value: string; onChange: (tz: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const { featured, rest } = useMemo(() => buildTimezoneOptions(query), [query]);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  function pick(tz: string) {
+    onChange(tz);
+    setQuery("");
+    setOpen(false);
+  }
+
+  const showFeatured = featured.length > 0;
+  const showRest = rest.length > 0;
+  const empty = !showFeatured && !showRest;
+
+  return (
+    <motion.div ref={rootRef} className="relative">
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        value={open ? query : value}
+        placeholder="Search timezones…"
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        className={inputCls + " font-mono text-[13px]"}
+      />
+      {open && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease }}
+          className="absolute left-0 right-0 z-20 mt-2 max-h-[min(320px,50vh)] overflow-y-auto rounded-[14px] border border-white/10 bg-[#050a14] py-2 shadow-[0_12px_40px_rgba(0,0,0,0.65)]"
+          role="listbox"
+        >
+          {empty && (
+            <p className="px-4 py-3 font-mono text-[11px] tracking-[0.12em] text-white/45">NO MATCHES</p>
+          )}
+          {showFeatured && (
+            <>
+              <p className="px-4 py-1.5 font-mono text-[9px] tracking-[0.2em] text-[color:rgba(0,212,255,0.75)]">
+                COMMON
+              </p>
+              {featured.map((tz) => (
+                <TimezoneOption key={"f-" + tz} tz={tz} active={tz === value} onPick={pick} />
+              ))}
+            </>
+          )}
+          {showFeatured && showRest && <motion.div className="my-1 border-t border-white/10" aria-hidden />}
+          {showRest && (
+            <>
+              {!query.trim() && (
+                <p className="px-4 py-1.5 font-mono text-[9px] tracking-[0.2em] text-white/38">ALL TIMEZONES</p>
+              )}
+              {rest.map((tz) => (
+                <TimezoneOption key={tz} tz={tz} active={tz === value} onPick={pick} />
+              ))}
+            </>
+          )}
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+function TimezoneOption({
+  tz,
+  active,
+  onPick,
+}: {
+  tz: string;
+  active: boolean;
+  onPick: (tz: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={active}
+      onClick={() => onPick(tz)}
+      className={
+        "block w-full px-4 py-2.5 text-left font-mono text-[12px] tracking-[0.06em] transition " +
+        (active
+          ? "bg-[color:rgba(0,212,255,0.12)] text-[color:rgba(0,212,255,0.95)]"
+          : "text-white/70 hover:bg-white/5 hover:text-white/90")
+      }
+    >
+      {tz}
+    </button>
   );
 }
 
@@ -282,17 +528,15 @@ function CalibratingStep() {
       }
     }
     timerRef.current = setTimeout(addLine, 200);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, []);
 
   return (
     <div className="py-14">
-      <p className="font-mono text-[10px] tracking-[0.22em] text-[color:rgba(0,212,255,0.85)]">
-        INITIALISING
-      </p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white md:text-5xl">
-        Building your system.
-      </h2>
+      <p className="font-mono text-[10px] tracking-[0.22em] text-[color:rgba(0,212,255,0.85)]">INITIALISING</p>
+      <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-white md:text-5xl">Building your system.</h2>
       <div className="mt-8 space-y-2">
         {lines.map((line, i) => (
           <motion.p
@@ -414,7 +658,11 @@ function SecondaryButton({
   const cls =
     "inline-flex w-full items-center justify-center rounded-[14px] border border-white/10 bg-white/5 px-5 py-3 font-mono text-[11px] tracking-[0.18em] text-white/70 transition hover:border-white/20 hover:bg-white/10 hover:text-white/85 sm:w-auto";
   if (href) return <a href={href} className={cls}>{children}</a>;
-  return <button type="button" onClick={onClick} className={cls}>{children}</button>;
+  return (
+    <button type="button" onClick={onClick} className={cls}>
+      {children}
+    </button>
+  );
 }
 
 function toggle(arr: string[], v: string) {
