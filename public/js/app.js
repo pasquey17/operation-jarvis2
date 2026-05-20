@@ -1,4 +1,5 @@
 import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=d4f7e2a1";
+import { initJarvisCalibrationBar } from "/js/jarvis-calibration-bar.js";
 import { startNotionAutoSync } from "/js/notion-sync-client.js";
 import { apiFetch, getAuthEmail, getAuthUserId, signOut } from "/js/jarvis-auth.js";
 
@@ -2141,6 +2142,7 @@ async function boot() {
   initLogTradeBtn();
   initLogoutButton();
   initChatImageLightbox();
+  void initJarvisCalibrationBar();
   setOrbMode("active");
   void loadTrades()
     .then(async () => {

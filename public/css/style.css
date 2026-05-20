@@ -409,6 +409,111 @@ body {
 }
 [data-mode="idle"] .hud-deck { justify-content: space-between; }
 
+/* ═══════════ Jarvis calibration bar (home) ═══════════ */
+.jarvis-calibration {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.jarvis-calibration[hidden] {
+  display: none !important;
+}
+.jarvis-calibration__banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-soft);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--blue);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+.jarvis-calibration__banner:hover {
+  background: rgba(0, 212, 255, 0.14);
+  border-color: rgba(0, 212, 255, 0.5);
+}
+.jarvis-calibration__banner-text {
+  flex: 1;
+  min-width: 0;
+}
+.jarvis-calibration__banner-dismiss {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+.jarvis-calibration__panel {
+  padding: 0.55rem 0.7rem 0.5rem;
+  border-radius: var(--radius-soft);
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  background: rgba(5, 10, 20, 0.65);
+}
+.jarvis-calibration__head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  margin-bottom: 0.4rem;
+}
+.jarvis-calibration__label {
+  font-size: 0.5rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(192, 192, 192, 0.45);
+}
+.jarvis-calibration__calibrated {
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #00d4ff;
+}
+.jarvis-calibration__row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.jarvis-calibration__track {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: #1a2a3a;
+  overflow: hidden;
+}
+.jarvis-calibration__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: #00d4ff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.45);
+  transition: width 0.45s var(--ease-out);
+}
+.jarvis-calibration__count {
+  flex-shrink: 0;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+}
+.jarvis-calibration__helper {
+  margin: 0.38rem 0 0;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  color: rgba(136, 153, 170, 0.85);
+}
+
 /* ═══════════ Snapshot — glassmorphism ═══════════ */
 .snapshot {
   flex-shrink: 0;
