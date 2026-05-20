@@ -5162,7 +5162,7 @@ async function handleNotionSaveMapping(req, res) {
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates",
       },
-      body: JSON.stringify({ auth_user_id: user_id, database_id, mapping: mappingWithMeta, created_at: new Date().toISOString() }),
+      body: JSON.stringify({ user_id: legacyEmailForAuthUserId(user_id) || user_id, auth_user_id: user_id, database_id, mapping: mappingWithMeta, created_at: new Date().toISOString() }),
     });
     if (!upsertRes.ok) {
       const err = await upsertRes.text().catch(() => "unknown");
