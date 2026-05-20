@@ -441,6 +441,7 @@
     </div>
 
     <script>
+      document.addEventListener("DOMContentLoaded", () => {
       (async () => {
         // ── user ──
         const userId = (await JarvisAuth.getUserId()) || "";
@@ -836,6 +837,7 @@
         // Boot
         loadDatabases();
       })();
+      }); // DOMContentLoaded
     </script>
       <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
 </body>
