@@ -449,6 +449,9 @@
         const navUser = document.getElementById("jv-nav-user");
         if (navUser) navUser.textContent = userId;
 
+        const isOnboarding =
+          new URLSearchParams(window.location.search).get("onboarding") === "true";
+
         let selectedDbId = null;
         let notionColumns = [];
         let notionDataSourceId = null;
@@ -779,6 +782,10 @@
             });
             const data = await r.json();
             if (!r.ok) throw new Error(data.error || "Sync failed");
+            if (isOnboarding) {
+              window.location.href = "/app/onboarding/?step=profile";
+              return;
+            }
             spinner.style.display = "none";
             statusEl.textContent = "";
             countEl.textContent = data.synced;
