@@ -528,7 +528,8 @@ function CalibratingStep() {
     let i = 0;
     function addLine() {
       if (i < CALIBRATING_LINES.length) {
-        setLines((prev) => [...prev, CALIBRATING_LINES[i]]);
+        const nextLine = CALIBRATING_LINES[i];
+        setLines((prev) => [...prev, nextLine]);
         i++;
         timerRef.current = setTimeout(addLine, 420);
       }
@@ -552,7 +553,7 @@ function CalibratingStep() {
             transition={{ duration: 0.35, ease }}
             className={
               "font-mono text-[12px] tracking-[0.14em] " +
-              (line.startsWith("// SYSTEM") || line.startsWith("// CALIBRATING")
+              (line?.startsWith("// SYSTEM") || line?.startsWith("// CALIBRATING")
                 ? "text-[color:rgba(0,212,255,0.95)]"
                 : "text-white/55")
             }

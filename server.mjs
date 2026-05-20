@@ -5885,19 +5885,20 @@ async function handleUserProfile(req, res) {
   if (!url || !key) { json(res, 500, { error: "Supabase not configured" }); return; }
 
   try {
-    const upsertRes = await fetch(`${url}/rest/v1/user_profiles`, {
+    const upsertRes = await fetch(`${url}/rest/v1/user_profiles?on_conflict=auth_user_id`, {
       method: "POST",
       headers: {
         apikey: key,
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates",
+        Prefer: "resolution=merge-duplicates,return=minimal",
       },
       body: JSON.stringify(row),
     });
     if (!upsertRes.ok) {
-      const err = await upsertRes.text().catch(() => "unknown");
-      json(res, 502, { error: `Profile upsert failed: ${err}` }); return;
+      const errText = await upsertRes.text().catch(() => "unknown");
+      console.error("[user-profile] upsert failed", upsertRes.status, errText);
+      json(res, 502, { error: `Profile upsert failed: ${errText}` }); return;
     }
     json(res, 200, { success: true });
   } catch (e) {
