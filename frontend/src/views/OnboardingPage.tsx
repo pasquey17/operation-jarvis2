@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { apiFetch } from "../lib/jarvisAuth";
+import { MeetJarvisPage } from "./MeetJarvisPage";
 
 type StepKey =
   | "welcome"
@@ -10,7 +11,8 @@ type StepKey =
   | "struggle"
   | "goals"
   | "timezone"
-  | "calibrating";
+  | "calibrating"
+  | "meet";
 
 type OnboardingState = {
   email: string;
@@ -224,7 +226,11 @@ export function OnboardingPage() {
       onboarding_complete: true,
       onboarding_completed_at: new Date().toISOString(),
     });
-    window.location.href = "/index.html";
+    setStep("meet");
+  }
+
+  if (step === "meet") {
+    return <MeetJarvisPage />;
   }
 
   const progress = Math.max(0, stepIx.i) / (STEP_ORDER.length - 1);

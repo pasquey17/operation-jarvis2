@@ -4697,6 +4697,11 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/user/jarvis-intro")) {
+    await handleJarvisIntro(req, res);
+    return;
+  }
+
   if (req.method !== "GET") {
     send(res, 405, "Method not allowed");
     return;
@@ -5940,6 +5945,118 @@ async function handleOnboardingState(req, res) {
     return;
   }
   json(res, 200, { step: hasNotionConnection ? "mapping" : "profile" });
+}
+
+async function handleJarvisIntro(req, res) {
+  try {
+    const userId = authUserIdFromReq(req);
+    if (!userId) {
+      json(res, 401, { error: "Unauthorized" });
+      return;
+    }
+
+    const { url, key, tableRaw } = getSupabaseConfig();
+    const sb = !!(url && key);
+
+    // ── Trade count (prefer count header — no row fetch) ──────────────────
+    let tradeCount = 0;
+    if (sb) {
+      try {
+        const countRes = await fetch(
+          `${url}/rest/v1/${encodeURIComponent(tableRaw)}?auth_user_id=eq.${encodeURIComponent(userId)}&archived=is.false&select=id`,
+          {
+            headers: {
+              apikey: key,
+              Authorization: `Bearer ${key}`,
+              Prefer: "count=exact",
+              "Cache-Control": "no-store",
+            },
+          }
+        );
+        const cr = countRes.headers.get("content-range");
+        if (cr) {
+          const m = cr.match(/\/(\d+)$/);
+          if (m) tradeCount = parseInt(m[1], 10) || 0;
+        }
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    // ── Calibration level ─────────────────────────────────────────────────
+    let calibration_level;
+    if (tradeCount === 0) calibration_level = "none";
+    else if (tradeCount < 15) calibration_level = "watching";
+    else if (tradeCount < 30) calibration_level = "early";
+    else if (tradeCount < 50) calibration_level = "calibrated";
+    else calibration_level = "full";
+
+    // ── Intelligence file (read only — never trigger generation here) ─────
+    let intel = null;
+    if (sb) {
+      try {
+        const intelRes = await fetch(
+          `${url}/rest/v1/intelligence_files?auth_user_id=eq.${encodeURIComponent(userId)}&select=report&limit=1`,
+          {
+            headers: {
+              apikey: key,
+              Authorization: `Bearer ${key}`,
+              "Cache-Control": "no-store",
+            },
+          }
+        );
+        if (intelRes.ok) {
+          const rows = await intelRes.json();
+          if (Array.isArray(rows) && rows[0]?.report) intel = rows[0].report;
+        }
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    // ── Derived fields ────────────────────────────────────────────────────
+    const win_rate =
+      typeof intel?.performance?.winRateRaw === "number"
+        ? Math.round(intel.performance.winRateRaw * 1000) / 10
+        : null;
+
+    const best_setup =
+      (typeof intel?.edgeMap?.strongestEdge === "string" && intel.edgeMap.strongestEdge) ||
+      intel?.edgeMap?.bestModel?.name ||
+      null;
+
+    const top_observations = [];
+    if (intel) {
+      if (intel.form?.summary && intel.form.summary !== "No streak data available.") {
+        top_observations.push(intel.form.summary);
+      }
+      if (intel.edgeMap?.bestModel?.name) {
+        top_observations.push(
+          `Your strongest model is ${intel.edgeMap.bestModel.name} at ${intel.edgeMap.bestModel.winRate} win rate`
+        );
+      }
+      if (typeof intel.leaks?.biggestLeak === "string" && intel.leaks.biggestLeak) {
+        top_observations.push(intel.leaks.biggestLeak);
+      }
+    }
+
+    json(res, 200, {
+      trade_count: tradeCount,
+      win_rate,
+      best_setup,
+      top_observations: top_observations.slice(0, 3),
+      calibration_level,
+    });
+  } catch (e) {
+    console.error("[jarvis-intro]", e);
+    json(res, 200, {
+      trade_count: 0,
+      win_rate: null,
+      best_setup: null,
+      top_observations: [],
+      calibration_level: "none",
+    });
+  }
 }
 
 const server = http.createServer(requestListener);
