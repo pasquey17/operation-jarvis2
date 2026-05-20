@@ -514,6 +514,133 @@ body {
   color: rgba(136, 153, 170, 0.85);
 }
 
+/* ═══════════ First-time product guide (home) ═══════════ */
+.jarvis-guide {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.35s var(--ease-out);
+}
+.jarvis-guide--visible {
+  opacity: 1;
+}
+.jarvis-guide__veil {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.jarvis-guide__veil[hidden] {
+  display: none;
+}
+.jarvis-guide--transition .jarvis-guide__tooltip-inner {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+.jarvis-guide__skip {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 11002;
+  margin: 0;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.38);
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.2s var(--ease-out);
+}
+.jarvis-guide__skip:hover {
+  color: rgba(255, 255, 255, 0.72);
+}
+.jarvis-guide__spotlight {
+  position: fixed;
+  z-index: 11001;
+  pointer-events: none;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.6),
+    0 0 24px rgba(0, 212, 255, 0.55),
+    0 0 48px rgba(0, 212, 255, 0.2);
+  transition:
+    left 0.35s var(--ease-out),
+    top 0.35s var(--ease-out),
+    width 0.35s var(--ease-out),
+    height 0.35s var(--ease-out);
+}
+.jarvis-guide__spotlight[hidden] {
+  display: none;
+}
+.jarvis-guide-target {
+  position: relative;
+  z-index: 11001 !important;
+}
+.jarvis-guide__tooltip {
+  position: fixed;
+  z-index: 11002;
+  max-width: min(320px, calc(100vw - 32px));
+  pointer-events: auto;
+}
+.jarvis-guide__tooltip--center {
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  visibility: visible !important;
+}
+.jarvis-guide__tooltip-inner {
+  padding: 1rem 1.1rem 0.95rem 1rem;
+  border-radius: var(--radius-soft);
+  background: #0d1b2a;
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  border-left: 3px solid #00d4ff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  transition: opacity 0.28s var(--ease-out), transform 0.28s var(--ease-out);
+}
+.jarvis-guide__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+.jarvis-guide__body {
+  margin: 0.55rem 0 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 300;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.72);
+}
+.jarvis-guide__next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+.jarvis-guide__next:hover {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: rgba(0, 212, 255, 0.55);
+}
+
 /* ═══════════ Snapshot — glassmorphism ═══════════ */
 .snapshot {
   flex-shrink: 0;
