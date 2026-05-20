@@ -5,6 +5,7 @@
 
 const AUTH_PUBLIC_PATHS = [
   "/api/notion/callback",
+  "/api/notion/connect",
   "/api/ping",
   "/api/proxy-image",
 ];

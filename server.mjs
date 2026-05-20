@@ -4750,11 +4750,39 @@ async function handleNotionConnect(req, res) {
     json(res, 500, { error: "NOTION_OAUTH_CLIENT_ID not configured" });
     return;
   }
-  const authUserId = authUserIdFromReq(req);
-  if (!authUserId) {
+
+  // Step 1: standard Bearer header auth (set by requestListener for non-public paths,
+  // but /api/notion/connect is public so we call verifyRequestAuth directly here).
+  let authResult = await verifyRequestAuth(req);
+
+  // Step 2: fallback for full-page navigation — token supplied as ?token= query param.
+  if (!authResult) {
+    const { searchParams } = new URL(req.url, "http://localhost");
+    const token = searchParams.get("token");
+    if (token) {
+      const supaUrl = (process.env.SUPABASE_URL ?? "").trim().replace(/\/$/, "");
+      const anonKey = process.env.SUPABASE_ANON_KEY?.trim() || "";
+      try {
+        const tokenRes = await fetch(`${supaUrl}/auth/v1/user`, {
+          method: "GET",
+          headers: { apikey: anonKey, Authorization: `Bearer ${token}`, Accept: "application/json" },
+          cache: "no-store",
+        });
+        if (tokenRes.ok) {
+          const data = await tokenRes.json();
+          const id = typeof data?.id === "string" ? data.id.trim() : "";
+          if (id) authResult = { authUserId: id, email: data.email ?? null };
+        }
+      } catch { /* fall through to 401 below */ }
+    }
+  }
+
+  if (!authResult) {
     json(res, 401, { error: "Unauthorized" });
     return;
   }
+
+  const authUserId = authResult.authUserId;
   const state = encodeURIComponent(authUserId);
   const authUrl =
     `https://api.notion.com/v1/oauth/authorize` +
