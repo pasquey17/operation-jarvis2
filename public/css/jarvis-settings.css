@@ -1,0 +1,176 @@
+/* Settings gear + slide-in panel — classic Jarvis pages */
+.jv-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.jv-nav__settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.28);
+  background: rgba(0, 212, 255, 0.06);
+  color: rgba(0, 212, 255, 0.9);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.jv-nav__settings:hover,
+.jv-nav__settings:focus-visible {
+  background: rgba(0, 212, 255, 0.14);
+  border-color: rgba(0, 212, 255, 0.55);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+  outline: none;
+}
+
+.jv-nav__settings-icon {
+  display: block;
+}
+
+.jv-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.jv-settings-overlay.jv-settings--open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.jv-settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 11001;
+  width: min(320px, 92vw);
+  background: #050a14;
+  border-left: 1px solid rgba(0, 212, 255, 0.22);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.55);
+  font-family: "Outfit", system-ui, sans-serif;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.jv-settings-panel.jv-settings--open {
+  transform: translateX(0);
+}
+
+.jv-settings-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+}
+
+.jv-settings-panel__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #00d4ff;
+}
+
+.jv-settings-panel__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.jv-settings-panel__close:hover,
+.jv-settings-panel__close:focus-visible {
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.45);
+  background: rgba(0, 212, 255, 0.08);
+  outline: none;
+}
+
+.jv-settings-panel__body {
+  flex: 1;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.jv-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jv-settings-field__label {
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(0, 212, 255, 0.75);
+}
+
+.jv-settings-field__value {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+  word-break: break-word;
+}
+
+.jv-settings-logout {
+  margin-top: auto;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  background: rgba(0, 212, 255, 0.08);
+  color: #00d4ff;
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.jv-settings-logout:hover,
+.jv-settings-logout:focus-visible {
+  background: rgba(0, 212, 255, 0.16);
+  border-color: rgba(0, 212, 255, 0.6);
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  .jv-nav__hamburger {
+    margin-left: 0 !important;
+  }
+}

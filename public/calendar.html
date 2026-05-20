@@ -12,6 +12,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/css/style.css?v=d4f7e2a1" />
+    <link rel="stylesheet" href="/css/jarvis-settings.css?v=d4f7e2a1" />
     <style>
       /* ── Page shell (match analytics / journal HUD) ── */
       html,
@@ -77,32 +78,6 @@
         color: #00d4ff !important;
         border-bottom: 1px solid #00d4ff;
       }
-      .jv-nav__user {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        color: rgba(255, 255, 255, 0.3);
-        letter-spacing: 0.06em;
-        white-space: nowrap;
-        flex-shrink: 0;
-      }
-      .jv-nav__logout {
-        margin-left: 14px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid rgba(0, 212, 255, 0.25);
-        background: rgba(0, 212, 255, 0.06);
-        color: rgba(0, 212, 255, 0.85) !important;
-        font-family: "Share Tech Mono", "Courier New", monospace !important;
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s;
-      }
-      .jv-nav__logout:hover {
-        background: rgba(0, 212, 255, 0.14);
-        border-color: rgba(0, 212, 255, 0.55);
-      }
       .jv-nav__hamburger {
         display: none;
         flex-direction: column;
@@ -112,7 +87,6 @@
         border: none;
         cursor: pointer;
         padding: 4px;
-        margin-left: auto;
         flex-shrink: 0;
       }
       .jv-nav__hamburger span {
@@ -164,8 +138,7 @@
         border-left-color: #00d4ff;
       }
       @media (max-width: 768px) {
-        .jv-nav__links,
-        .jv-nav__user {
+        .jv-nav__links {
           display: none;
         }
         .jv-nav__hamburger {
@@ -1202,19 +1175,25 @@
         </li>
         <li><a href="/account.html" id="nav-account">Account</a></li>
       </ul>
-      <span class="jv-nav__user" id="jv-nav-user" aria-label="Current user"></span>
-      <button class="jv-nav__logout" id="logout-btn" type="button">Logout</button>
-      <button
-        class="jv-nav__hamburger"
-        id="jv-nav-hamburger"
-        aria-label="Toggle navigation"
-        aria-expanded="false"
-        aria-controls="jv-nav-dropdown"
-      >
-        <span aria-hidden="true"></span>
-        <span aria-hidden="true"></span>
-        <span aria-hidden="true"></span>
-      </button>
+      <div class="jv-nav__actions">
+        <button type="button" class="jv-nav__settings" id="jv-settings-btn" aria-label="Open settings" aria-expanded="false" aria-controls="jv-settings-panel">
+          <svg class="jv-nav__settings-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+        <button
+          class="jv-nav__hamburger"
+          id="jv-nav-hamburger"
+          aria-label="Toggle navigation"
+          aria-expanded="false"
+          aria-controls="jv-nav-dropdown"
+        >
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
     </nav>
 
     <div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
@@ -1354,9 +1333,7 @@
         function ensureUserId() {
           return getAuthUserId().then(function (id) {
             currentUserId = id || "";
-            return getAuthEmail().then(function (email) {
-              var navUser = document.getElementById("jv-nav-user");
-              if (navUser && email) navUser.textContent = email;
+            return getAuthEmail().then(function () {
               return currentUserId;
             });
           });

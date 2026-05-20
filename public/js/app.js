@@ -2,7 +2,7 @@ import { JARVIS_ASSET_V } from "/js/jarvis-asset-v.js?v=d4f7e2a1";
 import { initJarvisCalibrationBar } from "/js/jarvis-calibration-bar.js";
 import { initJarvisGuide } from "/js/jarvis-guide.js";
 import { startNotionAutoSync } from "/js/notion-sync-client.js";
-import { apiFetch, getAuthEmail, getAuthUserId, signOut } from "/js/jarvis-auth.js";
+import { apiFetch, getAuthUserId } from "/js/jarvis-auth.js";
 
 const API_CHAT = "/api/chat";
 const API_TRADES = "/api/trades";
@@ -28,19 +28,6 @@ const CHAT_PLACEHOLDER_EXAMPLES = [
 ];
 
 let snapshotRequestSeq = 0;
-
-function initLogoutButton() {
-  const btn = document.getElementById("logout-btn");
-  if (!btn || btn.dataset.jarvisAuthBound) return;
-  btn.dataset.jarvisAuthBound = "1";
-  btn.addEventListener("click", () => { void signOut(); });
-}
-
-async function updateNavUserLabel() {
-  const email = await getAuthEmail();
-  const el = document.getElementById("jv-nav-user");
-  if (el && email) el.textContent = email;
-}
 
 /** Normalize /api/trades JSON (handles optional `payload` wrapper or bad shapes). */
 function normalizeTradesApiBody(data) {
@@ -2118,8 +2105,6 @@ function initLogTradeBtn() {
 }
 
 async function boot() {
-  await updateNavUserLabel();
-
   try {
     sessionStorage.removeItem(COLD_OPEN_GREETING_SESSION_KEY);
   } catch {
@@ -2141,7 +2126,6 @@ async function boot() {
   initMuteButton();
   initMic();
   initLogTradeBtn();
-  initLogoutButton();
   initChatImageLightbox();
   void initJarvisCalibrationBar();
   void initJarvisGuide();

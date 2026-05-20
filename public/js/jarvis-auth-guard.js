@@ -5,11 +5,11 @@ import {
   getAuthEmail,
   signOut,
   requireAuthPage,
-  initNavAuthUi,
 } from "./jarvis-auth.js";
+import { initJarvisSettings } from "./jarvis-settings.js";
 
 await requireAuthPage();
-await initNavAuthUi();
+await initJarvisSettings();
 
 /** Legacy inline scripts on journal/analytics pages. */
 window.JarvisAuth = {

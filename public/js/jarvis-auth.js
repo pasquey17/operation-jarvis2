@@ -103,19 +103,10 @@ export async function signOut() {
   window.location.replace(LOGIN_PATH);
 }
 
-/** Wire nav logout + display email on protected pages. */
+/** @deprecated Settings panel — use initJarvisSettings from jarvis-settings.js */
 export async function initNavAuthUi() {
-  const email = await getAuthEmail();
-  const label = document.getElementById("jv-nav-user");
-  if (label && email) label.textContent = email;
-
-  const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn && !logoutBtn.dataset.jarvisAuthBound) {
-    logoutBtn.dataset.jarvisAuthBound = "1";
-    logoutBtn.addEventListener("click", () => {
-      void signOut();
-    });
-  }
+  const { initJarvisSettings } = await import("./jarvis-settings.js");
+  await initJarvisSettings();
 }
 
 sb.auth.onAuthStateChange((_event, session) => {
