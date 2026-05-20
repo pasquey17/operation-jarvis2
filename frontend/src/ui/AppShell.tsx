@@ -56,7 +56,7 @@ export function AppShell({
               </a>
               <a
                 className={navLink + (active === "dashboard" ? " text-[color:var(--blue)]" : "")}
-                href="/app/dashboard/"
+                href="/index.html"
                 aria-current={active === "dashboard" ? "page" : undefined}
               >
                 DASH

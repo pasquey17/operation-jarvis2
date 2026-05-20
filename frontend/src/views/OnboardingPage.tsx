@@ -291,7 +291,7 @@ export function OnboardingPage() {
                 </Field>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <PrimaryButton onClick={next}>BEGIN</PrimaryButton>
-                  <SecondaryButton href="/app/dashboard/">SKIP (DASH)</SecondaryButton>
+                  <SecondaryButton href="/index.html">SKIP (DASH)</SecondaryButton>
                 </div>
               </Step>
             )}
