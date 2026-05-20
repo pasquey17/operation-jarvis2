@@ -3310,9 +3310,10 @@ async function handleJournalTradesGet(req, res) {
     json(res, 503, { error: "Supabase not configured" });
     return;
   }
-  const userId = parseSupabaseUserIdParam(req);
+  const authUserId = authUserIdFromReq(req);
+  const userId = legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId || "";
   try {
-    const endpoint = `${url}/rest/v1/journal_trades?auth_user_id=eq.${encodeURIComponent(userId)}&select=*&order=traded_at.desc`;
+    const endpoint = `${url}/rest/v1/journal_trades?user_id=eq.${encodeURIComponent(userId)}&select=*&order=traded_at.desc`;
     const r = await fetch(endpoint, {
       method: "GET",
       headers: {
@@ -3358,7 +3359,6 @@ async function handleLogTrade(req, res) {
     return;
   }
   const row = {
-    auth_user_id: authUserId,
     user_id: legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId,
     traded_at: body.traded_at || new Date().toISOString(),
     pair: body.pair || "XAU/USD",
@@ -3420,7 +3420,8 @@ async function handleJournalTradePatch(req, res) {
   }
 
   const id = typeof body.id === "string" ? body.id.trim() : "";
-  const userId = authUserIdFromReq(req);
+  const authUserId = authUserIdFromReq(req);
+  const userId = legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId || "";
   if (!isUuidString(id) || !userId) {
     json(res, 400, { error: "Valid id required" });
     return;
@@ -3450,7 +3451,7 @@ async function handleJournalTradePatch(req, res) {
   }
 
   try {
-    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`;
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
     const r = await fetch(endpoint, {
       method: "PATCH",
       headers: {
@@ -3480,11 +3481,12 @@ async function handleJournalTradePatch(req, res) {
   }
 }
 
-/** DELETE /api/journal-trades?id={uuid}&auth_user_id=eq.{email} */
+/** DELETE /api/journal-trades?id={uuid} */
 async function handleJournalTradeDelete(req, res) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
   const id = (u.searchParams.get("id") || "").trim();
-  const userId = parseSupabaseUserIdParam(req);
+  const authUserId = authUserIdFromReq(req);
+  const userId = legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId || "";
   if (!isUuidString(id)) {
     json(res, 400, { error: "Valid id query param required" });
     return;
@@ -3497,7 +3499,7 @@ async function handleJournalTradeDelete(req, res) {
   }
 
   try {
-    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`;
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
     const r = await fetch(endpoint, {
       method: "DELETE",
       headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -4879,10 +4881,10 @@ async function handleNotionDatabases(req, res) {
   let accessToken;
   try {
     const cr = await fetch(
-      `${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
-    console.log("[notion/databases] Supabase query status:", cr.status, "for auth_user_id:", userId);
+    console.log("[notion/databases] Supabase query status:", cr.status, "for user_id:", userId);
     const rows = await cr.json().catch(() => null);
     console.log("[notion/databases] rows returned:", Array.isArray(rows) ? rows.length : "parse-failed", JSON.stringify(rows)?.slice(0, 200));
     accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
@@ -5008,7 +5010,7 @@ async function handleNotionColumns(req, res) {
   let accessToken;
   try {
     const cr = await fetch(
-      `${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
       { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }
     );
     const rows = await cr.json().catch(() => null);
@@ -5321,10 +5323,10 @@ async function loadNotionOAuthConnection(userId) {
 
   try {
     const [connRes, mapRes] = await Promise.all([
-      fetch(`${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
         headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
       }),
-      fetch(`${url}/rest/v1/notion_mappings?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
+      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(userId)}&limit=1`, {
         headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
       }),
     ]);
