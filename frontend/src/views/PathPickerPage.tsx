@@ -136,13 +136,13 @@ export function PathPickerPage() {
           variant="primary"
           onAction={async () => {
             const { data } = await supabase.auth.getSession();
-            const token = data.session?.access_token;
-            if (!token) {
+            const userId = data.session?.user?.id;
+            if (!userId) {
               setError("Couldn't authenticate. Please refresh and try again.");
               setPhase("error");
               return;
             }
-            window.location.href = `/api/notion/connect?token=${token}`;
+            window.location.href = `/api/notion/connect?user_id=${userId}`;
           }}
         />
         <PathCard

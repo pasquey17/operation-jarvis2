@@ -441,12 +441,9 @@
     </div>
 
     <script>
-      (function () {
+      (async () => {
         // ── user ──
-        let userId = "";
-        (async () => {
-          userId = (await JarvisAuth.getUserId()) || "";
-        })();
+        const userId = (await JarvisAuth.getUserId()) || "";
         if (!userId) { location.href = "/index.html"; return; }
         const navUser = document.getElementById("jv-nav-user");
         if (navUser) navUser.textContent = userId;
