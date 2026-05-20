@@ -4877,9 +4877,13 @@ async function handleNotionDatabases(req, res) {
       `${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(userId)}&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
+    console.log("[notion/databases] Supabase query status:", cr.status, "for auth_user_id:", userId);
     const rows = await cr.json().catch(() => null);
+    console.log("[notion/databases] rows returned:", Array.isArray(rows) ? rows.length : "parse-failed", JSON.stringify(rows)?.slice(0, 200));
     accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
-  } catch {
+    console.log("[notion/databases]", accessToken ? "token found" : "token missing");
+  } catch (e) {
+    console.error("[notion/databases] Supabase fetch error:", String(e.message ?? e));
     json(res, 500, { error: "Failed to read Notion connection" });
     return;
   }
@@ -4902,8 +4906,10 @@ async function handleNotionDatabases(req, res) {
       headers: notionHeaders,
       body: JSON.stringify({}),
     });
+    console.log("[notion/databases] Notion search status:", sr.status);
     if (!sr.ok) {
       const err = await sr.text().catch(() => "unknown");
+      console.error("[notion/databases] Notion search failed:", sr.status, err);
       json(res, 502, { error: `Notion search failed: ${err}` });
       return;
     }
@@ -4947,8 +4953,10 @@ async function handleNotionDatabases(req, res) {
       })
     );
 
+    console.log("[notion/databases] returning", dbMap.size, "databases");
     json(res, 200, { databases: Array.from(dbMap.values()) });
   } catch (e) {
+    console.error("[notion/databases] outer error:", String(e.message ?? e));
     json(res, 502, { error: `Notion databases error: ${String(e.message ?? e)}` });
   }
 }
