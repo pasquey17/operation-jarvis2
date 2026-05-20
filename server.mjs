@@ -5918,34 +5918,58 @@ async function handleOnboardingState(req, res) {
 
   let profileRow = null;
   let hasNotionConnection = false;
+  let hasNotionMapping = false;
 
   try {
-    const [profileRes, notionRes] = await Promise.all([
+    const [profileRes, notionConnRes, notionMapRes] = await Promise.all([
       fetch(`${url}/rest/v1/user_profiles?auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
       }),
-      fetch(`${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
+      // notion_connections uses user_id (TEXT), not auth_user_id
+      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
+      }),
+      // notion_mappings exists once the user has saved their column mapping
+      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
       }),
     ]);
     const profileRows = await profileRes.json().catch(() => null);
     profileRow = Array.isArray(profileRows) && profileRows.length > 0 ? profileRows[0] : null;
-    const notionRows = await notionRes.json().catch(() => null);
-    hasNotionConnection = Array.isArray(notionRows) && notionRows.length > 0;
+    const notionConnRows = await notionConnRes.json().catch(() => null);
+    hasNotionConnection = Array.isArray(notionConnRows) && notionConnRows.length > 0;
+    const notionMapRows = await notionMapRes.json().catch(() => null);
+    hasNotionMapping = Array.isArray(notionMapRows) && notionMapRows.length > 0;
   } catch (e) {
     json(res, 500, { error: `State check failed: ${String(e.message ?? e)}` });
     return;
   }
 
+  // No profile row yet — pick entry point based on Notion state
   if (!profileRow) {
-    json(res, 200, { step: "path-picker" });
+    if (hasNotionMapping) {
+      json(res, 200, { step: "profile" });
+    } else if (hasNotionConnection) {
+      json(res, 200, { step: "mapping" });
+    } else {
+      json(res, 200, { step: "path-picker" });
+    }
     return;
   }
+
   if (profileRow.onboarding_complete) {
     json(res, 200, { step: "complete" });
     return;
   }
-  json(res, 200, { step: hasNotionConnection ? "mapping" : "profile" });
+
+  // Incomplete profile — Notion connected but mapping not yet saved → mapping wizard
+  if (hasNotionConnection && !hasNotionMapping) {
+    json(res, 200, { step: "mapping" });
+    return;
+  }
+
+  // No Notion path, or Notion fully mapped — send to quiz
+  json(res, 200, { step: "profile" });
 }
 
 async function handleJarvisIntro(req, res) {
