@@ -3266,8 +3266,24 @@
                     ? '0 trades · ' + rangeStr
                     : '0 trades';
               }
-              body.innerHTML = '<div class="an-report__empty">' + escAn(labelEmpty) + '</div>';
-              line.textContent = '';
+              var emptyKpi =
+                reportKpiHtml('Net R', '+0.00R', '') +
+                reportKpiHtml('Win rate', '0.0%', '') +
+                reportKpiHtml('Trades', '0', '');
+              var emptyGrid =
+                reportGridPlain('Best day (net R)', '—') +
+                reportGridPlain('Worst day (net R)', '—') +
+                reportGridPlain('Top pair (net R)', '—') +
+                reportGridCellHtml('Max win streak', reportStreakInner(0, 'Max win streak')) +
+                reportGridPlain('Max loss streak', '0', 'an-report__cell--full');
+              var emptyMsg =
+                periodKey === 'week' ? 'No trades logged this week' : labelEmpty;
+              body.innerHTML =
+                '<div class="an-report__kpi">' + emptyKpi + '</div>' +
+                '<div class="an-report__grid2">' + emptyGrid + '</div>' +
+                '<div class="an-report__empty">' + escAn(emptyMsg) + '</div>';
+              line.textContent =
+                periodKey === 'week' ? 'No trades logged this week.' : '';
               return;
             }
             if (charts) charts.classList.remove('an-report__charts--hidden');
@@ -3326,7 +3342,7 @@
             'an-rep-week-line',
             'an-rep-week-charts',
             ws,
-            'No trades Monday–Friday this week (Adelaide).',
+            'No trades logged this week',
             'week',
             weekWin
           );

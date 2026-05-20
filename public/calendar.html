@@ -1264,7 +1264,6 @@
               <div class="cal-controls" aria-label="Calendar controls">
                 <button class="cal-btn cal-btn--active" id="view-week" type="button">Week</button>
                 <button class="cal-btn" id="view-month" type="button">Month</button>
-                <button class="cal-btn" id="btn-today" type="button">Today</button>
               </div>
             </div>
           </header>
@@ -2246,7 +2245,7 @@
           var outcomeLabel =
             outcome === "win" ? "WIN" : outcome === "loss" ? "LOSS" : outcome === "be" ? "BE" : (outcome || "—").toUpperCase();
           var dir = getTradeDirection(trade);
-          var dirLabel = dir ? dir.toUpperCase() : "—";
+          var dirLabel = dir ? dir.toUpperCase() : "Not set";
           var rrRaw = parseFloat(getField(trade, "rr", "RR"));
           var rrDisplay;
           if (!isNaN(rrRaw)) {
@@ -2289,7 +2288,7 @@
               "</span></div>"
           );
           core.push(
-            '<div class="jn-detail"><span class="jn-detail__label">R multiple</span><span class="jn-detail__value">' +
+            '<div class="jn-detail"><span class="jn-detail__label">R:R</span><span class="jn-detail__value">' +
               escAttr(rrDisplay) +
               "</span></div>"
           );
@@ -2632,13 +2631,10 @@
           })();
         }
 
-        function goToday() {
+        function initCalendarAnchor() {
           anchorDate = new Date();
-          var key = dayKey(new Date());
-          // if today is weekend, select Monday of current week
           var mon = mondayOfWeek(anchorDate);
           var todayKey = dayKey(anchorDate);
-          var day = mon.getUTCDay(); // mon is monday; but compute from today instead:
           var p = partsYMD(anchorDate);
           var x = new Date(p.y + "-" + p.m + "-" + p.d + "T00:00:00.000Z");
           var dow = x.getUTCDay();
@@ -2709,13 +2705,11 @@
 
           var prev = document.getElementById("btn-prev");
           var next = document.getElementById("btn-next");
-          var today = document.getElementById("btn-today");
           var vw = document.getElementById("view-week");
           var vm = document.getElementById("view-month");
 
           prev && prev.addEventListener("click", function () { shiftRange(-1); });
           next && next.addEventListener("click", function () { shiftRange(1); });
-          today && today.addEventListener("click", function () { goToday(); renderGrid(); });
 
           vw &&
             vw.addEventListener("click", function () {
@@ -2752,7 +2746,7 @@
           todayKey = (function () {
             try { return dayKey(new Date()); } catch (e) { return ""; }
           })();
-          goToday();
+          initCalendarAnchor();
           renderGrid();
           // Reveal panel on initial load
           var panelEl = document.querySelector(".cal-panel");

@@ -2299,7 +2299,7 @@
               }
               var items = Array.isArray(j.items) ? j.items : [];
               if (!items.length) {
-                showStatic("No economic releases for this calendar day.", false);
+                showStatic("No major news events today", false);
                 return;
               }
               var html = items
@@ -2327,6 +2327,10 @@
                   );
                 })
                 .join("");
+              if (!html.trim()) {
+                showStatic("No major news events today", false);
+                return;
+              }
               track.innerHTML = html;
               dup.innerHTML = html;
               stat.textContent = "";

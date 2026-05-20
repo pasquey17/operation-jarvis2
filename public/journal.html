@@ -2139,19 +2139,21 @@
 
         if (elTotal) jnCountUp(elTotal, stats.total, '', '', 0, 600);
         if (elWinrate) {
-          if (stats.winRate == null) { elWinrate.textContent = '—'; }
+          if (stats.winRate == null || stats.winRate === '') { elWinrate.textContent = '0%'; }
           else jnCountUp(elWinrate, stats.winRate, '', '%', 0, 600);
         }
         if (elNetR) {
-          if (stats.netR == null) { elNetR.textContent = '—'; elNetR.style.color = ''; }
-          else {
+          if (stats.netR == null || stats.netR === '') {
+            elNetR.textContent = '0R';
+            elNetR.style.color = '';
+          } else {
             var sign = stats.netR >= 0 ? '+' : '';
             elNetR.style.color = stats.netR >= 0 ? '#00ff88' : '#ff6b6b';
             jnCountUp(elNetR, stats.netR, sign, 'R', 2, 700);
           }
         }
         if (elBestRR) {
-          if (stats.bestRR == null) { elBestRR.textContent = '—'; }
+          if (stats.bestRR == null || stats.bestRR === '') { elBestRR.textContent = '0R'; }
           else jnCountUp(elBestRR, stats.bestRR, '', 'R', 2, 700);
         }
       }
@@ -2457,7 +2459,7 @@
         var outcome = normalizeOutcome(getField(trade, 'outcome', 'Outcome', 'OUTCOME'));
         var outcomeLabel = outcome === 'win' ? 'WIN' : outcome === 'loss' ? 'LOSS' : outcome === 'be' ? 'BE' : (outcome || '—').toUpperCase();
         var dir = getTradeDirection(trade);
-        var dirLabel = dir ? dir.toUpperCase() : '—';
+        var dirLabel = dir ? dir.toUpperCase() : 'Not set';
         var rrRaw = parseFloat(getField(trade, 'rr', 'RR'));
         var rrDisplay;
         if (!isNaN(rrRaw)) {
@@ -2500,7 +2502,7 @@
             '</span></div>'
         );
         core.push(
-          '<div class="jn-detail"><span class="jn-detail__label">R multiple</span><span class="jn-detail__value">' +
+          '<div class="jn-detail"><span class="jn-detail__label">R:R</span><span class="jn-detail__value">' +
             esc(rrDisplay) +
             '</span></div>'
         );
