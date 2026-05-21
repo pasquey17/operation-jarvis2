@@ -44,22 +44,38 @@ let ltmCurrentUserId = "";
 let ltmPersistPhotoSlots = async () => {};
 
 function draftStorageKey(userId) {
-  return DRAFT_KEY_PREFIX + String(userId || "default").trim().toLowerCase();
+  const uid = String(userId || "").trim().toLowerCase();
+  if (!uid) return null;
+  return DRAFT_KEY_PREFIX + uid;
 }
 
 function saveDraftToStorage(userId, data) {
-  try { localStorage.setItem(draftStorageKey(userId), JSON.stringify(data)); } catch {}
+  const key = draftStorageKey(userId);
+  if (!key) {
+    console.log("[draft] saveDraftToStorage: skipped — userId is empty");
+    return;
+  }
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    console.log("[draft] saved to", key, data);
+  } catch (e) {
+    console.warn("[draft] save error", e);
+  }
   try { document.dispatchEvent(new CustomEvent("jarvis:draft-changed", { detail: { userId, hasDraft: true } })); } catch {}
 }
 
 function clearDraftFromStorage(userId) {
-  try { localStorage.removeItem(draftStorageKey(userId)); } catch {}
+  const key = draftStorageKey(userId);
+  if (!key) return;
+  try { localStorage.removeItem(key); } catch {}
   try { document.dispatchEvent(new CustomEvent("jarvis:draft-changed", { detail: { userId, hasDraft: false } })); } catch {}
 }
 
 function readDraftFromStorage(userId) {
+  const key = draftStorageKey(userId);
+  if (!key) return null;
   try {
-    const raw = localStorage.getItem(draftStorageKey(userId));
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === "object" ? parsed : null;
@@ -1367,6 +1383,7 @@ export async function openLogTradeModal(options) {
   const pasteHandler = buildDocumentPasteHandler(overlay);
 
   function closeModal() {
+    console.log("[draft] closeModal: userId=", userId, "editId=", editId, "savedSuccessfully=", savedSuccessfully);
     if (!editId && !savedSuccessfully && form) {
       try {
         const fd = new FormData(form);
@@ -1378,6 +1395,7 @@ export async function openLogTradeModal(options) {
         const rrRaw = (fd.get("rr") || "").trim();
         const summary = (fd.get(TRADE_SUMMARY_FIELD_ID) || "").trim();
         const hasData = (dateVal && dateVal !== today) || pair || outcome || rrRaw || summary || direction;
+        console.log("[draft] hasData=", hasData, "{ date:", dateVal, "today:", today, "pair:", pair, "outcome:", outcome, "rr:", rrRaw, "summary:", summary, "}");
         if (hasData) {
           const session = (fd.get("session") || "").trim();
           const account = (fd.get("account") || "").trim();
@@ -1499,6 +1517,7 @@ export async function openLogTradeModal(options) {
 
   if (!editId) {
     const draft = readDraftFromStorage(userId);
+    console.log("[draft] restore check: userId=", userId, "draftKey=", draftStorageKey(userId), "draft=", draft);
     if (draft && typeof draft === "object") {
       const scrollDiv = form.querySelector(".ltm-panel-scroll");
       if (scrollDiv) {
