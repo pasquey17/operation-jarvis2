@@ -210,6 +210,27 @@
       }
       .jn-log-btn:active { transform: translateY(0); }
 
+      /* ── DRAFT badge on LOG TRADE button ── */
+      .jn-log-btn__draft-dot {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: rgba(0,0,0,0.35);
+        border: 1px solid rgba(0,0,0,0.5);
+        color: #000;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        animation: jn-draft-pulse 1.8s ease-in-out infinite;
+        vertical-align: middle;
+        position: relative;
+        top: -1px;
+      }
+      @keyframes jn-draft-pulse {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 1; box-shadow: 0 0 6px rgba(0,0,0,0.4); }
+      }
+
       /* ── LOG TRADE + Edit — stacked under filter ── */
       .jn-action-stack {
         display: flex;
@@ -3414,6 +3435,28 @@
         });
       }
 
+      /* ── Draft badge ── */
+      function updateDraftBadge(uid) {
+        var btn = document.getElementById('jn-log-btn');
+        if (!btn) return;
+        var dot = btn.querySelector('.jn-log-btn__draft-dot');
+        var hasDraft = false;
+        if (uid) {
+          try { hasDraft = !!localStorage.getItem('jarvis_draft_trade_' + String(uid).trim().toLowerCase()); } catch {}
+        }
+        if (hasDraft && !dot) {
+          var span = document.createElement('span');
+          span.className = 'jn-log-btn__draft-dot';
+          span.textContent = 'DRAFT';
+          btn.appendChild(span);
+        } else if (!hasDraft && dot) {
+          dot.remove();
+        }
+      }
+      document.addEventListener('jarvis:draft-changed', function(e) {
+        if (e.detail && e.detail.userId === currentUserId) updateDraftBadge(currentUserId);
+      });
+
       /* ── Boot ── */
       document.getElementById('jn-log-btn').addEventListener('click', openTradeForm);
       document.getElementById('jn-edit-trade-btn').addEventListener('click', function () {
@@ -3423,6 +3466,7 @@
       async function boot() {
         initParticles();
         await ensureUserId();
+        updateDraftBadge(currentUserId);
         var list = document.getElementById('jn-list');
         list.innerHTML = '<div class="jn-state">Loading trades…</div>';
         try { allTrades = await fetchAllTrades(); }
