@@ -4864,6 +4864,29 @@ async function handleNotionCallback(req, res) {
   send(res, 302, "", { Location: "/notion-setup.html?onboarding=true" });
 }
 
+/**
+ * Query notion_connections or notion_mappings by user_id, falling back to the
+ * auth UUID if no row is found for the email. Handles rows stored before the
+ * email→UUID mapping existed (user_id stored as UUID instead of email).
+ */
+async function fetchNotionUserRows(url, key, table, emailUserId, authUserId) {
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  const r1 = await fetch(
+    `${url}/rest/v1/${table}?user_id=eq.${encodeURIComponent(emailUserId)}&limit=1`,
+    { headers }
+  );
+  const rows1 = await r1.json().catch(() => null);
+  if (Array.isArray(rows1) && rows1.length > 0) return rows1;
+  if (emailUserId !== authUserId) {
+    const r2 = await fetch(
+      `${url}/rest/v1/${table}?user_id=eq.${encodeURIComponent(authUserId)}&limit=1`,
+      { headers }
+    );
+    return (await r2.json().catch(() => null)) ?? [];
+  }
+  return rows1 ?? [];
+}
+
 async function handleNotionDatabases(req, res) {
   const authUid = authUserIdFromReq(req);
   if (!authUid) {
@@ -4881,13 +4904,8 @@ async function handleNotionDatabases(req, res) {
 
   let accessToken;
   try {
-    const cr = await fetch(
-      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
-    );
-    console.log("[notion/databases] Supabase query status:", cr.status, "for user_id:", userId);
-    const rows = await cr.json().catch(() => null);
-    console.log("[notion/databases] rows returned:", Array.isArray(rows) ? rows.length : "parse-failed", JSON.stringify(rows)?.slice(0, 200));
+    const rows = await fetchNotionUserRows(url, key, "notion_connections", userId, authUid);
+    console.log("[notion/databases] rows returned:", Array.isArray(rows) ? rows.length : "parse-failed", "for userId:", userId);
     accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
     console.log("[notion/databases]", accessToken ? "token found" : "token missing");
   } catch (e) {
@@ -5012,11 +5030,7 @@ async function handleNotionColumns(req, res) {
 
   let accessToken;
   try {
-    const cr = await fetch(
-      `${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(userId)}&limit=1`,
-      { headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" } }
-    );
-    const rows = await cr.json().catch(() => null);
+    const rows = await fetchNotionUserRows(url, srKey, "notion_connections", userId, authUid);
     accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
   } catch { json(res, 500, { error: "Failed to read Notion connection" }); return; }
 
@@ -5328,16 +5342,10 @@ async function loadNotionOAuthConnection(userId) {
   const resolvedUserId = legacyEmailForAuthUserId(userId) || userId;
 
   try {
-    const [connRes, mapRes] = await Promise.all([
-      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(resolvedUserId)}&limit=1`, {
-        headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
-      }),
-      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(resolvedUserId)}&limit=1`, {
-        headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Accept: "application/json" },
-      }),
+    const [connRows, mapRows] = await Promise.all([
+      fetchNotionUserRows(url, srKey, "notion_connections", resolvedUserId, userId),
+      fetchNotionUserRows(url, srKey, "notion_mappings", resolvedUserId, userId),
     ]);
-    const connRows = await connRes.json().catch(() => null);
-    const mapRows = await mapRes.json().catch(() => null);
     const accessToken =
       Array.isArray(connRows) && connRows.length > 0 ? connRows[0].access_token : null;
     const databaseId =
@@ -5849,12 +5857,9 @@ async function handleNotionSyncUser(req, res) {
   const syncMeta = await maybeSyncNotion(user_id, { force: true });
 
   if (syncMeta.skipped && syncMeta.oauthRequired) {
-    json(res, 404, {
-      error:
-        syncMeta.reason === "no_mapping"
-          ? "No column mapping found — complete setup first"
-          : "No Notion connection found",
-    });
+    // Not an error — user is on the legacy env-var sync path, not OAuth.
+    // Return 200 so the frontend doesn't show an error toast.
+    json(res, 200, { ok: false, skipped: true, reason: syncMeta.reason || "no_oauth_connection" });
     return;
   }
 
@@ -5931,22 +5936,16 @@ async function handleOnboardingState(req, res) {
   let hasNotionMapping = false;
 
   try {
-    const [profileRes, notionConnRes, notionMapRes] = await Promise.all([
+    const [profileRes, notionConnRows, notionMapRows] = await Promise.all([
       fetch(`${url}/rest/v1/user_profiles?auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
       }),
-      fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(emailUserId)}&limit=1`, {
-        headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
-      }),
-      fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(emailUserId)}&limit=1`, {
-        headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
-      }),
+      fetchNotionUserRows(url, key, "notion_connections", emailUserId, authUserId),
+      fetchNotionUserRows(url, key, "notion_mappings", emailUserId, authUserId),
     ]);
     const profileRows = await profileRes.json().catch(() => null);
     profileRow = Array.isArray(profileRows) && profileRows.length > 0 ? profileRows[0] : null;
-    const notionConnRows = await notionConnRes.json().catch(() => null);
     hasNotionConnection = Array.isArray(notionConnRows) && notionConnRows.length > 0;
-    const notionMapRows = await notionMapRes.json().catch(() => null);
     hasNotionMapping = Array.isArray(notionMapRows) && notionMapRows.length > 0;
   } catch (e) {
     json(res, 500, { error: `State check failed: ${String(e.message ?? e)}` });
