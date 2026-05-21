@@ -1233,37 +1233,22 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
-      .ac-calc-advanced {
+      .ac-calc-pip-info {
         grid-column: 1 / -1;
-        border-radius: 10px;
-        border: 1px solid rgba(0, 212, 255, 0.12);
-        background: rgba(0, 0, 0, 0.25);
-        padding: 0;
-      }
-      .ac-calc-advanced summary {
+        margin: 0;
         padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.14);
+        background: rgba(0, 212, 255, 0.04);
         font-family: "Share Tech Mono", "Courier New", monospace;
         font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.65);
-        cursor: pointer;
-        list-style: none;
+        line-height: 1.55;
+        letter-spacing: 0.05em;
+        color: rgba(192, 220, 235, 0.82);
       }
-      .ac-calc-advanced summary::-webkit-details-marker {
-        display: none;
-      }
-      .ac-calc-advanced__inner {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px 14px;
-        padding: 0 12px 12px;
-        border-top: 1px solid rgba(0, 212, 255, 0.08);
-      }
-      @media (min-width: 520px) {
-        .ac-calc-advanced__inner {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+      .ac-calc-pip-info--warn {
+        border-color: rgba(255, 120, 100, 0.35);
+        color: rgba(255, 160, 140, 0.9);
       }
       .ac-panel__hr {
         height: 1px;
@@ -1561,22 +1546,9 @@
                     <label for="calc-fx-pips">Stop (pips)</label>
                     <input class="ac-input" type="number" id="calc-fx-pips" step="0.1" min="0.1" placeholder="25" />
                   </div>
-                  <details class="ac-calc-advanced">
-                    <summary>Advanced · pip settings</summary>
-                    <div class="ac-calc-advanced__inner">
-                  <div class="ac-field">
-                    <label for="calc-fx-pipsize">Pip size (price)</label>
-                    <select class="ac-select" id="calc-fx-pipsize">
-                      <option value="0.0001">0.0001 — most majors / crosses</option>
-                      <option value="0.01">0.01 — JPY + metals-style</option>
-                    </select>
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-fx-pipusd">Pip $ / 1.00 lot</label>
-                    <input class="ac-input" type="number" id="calc-fx-pipusd" step="0.01" min="0.01" placeholder="10" />
-                  </div>
-                    </div>
-                  </details>
+                  <p class="ac-calc-pip-info" id="calc-fx-pip-info" aria-live="polite">
+                    Select a pair to auto-detect pip value.
+                  </p>
                   <div class="ac-calc-err" id="calc-fx-err" aria-live="polite"></div>
                 </div>
               </div>
@@ -1645,6 +1617,59 @@
         var LS_CALC_LEGACY = "jarvis.accountLotCalc.v2";
         var fxPairsList = [];
         var fxPairsBySymbol = {};
+        var calcFxPip = { pipSize: 0.0001, pipUsdPerLot: 10, loading: false, error: "" };
+        var lotCalcMod = null;
+
+        function loadLotCalcMod() {
+          if (lotCalcMod) return Promise.resolve(lotCalcMod);
+          return import("/js/lot-calculator.js?v=d4f7e2a1").then(function (m) {
+            lotCalcMod = m;
+            return m;
+          });
+        }
+
+        function refreshFxPipAuto() {
+          var info = document.getElementById("calc-fx-pip-info");
+          var sym = document.getElementById("calc-fx-pair").value;
+          calcFxPip.loading = true;
+          if (info) {
+            info.classList.remove("ac-calc-pip-info--warn");
+            info.textContent = "Calculating pip value…";
+          }
+          runFxCalc();
+          return loadLotCalcMod()
+            .then(function (mod) {
+              return mod.resolvePipValuePerLot(sym);
+            })
+            .then(function (resolved) {
+              calcFxPip = {
+                pipSize: resolved.pipSize,
+                pipUsdPerLot: resolved.pipUsdPerLot,
+                loading: false,
+                error: resolved.error || "",
+                source: resolved.source || "",
+              };
+              if (info) {
+                info.textContent = lotCalcMod.formatPipInfo(calcFxPip);
+                if (calcFxPip.error) info.classList.add("ac-calc-pip-info--warn");
+                else info.classList.remove("ac-calc-pip-info--warn");
+              }
+              runFxCalc();
+            })
+            .catch(function () {
+              calcFxPip = {
+                pipSize: 0.0001,
+                pipUsdPerLot: 10,
+                loading: false,
+                error: "Could not load live FX rates.",
+              };
+              if (info) {
+                info.textContent = calcFxPip.error;
+                info.classList.add("ac-calc-pip-info--warn");
+              }
+              runFxCalc();
+            });
+        }
 
         function escapeHtml(s) {
           return String(s)
@@ -1951,8 +1976,9 @@
             })
             .catch(function () {
               fxPairsList = [
-                { symbol: "EURUSD", label: "EUR / USD", pipSize: 0.0001, pipUsdPerLot: 10 },
-                { symbol: "USDJPY", label: "USD / JPY", pipSize: 0.01, pipUsdPerLot: 9.09 },
+                { symbol: "EURUSD", label: "EUR / USD" },
+                { symbol: "USDJPY", label: "USD / JPY" },
+                { symbol: "XAUUSD", label: "XAU / USD (gold)" },
               ];
               fxPairsBySymbol = {};
               var sel = document.getElementById("calc-fx-pair");
@@ -1965,16 +1991,6 @@
                 sel.appendChild(opt);
               });
             });
-        }
-
-        function applyFxPairFromSelect() {
-          var sym = document.getElementById("calc-fx-pair").value;
-          var p = fxPairsBySymbol[sym];
-          if (!p) return;
-          document.getElementById("calc-fx-pipsize").value = String(p.pipSize);
-          var pipEl = document.getElementById("calc-fx-pipusd");
-          pipEl.value = String(p.pipUsdPerLot);
-          pipEl.dataset.jarvisAuto = "1";
         }
 
         function redrawSparklines() {
@@ -2334,7 +2350,7 @@
           calcOverlay.classList.add("ac-open");
           calcOverlay.setAttribute("aria-hidden", "false");
           requestAnimationFrame(function () {
-            runAllCalc();
+            refreshFxPipAuto();
             redrawSparklines();
           });
         }
@@ -2466,16 +2482,12 @@
           try {
             ensureCalcStorageMigrated();
             var pairSel = document.getElementById("calc-fx-pair");
-            var pipsizeEl = document.getElementById("calc-fx-pipsize");
-            var pipusdEl = document.getElementById("calc-fx-pipusd");
             var raw = localStorage.getItem(LS_CALC);
             if (!raw) {
               if (pairSel.options.length) {
                 pairSel.value = fxPairsList[0].symbol;
-                applyFxPairFromSelect();
               }
-              pipusdEl.dataset.jarvisAuto = "1";
-              runAllCalc();
+              refreshFxPipAuto();
               return;
             }
             var o = JSON.parse(raw);
@@ -2488,15 +2500,7 @@
             var sym =
               fx.pairSymbol && fxPairsBySymbol[fx.pairSymbol] ? fx.pairSymbol : sym0 || (pairSel.options[0] && pairSel.options[0].value);
             if (sym) pairSel.value = sym;
-            if (fx.pipsize) pipsizeEl.value = String(fx.pipsize);
-            if (fx.pipusd != null && fx.pipusd !== "") pipusdEl.value = fx.pipusd;
-            if (fx.pipAuto === "1") pipusdEl.dataset.jarvisAuto = "1";
-            else if (fx.pipAuto === "0") pipusdEl.dataset.jarvisAuto = "0";
-            else pipusdEl.dataset.jarvisAuto = "0";
-            if ((!fx.pipsize || fx.pipusd == null || fx.pipusd === "") && sym) {
-              applyFxPairFromSelect();
-              pipusdEl.dataset.jarvisAuto = "1";
-            }
+            refreshFxPipAuto();
             var ft = o.ft || {};
             if (ft.balance != null) document.getElementById("calc-ft-balance").value = ft.balance;
             if (ft.mode) document.getElementById("calc-ft-risk-mode").value = ft.mode;
@@ -2516,20 +2520,16 @@
 
         function saveCalcPrefs() {
           try {
-            var pipusdEl = document.getElementById("calc-fx-pipusd");
             localStorage.setItem(
               LS_CALC,
               JSON.stringify({
                 tab: document.getElementById("calc-block-ft").classList.contains("ac-visible") ? "ft" : "fx",
                 fx: {
                   pairSymbol: document.getElementById("calc-fx-pair").value,
-                  pipAuto: pipusdEl.dataset.jarvisAuto === "1" ? "1" : "0",
                   balance: document.getElementById("calc-fx-balance").value,
                   mode: document.getElementById("calc-fx-risk-mode").value,
                   riskVal: document.getElementById("calc-fx-risk-val").value,
                   pips: document.getElementById("calc-fx-pips").value,
-                  pipsize: document.getElementById("calc-fx-pipsize").value,
-                  pipusd: document.getElementById("calc-fx-pipusd").value,
                 },
                 ft: {
                   balance: document.getElementById("calc-ft-balance").value,
@@ -2562,11 +2562,17 @@
             if (lcdS) lcdS.textContent = "";
           }
 
+          if (calcFxPip.loading) {
+            if (lcdM) lcdM.textContent = "…";
+            if (lcdS) lcdS.textContent = "Updating pip value";
+            return;
+          }
+
           var bal = parseInputNumber("calc-fx-balance");
           var mode = document.getElementById("calc-fx-risk-mode").value;
           var rv = parseInputNumber("calc-fx-risk-val");
           var pips = parseInputNumber("calc-fx-pips");
-          var pipUsd = parseInputNumber("calc-fx-pipusd");
+          var pipUsd = calcFxPip.pipUsdPerLot;
 
           var riskUsd = null;
           if (mode === "pct") {
@@ -2596,7 +2602,7 @@
             return;
           }
           if (!Number.isFinite(pipUsd) || pipUsd <= 0) {
-            fail("Pip $ per lot must be greater than 0.");
+            fail(calcFxPip.error || "Pip value unavailable for this pair.");
             return;
           }
 
@@ -2604,6 +2610,12 @@
           var lots = riskUsd / denom;
           var micro = Math.round(lots * 100);
           var perPipAtSize = lots * pipUsd;
+          var pipSizeStr =
+            calcFxPip.pipSize >= 0.1
+              ? calcFxPip.pipSize.toFixed(2)
+              : calcFxPip.pipSize >= 0.01
+                ? calcFxPip.pipSize.toFixed(3)
+                : calcFxPip.pipSize.toFixed(4);
 
           if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           if (lcdM) lcdM.textContent = lots.toFixed(2) + " lots";
@@ -2611,11 +2623,14 @@
             lcdS.textContent =
               "Risk $" +
               riskUsd.toFixed(2) +
-              " · ~$" +
+              " · $" +
+              pipUsd.toFixed(2) +
+              "/pip/lot · ~$" +
               (Number.isFinite(perPipAtSize) ? perPipAtSize.toFixed(2) : "—") +
-              " /pip · " +
+              " /pip at size · " +
               micro +
-              " micro";
+              " micro · pip " +
+              pipSizeStr;
           saveCalcPrefs();
         }
 
@@ -2675,28 +2690,8 @@
           runFtCalc();
         }
 
-        document.getElementById("calc-fx-pipsize").addEventListener("change", function () {
-          var pipEl = document.getElementById("calc-fx-pipusd");
-          var sym = document.getElementById("calc-fx-pair").value;
-          var pair = fxPairsBySymbol[sym];
-          var ps = document.getElementById("calc-fx-pipsize").value;
-          if (pair && String(pair.pipSize) !== ps) pipEl.dataset.jarvisAuto = "0";
-          if (pipEl.dataset.jarvisAuto === "1" && pair && String(pair.pipSize) === ps) {
-            pipEl.value = String(pair.pipUsdPerLot);
-          } else if (pipEl.dataset.jarvisAuto === "1") {
-            var isJpy = ps === "0.01";
-            pipEl.value = isJpy ? "9.09" : "10";
-          }
-          runFxCalc();
-        });
-
         document.getElementById("calc-fx-pair").addEventListener("change", function () {
-          applyFxPairFromSelect();
-          runFxCalc();
-        });
-
-        document.getElementById("calc-fx-pipusd").addEventListener("input", function () {
-          document.getElementById("calc-fx-pipusd").dataset.jarvisAuto = "0";
+          refreshFxPipAuto();
         });
 
         [
@@ -2704,8 +2699,6 @@
           "calc-fx-risk-mode",
           "calc-fx-risk-val",
           "calc-fx-pips",
-          "calc-fx-pipsize",
-          "calc-fx-pipusd",
           "calc-ft-balance",
           "calc-ft-risk-mode",
           "calc-ft-risk-val",
@@ -2788,12 +2781,9 @@
         }
 
         ensureUserId();
-        var pipUsdBoot = document.getElementById("calc-fx-pipusd");
-        if (pipUsdBoot) pipUsdBoot.dataset.jarvisAuto = "1";
         loadFxPairs().then(function () {
           ensureCalcStorageMigrated();
           loadCalcPrefs();
-          runAllCalc();
           loadAccounts();
           loadEconomicNewsBar();
         });
