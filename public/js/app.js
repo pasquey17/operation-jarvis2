@@ -2057,7 +2057,10 @@ async function openTradeForm() {
     `/js/log-trade-modal.js?v=${JARVIS_ASSET_V}`
   );
   await openLogTradeModal({
-    getUserId: () => getAuthUserId(),
+    getUserId: async () => {
+      const id = await getAuthUserId();
+      return id || "";
+    },
     fetchTradeRowsForPrefill: async () => {
       await loadTrades();
       return Array.isArray(tradeData?.records) ? tradeData.records : [];

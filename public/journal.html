@@ -1098,6 +1098,7 @@
 
     <script type="module">
       import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
+      import { hasDraftInStorage } from "/js/log-trade-modal.js?v=d4f7e2a1";
     (function () {
       'use strict';
 
@@ -1965,6 +1966,14 @@
         requestAnimationFrame(drawFrame);
       }
 
+      function resolveJournalUserId() {
+        if (currentUserId) return Promise.resolve(currentUserId);
+        return getAuthUserId().then(function (id) {
+          currentUserId = id || "";
+          return currentUserId;
+        });
+      }
+
       function ensureUserId() {
         return getAuthUserId().then(function (id) {
           currentUserId = id || "";
@@ -2767,12 +2776,7 @@
           try {
             var mod = await import('/js/log-trade-modal.js?v=d4f7e2a1');
             await mod.openLogTradeModal({
-              getUserId: function () {
-                return (
-                  currentUserId ||
-                  currentUserId
-                );
-              },
+              getUserId: resolveJournalUserId,
               fetchTradeRowsForPrefill: async function () {
                 return Array.isArray(allTrades) ? allTrades : [];
               },
@@ -3345,12 +3349,7 @@
         try {
           var mod = await import('/js/log-trade-modal.js?v=d4f7e2a1');
           await mod.openLogTradeModal({
-            getUserId: function () {
-              return (
-                currentUserId ||
-                currentUserId
-              );
-            },
+            getUserId: resolveJournalUserId,
             fetchTradeRowsForPrefill: async function () {
               return Array.isArray(allTrades) ? allTrades : [];
             },
@@ -3383,7 +3382,7 @@
       async function refreshJournalData() {
         try {
           allTrades = await fetchAllTrades();
-          incompleteJournalTrade = findIncompleteJournalTrade(allTrades);
+          await refreshIncompleteJournalTrade();
           updateDraftBadge(currentUserId);
           renderWeeklyStats(computeWeeklyStats(allTrades));
           buildFilterOptions(allTrades);
@@ -3460,16 +3459,31 @@
         return null;
       }
 
+      async function refreshIncompleteJournalTrade() {
+        try {
+          var r = await apiFetch('/api/journal-trades', { cache: 'no-store' });
+          var rows = await r.json();
+          if (!Array.isArray(rows)) rows = [];
+          incompleteJournalTrade = findIncompleteJournalTrade(
+            rows.map(function (t) {
+              return Object.assign({}, t, { _jarvis_trade_source: 'journal_log' });
+            })
+          );
+        } catch (e) {
+          incompleteJournalTrade = findIncompleteJournalTrade(allTrades);
+        }
+      }
+
       /* ── Draft badge ── */
+      function draftUserIdsMatch(a, b) {
+        return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+      }
+
       function updateDraftBadge(uid) {
         var btn = document.getElementById('jn-log-btn');
         if (!btn) return;
         var dot = btn.querySelector('.jn-log-btn__draft-dot');
-        var hasDraft = false;
-        var normalizedUid = uid ? String(uid).trim().toLowerCase() : '';
-        if (normalizedUid) {
-          try { hasDraft = !!localStorage.getItem('jarvis_draft_trade_' + normalizedUid); } catch {}
-        }
+        var hasDraft = hasDraftInStorage(uid);
         var showBadge = hasDraft || !!incompleteJournalTrade;
         if (showBadge && !dot) {
           var span = document.createElement('span');
@@ -3481,17 +3495,14 @@
         }
       }
       document.addEventListener('jarvis:draft-changed', function(e) {
-        if (e.detail && e.detail.userId === currentUserId) updateDraftBadge(currentUserId);
+        if (e.detail && draftUserIdsMatch(e.detail.userId, currentUserId)) {
+          updateDraftBadge(currentUserId);
+        }
       });
 
       /* ── Boot ── */
       document.getElementById('jn-log-btn').addEventListener('click', function() {
-        var hasDraft = false;
-        var normalizedUid = currentUserId ? String(currentUserId).trim().toLowerCase() : '';
-        if (normalizedUid) {
-          try { hasDraft = !!localStorage.getItem('jarvis_draft_trade_' + normalizedUid); } catch {}
-        }
-        if (!hasDraft && incompleteJournalTrade) {
+        if (!hasDraftInStorage(currentUserId) && incompleteJournalTrade) {
           void openJournalTradeEditorFromRow(incompleteJournalTrade);
         } else {
           void openTradeForm();
@@ -3509,7 +3520,7 @@
         list.innerHTML = '<div class="jn-state">Loading trades…</div>';
         try { allTrades = await fetchAllTrades(); }
         catch(e) { list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>'; return; }
-        incompleteJournalTrade = findIncompleteJournalTrade(allTrades);
+        await refreshIncompleteJournalTrade();
         updateDraftBadge(currentUserId);
         if (allTrades.length === 0) {
           list.innerHTML = '<div class="jn-state">Syncing from Notion…</div>';
