@@ -3303,7 +3303,7 @@ async function handleJournalPhotoSlotsPatch(req, res) {
   }
 }
 
-/** GET /api/journal-trades?auth_user_id=eq.{email} — manual LOG TRADE rows (journal_trades). */
+/** GET /api/journal-trades — manual LOG TRADE rows (journal_trades). */
 async function handleJournalTradesGet(req, res) {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) {
@@ -3311,9 +3311,10 @@ async function handleJournalTradesGet(req, res) {
     return;
   }
   const authUserId = authUserIdFromReq(req);
-  const userId = legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId || "";
-  try {
-    const endpoint = `${url}/rest/v1/journal_trades?user_id=eq.${encodeURIComponent(userId)}&select=*&order=traded_at.desc`;
+  const emailUserId = legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId || "";
+
+  const fetchByUserId = async (uid) => {
+    const endpoint = `${url}/rest/v1/journal_trades?user_id=eq.${encodeURIComponent(uid)}&select=*&order=traded_at.desc`;
     const r = await fetch(endpoint, {
       method: "GET",
       headers: {
@@ -3324,20 +3325,34 @@ async function handleJournalTradesGet(req, res) {
       },
     });
     const text = await r.text();
-    if (!r.ok) {
-      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
-        error: formatSupabaseError(text, r.status) || `Supabase HTTP ${r.status}`,
+    if (!r.ok) return { ok: false, status: r.status, text };
+    try { return { ok: true, rows: JSON.parse(text) }; } catch { return { ok: false, status: 502, text: "Invalid JSON" }; }
+  };
+
+  try {
+    // Primary: query by email (current format).
+    const primary = await fetchByUserId(emailUserId);
+    if (!primary.ok) {
+      json(res, primary.status >= 400 && primary.status < 600 ? primary.status : 502, {
+        error: formatSupabaseError(primary.text, primary.status) || `Supabase HTTP ${primary.status}`,
       });
       return;
     }
-    let rows;
-    try {
-      rows = JSON.parse(text);
-    } catch {
-      json(res, 502, { error: "Invalid JSON from Supabase" });
-      return;
+    let rows = Array.isArray(primary.rows) ? primary.rows : [];
+
+    // Fallback: also fetch rows stored under the raw auth UUID (legacy, before email resolution was fixed).
+    if (authUserId && authUserId !== emailUserId) {
+      const fallback = await fetchByUserId(authUserId);
+      if (fallback.ok && Array.isArray(fallback.rows) && fallback.rows.length > 0) {
+        const seenIds = new Set(rows.map((r) => r.id));
+        for (const row of fallback.rows) {
+          if (!seenIds.has(row.id)) rows.push(row);
+        }
+        rows.sort((a, b) => new Date(b.traded_at) - new Date(a.traded_at));
+      }
     }
-    json(res, 200, Array.isArray(rows) ? rows : []);
+
+    json(res, 200, rows);
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
   }
@@ -4281,16 +4296,27 @@ async function handleRefreshTradeImage(req, res) {
   if (!userId) { json(res, 401, { error: "Unauthorized" }); return; }
 
   const conn = await loadNotionOAuthConnection(userId);
-  if (!conn.ok) {
-    json(res, 503, {
-      error:
-        conn.reason === "no_mapping"
-          ? "Notion mapping missing — complete /notion-setup.html"
-          : "Notion OAuth not connected — connect at /notion-setup.html",
-    });
-    return;
+  let notionKey;
+  if (conn.ok) {
+    notionKey = conn.accessToken;
+  } else {
+    // Fallback: env-var Notion key for env-synced trades (no OAuth connection needed).
+    const emailUserId = legacyEmailForAuthUserId(userId, null);
+    if (emailUserId === "aidenpasque11@gmail.com") {
+      notionKey = process.env.NOTION_API_KEY || null;
+    } else if (emailUserId === "spasque70@gmail.com") {
+      notionKey = process.env.NOTION_API_KEY_MUM || null;
+    }
+    if (!notionKey) {
+      json(res, 503, {
+        error:
+          conn.reason === "no_mapping"
+            ? "Notion mapping missing — complete /notion-setup.html"
+            : "Notion not connected — connect at /notion-setup.html",
+      });
+      return;
+    }
   }
-  const notionKey = conn.accessToken;
 
   try {
     const pageRes = await fetch(`https://api.notion.com/v1/pages/${notionId}`, {
