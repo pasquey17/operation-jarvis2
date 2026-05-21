@@ -48,6 +48,12 @@ function ensureSettingsDom() {
     '<span class="jv-settings-field__label">Timezone</span>' +
     '<span class="jv-settings-field__value" id="jv-settings-timezone">Not set</span>' +
     "</div>" +
+    '<hr class="jv-settings-divider" />' +
+    '<div class="jv-settings-section">' +
+    '<span class="jv-settings-field__label">Notion Integration</span>' +
+    '<p class="jv-settings-section__desc">Re-run the column mapping wizard to add new fields, fix mismatched columns, or connect a different Notion database.</p>' +
+    '<a href="/notion-setup.html" class="jv-settings-notion-link">Update Column Mapping →</a>' +
+    "</div>" +
     '<button type="button" class="jv-settings-logout" id="jv-settings-logout">Logout</button>' +
     "</div>";
 

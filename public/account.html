@@ -7,1338 +7,211 @@
     <title>ACCOUNT · JARVIS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/css/style.css?v=d4f7e2a1" />
-    <link rel="stylesheet" href="/css/jarvis-settings.css?v=d4f7e2a1" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css?v=e5a1b2c3" />
+    <link rel="stylesheet" href="/css/jarvis-settings.css?v=e5a1b2c3" />
     <style>
-      html,
-      body {
-        overflow-x: clip;
-        overflow-y: auto;
-        height: auto !important;
-        min-height: 100dvh !important;
-        background: #050a14 !important;
-      }
-      .jv-nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 52px;
-        z-index: 1000;
-        background: rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-        display: flex;
-        align-items: center;
-        padding: 0 24px;
-        gap: 0;
-      }
-      .jv-nav__brand {
-        color: #00d4ff !important;
-        font-family: "Share Tech Mono", "Courier New", monospace !important;
-        font-size: 15px;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        white-space: nowrap;
-        flex-shrink: 0;
-        text-decoration: none;
-      }
-      .jv-nav__links {
-        display: flex;
-        align-items: center;
-        gap: 32px;
-        list-style: none;
-        margin: 0 auto;
-        padding: 0;
-      }
-      .jv-nav__links a {
-        color: rgba(255, 255, 255, 0.5) !important;
-        text-decoration: none;
-        font-family: "Share Tech Mono", "Courier New", monospace !important;
-        font-size: 11px;
-        font-variant: small-caps;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        padding-bottom: 2px;
-        border-bottom: 1px solid transparent;
-        transition: color 0.2s, border-color 0.2s;
-      }
-      .jv-nav__links a:hover {
-        color: rgba(255, 255, 255, 0.85) !important;
-      }
-      .jv-nav__links a.jv-nav--active,
-      .jv-nav__links a[aria-current="page"] {
-        color: #00d4ff !important;
-        border-bottom: 1px solid #00d4ff;
-      }
-      .jv-nav__hamburger {
-        display: none;
-        flex-direction: column;
-        justify-content: center;
-        gap: 5px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 4px;
-        flex-shrink: 0;
-      }
-      .jv-nav__hamburger span {
-        display: block;
-        width: 20px;
-        height: 1.5px;
-        background: rgba(255, 255, 255, 0.6);
-        border-radius: 2px;
-        transition: background 0.2s;
-      }
-      .jv-nav__hamburger:hover span {
-        background: #00d4ff;
-      }
-      .jv-nav__dropdown {
-        display: none;
-        position: fixed;
-        top: 52px;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.95);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(0, 212, 255, 0.15);
-        z-index: 999;
-        flex-direction: column;
-        padding: 8px 0;
-      }
-      .jv-nav__dropdown.jv-nav--open {
-        display: flex;
-      }
-      .jv-nav__dropdown a {
-        color: rgba(255, 255, 255, 0.5) !important;
-        text-decoration: none;
-        font-family: "Share Tech Mono", "Courier New", monospace !important;
-        font-size: 12px;
-        font-variant: small-caps;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        padding: 12px 24px;
-        border-left: 2px solid transparent;
-        transition: color 0.2s, border-color 0.2s;
-      }
-      .jv-nav__dropdown a:hover {
-        color: rgba(255, 255, 255, 0.85) !important;
-      }
-      .jv-nav__dropdown a.jv-nav--active,
-      .jv-nav__dropdown a[aria-current="page"] {
-        color: #00d4ff !important;
-        border-left-color: #00d4ff;
-      }
-      @media (max-width: 768px) {
-        .jv-nav__links {
-          display: none;
-        }
-        .jv-nav__hamburger {
-          display: flex;
-        }
-        .jv-nav__brand {
-          font-size: 13px;
-        }
-      }
+      html, body { overflow-x: clip; overflow-y: auto; height: auto !important; min-height: 100dvh !important; background: #050a14 !important; }
 
-      #particle-canvas {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        pointer-events: none;
-      }
+      /* ── Nav ── */
+      .jv-nav { position: fixed; top: 0; left: 0; right: 0; height: 52px; z-index: 1000; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,212,255,0.2); display: flex; align-items: center; padding: 0 24px; gap: 0; }
+      .jv-nav__brand { color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; text-decoration: none; }
+      .jv-nav__links { display: flex; align-items: center; gap: 32px; list-style: none; margin: 0 auto; padding: 0; }
+      .jv-nav__links a { color: rgba(255,255,255,0.5) !important; text-decoration: none; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px; font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
+      .jv-nav__links a:hover { color: rgba(255,255,255,0.85) !important; }
+      .jv-nav__links a.jv-nav--active, .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
+      .jv-nav__hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 4px; flex-shrink: 0; }
+      .jv-nav__hamburger span { display: block; width: 20px; height: 1.5px; background: rgba(255,255,255,0.6); border-radius: 2px; transition: background 0.2s; }
+      .jv-nav__hamburger:hover span { background: #00d4ff; }
+      .jv-nav__dropdown { display: none; position: fixed; top: 52px; left: 0; right: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,212,255,0.15); z-index: 999; flex-direction: column; padding: 8px 0; }
+      .jv-nav__dropdown.jv-nav--open { display: flex; }
+      .jv-nav__dropdown a { color: rgba(255,255,255,0.5) !important; text-decoration: none; font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px; font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase; padding: 12px 24px; border-left: 2px solid transparent; transition: color 0.2s, border-color 0.2s; }
+      .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85) !important; }
+      .jv-nav__dropdown a.jv-nav--active { color: #00d4ff !important; border-left-color: #00d4ff; }
+      @media (max-width: 768px) { .jv-nav__links { display: none; } .jv-nav__hamburger { display: flex; } .jv-nav__brand { font-size: 13px; } }
 
-      /* Fixed economic calendar strip (server: GET /api/economic-calendar, Adelaide “today”). */
-      .ac-news-bar {
-        position: fixed;
-        top: 52px;
-        left: 0;
-        right: 0;
-        z-index: 900;
-        border-bottom: 1px solid rgba(0, 212, 255, 0.22);
-        background: rgba(4, 9, 18, 0.92);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        min-height: 80px;
-        box-sizing: border-box;
-      }
-      .ac-news-bar__inner {
-        display: flex;
-        align-items: stretch;
-        gap: 16px;
-        max-width: 1440px;
-        margin: 0 auto;
-        padding: 14px 22px;
-        box-sizing: border-box;
-        min-height: 80px;
-      }
-      .ac-news-bar__viewport {
-        flex: 1;
-        min-width: 0;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        mask-image: linear-gradient(
-          90deg,
-          transparent 0,
-          #000 14px,
-          #000 calc(100% - 14px),
-          transparent 100%
-        );
-        -webkit-mask-image: linear-gradient(
-          90deg,
-          transparent 0,
-          #000 14px,
-          #000 calc(100% - 14px),
-          transparent 100%
-        );
-      }
-      .ac-news-bar__viewport.is-marquee {
-        cursor: default;
-      }
-      .ac-news-bar__marquee {
-        display: flex;
-        flex-wrap: nowrap;
-        width: max-content;
-        will-change: transform;
-      }
-      .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee {
-        animation: ac-news-marquee var(--ac-marquee-dur, 55s) linear infinite;
-      }
-      .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee:hover {
-        animation-play-state: paused;
-      }
-      @keyframes ac-news-marquee {
-        from {
-          transform: translateX(0);
-        }
-        to {
-          transform: translateX(-50%);
-        }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee {
-          animation: none;
-        }
-        .ac-news-bar__viewport.is-marquee {
-          overflow-x: auto;
-          overflow-y: hidden;
-          mask-image: none;
-          -webkit-mask-image: none;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(0, 212, 255, 0.25) transparent;
-        }
-      }
-      .ac-news-bar__seq {
-        flex: 0 0 auto;
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: center;
-        gap: 28px;
-        padding-right: 28px;
-        box-sizing: border-box;
-      }
-      .ac-news-bar__viewport:not(.is-marquee) .ac-news-bar__marquee {
-        display: none;
-      }
-      .ac-news-bar__viewport.is-marquee .ac-news-bar__static {
-        display: none;
-      }
-      .ac-news-bar__static {
-        flex: 1;
-        min-width: 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 14px;
-        letter-spacing: 0.06em;
-        line-height: 1.45;
-        color: rgba(236, 242, 247, 0.82);
-        display: flex;
-        align-items: center;
-        margin: 0;
-      }
-      .ac-news-bar__chip {
-        flex: 0 0 auto;
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        padding: 8px 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 15px;
-        letter-spacing: 0.03em;
-        color: rgba(236, 242, 247, 0.94);
-        white-space: nowrap;
-      }
-      .ac-news-bar__dot {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        box-shadow: 0 0 10px currentColor;
-      }
-      .ac-news-bar__dot--low {
-        color: #f5e000;
-        background: #f5e000;
-      }
-      .ac-news-bar__dot--medium {
-        color: #ff9f1a;
-        background: #ff9f1a;
-      }
-      .ac-news-bar__dot--high {
-        color: #ff3355;
-        background: #ff3355;
-      }
-      .ac-news-bar__dot--holiday {
-        color: rgba(136, 153, 170, 0.85);
-        background: rgba(136, 153, 170, 0.5);
-        box-shadow: none;
-      }
-      .ac-news-bar__meta {
-        color: rgba(0, 212, 255, 0.82);
-        flex-shrink: 0;
-        font-size: 14px;
-      }
-      .ac-news-bar__title {
-        font-weight: 500;
-      }
-      .ac-news-bar__more {
-        flex-shrink: 0;
-        align-self: center;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.75);
-        text-decoration: none;
-        border: 1px solid rgba(0, 212, 255, 0.28);
-        border-radius: 8px;
-        padding: 10px 14px;
-        transition: border-color 0.2s, color 0.2s, background 0.2s;
-      }
-      .ac-news-bar__more:hover {
-        color: #00d4ff;
-        border-color: rgba(0, 212, 255, 0.55);
-        background: rgba(0, 212, 255, 0.08);
-      }
-      .ac-news-bar--err .ac-news-bar__static {
-        color: rgba(255, 130, 130, 0.8);
-      }
-      .ac-news-bar--compact {
-        min-height: 44px;
-      }
-      .ac-news-bar--compact .ac-news-bar__inner {
-        min-height: 44px;
-        padding: 8px 20px;
-        gap: 10px;
-      }
-      .ac-news-bar--compact .ac-news-bar__static {
-        font-size: 12px;
-      }
-      .ac-news-bar--compact .ac-news-bar__more {
-        padding: 6px 10px;
-        font-size: 10px;
-      }
+      /* ── Particle canvas ── */
+      #particle-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 
-      .ac-page {
-        position: relative;
-        z-index: 1;
-        padding: 156px 0 72px;
-        overflow-x: clip;
-        max-width: 100%;
-      }
-      .ac-shell {
-        width: 100%;
-        max-width: 1440px;
-        margin: 0 auto;
-        min-width: 0;
-        padding: 0 20px;
-        box-sizing: border-box;
-      }
-      .ac-modal--calc {
-        width: min(560px, 100%);
-        max-width: 100%;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
-      .ac-modal__top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 12px;
-      }
-      .ac-modal__top h2 {
-        margin: 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 12px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.95);
-      }
-      .ac-modal__x {
-        flex-shrink: 0;
-        width: 36px;
-        height: 36px;
-        margin: -6px -8px 0 0;
-        border: none;
-        border-radius: 8px;
-        background: transparent;
-        color: rgba(236, 242, 247, 0.45);
-        font-size: 22px;
-        line-height: 1;
-        cursor: pointer;
-      }
-      .ac-modal__x:hover {
-        color: #00d4ff;
-        background: rgba(0, 212, 255, 0.08);
-      }
-      .ac-modal__body-scroll {
-        max-height: min(78dvh, 640px);
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        margin: 0 -6px;
-        padding: 0 6px;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 212, 255, 0.28) transparent;
-      }
-      .ac-modal__body-scroll::-webkit-scrollbar {
-        width: 6px;
-      }
-      .ac-modal__body-scroll::-webkit-scrollbar-thumb {
-        background: rgba(0, 212, 255, 0.28);
-        border-radius: 99px;
-      }
-      body:has(.ac-news-bar--compact) .ac-page {
-        padding-top: 128px;
-      }
-      .ac-panel--calc {
-        margin-bottom: 0;
-        padding: 16px 18px 20px;
-        border-color: rgba(0, 212, 255, 0.18);
-        background: rgba(3, 8, 16, 0.92);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.04),
-          0 0 0 1px rgba(0, 212, 255, 0.06),
-          0 24px 64px rgba(0, 0, 0, 0.45);
-      }
-      .ac-panel--calc .ac-panel__sub {
-        margin: 0 0 12px;
-        color: rgba(236, 242, 247, 0.38);
-        font-size: 9px;
-        line-height: 1.55;
-      }
-      .ac-modal--calc .ac-panel--calc {
-        margin-bottom: 0;
-        box-shadow: none;
-      }
-      .ac-tool-btn {
-        padding: 8px 14px;
-        border-radius: 8px;
-        border: 1px solid rgba(0, 212, 255, 0.28);
-        background: rgba(0, 212, 255, 0.07);
-        color: rgba(0, 212, 255, 0.92);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-      }
-      .ac-tool-btn:hover {
-        background: rgba(0, 212, 255, 0.14);
-        border-color: rgba(0, 212, 255, 0.5);
-      }
-      .ac-tool-btn--calc {
-        padding: 18px 32px;
-        border-radius: 14px;
-        font-size: 14px;
-        letter-spacing: 0.18em;
-        border-color: rgba(0, 212, 255, 0.45);
-        background: rgba(0, 212, 255, 0.12);
-        box-shadow:
-          0 0 28px rgba(0, 212, 255, 0.15),
-          inset 0 1px 0 rgba(255, 255, 255, 0.06);
-      }
-      .ac-tool-btn--calc:hover {
-        background: rgba(0, 212, 255, 0.22);
-        border-color: rgba(0, 212, 255, 0.7);
-        box-shadow: 0 0 36px rgba(0, 212, 255, 0.22);
-      }
-      @media (max-width: 768px) {
-        .ac-page {
-          padding: 144px 0 64px;
-        }
-        body:has(.ac-news-bar--compact) .ac-page {
-          padding-top: 120px;
-        }
-        .ac-news-bar__inner {
-          padding: 10px 14px;
-          gap: 12px;
-        }
-        .ac-news-bar__chip {
-          font-size: 13px;
-        }
-        .ac-news-bar__meta {
-          font-size: 12px;
-        }
-        .ac-shell {
-          width: 100%;
-          max-width: 100%;
-          padding: 0 12px;
-        }
-        #ac-tools-calc-overlay.ac-open {
-          align-items: stretch;
-          padding: 0;
-        }
-        .ac-modal--calc {
-          width: 100%;
-          max-width: none;
-          min-height: 100dvh;
-          max-height: none;
-          border-radius: 0;
-          border-left: none;
-          border-right: none;
-          display: flex;
-          flex-direction: column;
-          padding: 14px 14px 18px;
-        }
-        .ac-modal--calc .ac-modal__body-scroll {
-          max-height: none;
-          flex: 1;
-          min-height: 0;
-        }
-      }
-      .ac-header {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 16px 24px;
-        margin-bottom: 20px;
-      }
-      .ac-header__text {
-        flex: 1;
-        min-width: 0;
-      }
-      @media (max-width: 520px) {
-        .ac-header {
-          flex-wrap: wrap;
-        }
-        .ac-tool-btn--calc {
-          margin-left: auto;
-          padding: 14px 22px;
-          font-size: 12px;
-        }
-      }
-      .ac-title {
-        margin: 0 0 6px;
-        font-family: "Outfit", system-ui, sans-serif;
-        font-weight: 200;
-        font-size: clamp(2rem, 5vw, 48px);
-        color: #fff;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        text-shadow: 0 0 60px rgba(255, 255, 255, 0.1), 0 0 100px rgba(0, 212, 255, 0.06);
-      }
-      .ac-sub {
-        margin: 0;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.32);
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-      }
-      .ac-btn {
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid rgba(0, 212, 255, 0.25);
-        background: rgba(0, 212, 255, 0.08);
-        color: rgba(0, 212, 255, 0.9);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: background 0.2s, border-color 0.2s;
-      }
-      .ac-btn:hover {
-        background: rgba(0, 212, 255, 0.16);
-        border-color: rgba(0, 212, 255, 0.45);
-      }
-      .ac-btn--ghost {
-        background: transparent;
-        color: rgba(255, 255, 255, 0.45);
-        border-color: rgba(255, 255, 255, 0.15);
-      }
-      .ac-status {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.06em;
-        color: rgba(0, 212, 255, 0.65);
-        min-height: 1.2em;
-        margin-bottom: 10px;
-        line-height: 1.45;
-      }
-      .ac-status--err {
-        color: rgba(255, 100, 120, 0.9);
-      }
-      .ac-status--empty {
-        padding: 12px 16px;
-        margin-bottom: 16px;
-        border-radius: 12px;
-        border: 1px dashed rgba(0, 212, 255, 0.22);
-        background: rgba(0, 212, 255, 0.04);
-        font-size: 12px;
-        letter-spacing: 0.08em;
-        color: rgba(0, 212, 255, 0.85);
-      }
-      .ac-status--empty .ac-status__text {
-        display: block;
-      }
-      .ac-status__hint {
-        display: block;
-        margin-top: 6px;
-        font-size: 9px;
-        letter-spacing: 0.06em;
-        color: rgba(255, 255, 255, 0.42);
-        text-transform: none;
-      }
-      .ac-status--panel {
-        padding: 14px 16px 16px;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 120, 130, 0.35);
-        background: rgba(40, 8, 12, 0.55);
-        color: rgba(236, 242, 247, 0.88);
-        margin-bottom: 16px;
-      }
-      .ac-status--panel.ac-status--err {
-        color: rgba(236, 242, 247, 0.88);
-      }
-      .ac-setup__head {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 8px;
-      }
-      .ac-setup__tag {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        padding: 3px 8px;
-        border-radius: 6px;
-        border: 1px solid rgba(255, 140, 150, 0.45);
-        color: rgba(255, 170, 175, 0.95);
-      }
-      .ac-setup__title {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(255, 210, 210, 0.95);
-        font-weight: 500;
-      }
-      .ac-setup__lead {
-        margin: 0 0 10px;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.05em;
-        line-height: 1.55;
-        color: rgba(236, 242, 247, 0.72);
-      }
-      .ac-setup__code {
-        font-size: 9px;
-        color: rgba(0, 212, 255, 0.85);
-        letter-spacing: 0.04em;
-      }
-      .ac-setup__toggle {
-        margin-bottom: 10px;
-        padding: 6px 12px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        background: rgba(0, 0, 0, 0.35);
-        color: rgba(236, 242, 247, 0.85);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        cursor: pointer;
-      }
-      .ac-setup__toggle:hover {
-        border-color: rgba(0, 212, 255, 0.35);
-        color: #00d4ff;
-      }
-      .ac-setup__steps {
-        margin-bottom: 10px;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.35);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .ac-setup__ol {
-        margin: 0;
-        padding-left: 1.2em;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.04em;
-        line-height: 1.65;
-        color: rgba(236, 242, 247, 0.78);
-      }
-      .ac-setup__ol li {
-        margin-bottom: 4px;
-      }
-      .ac-setup__raw {
-        margin: 0;
-        font-size: 8px;
-        letter-spacing: 0.04em;
-        color: rgba(255, 200, 200, 0.45);
-        word-break: break-word;
-      }
-      .ac-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
-        gap: 20px;
-        margin-bottom: 0;
-        min-width: 0;
-      }
-      .ac-add-tile {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 140px;
-        padding: 24px 20px;
-        border-radius: 20px;
-        border: 1px dashed rgba(0, 212, 255, 0.28);
-        background: rgba(4, 9, 18, 0.72);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        cursor: pointer;
-        text-align: center;
-        font: inherit;
-        color: inherit;
-        transition:
-          border-color 0.2s,
-          background 0.2s,
-          box-shadow 0.2s;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.05),
-          0 12px 40px rgba(0, 0, 0, 0.35);
-      }
-      .ac-add-tile:hover {
-        border-color: rgba(0, 212, 255, 0.45);
-        background: rgba(0, 212, 255, 0.06);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.06),
-          0 0 24px rgba(0, 212, 255, 0.08);
-      }
-      .ac-add-tile:focus-visible {
-        outline: 2px solid rgba(0, 212, 255, 0.55);
-        outline-offset: 2px;
-      }
-      .ac-add-tile__inner {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-      }
-      .ac-add-tile__glyph {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-weight: 400;
-        font-size: 22px;
-        line-height: 1;
-        color: rgba(0, 212, 255, 0.55);
-      }
-      .ac-add-tile__label {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.82);
-      }
-      .ac-add-tile:hover .ac-add-tile__glyph,
-      .ac-add-tile:hover .ac-add-tile__label {
-        color: #00d4ff;
-      }
-      .ac-card {
-        border-radius: 20px;
-        border: 1px solid rgba(0, 212, 255, 0.16);
-        background: rgba(4, 9, 18, 0.92);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        padding: 0;
-        overflow: hidden;
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.05),
-          0 20px 56px rgba(0, 0, 0, 0.5);
-      }
-      .ac-card--archived {
-        opacity: 0.58;
-      }
-      .ac-card__head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 16px 18px 12px;
-        border-bottom: 1px solid rgba(0, 212, 255, 0.08);
-      }
-      .ac-card__name {
-        font-family: "Outfit", sans-serif;
-        font-weight: 500;
-        font-size: 1.05rem;
-        color: #fff;
-        margin: 0 0 6px;
-        letter-spacing: 0.02em;
-        line-height: 1.25;
-      }
-      .ac-card__tags {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
-      }
-      .ac-badge {
-        display: inline-block;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        padding: 4px 9px;
-        border-radius: 6px;
-        border: 1px solid rgba(0, 212, 255, 0.28);
-        color: rgba(0, 212, 255, 0.92);
-      }
-      .ac-badge--muted {
-        border-color: rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.35);
-        letter-spacing: 0.14em;
-      }
-      .ac-card__actions {
-        display: flex;
-        gap: 6px;
-        flex-shrink: 0;
-      }
-      .ac-icon-btn {
-        padding: 5px 9px;
-        font-size: 8px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        border-radius: 6px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(0, 0, 0, 0.4);
-        color: rgba(255, 255, 255, 0.5);
-        cursor: pointer;
-        transition: border-color 0.2s, color 0.2s;
-      }
-      .ac-icon-btn:hover {
-        border-color: rgba(0, 212, 255, 0.35);
-        color: #00d4ff;
-      }
-      .ac-card__hero {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 14px;
-        padding: 14px 18px 16px;
-        background: linear-gradient(180deg, rgba(0, 212, 255, 0.04) 0%, transparent 100%);
-      }
-      .ac-card__hero-main {
-        flex: 1;
-        min-width: 0;
-      }
-      .ac-equity-label {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.32);
-        margin-bottom: 4px;
-      }
-      .ac-equity {
-        font-family: "Outfit", sans-serif;
-        font-weight: 200;
-        font-size: clamp(1.75rem, 4vw, 2.35rem);
-        color: #fff;
-        margin: 0;
-        line-height: 1;
-        letter-spacing: 0.02em;
-      }
-      .ac-card__hero-side {
-        text-align: right;
-        flex-shrink: 0;
-      }
-      .ac-delta-label {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.28);
-        margin-bottom: 4px;
-      }
-      .ac-delta {
-        font-family: "Outfit", sans-serif;
-        font-weight: 400;
-        font-size: 1.15rem;
-        letter-spacing: 0.02em;
-      }
-      .ac-delta--pos {
-        color: rgba(0, 255, 160, 0.92);
-      }
-      .ac-delta--neg {
-        color: rgba(255, 100, 120, 0.92);
-      }
-      .ac-delta--na {
-        color: rgba(255, 255, 255, 0.28);
-        font-size: 0.95rem;
-      }
-      .ac-delta-micro {
-        display: block;
-        margin-top: 4px;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.08em;
-        color: rgba(255, 255, 255, 0.25);
-        max-width: 150px;
-        margin-left: auto;
-      }
-      .ac-strip {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1px;
-        background: rgba(0, 212, 255, 0.08);
-        margin: 0 12px 14px;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid rgba(0, 212, 255, 0.08);
-      }
-      .ac-strip__cell {
-        background: rgba(0, 0, 0, 0.35);
-        padding: 10px 6px;
-        text-align: center;
-      }
-      .ac-strip__k {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 7px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.28);
-        margin-bottom: 5px;
-      }
-      .ac-strip__v {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        color: rgba(0, 212, 255, 0.95);
-        letter-spacing: 0.04em;
-      }
-      .ac-rowbar {
-        padding: 0 18px 10px;
-      }
-      .ac-rowbar__top {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 6px;
-      }
-      .ac-rowbar__label {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 8px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.38);
-      }
-      .ac-rowbar__val {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        color: rgba(255, 255, 255, 0.55);
-        letter-spacing: 0.06em;
-      }
-      .ac-bar {
-        height: 7px;
-        border-radius: 5px;
-        background: rgba(0, 0, 0, 0.5);
-        overflow: hidden;
-        border: 1px solid rgba(0, 212, 255, 0.1);
-      }
-      .ac-bar__fill {
-        height: 100%;
-        border-radius: 4px;
-        background: linear-gradient(90deg, rgba(0, 212, 255, 0.45), rgba(0, 191, 255, 0.95));
-        max-width: 100%;
-        transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .ac-bar__fill--risk {
-        background: linear-gradient(90deg, rgba(255, 170, 80, 0.35), rgba(255, 85, 105, 0.92));
-      }
-      .ac-spark-wrap {
-        margin: 4px 18px 14px;
-        position: relative;
-      }
-      .ac-spark {
-        display: block;
-        width: 100%;
-        height: 56px;
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.42);
-        border: 1px solid rgba(0, 212, 255, 0.07);
-      }
-      .ac-spark-empty {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.22);
-        pointer-events: none;
-      }
-      .ac-snap {
-        padding: 12px 18px 16px;
-        border-top: 1px solid rgba(0, 212, 255, 0.08);
-        background: rgba(0, 0, 0, 0.22);
-      }
-      .ac-snap__label {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.55);
-        margin-bottom: 10px;
-      }
-      .ac-snap__row {
-        display: grid;
-        grid-template-columns: 1fr 1fr auto;
-        gap: 8px;
-        align-items: end;
-      }
-      @media (max-width: 520px) {
-        .ac-strip {
-          grid-template-columns: repeat(2, 1fr);
-        }
-        .ac-snap__row {
-          grid-template-columns: 1fr;
-        }
-      }
-      .ac-input,
-      .ac-select {
-        background: rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        border-radius: 8px;
-        color: #fff;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 12px;
-        padding: 8px 10px;
-        outline: none;
-        color-scheme: dark;
-        width: 100%;
-      }
-      .ac-input:focus,
-      .ac-select:focus {
-        border-color: rgba(0, 212, 255, 0.45);
-      }
-      .ac-panel {
-        border-radius: 18px;
-        border: 1px solid rgba(0, 212, 255, 0.12);
-        background: rgba(4, 9, 18, 0.85);
-        padding: 18px 20px 22px;
-        margin-bottom: 18px;
-      }
-      .ac-panel__title {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.88);
-        margin: 0 0 14px;
-      }
-      .ac-calc-help-row {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: 10px;
-      }
-      .ac-calc-help {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        border: 1px solid rgba(0, 212, 255, 0.28);
-        background: rgba(0, 0, 0, 0.35);
-        color: rgba(0, 212, 255, 0.75);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 13px;
-        cursor: pointer;
-        transition: border-color 0.2s, color 0.2s, background 0.2s;
-      }
-      .ac-calc-help:hover,
-      .ac-calc-help[aria-expanded="true"] {
-        border-color: rgba(0, 212, 255, 0.5);
-        color: #00d4ff;
-        background: rgba(0, 212, 255, 0.1);
-      }
-      .ac-calc-help-panel {
-        margin: 0 0 14px;
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(0, 212, 255, 0.15);
-        background: rgba(0, 0, 0, 0.35);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.05em;
-        line-height: 1.55;
-        color: rgba(236, 242, 247, 0.55);
-      }
-      .ac-calc-help-panel[hidden] {
-        display: none;
-      }
-      .ac-calc-tabs {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
-      }
-      .ac-calc-tab {
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(0, 0, 0, 0.35);
-        color: rgba(255, 255, 255, 0.45);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: border-color 0.2s, color 0.2s, background 0.2s;
-      }
-      .ac-calc-tab:hover {
-        color: rgba(255, 255, 255, 0.75);
-        border-color: rgba(0, 212, 255, 0.25);
-      }
-      .ac-calc-tab.ac-active {
-        border-color: rgba(0, 212, 255, 0.45);
-        color: #00d4ff;
-        background: rgba(0, 212, 255, 0.08);
-      }
-      .ac-calc-block {
-        display: none;
-      }
-      .ac-calc-block.ac-visible {
-        display: block;
-      }
-      .ac-calc-device {
-        border-radius: 16px;
-        border: 1px solid rgba(0, 212, 255, 0.2);
-        background: linear-gradient(165deg, rgba(12, 22, 36, 0.95) 0%, rgba(2, 6, 12, 0.98) 100%);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.06),
-          0 16px 48px rgba(0, 0, 0, 0.45);
-        padding: 14px 16px 16px;
-        margin-bottom: 4px;
-        min-width: 0;
-      }
-      .ac-calc-device__head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 12px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid rgba(0, 212, 255, 0.1);
-      }
-      .ac-calc-device__name {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.75);
-      }
-      .ac-calc-device__badge {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 9px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        padding: 4px 8px;
-        border-radius: 6px;
-        border: 1px solid rgba(0, 212, 255, 0.25);
-        color: rgba(0, 212, 255, 0.75);
-      }
-      .ac-calc-lcd {
-        border-radius: 14px;
-        border: 1px solid rgba(0, 212, 255, 0.22);
-        background: linear-gradient(165deg, rgba(0, 212, 255, 0.08) 0%, rgba(4, 9, 18, 0.95) 55%);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.06),
-          0 0 32px rgba(0, 212, 255, 0.06);
-        padding: 16px 18px;
-        margin-bottom: 16px;
-        min-height: 96px;
-        box-sizing: border-box;
-      }
-      .ac-calc-lcd--ft {
-        min-height: 88px;
-      }
-      .ac-calc-lcd__pair {
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.65);
-        margin-bottom: 8px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .ac-calc-lcd__main {
-        font-family: "Outfit", system-ui, sans-serif;
-        font-weight: 300;
-        font-size: clamp(1.75rem, 5vw, 2.25rem);
-        letter-spacing: 0.04em;
-        color: #fff;
-        text-shadow: 0 0 40px rgba(0, 212, 255, 0.15);
-        line-height: 1.15;
-        word-break: break-word;
-      }
-      .ac-calc-lcd__sub {
-        margin-top: 10px;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 11px;
-        letter-spacing: 0.05em;
-        line-height: 1.45;
-        color: rgba(236, 242, 247, 0.48);
-      }
-      .ac-calc-lcd--warn .ac-calc-lcd__main {
-        font-size: clamp(1rem, 3vw, 1.25rem);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-weight: 400;
-        color: rgba(236, 242, 247, 0.55);
-        text-shadow: none;
-      }
-      .ac-calc-keypad {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px 14px;
-        align-items: end;
-        min-width: 0;
-      }
-      @media (min-width: 520px) {
-        .ac-calc-keypad {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-      .ac-calc-pip-info {
-        grid-column: 1 / -1;
-        margin: 0;
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(0, 212, 255, 0.14);
-        background: rgba(0, 212, 255, 0.04);
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        line-height: 1.55;
-        letter-spacing: 0.05em;
-        color: rgba(192, 220, 235, 0.82);
-      }
-      .ac-calc-pip-info--warn {
-        border-color: rgba(255, 120, 100, 0.35);
-        color: rgba(255, 160, 140, 0.9);
-      }
-      .ac-panel__hr {
-        height: 1px;
-        background: rgba(0, 212, 255, 0.1);
-        margin: 4px 0 16px;
-      }
-      .ac-calc-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 12px 16px;
-        align-items: end;
-      }
-      .ac-calc-grid--tight {
-        margin-top: 0;
-      }
-      .ac-field--full {
-        grid-column: 1 / -1;
-      }
-      .ac-calc-err {
-        grid-column: 1 / -1;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.06em;
-        line-height: 1.4;
-        color: rgba(255, 130, 130, 0.9);
-        min-height: 1.2em;
-      }
-      .ac-field label {
-        display: block;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.42);
-        margin-bottom: 5px;
-      }
+      /* ── Economic calendar bar ── */
+      .ac-news-bar { position: fixed; top: 52px; left: 0; right: 0; z-index: 900; border-bottom: 1px solid rgba(0,212,255,0.22); background: rgba(4,9,18,0.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); min-height: 80px; box-sizing: border-box; }
+      .ac-news-bar__inner { display: flex; align-items: stretch; gap: 16px; max-width: 1440px; margin: 0 auto; padding: 14px 22px; box-sizing: border-box; min-height: 80px; }
+      .ac-news-bar__viewport { flex: 1; min-width: 0; position: relative; overflow: hidden; display: flex; align-items: center; mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%); }
+      .ac-news-bar__viewport.is-marquee { cursor: default; }
+      .ac-news-bar__marquee { display: flex; flex-wrap: nowrap; width: max-content; will-change: transform; }
+      .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee { animation: ac-news-marquee var(--ac-marquee-dur,55s) linear infinite; }
+      .ac-news-bar__viewport.is-marquee .ac-news-bar__marquee:hover { animation-play-state: paused; }
+      @keyframes ac-news-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      .ac-news-bar__seq { flex: 0 0 auto; display: flex; flex-wrap: nowrap; align-items: center; gap: 28px; padding-right: 28px; box-sizing: border-box; }
+      .ac-news-bar__viewport:not(.is-marquee) .ac-news-bar__marquee { display: none; }
+      .ac-news-bar__viewport.is-marquee .ac-news-bar__static { display: none; }
+      .ac-news-bar__static { flex: 1; min-width: 0; font-family: "Share Tech Mono","Courier New",monospace; font-size: 14px; letter-spacing: 0.06em; line-height: 1.45; color: rgba(236,242,247,0.82); display: flex; align-items: center; margin: 0; }
+      .ac-news-bar__chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 12px; padding: 8px 0; font-family: "Share Tech Mono","Courier New",monospace; font-size: 15px; letter-spacing: 0.03em; color: rgba(236,242,247,0.94); white-space: nowrap; }
+      .ac-news-bar__dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 10px currentColor; }
+      .ac-news-bar__dot--low { color: #f5e000; background: #f5e000; }
+      .ac-news-bar__dot--medium { color: #ff9f1a; background: #ff9f1a; }
+      .ac-news-bar__dot--high { color: #ff3355; background: #ff3355; }
+      .ac-news-bar__dot--holiday { color: rgba(136,153,170,0.85); background: rgba(136,153,170,0.5); box-shadow: none; }
+      .ac-news-bar__meta { color: rgba(0,212,255,0.82); flex-shrink: 0; font-size: 14px; }
+      .ac-news-bar__title { font-weight: 500; }
+      .ac-news-bar__more { flex-shrink: 0; align-self: center; font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(0,212,255,0.75); text-decoration: none; border: 1px solid rgba(0,212,255,0.28); border-radius: 8px; padding: 10px 14px; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+      .ac-news-bar__more:hover { color: #00d4ff; border-color: rgba(0,212,255,0.55); background: rgba(0,212,255,0.08); }
+      .ac-news-bar--err .ac-news-bar__static { color: rgba(255,130,130,0.8); }
+      .ac-news-bar--compact { min-height: 44px; }
+      .ac-news-bar--compact .ac-news-bar__inner { min-height: 44px; padding: 8px 20px; gap: 10px; }
+      .ac-news-bar--compact .ac-news-bar__static { font-size: 12px; }
+      .ac-news-bar--compact .ac-news-bar__more { padding: 6px 10px; font-size: 10px; }
 
-      .ac-modal-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 2000;
-        background: rgba(0, 0, 0, 0.72);
-        backdrop-filter: blur(10px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-      }
-      .ac-modal-overlay.ac-open {
-        display: flex;
-      }
-      .ac-modal-overlay.ac-modal-overlay--tools {
-        z-index: 2100;
-      }
-      .ac-modal-overlay.ac-modal-overlay--account {
-        z-index: 2300;
-      }
-      .ac-modal {
-        width: min(440px, 100%);
-        max-height: min(90dvh, 720px);
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        border-radius: 18px;
-        border: 1px solid rgba(0, 212, 255, 0.22);
-        background: rgba(4, 9, 18, 0.96);
-        padding: 20px 22px 22px;
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65), 0 0 40px rgba(0, 212, 255, 0.06);
-      }
-      .ac-modal h2 {
-        margin: 0 0 16px;
-        font-family: "Share Tech Mono", "Courier New", monospace;
-        font-size: 12px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: rgba(0, 212, 255, 0.95);
-      }
-      .ac-modal .ac-modal__top h2 {
-        margin: 0;
-      }
-      .ac-modal-fields {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-      .ac-modal-actions {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin-top: 18px;
-      }
+      /* ── Page shell ── */
+      .ac-page { position: relative; z-index: 1; padding: 150px 0 72px; overflow-x: clip; max-width: 100%; }
+      .ac-shell { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; }
+
+      /* ── Capital overview strip ── */
+      .ac-overview-strip { display: grid; grid-template-columns: repeat(6,1fr); gap: 10px; margin-bottom: 20px; }
+      .ac-overview-tile { background: rgba(255,255,255,0.03); border: 1px solid rgba(0,212,255,0.12); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+      .ac-overview-tile__label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(0,212,255,0.65); margin-bottom: 6px; }
+      .ac-overview-tile__value { font-family: "Outfit",system-ui,sans-serif; font-size: 18px; font-weight: 500; color: #fff; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .ac-overview-tile__value--muted { color: rgba(255,255,255,0.45); font-size: 15px; }
+      @media (max-width: 1100px) { .ac-overview-strip { grid-template-columns: repeat(3,1fr); } }
+      @media (max-width: 640px) { .ac-overview-strip { grid-template-columns: repeat(2,1fr); } }
+
+      /* ── Add account bar ── */
+      .ac-add-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 16px; }
+      .ac-btn-add { font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #00d4ff; background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.4); border-radius: 10px; padding: 10px 20px; cursor: pointer; transition: background 0.18s, border-color 0.18s, box-shadow 0.18s; white-space: nowrap; }
+      .ac-btn-add:hover { background: rgba(0,212,255,0.15); border-color: rgba(0,212,255,0.7); box-shadow: 0 0 16px rgba(0,212,255,0.18); }
+
+      /* ── Status bar ── */
+      .ac-status { font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; color: rgba(255,130,130,0.9); margin-bottom: 12px; min-height: 1px; }
+      .ac-status:empty { margin-bottom: 0; }
+
+      /* ── Cards grid ── */
+      .ac-cards-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+      @media (max-width: 1100px) { .ac-cards-grid { grid-template-columns: repeat(2,1fr); } }
+      @media (max-width: 640px) { .ac-cards-grid { grid-template-columns: 1fr; } }
+
+      /* ── Card base ── */
+      .ac-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(0,212,255,0.13); border-radius: 16px; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; position: relative; transition: border-color 0.2s; }
+      .ac-card:hover { border-color: rgba(0,212,255,0.25); }
+      .ac-card--passed { border-color: rgba(0,255,136,0.25); }
+      .ac-card--blown { border-color: rgba(255,68,102,0.25); opacity: 0.75; }
+
+      /* ── Card header ── */
+      .ac-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+      .ac-card__head-left { min-width: 0; flex: 1; }
+      .ac-card__name { font-family: "Outfit",system-ui,sans-serif; font-size: 13px; font-weight: 500; color: #fff; margin: 0 0 3px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ac-card__firm { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; color: rgba(255,255,255,0.38); }
+      .ac-card__tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+      .ac-badge { display: inline-block; font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; }
+      .ac-badge--eval { color: #00d4ff; background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.3); }
+      .ac-badge--funded { color: #00ff88; background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); }
+      .ac-badge--live { color: #ffcc44; background: rgba(255,204,68,0.1); border: 1px solid rgba(255,204,68,0.3); }
+      .ac-badge--passed { color: #00ff88; background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); }
+      .ac-badge--blown { color: #ff4466; background: rgba(255,68,102,0.08); border: 1px solid rgba(255,68,102,0.2); }
+      .ac-badge--active { color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
+
+      /* ── Equity hero ── */
+      .ac-card__equity-row { display: flex; align-items: baseline; gap: 10px; }
+      .ac-card__equity { font-family: "Outfit",system-ui,sans-serif; font-size: 26px; font-weight: 300; color: #fff; letter-spacing: -0.02em; line-height: 1; }
+      .ac-card__pnl { font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px; }
+      .ac-card__pnl--pos { color: #00ff88; }
+      .ac-card__pnl--neg { color: #ff4466; }
+      .ac-card__pnl--zero { color: rgba(255,255,255,0.35); }
+
+      /* ── Stats strip ── */
+      .ac-card__stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 6px 10px; }
+      .ac-card__stat-label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-bottom: 2px; }
+      .ac-card__stat-value { font-family: "Outfit",system-ui,sans-serif; font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.78); }
+      .ac-card__stat-value--warn { color: #ff9f1a; }
+      .ac-card__stat-value--good { color: #00ff88; }
+      .ac-card__stat-value--bad { color: #ff4466; }
+
+      /* ── Progress bar ── */
+      .ac-prog-wrap { display: flex; flex-direction: column; gap: 4px; }
+      .ac-prog-labels { display: flex; justify-content: space-between; }
+      .ac-prog-label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+      .ac-prog-pct { font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; color: rgba(0,212,255,0.7); }
+      .ac-prog-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.07); overflow: hidden; }
+      .ac-prog-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #00d4ff, #00ff88); transition: width 0.4s ease; }
+      .ac-prog-fill--danger { background: linear-gradient(90deg, #ff9f1a, #ff4466); }
+
+      /* ── Sparkline ── */
+      .ac-spark-wrap { position: relative; height: 44px; }
+      .ac-spark-canvas { display: block; width: 100%; height: 44px; }
+      .ac-spark-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.08em; color: rgba(255,255,255,0.18); }
+
+      /* ── Card action buttons ── */
+      .ac-card__actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+      .ac-action { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.85); cursor: pointer; transition: background 0.15s, border-color 0.15s; white-space: nowrap; }
+      .ac-action:hover { background: rgba(0,212,255,0.14); border-color: rgba(0,212,255,0.55); }
+      .ac-action--pass { border-color: rgba(0,255,136,0.25); background: rgba(0,255,136,0.06); color: rgba(0,255,136,0.85); }
+      .ac-action--pass:hover { background: rgba(0,255,136,0.14); border-color: rgba(0,255,136,0.55); }
+      .ac-action--danger { border-color: rgba(255,68,102,0.25); background: rgba(255,68,102,0.06); color: rgba(255,68,102,0.85); }
+      .ac-action--danger:hover { background: rgba(255,68,102,0.14); border-color: rgba(255,68,102,0.55); }
+      .ac-action--archive { border-color: rgba(255,255,255,0.12); background: transparent; color: rgba(255,255,255,0.3); }
+      .ac-action--archive:hover { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.05); }
+
+      /* ── Empty state ── */
+      .ac-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 72px 24px; text-align: center; }
+      .ac-empty__icon { font-size: 40px; margin-bottom: 16px; opacity: 0.35; }
+      .ac-empty__title { font-family: "Outfit",system-ui,sans-serif; font-size: 18px; font-weight: 300; color: rgba(255,255,255,0.7); margin: 0 0 8px; }
+      .ac-empty__sub { font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.06em; margin: 0 0 24px; }
+      .ac-empty__cta { font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #00d4ff; background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.4); border-radius: 10px; padding: 12px 28px; cursor: pointer; transition: background 0.18s, border-color 0.18s; }
+      .ac-empty__cta:hover { background: rgba(0,212,255,0.18); border-color: rgba(0,212,255,0.7); }
+
+      /* ── Modal overlay ── */
+      .ac-modal-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: none; align-items: center; justify-content: center; padding: 20px; }
+      .ac-modal-overlay.ac-open { display: flex; }
+      .ac-modal { width: min(460px,100%); max-height: min(92dvh,720px); overflow-y: auto; -webkit-overflow-scrolling: touch; border-radius: 18px; border: 1px solid rgba(0,212,255,0.22); background: rgba(4,9,18,0.97); padding: 22px 24px 24px; box-shadow: 0 24px 80px rgba(0,0,0,0.65), 0 0 40px rgba(0,212,255,0.06); }
+      .ac-modal--wide { width: min(560px,100%); }
+      .ac-modal__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+      .ac-modal__top h2 { margin: 0; font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,212,255,0.95); }
+      .ac-modal__x { flex-shrink: 0; width: 32px; height: 32px; margin: -4px -6px 0 0; border: none; border-radius: 8px; background: transparent; color: rgba(236,242,247,0.4); font-size: 20px; line-height: 1; cursor: pointer; transition: color 0.15s; }
+      .ac-modal__x:hover { color: #00d4ff; }
+      .ac-modal-fields { display: flex; flex-direction: column; gap: 12px; }
+      .ac-modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .ac-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+      .ac-field label { display: block; font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.38); margin-bottom: 5px; }
+      .ac-input { width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05); border: 1px solid rgba(0,212,255,0.18); border-radius: 8px; padding: 9px 12px; color: #fff; font-family: "Outfit",system-ui,sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; }
+      .ac-input:focus { border-color: rgba(0,212,255,0.55); }
+      .ac-input::placeholder { color: rgba(255,255,255,0.22); }
+      .ac-select { width: 100%; box-sizing: border-box; background: rgba(4,9,18,0.95); border: 1px solid rgba(0,212,255,0.18); border-radius: 8px; padding: 9px 12px; color: #fff; font-family: "Outfit",system-ui,sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; cursor: pointer; appearance: none; }
+      .ac-select:focus { border-color: rgba(0,212,255,0.55); }
+      .ac-field--hidden { display: none; }
+      .ac-btn { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; padding: 10px 20px; border-radius: 8px; border: 1px solid rgba(0,212,255,0.45); background: rgba(0,212,255,0.1); color: #00d4ff; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+      .ac-btn:hover { background: rgba(0,212,255,0.2); border-color: rgba(0,212,255,0.7); }
+      .ac-btn--ghost { background: transparent; border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.55); }
+      .ac-btn--ghost:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.35); color: rgba(255,255,255,0.8); }
+      .ac-btn--danger { border-color: rgba(255,68,102,0.45); background: rgba(255,68,102,0.1); color: #ff4466; }
+      .ac-btn--danger:hover { background: rgba(255,68,102,0.2); border-color: rgba(255,68,102,0.7); }
+      .ac-confirm-msg { font-family: "Outfit",system-ui,sans-serif; font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.5; margin-bottom: 4px; }
+
+      /* ── Position size calculator ── */
+      .ac-modal-overlay--calc { z-index: 2100; }
+      .ac-modal--calc { width: min(560px,100%); }
+      .ac-calc-tabs { display: flex; gap: 0; margin-bottom: 14px; border: 1px solid rgba(0,212,255,0.18); border-radius: 8px; overflow: hidden; }
+      .ac-calc-tab { flex: 1; padding: 8px; font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; background: transparent; border: none; color: rgba(255,255,255,0.4); cursor: pointer; transition: background 0.15s, color 0.15s; }
+      .ac-calc-tab.ac-active { background: rgba(0,212,255,0.12); color: #00d4ff; }
+      .ac-calc-block { display: none; }
+      .ac-calc-block.ac-visible { display: block; }
+      .ac-calc-device { border: 1px solid rgba(0,212,255,0.14); border-radius: 12px; overflow: hidden; }
+      .ac-calc-device__head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 8px; border-bottom: 1px solid rgba(0,212,255,0.1); }
+      .ac-calc-device__name { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+      .ac-calc-device__badge { font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; letter-spacing: 0.1em; padding: 2px 8px; border: 1px solid rgba(0,212,255,0.3); border-radius: 4px; color: rgba(0,212,255,0.7); }
+      .ac-calc-lcd { padding: 14px 16px; min-height: 72px; }
+      .ac-calc-lcd__pair { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.12em; color: rgba(255,255,255,0.35); margin-bottom: 4px; }
+      .ac-calc-lcd__main { font-family: "Outfit",system-ui,sans-serif; font-weight: 300; font-size: clamp(1.5rem,4vw,2rem); letter-spacing: 0.04em; color: #fff; text-shadow: 0 0 40px rgba(0,212,255,0.15); line-height: 1.15; }
+      .ac-calc-lcd__sub { margin-top: 6px; font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.05em; line-height: 1.4; color: rgba(236,242,247,0.45); }
+      .ac-calc-lcd--warn .ac-calc-lcd__main { font-size: 1rem; font-family: "Share Tech Mono","Courier New",monospace; font-weight: 400; color: rgba(236,242,247,0.5); text-shadow: none; }
+      .ac-calc-keypad { padding: 12px 14px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+      .ac-calc-pip-info { grid-column: 1/-1; margin: 0; padding: 9px 11px; border-radius: 8px; border: 1px solid rgba(0,212,255,0.14); background: rgba(0,212,255,0.04); font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; line-height: 1.55; letter-spacing: 0.05em; color: rgba(192,220,235,0.8); }
+      .ac-calc-pip-info--warn { border-color: rgba(255,120,100,0.35); color: rgba(255,160,140,0.9); }
+      .ac-calc-err { grid-column: 1/-1; font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.06em; line-height: 1.4; color: rgba(255,130,130,0.9); min-height: 1.2em; }
+      .ac-calc-help-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+      .ac-calc-help { width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,212,255,0.25); background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.7); font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px; cursor: pointer; transition: background 0.15s; }
+      .ac-calc-help:hover { background: rgba(0,212,255,0.14); }
+      .ac-calc-help-panel { font-family: "Outfit",system-ui,sans-serif; font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.6; margin-bottom: 12px; padding: 10px 12px; border: 1px solid rgba(0,212,255,0.1); border-radius: 8px; }
+      .ac-calc-field-full { grid-column: 1/-1; }
+      .ac-panel__hr { height: 1px; background: rgba(0,212,255,0.1); margin: 4px 0 14px; }
     </style>
   </head>
   <body>
@@ -1349,7 +222,7 @@
         <li><a href="/journal.html">Journal</a></li>
         <li><a href="/analytics.html">Analytics</a></li>
         <li><a href="/calendar.html">Calendar</a></li>
-        <li><a href="/account.html" class="jv-nav--active" aria-current="page" id="nav-account">Account</a></li>
+        <li><a href="/account.html" class="jv-nav--active" aria-current="page">Account</a></li>
       </ul>
       <div class="jv-nav__actions">
         <button type="button" class="jv-nav__settings" id="jv-settings-btn" aria-label="Open settings" aria-expanded="false" aria-controls="jv-settings-panel">
@@ -1358,13 +231,7 @@
             <circle cx="12" cy="12" r="3"/>
           </svg>
         </button>
-        <button
-          class="jv-nav__hamburger"
-          id="jv-nav-hamburger"
-          aria-label="Toggle navigation"
-          aria-expanded="false"
-          aria-controls="jv-nav-dropdown"
-        >
+        <button class="jv-nav__hamburger" id="jv-nav-hamburger" aria-label="Toggle navigation" aria-expanded="false" aria-controls="jv-nav-dropdown">
           <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
         </button>
       </div>
@@ -1378,10 +245,18 @@
     </div>
     <script>
       (function () {
-        )();
+        var btn = document.getElementById("jv-nav-hamburger");
+        var dd = document.getElementById("jv-nav-dropdown");
+        if (btn && dd) {
+          btn.addEventListener("click", function () {
+            var open = dd.classList.toggle("jv-nav--open");
+            btn.setAttribute("aria-expanded", open ? "true" : "false");
+            dd.setAttribute("aria-hidden", open ? "false" : "true");
+          });
+        }
+      })();
     </script>
 
-    <!-- Economic calendar: GET /api/economic-calendar (server-side; Adelaide “today”). -->
     <div id="ac-news-bar" class="ac-news-bar" role="region" aria-label="Economic calendar today">
       <div class="ac-news-bar__inner">
         <div class="ac-news-bar__viewport" id="ac-news-viewport">
@@ -1391,12 +266,7 @@
           </div>
           <p class="ac-news-bar__static" id="ac-news-static">Loading calendar…</p>
         </div>
-        <a
-          class="ac-news-bar__more"
-          href="https://www.forexfactory.com/calendar"
-          target="_blank"
-          rel="noopener noreferrer"
-          >FF calendar</a>
+        <a class="ac-news-bar__more" href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener noreferrer">FF calendar</a>
       </div>
     </div>
 
@@ -1404,251 +274,768 @@
 
     <div class="ac-page">
       <div class="ac-shell">
-        <header class="ac-header">
-          <div class="ac-header__text">
-            <h1 class="ac-title">Account</h1>
-            <p class="ac-sub">Manual equity · eval / funded / live</p>
-          </div>
-          <button type="button" class="ac-tool-btn ac-tool-btn--calc" id="ac-btn-calc">Position size</button>
-        </header>
-        <div class="ac-status" id="ac-status"></div>
-
-        <div class="ac-grid" id="ac-grid"></div>
-
-        <div class="ac-panel" style="margin-top:18px">
-          <p class="ac-panel__title">Notion Integration</p>
-          <p style="font-family:'Share Tech Mono','Courier New',monospace;font-size:11px;color:rgba(255,255,255,0.42);margin:0 0 14px;line-height:1.6;">Re-run the column mapping wizard to add new fields, fix mismatched columns, or connect a different Notion database.</p>
-          <a href="/notion-setup.html" style="display:inline-block;padding:9px 20px;border-radius:8px;border:1px solid rgba(0,212,255,0.35);background:rgba(0,212,255,0.07);color:#00d4ff;font-family:'Share Tech Mono','Courier New',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;transition:background 0.15s,border-color 0.15s;" onmouseover="this.style.background='rgba(0,212,255,0.14)';this.style.borderColor='rgba(0,212,255,0.7)'" onmouseout="this.style.background='rgba(0,212,255,0.07)';this.style.borderColor='rgba(0,212,255,0.35)'">Update Column Mapping →</a>
+        <!-- Capital Overview Strip -->
+        <div class="ac-overview-strip" id="ac-overview-strip">
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Capital deployed</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-deployed">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Current equity</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-equity">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Lifetime payouts</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-payouts">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Active accounts</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-active">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Eval pass rate</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-passrate">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Days since blown</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-blown">—</div></div>
         </div>
+
+        <!-- Add Account Button -->
+        <div class="ac-add-bar">
+          <button type="button" class="ac-btn-add" id="ac-btn-add">+ Add Account</button>
+        </div>
+
+        <div id="ac-status" class="ac-status"></div>
+
+        <!-- Account Cards Grid -->
+        <div id="ac-cards-grid" class="ac-cards-grid"></div>
       </div>
     </div>
 
-    <div class="ac-modal-overlay ac-modal-overlay--account" id="ac-modal-overlay" aria-hidden="true">
-      <div class="ac-modal" role="dialog" aria-modal="true" aria-labelledby="ac-modal-title">
-        <h2 id="ac-modal-title">Add account</h2>
-        <form class="ac-modal-fields" id="ac-modal-form">
-          <input type="hidden" id="ac-edit-id" value="" />
+    <!-- ══ Add / Edit Account Modal ══ -->
+    <div class="ac-modal-overlay" id="ac-account-modal" aria-hidden="true">
+      <div class="ac-modal" role="dialog" aria-modal="true" aria-labelledby="ac-account-modal-title">
+        <div class="ac-modal__top">
+          <h2 id="ac-account-modal-title">Add Account</h2>
+          <button type="button" class="ac-modal__x" id="ac-account-modal-close" aria-label="Close">×</button>
+        </div>
+        <form class="ac-modal-fields" id="ac-account-form" novalidate>
+          <input type="hidden" id="ac-form-edit-id" value="" />
           <div class="ac-field">
-            <label for="ac-f-name">Name</label>
-            <input class="ac-input" id="ac-f-name" required maxlength="200" placeholder="Eval 50K #2" />
+            <label for="ac-f-name">Account name</label>
+            <input class="ac-input" id="ac-f-name" maxlength="200" placeholder="e.g. FTMO 50K Eval #1" required />
+          </div>
+          <div class="ac-modal-row">
+            <div class="ac-field">
+              <label for="ac-f-type">Type</label>
+              <select class="ac-select" id="ac-f-type">
+                <option value="eval">Eval / Challenge</option>
+                <option value="funded">Funded</option>
+                <option value="live">Live Personal</option>
+              </select>
+            </div>
+            <div class="ac-field">
+              <label for="ac-f-firm">Firm name</label>
+              <input class="ac-input" id="ac-f-firm" maxlength="200" placeholder="FTMO, MFF, etc." />
+            </div>
           </div>
           <div class="ac-field">
-            <label for="ac-f-type">Type</label>
-            <select class="ac-select" id="ac-f-type">
-              <option value="eval">Eval / challenge</option>
-              <option value="funded">Funded</option>
-              <option value="live">Live personal</option>
-            </select>
+            <label for="ac-f-start">Starting balance ($)</label>
+            <input class="ac-input" type="number" id="ac-f-start" step="0.01" min="0" placeholder="50000" required />
+          </div>
+          <div class="ac-modal-row" id="ac-f-profit-row">
+            <div class="ac-field">
+              <label for="ac-f-target">Profit target ($)</label>
+              <input class="ac-input" type="number" id="ac-f-target" step="0.01" min="0" placeholder="3000" />
+            </div>
+            <div class="ac-field">
+              <label for="ac-f-maxdd">Max drawdown ($)</label>
+              <input class="ac-input" type="number" id="ac-f-maxdd" step="0.01" min="0" placeholder="2500" />
+            </div>
+          </div>
+          <div class="ac-modal-row">
+            <div class="ac-field">
+              <label for="ac-f-dailycap">Daily loss cap ($)</label>
+              <input class="ac-input" type="number" id="ac-f-dailycap" step="0.01" min="0" placeholder="optional" />
+            </div>
+            <div class="ac-field">
+              <label for="ac-f-riskpct">Default risk %</label>
+              <input class="ac-input" type="number" id="ac-f-riskpct" step="0.01" min="0" max="100" placeholder="1" value="1" />
+            </div>
           </div>
           <div class="ac-field">
-            <label for="ac-f-start">Starting balance ($) — optional baseline</label>
-            <input class="ac-input" type="number" id="ac-f-start" step="0.01" min="0" placeholder="50000" />
-          </div>
-          <div class="ac-field">
-            <label for="ac-f-target">Profit target ($)</label>
-            <input class="ac-input" type="number" id="ac-f-target" step="0.01" min="0" required value="3000" />
-          </div>
-          <div class="ac-field">
-            <label for="ac-f-maxloss">Max loss limit ($)</label>
-            <input class="ac-input" type="number" id="ac-f-maxloss" step="0.01" min="0" required value="2000" />
-          </div>
-          <div class="ac-field">
-            <label for="ac-f-daily">Daily loss limit ($) — optional</label>
-            <input class="ac-input" type="number" id="ac-f-daily" step="0.01" min="0" placeholder="" />
+            <label for="ac-f-pair">Default pair</label>
+            <input class="ac-input" id="ac-f-pair" maxlength="20" placeholder="EURUSD" />
           </div>
           <div class="ac-modal-actions">
-            <button type="button" class="ac-btn ac-btn--ghost" id="ac-modal-cancel">Cancel</button>
-            <button type="submit" class="ac-btn" id="ac-modal-save">Save</button>
+            <button type="button" class="ac-btn ac-btn--ghost" id="ac-account-modal-cancel">Cancel</button>
+            <button type="submit" class="ac-btn" id="ac-account-modal-save">Save</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div class="ac-modal-overlay ac-modal-overlay--tools" id="ac-tools-calc-overlay" aria-hidden="true">
-      <div class="ac-modal ac-modal--calc" role="dialog" aria-modal="true" aria-labelledby="ac-calc-modal-title">
+    <!-- ══ Log Equity Modal ══ -->
+    <div class="ac-modal-overlay" id="ac-equity-modal" aria-hidden="true">
+      <div class="ac-modal" role="dialog" aria-modal="true" aria-labelledby="ac-equity-modal-title">
         <div class="ac-modal__top">
-          <h2 id="ac-calc-modal-title">Position size</h2>
+          <h2 id="ac-equity-modal-title">Log Equity</h2>
+          <button type="button" class="ac-modal__x" id="ac-equity-modal-close" aria-label="Close">×</button>
+        </div>
+        <form class="ac-modal-fields" id="ac-equity-form" novalidate>
+          <input type="hidden" id="ac-equity-account-id" value="" />
+          <div class="ac-field">
+            <label for="ac-equity-val">Current equity ($)</label>
+            <input class="ac-input" type="number" id="ac-equity-val" step="0.01" placeholder="50000" required />
+          </div>
+          <div class="ac-field">
+            <label for="ac-equity-note">Note (optional)</label>
+            <input class="ac-input" id="ac-equity-note" maxlength="500" placeholder="End of session, NY close…" />
+          </div>
+          <div class="ac-modal-actions">
+            <button type="button" class="ac-btn ac-btn--ghost" id="ac-equity-modal-cancel">Cancel</button>
+            <button type="submit" class="ac-btn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ══ Log Payout / Withdrawal Modal ══ -->
+    <div class="ac-modal-overlay" id="ac-payout-modal" aria-hidden="true">
+      <div class="ac-modal" role="dialog" aria-modal="true" aria-labelledby="ac-payout-modal-title">
+        <div class="ac-modal__top">
+          <h2 id="ac-payout-modal-title">Log Payout</h2>
+          <button type="button" class="ac-modal__x" id="ac-payout-modal-close" aria-label="Close">×</button>
+        </div>
+        <form class="ac-modal-fields" id="ac-payout-form" novalidate>
+          <input type="hidden" id="ac-payout-account-id" value="" />
+          <div class="ac-field">
+            <label for="ac-payout-amount" id="ac-payout-amount-label">Amount ($)</label>
+            <input class="ac-input" type="number" id="ac-payout-amount" step="0.01" min="0.01" placeholder="500" required />
+          </div>
+          <div class="ac-field">
+            <label for="ac-payout-note">Note (optional)</label>
+            <input class="ac-input" id="ac-payout-note" maxlength="500" placeholder="Monthly payout…" />
+          </div>
+          <div class="ac-modal-actions">
+            <button type="button" class="ac-btn ac-btn--ghost" id="ac-payout-modal-cancel">Cancel</button>
+            <button type="submit" class="ac-btn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ══ Confirm Modal ══ -->
+    <div class="ac-modal-overlay" id="ac-confirm-modal" aria-hidden="true" style="z-index:2200">
+      <div class="ac-modal" role="dialog" aria-modal="true" aria-labelledby="ac-confirm-title">
+        <div class="ac-modal__top">
+          <h2 id="ac-confirm-title">Confirm</h2>
+          <button type="button" class="ac-modal__x" id="ac-confirm-close" aria-label="Close">×</button>
+        </div>
+        <p class="ac-confirm-msg" id="ac-confirm-msg"></p>
+        <div class="ac-modal-actions">
+          <button type="button" class="ac-btn ac-btn--ghost" id="ac-confirm-cancel">Cancel</button>
+          <button type="button" class="ac-btn ac-btn--danger" id="ac-confirm-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Position Size Calculator Modal ══ -->
+    <div class="ac-modal-overlay ac-modal-overlay--calc" id="ac-calc-overlay" aria-hidden="true">
+      <div class="ac-modal ac-modal--wide" role="dialog" aria-modal="true" aria-labelledby="ac-calc-modal-title">
+        <div class="ac-modal__top">
+          <h2 id="ac-calc-modal-title">Position Size</h2>
           <button type="button" class="ac-modal__x" id="ac-calc-close" aria-label="Close">×</button>
         </div>
-        <div class="ac-modal__body-scroll">
-          <section class="ac-panel ac-panel--calc" aria-label="Position size calculator">
-            <div class="ac-calc-help-row">
-              <button
-                type="button"
-                class="ac-calc-help"
-                id="calc-help-btn"
-                aria-expanded="false"
-                aria-controls="calc-help-panel"
-                title="How this works"
-              >
-                ?
-              </button>
+        <div class="ac-calc-help-row">
+          <button type="button" class="ac-calc-help" id="calc-help-btn" aria-expanded="false" aria-controls="calc-help-panel" title="How this works">?</button>
+        </div>
+        <div class="ac-calc-help-panel" id="calc-help-panel" hidden>
+          Forex: lots = risk $ ÷ (stop pips × pip $/lot). Futures: contracts = risk $ ÷ (stop points × $/point). Pip defaults use static presets. All math runs in your browser.
+        </div>
+        <div class="ac-field" style="margin-bottom:12px">
+          <label for="calc-balance-account">Load balance from account</label>
+          <select class="ac-select" id="calc-balance-account"><option value="">Manual entry</option></select>
+        </div>
+        <div class="ac-calc-tabs" role="tablist">
+          <button type="button" class="ac-calc-tab ac-active" id="calc-tab-fx" role="tab" aria-selected="true">Forex (pips)</button>
+          <button type="button" class="ac-calc-tab" id="calc-tab-ft" role="tab" aria-selected="false">Futures / points</button>
+        </div>
+        <div class="ac-calc-block ac-visible" id="calc-block-fx" role="tabpanel">
+          <div class="ac-calc-device">
+            <div class="ac-calc-device__head"><span class="ac-calc-device__name">FX · pip risk</span><span class="ac-calc-device__badge">FX</span></div>
+            <div class="ac-calc-lcd" id="calc-fx-lcd" aria-live="polite">
+              <div class="ac-calc-lcd__pair" id="calc-fx-lcd-pair">—</div>
+              <div class="ac-calc-lcd__main" id="calc-fx-lcd-main">—</div>
+              <div class="ac-calc-lcd__sub" id="calc-fx-lcd-sub"></div>
             </div>
-            <div class="ac-calc-help-panel" id="calc-help-panel" hidden>
-              Forex: lots = risk $ ÷ (stop pips × pip $ per lot). Futures: contracts = risk $ ÷ (stop
-              points × $/point). Pair pip defaults use static presets. All math runs in your browser.
-            </div>
-            <div class="ac-field ac-field--full">
-              <label for="calc-balance-account">Balance from account</label>
-              <select class="ac-select" id="calc-balance-account">
-                <option value="">Manual entry</option>
-              </select>
-            </div>
-            <div class="ac-calc-tabs" role="tablist">
-              <button type="button" class="ac-calc-tab ac-active" id="calc-tab-fx" role="tab" aria-selected="true">
-                Forex (pips)
-              </button>
-              <button type="button" class="ac-calc-tab" id="calc-tab-ft" role="tab" aria-selected="false">
-                Futures / points
-              </button>
-            </div>
-
-            <div class="ac-calc-block ac-visible" id="calc-block-fx" role="tabpanel">
-              <div class="ac-calc-device">
-                <div class="ac-calc-device__head">
-                  <span class="ac-calc-device__name">FX · pip risk</span>
-                  <span class="ac-calc-device__badge">FX</span>
-                </div>
-                <div class="ac-calc-lcd" id="calc-fx-lcd" aria-live="polite">
-                  <div class="ac-calc-lcd__pair" id="calc-fx-lcd-pair">—</div>
-                  <div class="ac-calc-lcd__main" id="calc-fx-lcd-main">—</div>
-                  <div class="ac-calc-lcd__sub" id="calc-fx-lcd-sub"></div>
-                </div>
-                <div class="ac-calc-keypad">
-                  <div class="ac-field ac-field--full">
-                    <label for="calc-fx-pair">Pair</label>
-                    <select class="ac-select" id="calc-fx-pair"></select>
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-fx-balance">Balance ($)</label>
-                    <input class="ac-input" type="number" id="calc-fx-balance" step="0.01" min="0" placeholder="50000" />
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-fx-risk-mode">Risk as</label>
-                    <select class="ac-select" id="calc-fx-risk-mode">
-                      <option value="pct">Percent of balance</option>
-                      <option value="usd">Fixed dollars</option>
-                    </select>
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-fx-risk-val">Risk value</label>
-                    <input
-                      class="ac-input"
-                      type="number"
-                      id="calc-fx-risk-val"
-                      step="0.01"
-                      min="0"
-                      value="1"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-fx-pips">Stop (pips)</label>
-                    <input class="ac-input" type="number" id="calc-fx-pips" step="0.1" min="0.1" placeholder="25" />
-                  </div>
-                  <p class="ac-calc-pip-info" id="calc-fx-pip-info" aria-live="polite">
-                    Select a pair to auto-detect pip value.
-                  </p>
-                  <div class="ac-calc-err" id="calc-fx-err" aria-live="polite"></div>
-                </div>
+            <div class="ac-calc-keypad">
+              <div class="ac-calc-field-full ac-field">
+                <label for="calc-fx-pair">Pair</label>
+                <select class="ac-select" id="calc-fx-pair"></select>
               </div>
-            </div>
-
-            <div class="ac-calc-block" id="calc-block-ft" role="tabpanel">
-              <div class="ac-panel__hr" aria-hidden="true"></div>
-              <div class="ac-calc-device">
-                <div class="ac-calc-device__head">
-                  <span class="ac-calc-device__name">Futures · point risk</span>
-                  <span class="ac-calc-device__badge">Futures</span>
-                </div>
-                <div class="ac-calc-lcd ac-calc-lcd--ft" id="calc-ft-lcd" aria-live="polite">
-                  <div class="ac-calc-lcd__pair">Contracts</div>
-                  <div class="ac-calc-lcd__main" id="calc-ft-lcd-main">—</div>
-                  <div class="ac-calc-lcd__sub" id="calc-ft-lcd-sub"></div>
-                </div>
-                <div class="ac-calc-keypad ac-calc-grid--tight">
-                  <div class="ac-field">
-                    <label for="calc-ft-balance">Balance ($)</label>
-                    <input class="ac-input" type="number" id="calc-ft-balance" step="0.01" min="0" placeholder="50000" />
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-ft-risk-mode">Risk as</label>
-                    <select class="ac-select" id="calc-ft-risk-mode">
-                      <option value="pct">Percent of balance</option>
-                      <option value="usd">Fixed dollars</option>
-                    </select>
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-ft-risk-val">Risk value</label>
-                    <input
-                      class="ac-input"
-                      type="number"
-                      id="calc-ft-risk-val"
-                      step="0.01"
-                      min="0"
-                      value="1"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-ft-stop">Stop (full points)</label>
-                    <input class="ac-input" type="number" id="calc-ft-stop" step="0.25" min="0.01" placeholder="10" />
-                  </div>
-                  <div class="ac-field">
-                    <label for="calc-ft-dpp">$ per point / contract</label>
-                    <input class="ac-input" type="number" id="calc-ft-dpp" step="0.01" min="0.01" placeholder="5" />
-                  </div>
-                  <div class="ac-calc-err" id="calc-ft-err" aria-live="polite"></div>
-                </div>
+              <div class="ac-field">
+                <label for="calc-fx-balance">Balance ($)</label>
+                <input class="ac-input" type="number" id="calc-fx-balance" step="0.01" min="0" placeholder="50000" />
               </div>
+              <div class="ac-field">
+                <label for="calc-fx-risk-mode">Risk as</label>
+                <select class="ac-select" id="calc-fx-risk-mode">
+                  <option value="pct">Percent of balance</option>
+                  <option value="usd">Fixed dollars</option>
+                </select>
+              </div>
+              <div class="ac-field">
+                <label for="calc-fx-risk-val">Risk value</label>
+                <input class="ac-input" type="number" id="calc-fx-risk-val" step="0.01" min="0" value="1" placeholder="1" />
+              </div>
+              <div class="ac-field">
+                <label for="calc-fx-pips">Stop (pips)</label>
+                <input class="ac-input" type="number" id="calc-fx-pips" step="0.1" min="0.1" placeholder="25" />
+              </div>
+              <p class="ac-calc-pip-info ac-calc-field-full" id="calc-fx-pip-info" aria-live="polite">Select a pair to auto-detect pip value.</p>
+              <div class="ac-calc-err ac-calc-field-full" id="calc-fx-err" aria-live="polite"></div>
             </div>
-          </section>
+          </div>
+        </div>
+        <div class="ac-calc-block" id="calc-block-ft" role="tabpanel">
+          <div class="ac-panel__hr" aria-hidden="true"></div>
+          <div class="ac-calc-device">
+            <div class="ac-calc-device__head"><span class="ac-calc-device__name">Futures · point risk</span><span class="ac-calc-device__badge">Futures</span></div>
+            <div class="ac-calc-lcd ac-calc-lcd--ft" id="calc-ft-lcd" aria-live="polite">
+              <div class="ac-calc-lcd__pair">Contracts</div>
+              <div class="ac-calc-lcd__main" id="calc-ft-lcd-main">—</div>
+              <div class="ac-calc-lcd__sub" id="calc-ft-lcd-sub"></div>
+            </div>
+            <div class="ac-calc-keypad">
+              <div class="ac-field">
+                <label for="calc-ft-balance">Balance ($)</label>
+                <input class="ac-input" type="number" id="calc-ft-balance" step="0.01" min="0" placeholder="50000" />
+              </div>
+              <div class="ac-field">
+                <label for="calc-ft-risk-mode">Risk as</label>
+                <select class="ac-select" id="calc-ft-risk-mode">
+                  <option value="pct">Percent of balance</option>
+                  <option value="usd">Fixed dollars</option>
+                </select>
+              </div>
+              <div class="ac-field">
+                <label for="calc-ft-risk-val">Risk value</label>
+                <input class="ac-input" type="number" id="calc-ft-risk-val" step="0.01" min="0" value="1" placeholder="1" />
+              </div>
+              <div class="ac-field">
+                <label for="calc-ft-stop">Stop (full points)</label>
+                <input class="ac-input" type="number" id="calc-ft-stop" step="0.25" min="0.01" placeholder="10" />
+              </div>
+              <div class="ac-field">
+                <label for="calc-ft-dpp">$ per point / contract</label>
+                <input class="ac-input" type="number" id="calc-ft-dpp" step="0.01" min="0.01" placeholder="5" />
+              </div>
+              <div class="ac-calc-err ac-calc-field-full" id="calc-ft-err" aria-live="polite"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <script type="module">
       import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
+
       (function () {
-        var DEFAULT_USER_ID = "";
-        var currentUserId = DEFAULT_USER_ID;
-        /** localStorage v3: { tab, fx:{ pairSymbol, pipAuto, ... }, ft:{...} } — migrate from v2 key on first read */
         var LS_CALC = "jarvis.accountLotCalc.v3";
-        var LS_CALC_LEGACY = "jarvis.accountLotCalc.v2";
         var fxPairsList = [];
         var fxPairsBySymbol = {};
         var calcFxPip = { pipSize: 0.0001, pipUsdPerLot: 10, loading: false, error: "" };
         var lotCalcMod = null;
+        var accountsCache = [];
+        var confirmCallback = null;
 
+        /* ── Helpers ── */
+        function esc(s) {
+          return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+        function fmtMoney(n) {
+          if (n == null || !Number.isFinite(n)) return "—";
+          return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+        function fmtPct(n, digits) {
+          if (n == null || !Number.isFinite(n)) return "—";
+          return n.toFixed(digits == null ? 1 : digits) + "%";
+        }
+        function num(v) { var n = Number(v); return Number.isFinite(n) ? n : null; }
+
+        /* ── Today's P&L vs day-prior equity ── */
+        function todayPnl(acc) {
+          var log = acc.equity_log || [];
+          var today = new Date().toISOString().slice(0, 10);
+          var ref = null;
+          for (var i = log.length - 1; i >= 0; i--) {
+            if ((log[i].logged_at || "").slice(0, 10) < today) { ref = num(log[i].equity); break; }
+          }
+          if (ref === null) ref = num(acc.starting_balance);
+          var cur = num(acc.current_equity);
+          if (cur === null || ref === null) return null;
+          return cur - ref;
+        }
+
+        function daysActive(acc) {
+          return Math.floor((Date.now() - new Date(acc.created_at).getTime()) / 86400000);
+        }
+
+        function peakEquity(acc) {
+          var log = acc.equity_log || [];
+          var vals = log.map(function (e) { return num(e.equity); }).filter(function (v) { return v !== null; });
+          vals.push(num(acc.current_equity) || 0);
+          return Math.max.apply(null, vals);
+        }
+
+        function setStatus(msg, isErr) {
+          var el = document.getElementById("ac-status");
+          if (!msg) { el.textContent = ""; el.style.color = ""; return; }
+          el.textContent = msg;
+          el.style.color = isErr ? "rgba(255,130,130,0.9)" : "rgba(255,255,255,0.4)";
+        }
+
+        /* ── Sparkline ── */
+        function drawSparkline(canvas, log) {
+          if (!canvas || !log || log.length < 2) return;
+          var cw = canvas.clientWidth || 260;
+          var ch = canvas.clientHeight || 44;
+          canvas.width = cw;
+          canvas.height = ch;
+          var ctx = canvas.getContext("2d");
+          if (!ctx) return;
+          ctx.clearRect(0, 0, cw, ch);
+          var vals = log.map(function (e) { return num(e.equity) || 0; });
+          var lo = Math.min.apply(null, vals);
+          var hi = Math.max.apply(null, vals);
+          var pad = 4;
+          if (hi === lo) { hi += 1; lo -= 1; }
+          ctx.beginPath();
+          ctx.strokeStyle = vals[vals.length - 1] >= vals[0] ? "rgba(0,212,255,0.6)" : "rgba(255,68,102,0.55)";
+          ctx.lineWidth = 1.5;
+          vals.forEach(function (v, i) {
+            var x = pad + (i / (vals.length - 1)) * (cw - pad * 2);
+            var y = ch - pad - ((v - lo) / (hi - lo)) * (ch - pad * 2);
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        }
+
+        function redrawAllSparklines() {
+          accountsCache.forEach(function (acc) {
+            var c = document.querySelector('.ac-spark-canvas[data-aid="' + acc.id + '"]');
+            var emptyEl = document.querySelector('.ac-spark-empty[data-aid="' + acc.id + '"]');
+            if (!c) return;
+            var log = acc.equity_log || [];
+            if (log.length > 1) {
+              if (emptyEl) emptyEl.style.display = "none";
+              drawSparkline(c, log);
+            } else {
+              if (emptyEl) emptyEl.style.display = "flex";
+              var ctx = c.getContext("2d");
+              if (ctx) { c.width = c.clientWidth || 260; c.height = 44; ctx.clearRect(0, 0, c.width, c.height); }
+            }
+          });
+        }
+
+        /* ── Card rendering ── */
+        function statusBadge(acc) {
+          var m = { active: "active", passed: "passed", blown: "blown" };
+          var cls = "ac-badge--" + (m[acc.status] || "active");
+          var lbl = { active: "Active", passed: "Passed", blown: "Blown" }[acc.status] || acc.status;
+          return '<span class="ac-badge ' + cls + '">' + esc(lbl) + '</span>';
+        }
+        function typeBadge(type) {
+          return '<span class="ac-badge ac-badge--' + esc(type) + '">' + esc(type.toUpperCase()) + '</span>';
+        }
+
+        function pnlHtml(acc) {
+          var pnl = todayPnl(acc);
+          if (pnl === null) return '<span class="ac-card__pnl ac-card__pnl--zero">—</span>';
+          var cls = pnl > 0 ? "ac-card__pnl--pos" : pnl < 0 ? "ac-card__pnl--neg" : "ac-card__pnl--zero";
+          var sign = pnl > 0 ? "+" : "";
+          return '<span class="ac-card__pnl ' + cls + '">' + sign + fmtMoney(pnl) + '</span>';
+        }
+
+        function sparkHtml(id) {
+          return '<div class="ac-spark-wrap">' +
+            '<canvas class="ac-spark-canvas" height="44" data-aid="' + id + '"></canvas>' +
+            '<div class="ac-spark-empty" data-aid="' + id + '" style="display:none;">2+ entries needed</div>' +
+            '</div>';
+        }
+
+        function actionsHtml(acc) {
+          var id = acc.id;
+          var type = acc.type;
+          var btns = '';
+          btns += '<button class="ac-action" data-action="log-equity" data-id="' + id + '">Log Equity</button>';
+          if (type === "funded") btns += '<button class="ac-action" data-action="log-payout" data-id="' + id + '">Log Payout</button>';
+          if (type === "live") btns += '<button class="ac-action" data-action="log-payout" data-id="' + id + '">Log Withdrawal</button>';
+          btns += '<button class="ac-action" data-action="calc" data-id="' + id + '">Size</button>';
+          btns += '<button class="ac-action" data-action="edit" data-id="' + id + '">Edit</button>';
+          if (type === "eval") btns += '<button class="ac-action ac-action--pass" data-action="mark-passed" data-id="' + id + '">Passed</button>';
+          btns += '<button class="ac-action ac-action--danger" data-action="mark-blown" data-id="' + id + '">Blown</button>';
+          btns += '<button class="ac-action ac-action--archive" data-action="archive" data-id="' + id + '">Archive</button>';
+          return '<div class="ac-card__actions">' + btns + '</div>';
+        }
+
+        function renderEvalCard(acc) {
+          var eq = num(acc.current_equity);
+          var sb = num(acc.starting_balance);
+          var pt = num(acc.profit_target);
+          var mdd = num(acc.max_drawdown);
+          var days = daysActive(acc);
+          var profitPct = (pt && pt > 0 && eq !== null && sb !== null) ? ((eq - sb) / pt * 100) : null;
+          var barW = profitPct !== null ? Math.min(100, Math.max(0, profitPct)) : 0;
+          var blowFloor = (sb !== null && mdd !== null) ? sb - mdd : null;
+          var headroom = (eq !== null && blowFloor !== null) ? eq - blowFloor : null;
+
+          return '<article class="ac-card ac-card--' + esc(acc.status) + '" data-id="' + acc.id + '">' +
+            '<div class="ac-card__head"><div class="ac-card__head-left">' +
+            '<div class="ac-card__tags">' + typeBadge("eval") + statusBadge(acc) + '</div>' +
+            '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
+            (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
+            '</div></div>' +
+            '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
+            '<div class="ac-card__stats">' +
+            '<div><div class="ac-card__stat-label">Days active</div><div class="ac-card__stat-value">' + days + 'd</div></div>' +
+            '<div><div class="ac-card__stat-label">Headroom</div><div class="ac-card__stat-value ' + (headroom !== null && headroom < 0 ? "ac-card__stat-value--bad" : headroom !== null && headroom < (mdd || 0) * 0.3 ? "ac-card__stat-value--warn" : "") + '">' + fmtMoney(headroom) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Target</div><div class="ac-card__stat-value">' + fmtMoney(pt && sb !== null ? sb + pt : null) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Daily cap</div><div class="ac-card__stat-value">' + (acc.daily_loss_cap ? fmtMoney(num(acc.daily_loss_cap)) : "—") + '</div></div>' +
+            '</div>' +
+            '<div class="ac-prog-wrap"><div class="ac-prog-labels"><span class="ac-prog-label">Profit target</span><span class="ac-prog-pct">' + fmtPct(profitPct) + '</span></div>' +
+            '<div class="ac-prog-bar"><div class="ac-prog-fill" style="width:' + barW + '%"></div></div></div>' +
+            sparkHtml(acc.id) +
+            actionsHtml(acc) +
+            '</article>';
+        }
+
+        function renderFundedCard(acc) {
+          var eq = num(acc.current_equity);
+          var sb = num(acc.starting_balance);
+          var mdd = num(acc.max_drawdown);
+          var blowFloor = (sb !== null && mdd !== null) ? sb - mdd : null;
+          var headroom = (eq !== null && blowFloor !== null) ? eq - blowFloor : null;
+          var lifetimePy = acc.total_payouts || 0;
+          var daysSincePy = acc.last_payout_at
+            ? Math.floor((Date.now() - new Date(acc.last_payout_at).getTime()) / 86400000)
+            : null;
+
+          return '<article class="ac-card ac-card--' + esc(acc.status) + '" data-id="' + acc.id + '">' +
+            '<div class="ac-card__head"><div class="ac-card__head-left">' +
+            '<div class="ac-card__tags">' + typeBadge("funded") + statusBadge(acc) + '</div>' +
+            '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
+            (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
+            '</div></div>' +
+            '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
+            '<div class="ac-card__stats">' +
+            '<div><div class="ac-card__stat-label">Lifetime payouts</div><div class="ac-card__stat-value ac-card__stat-value--good">' + fmtMoney(lifetimePy) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Since last payout</div><div class="ac-card__stat-value">' + (daysSincePy !== null ? daysSincePy + 'd' : '—') + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Headroom</div><div class="ac-card__stat-value ' + (headroom !== null && headroom < 0 ? "ac-card__stat-value--bad" : "") + '">' + fmtMoney(headroom) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Daily cap</div><div class="ac-card__stat-value">' + (acc.daily_loss_cap ? fmtMoney(num(acc.daily_loss_cap)) : "—") + '</div></div>' +
+            '</div>' +
+            sparkHtml(acc.id) +
+            actionsHtml(acc) +
+            '</article>';
+        }
+
+        function renderLiveCard(acc) {
+          var eq = num(acc.current_equity);
+          var sb = num(acc.starting_balance);
+          var totalRetPct = (eq !== null && sb !== null && sb > 0) ? ((eq - sb) / sb * 100) : null;
+          var peak = peakEquity(acc);
+          var dd = (eq !== null) ? peak - eq : null;
+
+          return '<article class="ac-card ac-card--' + esc(acc.status) + '" data-id="' + acc.id + '">' +
+            '<div class="ac-card__head"><div class="ac-card__head-left">' +
+            '<div class="ac-card__tags">' + typeBadge("live") + '</div>' +
+            '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
+            (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
+            '</div></div>' +
+            '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
+            '<div class="ac-card__stats">' +
+            '<div><div class="ac-card__stat-label">Total return</div><div class="ac-card__stat-value ' + (totalRetPct !== null && totalRetPct > 0 ? "ac-card__stat-value--good" : totalRetPct !== null && totalRetPct < 0 ? "ac-card__stat-value--bad" : "") + '">' + fmtPct(totalRetPct) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">DD from peak</div><div class="ac-card__stat-value ' + (dd !== null && dd > 0 ? "ac-card__stat-value--warn" : "") + '">' + (dd !== null && dd > 0 ? fmtMoney(dd) : "—") + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Days active</div><div class="ac-card__stat-value">' + daysActive(acc) + 'd</div></div>' +
+            '<div><div class="ac-card__stat-label">Starting</div><div class="ac-card__stat-value">' + fmtMoney(sb) + '</div></div>' +
+            '</div>' +
+            sparkHtml(acc.id) +
+            actionsHtml(acc) +
+            '</article>';
+        }
+
+        function renderCard(acc) {
+          if (acc.type === "funded") return renderFundedCard(acc);
+          if (acc.type === "live") return renderLiveCard(acc);
+          return renderEvalCard(acc);
+        }
+
+        /* ── Load capital overview ── */
+        function loadOverview() {
+          apiFetch("/api/capital-overview", { cache: "no-store" })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok) return;
+              var j = x.j;
+              document.getElementById("ov-deployed").textContent = fmtMoney(j.total_capital_deployed);
+              document.getElementById("ov-equity").textContent = fmtMoney(j.total_current_equity);
+              document.getElementById("ov-payouts").textContent = fmtMoney(j.lifetime_payouts);
+              document.getElementById("ov-active").textContent = j.active_accounts_count !== null ? j.active_accounts_count : "—";
+              document.getElementById("ov-passrate").textContent = j.eval_pass_rate !== null ? j.eval_pass_rate + "%" : "—";
+              document.getElementById("ov-blown").textContent = j.days_since_last_blown !== null ? j.days_since_last_blown + "d" : "—";
+              ["ov-deployed","ov-equity","ov-payouts","ov-active","ov-passrate","ov-blown"].forEach(function (id) {
+                document.getElementById(id).classList.remove("ac-overview-tile__value--muted");
+              });
+            })
+            .catch(function () {});
+        }
+
+        /* ── Load accounts ── */
+        function loadAccounts() {
+          apiFetch("/api/accounts", { cache: "no-store" })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok) {
+                setStatus((x.j && x.j.error) || "Failed to load accounts", true);
+                accountsCache = [];
+                document.getElementById("ac-cards-grid").innerHTML = emptyStateHtml();
+                return;
+              }
+              accountsCache = Array.isArray(x.j.accounts) ? x.j.accounts : [];
+              setStatus("");
+              populateCalcAccountSelect();
+              var grid = document.getElementById("ac-cards-grid");
+              if (!accountsCache.length) {
+                grid.innerHTML = emptyStateHtml();
+              } else {
+                grid.innerHTML = accountsCache.map(renderCard).join("");
+              }
+              requestAnimationFrame(redrawAllSparklines);
+            })
+            .catch(function (e) {
+              setStatus(e.message || "Network error", true);
+            });
+        }
+
+        function emptyStateHtml() {
+          return '<div class="ac-empty" style="grid-column:1/-1">' +
+            '<div class="ac-empty__icon">◎</div>' +
+            '<h2 class="ac-empty__title">No accounts yet</h2>' +
+            '<p class="ac-empty__sub">Track your prop firm evals, funded accounts, and live accounts in one place.</p>' +
+            '<button type="button" class="ac-empty__cta" id="ac-empty-cta">+ Add your first account</button>' +
+            '</div>';
+        }
+
+        /* ── Modal management ── */
+        function openModal(id) { var el = document.getElementById(id); if (el) { el.classList.add("ac-open"); el.setAttribute("aria-hidden","false"); } }
+        function closeModal(id) { var el = document.getElementById(id); if (el) { el.classList.remove("ac-open"); el.setAttribute("aria-hidden","true"); } }
+        function closeAllModals() { ["ac-account-modal","ac-equity-modal","ac-payout-modal","ac-confirm-modal"].forEach(closeModal); }
+
+        /* overlay click to close */
+        ["ac-account-modal","ac-equity-modal","ac-payout-modal","ac-confirm-modal","ac-calc-overlay"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.addEventListener("click", function (e) { if (e.target === el) closeModal(id); });
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key !== "Escape") return;
+          if (document.getElementById("ac-calc-overlay").classList.contains("ac-open")) { closeModal("ac-calc-overlay"); return; }
+          closeAllModals();
+        });
+        ["ac-account-modal-close","ac-account-modal-cancel"].forEach(function (id) {
+          var el = document.getElementById(id); if (el) el.addEventListener("click", function () { closeModal("ac-account-modal"); });
+        });
+        ["ac-equity-modal-close","ac-equity-modal-cancel"].forEach(function (id) {
+          var el = document.getElementById(id); if (el) el.addEventListener("click", function () { closeModal("ac-equity-modal"); });
+        });
+        ["ac-payout-modal-close","ac-payout-modal-cancel"].forEach(function (id) {
+          var el = document.getElementById(id); if (el) el.addEventListener("click", function () { closeModal("ac-payout-modal"); });
+        });
+        document.getElementById("ac-confirm-close").addEventListener("click", function () { closeModal("ac-confirm-modal"); confirmCallback = null; });
+        document.getElementById("ac-confirm-cancel").addEventListener("click", function () { closeModal("ac-confirm-modal"); confirmCallback = null; });
+        document.getElementById("ac-confirm-ok").addEventListener("click", function () {
+          closeModal("ac-confirm-modal");
+          if (confirmCallback) { var cb = confirmCallback; confirmCallback = null; cb(); }
+        });
+        document.getElementById("ac-calc-close").addEventListener("click", function () { closeModal("ac-calc-overlay"); });
+
+        function openConfirm(msg, onConfirm) {
+          document.getElementById("ac-confirm-msg").textContent = msg;
+          confirmCallback = onConfirm;
+          openModal("ac-confirm-modal");
+        }
+
+        /* ── Add / Edit Account Modal ── */
+        function openAccountModal(acc) {
+          var form = document.getElementById("ac-account-form");
+          form.reset();
+          document.getElementById("ac-form-edit-id").value = acc ? acc.id : "";
+          document.getElementById("ac-account-modal-title").textContent = acc ? "Edit Account" : "Add Account";
+          if (acc) {
+            document.getElementById("ac-f-name").value = acc.name || "";
+            document.getElementById("ac-f-type").value = acc.type || "eval";
+            document.getElementById("ac-f-firm").value = acc.firm_name || "";
+            document.getElementById("ac-f-start").value = acc.starting_balance != null ? acc.starting_balance : "";
+            document.getElementById("ac-f-target").value = acc.profit_target != null ? acc.profit_target : "";
+            document.getElementById("ac-f-maxdd").value = acc.max_drawdown != null ? acc.max_drawdown : "";
+            document.getElementById("ac-f-dailycap").value = acc.daily_loss_cap != null ? acc.daily_loss_cap : "";
+            document.getElementById("ac-f-riskpct").value = acc.default_risk_pct != null ? acc.default_risk_pct : "1";
+            document.getElementById("ac-f-pair").value = acc.default_pair || "";
+          } else {
+            document.getElementById("ac-f-riskpct").value = "1";
+          }
+          updateProfitRowVisibility();
+          openModal("ac-account-modal");
+        }
+
+        function updateProfitRowVisibility() {
+          var type = document.getElementById("ac-f-type").value;
+          var row = document.getElementById("ac-f-profit-row");
+          row.style.display = type === "live" ? "none" : "";
+        }
+        document.getElementById("ac-f-type").addEventListener("change", updateProfitRowVisibility);
+
+        document.getElementById("ac-account-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var editId = document.getElementById("ac-form-edit-id").value.trim();
+          var type = document.getElementById("ac-f-type").value;
+          var startVal = document.getElementById("ac-f-start").value.trim();
+          if (!startVal) { setStatus("Starting balance is required", true); return; }
+          var payload = {
+            name: document.getElementById("ac-f-name").value.trim(),
+            type: type,
+            firm_name: document.getElementById("ac-f-firm").value.trim() || null,
+            starting_balance: Number(startVal),
+            profit_target: document.getElementById("ac-f-target").value.trim() || null,
+            daily_loss_cap: document.getElementById("ac-f-dailycap").value.trim() || null,
+            max_drawdown: document.getElementById("ac-f-maxdd").value.trim() || null,
+            default_risk_pct: document.getElementById("ac-f-riskpct").value.trim() || 1,
+            default_pair: document.getElementById("ac-f-pair").value.trim() || null,
+          };
+          if (payload.profit_target !== null) payload.profit_target = Number(payload.profit_target);
+          if (payload.daily_loss_cap !== null) payload.daily_loss_cap = Number(payload.daily_loss_cap);
+          if (payload.max_drawdown !== null) payload.max_drawdown = Number(payload.max_drawdown);
+          payload.default_risk_pct = Number(payload.default_risk_pct);
+
+          var url = editId ? "/api/accounts/" + encodeURIComponent(editId) : "/api/accounts";
+          var method = editId ? "PATCH" : "POST";
+          apiFetch(url, { method: method, headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify(payload) })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
+              closeModal("ac-account-modal");
+              loadAccounts();
+              loadOverview();
+            })
+            .catch(function (err) { setStatus(err.message, true); });
+        });
+
+        /* ── Log Equity ── */
+        document.getElementById("ac-equity-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var accId = document.getElementById("ac-equity-account-id").value;
+          var equity = Number(document.getElementById("ac-equity-val").value);
+          var note = document.getElementById("ac-equity-note").value.trim() || null;
+          if (!Number.isFinite(equity)) { setStatus("Invalid equity value", true); return; }
+          apiFetch("/api/equity-log", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ account_id: accId, equity: equity, note: note }) })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
+              closeModal("ac-equity-modal");
+              loadAccounts();
+              loadOverview();
+            })
+            .catch(function (err) { setStatus(err.message, true); });
+        });
+
+        /* ── Log Payout ── */
+        document.getElementById("ac-payout-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var accId = document.getElementById("ac-payout-account-id").value;
+          var amount = Number(document.getElementById("ac-payout-amount").value);
+          var note = document.getElementById("ac-payout-note").value.trim() || null;
+          if (!Number.isFinite(amount) || amount <= 0) { setStatus("Invalid amount", true); return; }
+          apiFetch("/api/payouts", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ account_id: accId, amount: amount, note: note }) })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
+              closeModal("ac-payout-modal");
+              loadAccounts();
+              loadOverview();
+            })
+            .catch(function (err) { setStatus(err.message, true); });
+        });
+
+        /* ── Grid event delegation ── */
+        document.getElementById("ac-cards-grid").addEventListener("click", function (e) {
+          var emptyCta = e.target.closest("#ac-empty-cta");
+          if (emptyCta) { openAccountModal(null); return; }
+
+          var btn = e.target.closest("[data-action]");
+          if (!btn) return;
+          var action = btn.getAttribute("data-action");
+          var id = btn.getAttribute("data-id");
+          var acc = accountsCache.find(function (a) { return a.id === id; });
+
+          if (action === "edit") { if (acc) openAccountModal(acc); return; }
+
+          if (action === "log-equity") {
+            document.getElementById("ac-equity-account-id").value = id;
+            document.getElementById("ac-equity-val").value = acc ? (acc.current_equity || "") : "";
+            document.getElementById("ac-equity-note").value = "";
+            openModal("ac-equity-modal");
+            return;
+          }
+
+          if (action === "log-payout") {
+            var isLive = acc && acc.type === "live";
+            document.getElementById("ac-payout-modal-title").textContent = isLive ? "Log Withdrawal" : "Log Payout";
+            document.getElementById("ac-payout-account-id").value = id;
+            document.getElementById("ac-payout-amount").value = "";
+            document.getElementById("ac-payout-note").value = "";
+            openModal("ac-payout-modal");
+            return;
+          }
+
+          if (action === "calc") {
+            openCalcModal(acc);
+            return;
+          }
+
+          if (action === "mark-passed") {
+            openConfirm("Mark this eval as passed? This cannot be undone.", function () {
+              apiFetch("/api/accounts/" + encodeURIComponent(id) + "/mark-passed", { method: "POST", cache: "no-store" })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (x) { if (!x.ok) throw new Error((x.j && x.j.error) || "Failed"); loadAccounts(); loadOverview(); })
+                .catch(function (err) { setStatus(err.message, true); });
+            });
+            return;
+          }
+
+          if (action === "mark-blown") {
+            openConfirm("Mark this account as blown?", function () {
+              apiFetch("/api/accounts/" + encodeURIComponent(id) + "/mark-blown", { method: "POST", cache: "no-store" })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (x) { if (!x.ok) throw new Error((x.j && x.j.error) || "Failed"); loadAccounts(); loadOverview(); })
+                .catch(function (err) { setStatus(err.message, true); });
+            });
+            return;
+          }
+
+          if (action === "archive") {
+            openConfirm("Archive this account? It will be hidden from the main view.", function () {
+              apiFetch("/api/accounts/" + encodeURIComponent(id) + "/archive", { method: "POST", cache: "no-store" })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (x) { if (!x.ok) throw new Error((x.j && x.j.error) || "Failed"); loadAccounts(); loadOverview(); })
+                .catch(function (err) { setStatus(err.message, true); });
+            });
+            return;
+          }
+        });
+
+        /* ── Add Account button ── */
+        document.getElementById("ac-btn-add").addEventListener("click", function () { openAccountModal(null); });
+
+        /* ── Position size calculator ── */
         function loadLotCalcMod() {
           if (lotCalcMod) return Promise.resolve(lotCalcMod);
-          return import("/js/lot-calculator.js?v=d4f7e2a1").then(function (m) {
-            lotCalcMod = m;
-            return m;
-          });
+          return import("/js/lot-calculator.js?v=e5a1b2c3").then(function (m) { lotCalcMod = m; return m; });
         }
 
         function refreshFxPipAuto() {
           var info = document.getElementById("calc-fx-pip-info");
           var sym = document.getElementById("calc-fx-pair").value;
           calcFxPip.loading = true;
-          if (info) {
-            info.classList.remove("ac-calc-pip-info--warn");
-            info.textContent = "Calculating pip value…";
-          }
+          if (info) { info.classList.remove("ac-calc-pip-info--warn"); info.textContent = "Calculating pip value…"; }
           runFxCalc();
           return loadLotCalcMod()
-            .then(function (mod) {
-              return mod.resolvePipValuePerLot(sym);
-            })
+            .then(function (mod) { return mod.resolvePipValuePerLot(sym); })
             .then(function (resolved) {
-              calcFxPip = {
-                pipSize: resolved.pipSize,
-                pipUsdPerLot: resolved.pipUsdPerLot,
-                loading: false,
-                error: resolved.error || "",
-                source: resolved.source || "",
-              };
+              calcFxPip = { pipSize: resolved.pipSize, pipUsdPerLot: resolved.pipUsdPerLot, loading: false, error: resolved.error || "", source: resolved.source || "" };
               if (info) {
                 info.textContent = lotCalcMod.formatPipInfo(calcFxPip);
                 if (calcFxPip.error) info.classList.add("ac-calc-pip-info--warn");
@@ -1657,890 +1044,19 @@
               runFxCalc();
             })
             .catch(function () {
-              calcFxPip = {
-                pipSize: 0.0001,
-                pipUsdPerLot: 10,
-                loading: false,
-                error: "Could not load live FX rates.",
-              };
-              if (info) {
-                info.textContent = calcFxPip.error;
-                info.classList.add("ac-calc-pip-info--warn");
-              }
+              calcFxPip = { pipSize: 0.0001, pipUsdPerLot: 10, loading: false, error: "Could not load live FX rates." };
+              if (info) { info.textContent = calcFxPip.error; info.classList.add("ac-calc-pip-info--warn"); }
               runFxCalc();
             });
         }
 
-        function escapeHtml(s) {
-          return String(s)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-        }
-
-        /** Empty field => NaN so we do not treat blank as 0 risk. */
-        function parseInputNumber(id) {
+        function parseNum(id) {
           var el = document.getElementById(id);
-          if (!el || el.value == null) return NaN;
+          if (!el) return NaN;
           var t = String(el.value).trim();
-          if (t === "") return NaN;
+          if (!t) return NaN;
           var n = Number(t);
           return Number.isFinite(n) ? n : NaN;
-        }
-
-        function ensureUserId() {
-          return getAuthUserId().then(function (id) {
-            currentUserId = id || "";
-            return getAuthEmail().then(function () {
-              return currentUserId;
-            });
-          });
-        }
-
-        /**
-         * Progress math (manual eval / funded rails):
-         * Baseline B = starting_balance if set & finite, else first snapshot equity (oldest in series), else null.
-         * Current E = latest snapshot equity.
-         * Target equity Te = B + profit_target (dollar distance from baseline to pass).
-         * Profit progress % = ((E - B) / profit_target) * 100 when profit_target > 0 and B,E known.
-         * Drawdown from baseline D = max(0, B - E).
-         * % max loss used = (D / max_loss_limit) * 100 when max_loss_limit > 0.
-         * Blow floor F = B - max_loss_limit; headroom $ = E - F (dollars above rule-based blow level).
-         */
-        function computeMetrics(account) {
-          var snaps = account.recent_snapshots || [];
-          var B =
-            account.starting_balance != null && account.starting_balance !== ""
-              ? Number(account.starting_balance)
-              : null;
-          if (B != null && !Number.isFinite(B)) B = null;
-          if (B == null && snaps.length) {
-            B = Number(snaps[0].equity);
-            if (!Number.isFinite(B)) B = null;
-          }
-          var latest = account.latest_snapshot;
-          var E = latest && latest.equity != null ? Number(latest.equity) : null;
-          if (E != null && !Number.isFinite(E)) E = null;
-
-          var pt = Number(account.profit_target);
-          var ml = Number(account.max_loss_limit);
-          var profitPct = null;
-          if (pt > 0 && B != null && E != null) profitPct = ((E - B) / pt) * 100;
-          var lossUsed = B != null && E != null ? Math.max(0, B - E) : null;
-          var lossPct = null;
-          if (ml > 0 && lossUsed != null) lossPct = (lossUsed / ml) * 100;
-          var blowFloor = B != null && ml >= 0 ? B - ml : null;
-          var headroom = E != null && blowFloor != null ? E - blowFloor : null;
-          var Te = B != null && Number.isFinite(pt) && pt >= 0 ? B + pt : null;
-
-          var snapsAsc = snaps.slice().sort(function (a, b) {
-            return new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime();
-          });
-          var dayDelta = null;
-          var dayDeltaPct = null;
-          if (snapsAsc.length >= 2) {
-            var E0 = Number(snapsAsc[snapsAsc.length - 1].equity);
-            var E1 = Number(snapsAsc[snapsAsc.length - 2].equity);
-            if (Number.isFinite(E0) && Number.isFinite(E1)) {
-              dayDelta = E0 - E1;
-              if (Math.abs(E1) > 1e-9) dayDeltaPct = (dayDelta / Math.abs(E1)) * 100;
-            }
-          }
-
-          return {
-            B: B,
-            E: E,
-            Te: Te,
-            profitPct: profitPct,
-            lossPct: lossPct,
-            headroom: headroom,
-            lossUsed: lossUsed,
-            blowFloor: blowFloor,
-            dayDelta: dayDelta,
-            dayDeltaPct: dayDeltaPct,
-          };
-        }
-
-        function fmtMoney(n) {
-          if (n == null || !Number.isFinite(n)) return "—";
-          return (
-            "$" +
-            n.toLocaleString(undefined, {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            })
-          );
-        }
-
-        function fmtPct(n) {
-          if (n == null || !Number.isFinite(n)) return "—";
-          return n.toFixed(1) + "%";
-        }
-
-        function drawSparkline(canvas, series) {
-          if (!canvas || !series || series.length < 2) return;
-          var cw = canvas.clientWidth || 280;
-          var ch = canvas.clientHeight || 52;
-          canvas.width = cw;
-          canvas.height = ch;
-          var ctx = canvas.getContext("2d");
-          if (!ctx) return;
-          ctx.clearRect(0, 0, cw, ch);
-          var vals = series.map(function (s) {
-            return Number(s.equity);
-          });
-          var lo = Math.min.apply(null, vals);
-          var hi = Math.max.apply(null, vals);
-          var pad = 6;
-          if (hi === lo) {
-            hi += 1;
-            lo -= 1;
-          }
-          ctx.beginPath();
-          ctx.strokeStyle = "rgba(0,212,255,0.55)";
-          ctx.lineWidth = 1.5;
-          series.forEach(function (s, i) {
-            var x = pad + (i / (series.length - 1)) * (cw - pad * 2);
-            var v = Number(s.equity);
-            var y = ch - pad - ((v - lo) / (hi - lo)) * (ch - pad * 2);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-          ctx.stroke();
-        }
-
-        function renderCard(account) {
-          var m = computeMetrics(account);
-          var typeLabel =
-            account.account_type === "funded"
-              ? "Funded"
-              : account.account_type === "live"
-                ? "Live"
-                : "Eval";
-          var arch = account.archived ? " ac-card--archived" : "";
-          var profitBar = Math.min(100, Math.max(0, m.profitPct != null ? m.profitPct : 0));
-          var lossBar = Math.min(100, Math.max(0, m.lossPct != null ? m.lossPct : 0));
-          var archivedBadge = account.archived
-            ? '<span class="ac-badge ac-badge--muted">Archived</span>'
-            : "";
-
-          var deltaClass = "ac-delta ac-delta--na";
-          var deltaText = "—";
-          var deltaMicro = "Log twice to compare";
-          if (m.dayDelta != null && Number.isFinite(m.dayDelta)) {
-            deltaClass =
-              "ac-delta " +
-              (m.dayDelta > 0 ? "ac-delta--pos" : m.dayDelta < 0 ? "ac-delta--neg" : "ac-delta--na");
-            if (m.dayDelta > 0) deltaText = "+" + fmtMoney(m.dayDelta);
-            else if (m.dayDelta < 0) deltaText = "-" + fmtMoney(Math.abs(m.dayDelta));
-            else deltaText = fmtMoney(0);
-            if (m.dayDeltaPct != null && Number.isFinite(m.dayDeltaPct)) {
-              deltaMicro = (m.dayDeltaPct >= 0 ? "+" : "") + m.dayDeltaPct.toFixed(2) + "% vs prior snapshot";
-            } else {
-              deltaMicro = "vs prior snapshot";
-            }
-          }
-
-          return (
-            '<article class="ac-card' +
-            arch +
-            '" data-id="' +
-            account.id +
-            '">' +
-            '<div class="ac-card__head">' +
-            '<div class="ac-card__title-block">' +
-            '<h3 class="ac-card__name">' +
-            escapeHtml(account.name || "Account") +
-            "</h3>" +
-            '<div class="ac-card__tags"><span class="ac-badge">' +
-            typeLabel +
-            "</span>" +
-            archivedBadge +
-            "</div></div>" +
-            '<div class="ac-card__actions">' +
-            '<button type="button" class="ac-icon-btn ac-edit" data-id="' +
-            account.id +
-            '">Edit</button>' +
-            '<button type="button" class="ac-icon-btn ac-archive" data-id="' +
-            account.id +
-            '">' +
-            (account.archived ? "Unarchive" : "Archive") +
-            "</button>" +
-            "</div></div>" +
-            '<div class="ac-card__hero">' +
-            '<div class="ac-card__hero-main">' +
-            '<div class="ac-equity-label">Latest equity</div>' +
-            '<div class="ac-equity">' +
-            (m.E != null ? fmtMoney(m.E) : "—") +
-            "</div></div>" +
-            '<div class="ac-card__hero-side">' +
-            '<div class="ac-delta-label">Since last log</div>' +
-            '<div class="' +
-            deltaClass +
-            '">' +
-            deltaText +
-            "</div>" +
-            '<span class="ac-delta-micro">' +
-            escapeHtml(deltaMicro) +
-            "</span></div></div>" +
-            '<div class="ac-strip">' +
-            '<div class="ac-strip__cell"><div class="ac-strip__k">Baseline</div><div class="ac-strip__v">' +
-            fmtMoney(m.B) +
-            "</div></div>" +
-            '<div class="ac-strip__cell"><div class="ac-strip__k">Target</div><div class="ac-strip__v">' +
-            fmtMoney(m.Te) +
-            "</div></div>" +
-            '<div class="ac-strip__cell"><div class="ac-strip__k">Blow floor</div><div class="ac-strip__v">' +
-            fmtMoney(m.blowFloor) +
-            "</div></div>" +
-            '<div class="ac-strip__cell"><div class="ac-strip__k">Headroom</div><div class="ac-strip__v">' +
-            fmtMoney(m.headroom) +
-            "</div></div></div>" +
-            (account.daily_loss_limit != null && account.daily_loss_limit !== ""
-              ? '<div style="padding:0 18px 8px;font-family:Share Tech Mono,monospace;font-size:9px;letter-spacing:0.1em;color:rgba(255,255,255,0.3);">Daily loss cap ' +
-                fmtMoney(Number(account.daily_loss_limit)) +
-                "</div>"
-              : "") +
-            '<div class="ac-rowbar">' +
-            '<div class="ac-rowbar__top"><span class="ac-rowbar__label">Profit target</span><span class="ac-rowbar__val">' +
-            fmtPct(m.profitPct) +
-            "</span></div>" +
-            '<div class="ac-bar"><div class="ac-bar__fill" style="width:' +
-            profitBar +
-            '%"></div></div></div>' +
-            '<div class="ac-rowbar">' +
-            '<div class="ac-rowbar__top"><span class="ac-rowbar__label">Max loss used</span><span class="ac-rowbar__val">' +
-            fmtPct(m.lossPct) +
-            "</span></div>" +
-            '<div class="ac-bar"><div class="ac-bar__fill ac-bar__fill--risk" style="width:' +
-            lossBar +
-            '%"></div></div></div>' +
-            '<div class="ac-spark-wrap">' +
-            '<canvas class="ac-spark ac-spark-canvas" height="56" data-aid="' +
-            account.id +
-            '"></canvas>' +
-            '<div class="ac-spark-empty" data-spark-empty="' +
-            account.id +
-            '">Trail needs 2+ snapshots</div></div>' +
-            '<div class="ac-snap">' +
-            '<div class="ac-snap__label">Log equity snapshot</div>' +
-            '<form class="ac-snap__row ac-snap-form" data-id="' +
-            account.id +
-            '">' +
-            '<input class="ac-input ac-snap-equity" type="number" step="0.01" required placeholder="Equity" />' +
-            '<input class="ac-input ac-snap-note" type="text" maxlength="500" placeholder="Note (optional)" />' +
-            '<button type="submit" class="ac-btn">Save</button>' +
-            "</form></div></article>"
-          );
-        }
-
-        var accountsCache = [];
-
-        function ensureCalcStorageMigrated() {
-          try {
-            if (localStorage.getItem(LS_CALC)) return;
-            var leg = localStorage.getItem(LS_CALC_LEGACY);
-            if (leg) localStorage.setItem(LS_CALC, leg);
-          } catch (e) {}
-        }
-
-        function renderAddAccountTile() {
-          return (
-            '<button type="button" class="ac-add-tile" id="ac-add-tile" aria-label="Add account">' +
-            '<span class="ac-add-tile__inner">' +
-            '<span class="ac-add-tile__glyph" aria-hidden="true">+</span>' +
-            '<span class="ac-add-tile__label">Add account</span>' +
-            "</span></button>"
-          );
-        }
-
-        function loadFxPairs() {
-          return fetch("/data/fx-pairs.json", { cache: "no-store" })
-            .then(function (r) {
-              return r.ok ? r.json() : Promise.reject();
-            })
-            .then(function (data) {
-              fxPairsList = Array.isArray(data.pairs) ? data.pairs : [];
-              fxPairsBySymbol = {};
-              var sel = document.getElementById("calc-fx-pair");
-              sel.innerHTML = "";
-              fxPairsList.forEach(function (p) {
-                fxPairsBySymbol[p.symbol] = p;
-                var opt = document.createElement("option");
-                opt.value = p.symbol;
-                opt.textContent = p.label || p.symbol;
-                sel.appendChild(opt);
-              });
-              if (!fxPairsList.length) throw new Error("empty pairs");
-            })
-            .catch(function () {
-              fxPairsList = [
-                { symbol: "EURUSD", label: "EUR / USD" },
-                { symbol: "USDJPY", label: "USD / JPY" },
-                { symbol: "XAUUSD", label: "XAU / USD (gold)" },
-              ];
-              fxPairsBySymbol = {};
-              var sel = document.getElementById("calc-fx-pair");
-              sel.innerHTML = "";
-              fxPairsList.forEach(function (p) {
-                fxPairsBySymbol[p.symbol] = p;
-                var opt = document.createElement("option");
-                opt.value = p.symbol;
-                opt.textContent = p.label || p.symbol;
-                sel.appendChild(opt);
-              });
-            });
-        }
-
-        function redrawSparklines() {
-          accountsCache.forEach(function (acc) {
-            var c = document.querySelector('.ac-spark-canvas[data-aid="' + acc.id + '"]');
-            var emptyEl = document.querySelector('[data-spark-empty="' + acc.id + '"]');
-            if (!c) return;
-            var series = acc.recent_snapshots || [];
-            if (series.length > 1) {
-              if (emptyEl) emptyEl.style.display = "none";
-              drawSparkline(c, series);
-            } else {
-              if (emptyEl) emptyEl.style.display = "flex";
-              var ctx = c.getContext("2d");
-              if (ctx) {
-                c.width = c.clientWidth || 300;
-                c.height = 56;
-                ctx.clearRect(0, 0, c.width, c.height);
-              }
-            }
-          });
-        }
-
-        function populateCalcAccountSelect() {
-          var sel = document.getElementById("calc-balance-account");
-          if (!sel) return;
-          var prev = sel.value;
-          sel.innerHTML = '<option value="">Manual entry</option>';
-          accountsCache.forEach(function (a) {
-            if (a.archived) return;
-            var eq =
-              a.latest_snapshot && a.latest_snapshot.equity != null
-                ? Number(a.latest_snapshot.equity)
-                : null;
-            var label = a.name || "Account";
-            if (eq != null && Number.isFinite(eq)) {
-              label += " · $" + eq.toLocaleString(undefined, { maximumFractionDigits: 0 });
-            } else {
-              label += " · no equity logged";
-            }
-            var opt = document.createElement("option");
-            opt.value = a.id;
-            opt.textContent = label;
-            sel.appendChild(opt);
-          });
-          if (prev && sel.querySelector('option[value="' + prev + '"]')) sel.value = prev;
-        }
-
-        function applyCalcBalanceFromAccount() {
-          var sel = document.getElementById("calc-balance-account");
-          if (!sel || !sel.value) return;
-          var acc = accountsCache.find(function (a) {
-            return a.id === sel.value;
-          });
-          if (!acc) return;
-          var ls = acc.latest_snapshot;
-          if (!ls || ls.equity == null) return;
-          var s = String(ls.equity);
-          document.getElementById("calc-fx-balance").value = s;
-          document.getElementById("calc-ft-balance").value = s;
-          runAllCalc();
-        }
-
-        function setStatus(msg, isErr) {
-          var el = document.getElementById("ac-status");
-          if (!msg) {
-            el.innerHTML = "";
-            el.className = "ac-status";
-            return;
-          }
-          var m = String(msg);
-          var low = m.toLowerCase();
-          var isTradingAccounts =
-            isErr &&
-            (low.indexOf("trading_accounts") !== -1 ||
-              (low.indexOf("schema cache") !== -1 && low.indexOf("table") !== -1));
-          if (isTradingAccounts) {
-            el.className = "ac-status ac-status--panel ac-status--err";
-            el.innerHTML =
-              '<div class="ac-setup__head">' +
-              '<span class="ac-setup__tag">Setup</span>' +
-              '<strong class="ac-setup__title">Supabase table missing</strong></div>' +
-              '<p class="ac-setup__lead">The Account page needs <code class="ac-setup__code">public.trading_accounts</code>. ' +
-              "The browser cannot create it — run the SQL once in your Supabase project.</p>" +
-              '<button type="button" class="ac-setup__toggle" id="ac-setup-toggle" aria-expanded="false">Show steps</button>' +
-              '<div class="ac-setup__steps" id="ac-setup-steps" hidden>' +
-              '<ol class="ac-setup__ol">' +
-              "<li>Open Supabase Dashboard → your project → <strong>SQL Editor</strong>.</li>" +
-              '<li>Open <code class="ac-setup__code">schema/trading_accounts.sql</code> in this repo, copy the full file, paste, <strong>Run</strong>.</li>' +
-              "<li>Reload this page. Checklist: <code class=\"ac-setup__code\">DEPLOY.md</code> at repo root.</li>" +
-              "</ol>" +
-              '<p class="ac-setup__raw">' +
-              escapeHtml(m) +
-              "</p></div>";
-            return;
-          }
-          var hint = "";
-          if (low.indexOf("schema cache") !== -1) {
-            hint =
-              " Run schema/trading_accounts.sql in the Supabase SQL editor (see DEPLOY.md), then reload.";
-          }
-          el.innerHTML =
-            '<span class="ac-status__text">' +
-            escapeHtml(m) +
-            "</span>" +
-            (hint ? '<span class="ac-status__hint">' + escapeHtml(hint) + "</span>" : "");
-          var emptyHint = !isErr && low.indexOf("no accounts yet") !== -1;
-          el.className = "ac-status" + (isErr ? " ac-status--err" : emptyHint ? " ac-status--empty" : "");
-        }
-
-        async function loadAccounts() {
-          await ensureUserId();
-          var q = "/api/accounts";
-          var res = await apiFetch(q, { cache: "no-store" });
-          var data = await res.json().catch(function () {
-            return {};
-          });
-          if (!res.ok) {
-            setStatus((data && data.error) || res.statusText || "Load failed", true);
-            accountsCache = [];
-            populateCalcAccountSelect();
-            document.getElementById("ac-grid").innerHTML = renderAddAccountTile();
-            return;
-          }
-          accountsCache = Array.isArray(data.accounts) ? data.accounts : [];
-          setStatus(accountsCache.length ? "" : "No accounts yet — tap Add account tile.");
-          populateCalcAccountSelect();
-          document.getElementById("ac-grid").innerHTML =
-            renderAddAccountTile() + accountsCache.map(renderCard).join("");
-          requestAnimationFrame(function () {
-            redrawSparklines();
-          });
-          applyDefaultBalanceFromAccounts();
-        }
-
-        document.getElementById("ac-status").addEventListener("click", function (e) {
-          var btn = e.target.closest("#ac-setup-toggle");
-          if (!btn) return;
-          var steps = document.getElementById("ac-setup-steps");
-          if (!steps) return;
-          steps.hidden = !steps.hidden;
-          btn.setAttribute("aria-expanded", steps.hidden ? "false" : "true");
-          btn.textContent = steps.hidden ? "Show steps" : "Hide steps";
-        });
-
-        document.getElementById("ac-grid").addEventListener("submit", function (e) {
-          if (!e.target.classList.contains("ac-snap-form")) return;
-          e.preventDefault();
-          var id = e.target.getAttribute("data-id");
-          var eq = e.target.querySelector(".ac-snap-equity");
-          var note = e.target.querySelector(".ac-snap-note");
-          var equity = Number(eq.value);
-          if (!Number.isFinite(equity)) return;
-          ensureUserId();
-          apiFetch("/api/account-snapshots", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            cache: "no-store",
-            body: JSON.stringify({
-              user_id: currentUserId,
-              account_id: id,
-              equity: equity,
-              note: (note.value || "").trim() || null,
-            }),
-          })
-            .then(function (r) {
-              return r.json().then(function (j) {
-                return { ok: r.ok, j: j };
-              });
-            })
-            .then(function (x) {
-              if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
-              eq.value = "";
-              note.value = "";
-              loadAccounts();
-            })
-            .catch(function (err) {
-              setStatus(err.message, true);
-            });
-        });
-
-        document.getElementById("ac-grid").addEventListener("click", function (e) {
-          if (e.target.closest(".ac-add-tile")) {
-            openAddModal();
-            return;
-          }
-          var ed = e.target.closest(".ac-edit");
-          if (ed) {
-            var id = ed.getAttribute("data-id");
-            var acc = accountsCache.find(function (a) {
-              return a.id === id;
-            });
-            if (!acc) return;
-            document.getElementById("ac-modal-title").textContent = "Edit account";
-            document.getElementById("ac-edit-id").value = acc.id;
-            document.getElementById("ac-f-name").value = acc.name || "";
-            document.getElementById("ac-f-type").value = acc.account_type || "eval";
-            document.getElementById("ac-f-start").value =
-              acc.starting_balance != null && acc.starting_balance !== "" ? acc.starting_balance : "";
-            document.getElementById("ac-f-target").value = acc.profit_target != null ? acc.profit_target : 0;
-            document.getElementById("ac-f-maxloss").value = acc.max_loss_limit != null ? acc.max_loss_limit : 0;
-            document.getElementById("ac-f-daily").value =
-              acc.daily_loss_limit != null && acc.daily_loss_limit !== "" ? acc.daily_loss_limit : "";
-            closeToolModals();
-            document.getElementById("ac-modal-overlay").classList.add("ac-open");
-            document.getElementById("ac-modal-overlay").setAttribute("aria-hidden", "false");
-            return;
-          }
-          var ar = e.target.closest(".ac-archive");
-          if (ar) {
-            var aid = ar.getAttribute("data-id");
-            var a = accountsCache.find(function (x) {
-              return x.id === aid;
-            });
-            if (!a) return;
-            var next = !a.archived;
-            if (!confirm(next ? "Archive this account?" : "Restore this account?")) return;
-            ensureUserId();
-            apiFetch("/api/accounts/" + encodeURIComponent(aid), {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              cache: "no-store",
-              body: JSON.stringify({ user_id: currentUserId, archived: next }),
-            })
-              .then(function (r) {
-                return r.json().then(function (j) {
-                  return { ok: r.ok, j: j };
-                });
-              })
-              .then(function (x) {
-                if (!x.ok) throw new Error((x.j && x.j.error) || "Update failed");
-                loadAccounts();
-              })
-              .catch(function (err) {
-                setStatus(err.message, true);
-              });
-          }
-        });
-
-        var overlay = document.getElementById("ac-modal-overlay");
-        var calcOverlay = document.getElementById("ac-tools-calc-overlay");
-
-        function closeToolModals() {
-          if (calcOverlay) {
-            calcOverlay.classList.remove("ac-open");
-            calcOverlay.setAttribute("aria-hidden", "true");
-          }
-        }
-
-        function loadEconomicNewsBar() {
-          var bar = document.getElementById("ac-news-bar");
-          var viewport = document.getElementById("ac-news-viewport");
-          var marquee = document.getElementById("ac-news-marquee");
-          var track = document.getElementById("ac-news-track");
-          var dup = document.getElementById("ac-news-track-dup");
-          var stat = document.getElementById("ac-news-static");
-          if (!bar || !viewport || !marquee || !track || !dup || !stat) return;
-
-          function showStatic(msg, err) {
-            viewport.classList.remove("is-marquee");
-            marquee.style.removeProperty("--ac-marquee-dur");
-            track.innerHTML = "";
-            dup.innerHTML = "";
-            stat.textContent = msg;
-            bar.classList.add("ac-news-bar--compact");
-            if (err) bar.classList.add("ac-news-bar--err");
-            else bar.classList.remove("ac-news-bar--err");
-          }
-
-          function applyMarqueeDuration() {
-            requestAnimationFrame(function () {
-              requestAnimationFrame(function () {
-                var w = track.scrollWidth;
-                if (w < 1) return;
-                var pxPerSec = 44;
-                var sec = Math.max(32, w / pxPerSec);
-                marquee.style.setProperty("--ac-marquee-dur", sec + "s");
-              });
-            });
-          }
-
-          stat.textContent = "Loading calendar…";
-          viewport.classList.remove("is-marquee");
-          track.innerHTML = "";
-          dup.innerHTML = "";
-          bar.classList.remove("ac-news-bar--err");
-          bar.classList.remove("ac-news-bar--compact");
-
-          apiFetch("/api/economic-calendar", { cache: "no-store" })
-            .then(function (r) {
-              return r.json().then(function (j) {
-                return { ok: r.ok, j: j };
-              });
-            })
-            .then(function (x) {
-              bar.classList.remove("ac-news-bar--err");
-              var j = x.j || {};
-              if (!x.ok) {
-                showStatic((j && j.error) || "Economic calendar request failed.", true);
-                return;
-              }
-              if (j.error) {
-                showStatic(String(j.error), true);
-                return;
-              }
-              var items = Array.isArray(j.items) ? j.items : [];
-              if (!items.length) {
-                showStatic("No major news events today", false);
-                return;
-              }
-              var html = items
-                .map(function (it) {
-                  var imp = String(it.impact || "low").toLowerCase();
-                  var dcls = "ac-news-bar__dot--low";
-                  if (imp === "high") dcls = "ac-news-bar__dot--high";
-                  else if (imp === "medium") dcls = "ac-news-bar__dot--medium";
-                  else if (imp === "holiday") dcls = "ac-news-bar__dot--holiday";
-                  var time = escapeHtml(String(it.time || "").trim());
-                  var cur = escapeHtml(String(it.currency || "").trim());
-                  var tit = escapeHtml(String(it.title || "").trim());
-                  return (
-                    '<span class="ac-news-bar__chip" title="' +
-                    tit +
-                    '"><span class="ac-news-bar__dot ' +
-                    dcls +
-                    '" aria-hidden="true"></span><span class="ac-news-bar__meta">' +
-                    time +
-                    " · " +
-                    cur +
-                    '</span><span class="ac-news-bar__title"> ' +
-                    tit +
-                    "</span></span>"
-                  );
-                })
-                .join("");
-              if (!html.trim()) {
-                showStatic("No major news events today", false);
-                return;
-              }
-              track.innerHTML = html;
-              dup.innerHTML = html;
-              stat.textContent = "";
-              bar.classList.remove("ac-news-bar--compact");
-              viewport.classList.add("is-marquee");
-              applyMarqueeDuration();
-            })
-            .catch(function () {
-              showStatic("Could not load economic calendar.", true);
-            });
-        }
-
-        function openCalcModal() {
-          populateCalcAccountSelect();
-          applyDefaultBalanceFromAccounts();
-          var pipsEl = document.getElementById("calc-fx-pips");
-          if (pipsEl && String(pipsEl.value).trim() === "") pipsEl.value = "25";
-          calcOverlay.classList.add("ac-open");
-          calcOverlay.setAttribute("aria-hidden", "false");
-          requestAnimationFrame(function () {
-            refreshFxPipAuto();
-            redrawSparklines();
-          });
-        }
-
-        function openAddModal() {
-          closeToolModals();
-          document.getElementById("ac-modal-title").textContent = "Add account";
-          document.getElementById("ac-edit-id").value = "";
-          document.getElementById("ac-modal-form").reset();
-          document.getElementById("ac-f-target").value = "3000";
-          document.getElementById("ac-f-maxloss").value = "2000";
-          overlay.classList.add("ac-open");
-          overlay.setAttribute("aria-hidden", "false");
-        }
-        document.getElementById("ac-modal-cancel").addEventListener("click", function () {
-          overlay.classList.remove("ac-open");
-          overlay.setAttribute("aria-hidden", "true");
-        });
-        overlay.addEventListener("click", function (e) {
-          if (e.target === overlay) {
-            overlay.classList.remove("ac-open");
-            overlay.setAttribute("aria-hidden", "true");
-          }
-        });
-
-        document.getElementById("ac-btn-calc").addEventListener("click", openCalcModal);
-        document.getElementById("calc-help-btn").addEventListener("click", function () {
-          var panel = document.getElementById("calc-help-panel");
-          var btn = document.getElementById("calc-help-btn");
-          if (!panel || !btn) return;
-          var open = panel.hidden;
-          panel.hidden = !open;
-          btn.setAttribute("aria-expanded", open ? "true" : "false");
-        });
-        document.getElementById("calc-balance-account").addEventListener("change", function () {
-          if (this.value) applyCalcBalanceFromAccount();
-        });
-        document.getElementById("ac-calc-close").addEventListener("click", function () {
-          calcOverlay.classList.remove("ac-open");
-          calcOverlay.setAttribute("aria-hidden", "true");
-        });
-        calcOverlay.addEventListener("click", function (e) {
-          if (e.target === calcOverlay) {
-            calcOverlay.classList.remove("ac-open");
-            calcOverlay.setAttribute("aria-hidden", "true");
-          }
-        });
-        document.addEventListener("keydown", function (e) {
-          if (e.key !== "Escape") return;
-          if (overlay.classList.contains("ac-open")) {
-            overlay.classList.remove("ac-open");
-            overlay.setAttribute("aria-hidden", "true");
-            return;
-          }
-          if (calcOverlay.classList.contains("ac-open")) {
-            calcOverlay.classList.remove("ac-open");
-            calcOverlay.setAttribute("aria-hidden", "true");
-            return;
-          }
-        });
-
-        document.getElementById("ac-modal-form").addEventListener("submit", function (e) {
-          e.preventDefault();
-          ensureUserId();
-          var editId = document.getElementById("ac-edit-id").value.trim();
-          var payload = {
-            user_id: currentUserId,
-            name: document.getElementById("ac-f-name").value.trim(),
-            account_type: document.getElementById("ac-f-type").value,
-            profit_target: Number(document.getElementById("ac-f-target").value),
-            max_loss_limit: Number(document.getElementById("ac-f-maxloss").value),
-          };
-          var st = document.getElementById("ac-f-start").value.trim();
-          payload.starting_balance = st === "" ? null : Number(st);
-          var dl = document.getElementById("ac-f-daily").value.trim();
-          payload.daily_loss_limit = dl === "" ? null : Number(dl);
-
-          var url = "/api/accounts";
-          var method = "POST";
-          if (editId) {
-            url = "/api/accounts/" + encodeURIComponent(editId);
-            method = "PATCH";
-          }
-          apiFetch(url, {
-            method: method,
-            headers: { "Content-Type": "application/json" },
-            cache: "no-store",
-            body: JSON.stringify(payload),
-          })
-            .then(function (r) {
-              return r.json().then(function (j) {
-                return { ok: r.ok, j: j };
-              });
-            })
-            .then(function (x) {
-              if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
-              overlay.classList.remove("ac-open");
-              overlay.setAttribute("aria-hidden", "true");
-              loadAccounts();
-            })
-            .catch(function (err) {
-              setStatus(err.message, true);
-            });
-        });
-
-        function setCalcTab(mode) {
-          var fxTab = document.getElementById("calc-tab-fx");
-          var ftTab = document.getElementById("calc-tab-ft");
-          var fxBlock = document.getElementById("calc-block-fx");
-          var ftBlock = document.getElementById("calc-block-ft");
-          var isFx = mode === "fx";
-          fxTab.classList.toggle("ac-active", isFx);
-          ftTab.classList.toggle("ac-active", !isFx);
-          fxTab.setAttribute("aria-selected", isFx ? "true" : "false");
-          ftTab.setAttribute("aria-selected", isFx ? "false" : "true");
-          fxBlock.classList.toggle("ac-visible", isFx);
-          ftBlock.classList.toggle("ac-visible", !isFx);
-          runAllCalc();
-        }
-
-        document.getElementById("calc-tab-fx").addEventListener("click", function () {
-          setCalcTab("fx");
-        });
-        document.getElementById("calc-tab-ft").addEventListener("click", function () {
-          setCalcTab("ft");
-        });
-
-        function loadCalcPrefs() {
-          try {
-            ensureCalcStorageMigrated();
-            var pairSel = document.getElementById("calc-fx-pair");
-            var raw = localStorage.getItem(LS_CALC);
-            if (!raw) {
-              if (pairSel.options.length) {
-                pairSel.value = fxPairsList[0].symbol;
-              }
-              refreshFxPipAuto();
-              return;
-            }
-            var o = JSON.parse(raw);
-            var fx = o.fx || {};
-            if (fx.balance != null) document.getElementById("calc-fx-balance").value = fx.balance;
-            if (fx.mode) document.getElementById("calc-fx-risk-mode").value = fx.mode;
-            if (fx.riskVal != null) document.getElementById("calc-fx-risk-val").value = fx.riskVal;
-            if (fx.pips != null) document.getElementById("calc-fx-pips").value = fx.pips;
-            var sym0 = fxPairsList[0] ? fxPairsList[0].symbol : "";
-            var sym =
-              fx.pairSymbol && fxPairsBySymbol[fx.pairSymbol] ? fx.pairSymbol : sym0 || (pairSel.options[0] && pairSel.options[0].value);
-            if (sym) pairSel.value = sym;
-            refreshFxPipAuto();
-            var ft = o.ft || {};
-            if (ft.balance != null) document.getElementById("calc-ft-balance").value = ft.balance;
-            if (ft.mode) document.getElementById("calc-ft-risk-mode").value = ft.mode;
-            if (ft.riskVal != null) document.getElementById("calc-ft-risk-val").value = ft.riskVal;
-            if (ft.stop != null) document.getElementById("calc-ft-stop").value = ft.stop;
-            if (ft.dpp != null) document.getElementById("calc-ft-dpp").value = ft.dpp;
-            var showFt = o.tab === "ft";
-            document.getElementById("calc-tab-fx").classList.toggle("ac-active", !showFt);
-            document.getElementById("calc-tab-ft").classList.toggle("ac-active", showFt);
-            document.getElementById("calc-tab-fx").setAttribute("aria-selected", showFt ? "false" : "true");
-            document.getElementById("calc-tab-ft").setAttribute("aria-selected", showFt ? "true" : "false");
-            document.getElementById("calc-block-fx").classList.toggle("ac-visible", !showFt);
-            document.getElementById("calc-block-ft").classList.toggle("ac-visible", showFt);
-            runAllCalc();
-          } catch (e) {}
-        }
-
-        function saveCalcPrefs() {
-          try {
-            localStorage.setItem(
-              LS_CALC,
-              JSON.stringify({
-                tab: document.getElementById("calc-block-ft").classList.contains("ac-visible") ? "ft" : "fx",
-                fx: {
-                  pairSymbol: document.getElementById("calc-fx-pair").value,
-                  balance: document.getElementById("calc-fx-balance").value,
-                  mode: document.getElementById("calc-fx-risk-mode").value,
-                  riskVal: document.getElementById("calc-fx-risk-val").value,
-                  pips: document.getElementById("calc-fx-pips").value,
-                },
-                ft: {
-                  balance: document.getElementById("calc-ft-balance").value,
-                  mode: document.getElementById("calc-ft-risk-mode").value,
-                  riskVal: document.getElementById("calc-ft-risk-val").value,
-                  stop: document.getElementById("calc-ft-stop").value,
-                  dpp: document.getElementById("calc-ft-dpp").value,
-                },
-              })
-            );
-          } catch (e) {}
         }
 
         function runFxCalc() {
@@ -2554,83 +1070,30 @@
           if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           var opt = pairSel.selectedOptions && pairSel.selectedOptions[0];
           if (lcdP) lcdP.textContent = opt ? opt.textContent : "—";
-
-          function fail(msg) {
-            errEl.textContent = msg;
-            if (lcd) lcd.classList.add("ac-calc-lcd--warn");
-            if (lcdM) lcdM.textContent = msg;
-            if (lcdS) lcdS.textContent = "";
-          }
-
-          if (calcFxPip.loading) {
-            if (lcdM) lcdM.textContent = "…";
-            if (lcdS) lcdS.textContent = "Updating pip value";
-            return;
-          }
-
-          var bal = parseInputNumber("calc-fx-balance");
+          function fail(msg) { errEl.textContent = msg; if (lcd) lcd.classList.add("ac-calc-lcd--warn"); if (lcdM) lcdM.textContent = msg; if (lcdS) lcdS.textContent = ""; }
+          if (calcFxPip.loading) { if (lcdM) lcdM.textContent = "…"; if (lcdS) lcdS.textContent = "Updating pip value"; return; }
+          var bal = parseNum("calc-fx-balance");
           var mode = document.getElementById("calc-fx-risk-mode").value;
-          var rv = parseInputNumber("calc-fx-risk-val");
-          var pips = parseInputNumber("calc-fx-pips");
+          var rv = parseNum("calc-fx-risk-val");
+          var pips = parseNum("calc-fx-pips");
           var pipUsd = calcFxPip.pipUsdPerLot;
-
           var riskUsd = null;
           if (mode === "pct") {
-            if (!Number.isFinite(bal) || bal <= 0) {
-              fail("Enter account balance ($) for percent risk.");
-              return;
-            }
-            if (!Number.isFinite(rv) || rv <= 0) {
-              fail("Enter risk percent (e.g. 1 for 1% of balance).");
-              return;
-            }
+            if (!Number.isFinite(bal) || bal <= 0) { fail("Enter account balance."); return; }
+            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk percent."); return; }
             riskUsd = (bal * rv) / 100;
           } else {
-            if (!Number.isFinite(rv) || rv <= 0) {
-              fail("Enter risk in dollars (must be greater than 0).");
-              return;
-            }
+            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk in dollars."); return; }
             riskUsd = rv;
           }
-
-          if (!Number.isFinite(riskUsd) || riskUsd <= 0) {
-            fail("Invalid risk — check risk value and mode.");
-            return;
-          }
-          if (!Number.isFinite(pips) || pips <= 0) {
-            fail("Stop in pips must be greater than 0.");
-            return;
-          }
-          if (!Number.isFinite(pipUsd) || pipUsd <= 0) {
-            fail(calcFxPip.error || "Pip value unavailable for this pair.");
-            return;
-          }
-
-          var denom = pips * pipUsd;
-          var lots = riskUsd / denom;
+          if (!Number.isFinite(pips) || pips <= 0) { fail("Stop in pips must be > 0."); return; }
+          if (!Number.isFinite(pipUsd) || pipUsd <= 0) { fail(calcFxPip.error || "Pip value unavailable."); return; }
+          var lots = riskUsd / (pips * pipUsd);
           var micro = Math.round(lots * 100);
-          var perPipAtSize = lots * pipUsd;
-          var pipSizeStr =
-            calcFxPip.pipSize >= 0.1
-              ? calcFxPip.pipSize.toFixed(2)
-              : calcFxPip.pipSize >= 0.01
-                ? calcFxPip.pipSize.toFixed(3)
-                : calcFxPip.pipSize.toFixed(4);
-
+          var pipSizeStr = calcFxPip.pipSize >= 0.1 ? calcFxPip.pipSize.toFixed(2) : calcFxPip.pipSize >= 0.01 ? calcFxPip.pipSize.toFixed(3) : calcFxPip.pipSize.toFixed(4);
           if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           if (lcdM) lcdM.textContent = lots.toFixed(2) + " lots";
-          if (lcdS)
-            lcdS.textContent =
-              "Risk $" +
-              riskUsd.toFixed(2) +
-              " · $" +
-              pipUsd.toFixed(2) +
-              "/pip/lot · ~$" +
-              (Number.isFinite(perPipAtSize) ? perPipAtSize.toFixed(2) : "—") +
-              " /pip at size · " +
-              micro +
-              " micro · pip " +
-              pipSizeStr;
+          if (lcdS) lcdS.textContent = "Risk $" + riskUsd.toFixed(2) + " · $" + pipUsd.toFixed(2) + "/pip/lot · " + micro + " micro · pip " + pipSizeStr;
           saveCalcPrefs();
         }
 
@@ -2641,43 +1104,23 @@
           var lcdS = document.getElementById("calc-ft-lcd-sub");
           errEl.textContent = "";
           if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
-
-          function fail(msg) {
-            errEl.textContent = msg;
-            if (lcd) lcd.classList.add("ac-calc-lcd--warn");
-            if (lcdM) lcdM.textContent = msg;
-            if (lcdS) lcdS.textContent = "";
-          }
-
-          var bal = parseInputNumber("calc-ft-balance");
+          function fail(msg) { errEl.textContent = msg; if (lcd) lcd.classList.add("ac-calc-lcd--warn"); if (lcdM) lcdM.textContent = msg; if (lcdS) lcdS.textContent = ""; }
+          var bal = parseNum("calc-ft-balance");
           var mode = document.getElementById("calc-ft-risk-mode").value;
-          var rv = parseInputNumber("calc-ft-risk-val");
-          var stop = parseInputNumber("calc-ft-stop");
-          var dpp = parseInputNumber("calc-ft-dpp");
-
+          var rv = parseNum("calc-ft-risk-val");
+          var stop = parseNum("calc-ft-stop");
+          var dpp = parseNum("calc-ft-dpp");
           var riskUsd = null;
           if (mode === "pct") {
-            if (!Number.isFinite(bal) || bal <= 0) {
-              fail("Enter account balance ($) for percent risk.");
-              return;
-            }
-            if (!Number.isFinite(rv) || rv <= 0) {
-              fail("Enter risk percent (e.g. 1 for 1% of balance).");
-              return;
-            }
+            if (!Number.isFinite(bal) || bal <= 0) { fail("Enter account balance."); return; }
+            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk percent."); return; }
             riskUsd = (bal * rv) / 100;
           } else {
-            if (!Number.isFinite(rv) || rv <= 0) {
-              fail("Enter risk in dollars (must be greater than 0).");
-              return;
-            }
+            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk in dollars."); return; }
             riskUsd = rv;
           }
           var denom = stop * dpp;
-          if (!Number.isFinite(denom) || denom <= 0) {
-            fail("Stop points and $/point must be greater than 0.");
-            return;
-          }
+          if (!Number.isFinite(denom) || denom <= 0) { fail("Stop points and $/point must be > 0."); return; }
           var contracts = riskUsd / denom;
           if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           if (lcdM) lcdM.textContent = contracts.toFixed(2) + " contracts";
@@ -2685,51 +1128,223 @@
           saveCalcPrefs();
         }
 
-        function runAllCalc() {
-          runFxCalc();
-          runFtCalc();
+        function runAllCalc() { runFxCalc(); runFtCalc(); }
+
+        function setCalcTab(mode) {
+          var isFx = mode === "fx";
+          document.getElementById("calc-tab-fx").classList.toggle("ac-active", isFx);
+          document.getElementById("calc-tab-ft").classList.toggle("ac-active", !isFx);
+          document.getElementById("calc-tab-fx").setAttribute("aria-selected", isFx ? "true" : "false");
+          document.getElementById("calc-tab-ft").setAttribute("aria-selected", isFx ? "false" : "true");
+          document.getElementById("calc-block-fx").classList.toggle("ac-visible", isFx);
+          document.getElementById("calc-block-ft").classList.toggle("ac-visible", !isFx);
+          runAllCalc();
+        }
+        document.getElementById("calc-tab-fx").addEventListener("click", function () { setCalcTab("fx"); });
+        document.getElementById("calc-tab-ft").addEventListener("click", function () { setCalcTab("ft"); });
+
+        function saveCalcPrefs() {
+          try {
+            localStorage.setItem(LS_CALC, JSON.stringify({
+              tab: document.getElementById("calc-block-ft").classList.contains("ac-visible") ? "ft" : "fx",
+              fx: { pairSymbol: document.getElementById("calc-fx-pair").value, balance: document.getElementById("calc-fx-balance").value, mode: document.getElementById("calc-fx-risk-mode").value, riskVal: document.getElementById("calc-fx-risk-val").value, pips: document.getElementById("calc-fx-pips").value },
+              ft: { balance: document.getElementById("calc-ft-balance").value, mode: document.getElementById("calc-ft-risk-mode").value, riskVal: document.getElementById("calc-ft-risk-val").value, stop: document.getElementById("calc-ft-stop").value, dpp: document.getElementById("calc-ft-dpp").value },
+            }));
+          } catch (e) {}
         }
 
-        document.getElementById("calc-fx-pair").addEventListener("change", function () {
-          refreshFxPipAuto();
-        });
+        function loadCalcPrefs() {
+          try {
+            var raw = localStorage.getItem(LS_CALC);
+            if (!raw) return;
+            var o = JSON.parse(raw);
+            var fx = o.fx || {};
+            var pairSel = document.getElementById("calc-fx-pair");
+            if (fx.balance) document.getElementById("calc-fx-balance").value = fx.balance;
+            if (fx.mode) document.getElementById("calc-fx-risk-mode").value = fx.mode;
+            if (fx.riskVal) document.getElementById("calc-fx-risk-val").value = fx.riskVal;
+            if (fx.pips) document.getElementById("calc-fx-pips").value = fx.pips;
+            if (fx.pairSymbol && fxPairsBySymbol[fx.pairSymbol]) pairSel.value = fx.pairSymbol;
+            var ft = o.ft || {};
+            if (ft.balance) document.getElementById("calc-ft-balance").value = ft.balance;
+            if (ft.mode) document.getElementById("calc-ft-risk-mode").value = ft.mode;
+            if (ft.riskVal) document.getElementById("calc-ft-risk-val").value = ft.riskVal;
+            if (ft.stop) document.getElementById("calc-ft-stop").value = ft.stop;
+            if (ft.dpp) document.getElementById("calc-ft-dpp").value = ft.dpp;
+            var showFt = o.tab === "ft";
+            document.getElementById("calc-block-fx").classList.toggle("ac-visible", !showFt);
+            document.getElementById("calc-block-ft").classList.toggle("ac-visible", showFt);
+            document.getElementById("calc-tab-fx").classList.toggle("ac-active", !showFt);
+            document.getElementById("calc-tab-ft").classList.toggle("ac-active", showFt);
+            runAllCalc();
+          } catch (e) {}
+        }
 
-        [
-          "calc-fx-balance",
-          "calc-fx-risk-mode",
-          "calc-fx-risk-val",
-          "calc-fx-pips",
-          "calc-ft-balance",
-          "calc-ft-risk-mode",
-          "calc-ft-risk-val",
-          "calc-ft-stop",
-          "calc-ft-dpp",
-        ].forEach(function (id) {
-          var n = document.getElementById(id);
-          if (n) {
-            n.addEventListener("input", runAllCalc);
-            n.addEventListener("change", runAllCalc);
+        function populateCalcAccountSelect() {
+          var sel = document.getElementById("calc-balance-account");
+          var prev = sel.value;
+          sel.innerHTML = '<option value="">Manual entry</option>';
+          accountsCache.forEach(function (a) {
+            if (a.status === "archived") return;
+            var eq = num(a.current_equity);
+            var label = (a.name || "Account") + (eq !== null ? " · " + fmtMoney(eq) : "");
+            var opt = document.createElement("option");
+            opt.value = a.id;
+            opt.textContent = label;
+            sel.appendChild(opt);
+          });
+          if (prev && sel.querySelector('option[value="' + prev + '"]')) sel.value = prev;
+        }
+
+        function applyCalcBalanceFromSelect() {
+          var sel = document.getElementById("calc-balance-account");
+          if (!sel.value) return;
+          var acc = accountsCache.find(function (a) { return a.id === sel.value; });
+          if (!acc) return;
+          var eq = num(acc.current_equity);
+          if (eq === null) return;
+          document.getElementById("calc-fx-balance").value = String(eq);
+          document.getElementById("calc-ft-balance").value = String(eq);
+          runAllCalc();
+        }
+
+        document.getElementById("calc-balance-account").addEventListener("change", applyCalcBalanceFromSelect);
+
+        function openCalcModal(acc) {
+          populateCalcAccountSelect();
+          if (acc) {
+            var eq = num(acc.current_equity);
+            var risk = num(acc.default_risk_pct);
+            var pair = acc.default_pair;
+            if (eq !== null) {
+              document.getElementById("calc-fx-balance").value = String(eq);
+              document.getElementById("calc-ft-balance").value = String(eq);
+              document.getElementById("calc-balance-account").value = acc.id;
+            }
+            if (risk !== null) {
+              document.getElementById("calc-fx-risk-mode").value = "pct";
+              document.getElementById("calc-fx-risk-val").value = String(risk);
+            }
+            if (pair && fxPairsBySymbol[pair]) {
+              document.getElementById("calc-fx-pair").value = pair;
+              refreshFxPipAuto();
+            }
+            runAllCalc();
           }
+          var pipsEl = document.getElementById("calc-fx-pips");
+          if (pipsEl && String(pipsEl.value).trim() === "") pipsEl.value = "25";
+          openModal("ac-calc-overlay");
+          requestAnimationFrame(function () { runAllCalc(); });
+        }
+
+        document.getElementById("calc-help-btn").addEventListener("click", function () {
+          var panel = document.getElementById("calc-help-panel");
+          var open = panel.hidden;
+          panel.hidden = !open;
+          this.setAttribute("aria-expanded", open ? "true" : "false");
         });
 
-        /* Particles (compact) */
+        ["calc-fx-balance","calc-fx-risk-mode","calc-fx-risk-val","calc-fx-pips","calc-ft-balance","calc-ft-risk-mode","calc-ft-risk-val","calc-ft-stop","calc-ft-dpp"].forEach(function (id) {
+          var n = document.getElementById(id);
+          if (n) { n.addEventListener("input", runAllCalc); n.addEventListener("change", runAllCalc); }
+        });
+        document.getElementById("calc-fx-pair").addEventListener("change", refreshFxPipAuto);
+
+        function loadFxPairs() {
+          return fetch("/data/fx-pairs.json", { cache: "no-store" })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function (data) {
+              fxPairsList = Array.isArray(data.pairs) ? data.pairs : [];
+              fxPairsBySymbol = {};
+              var sel = document.getElementById("calc-fx-pair");
+              sel.innerHTML = "";
+              fxPairsList.forEach(function (p) {
+                fxPairsBySymbol[p.symbol] = p;
+                var opt = document.createElement("option");
+                opt.value = p.symbol;
+                opt.textContent = p.label || p.symbol;
+                sel.appendChild(opt);
+              });
+              if (!fxPairsList.length) throw new Error("empty");
+            })
+            .catch(function () {
+              fxPairsList = [{ symbol: "EURUSD", label: "EUR / USD" },{ symbol: "USDJPY", label: "USD / JPY" },{ symbol: "XAUUSD", label: "XAU / USD (gold)" }];
+              fxPairsBySymbol = {};
+              var sel = document.getElementById("calc-fx-pair");
+              sel.innerHTML = "";
+              fxPairsList.forEach(function (p) {
+                fxPairsBySymbol[p.symbol] = p;
+                var opt = document.createElement("option");
+                opt.value = p.symbol;
+                opt.textContent = p.label || p.symbol;
+                sel.appendChild(opt);
+              });
+            });
+        }
+
+        /* ── Economic calendar ── */
+        function loadEconomicNewsBar() {
+          var bar = document.getElementById("ac-news-bar");
+          var viewport = document.getElementById("ac-news-viewport");
+          var marquee = document.getElementById("ac-news-marquee");
+          var track = document.getElementById("ac-news-track");
+          var dup = document.getElementById("ac-news-track-dup");
+          var stat = document.getElementById("ac-news-static");
+          if (!bar || !viewport || !track || !stat) return;
+
+          function showStatic(msg, err) {
+            viewport.classList.remove("is-marquee");
+            track.innerHTML = ""; dup.innerHTML = "";
+            stat.textContent = msg;
+            bar.classList.add("ac-news-bar--compact");
+            if (err) bar.classList.add("ac-news-bar--err"); else bar.classList.remove("ac-news-bar--err");
+          }
+
+          stat.textContent = "Loading calendar…";
+          viewport.classList.remove("is-marquee");
+          track.innerHTML = ""; dup.innerHTML = "";
+          bar.classList.remove("ac-news-bar--err", "ac-news-bar--compact");
+
+          apiFetch("/api/economic-calendar", { cache: "no-store" })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok || x.j.error) { showStatic((x.j && x.j.error) || "Calendar unavailable.", true); return; }
+              var items = Array.isArray(x.j.items) ? x.j.items : [];
+              if (!items.length) { showStatic("No major news events today", false); return; }
+              var html = items.map(function (it) {
+                var imp = String(it.impact || "low").toLowerCase();
+                var dcls = imp === "high" ? "ac-news-bar__dot--high" : imp === "medium" ? "ac-news-bar__dot--medium" : imp === "holiday" ? "ac-news-bar__dot--holiday" : "ac-news-bar__dot--low";
+                return '<span class="ac-news-bar__chip"><span class="ac-news-bar__dot ' + dcls + '" aria-hidden="true"></span>' +
+                  '<span class="ac-news-bar__meta">' + esc(it.time||"") + ' · ' + esc(it.currency||"") + '</span>' +
+                  '<span class="ac-news-bar__title"> ' + esc(it.title||"") + '</span></span>';
+              }).join("");
+              track.innerHTML = html; dup.innerHTML = html; stat.textContent = "";
+              bar.classList.remove("ac-news-bar--compact");
+              viewport.classList.add("is-marquee");
+              requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                  var w = track.scrollWidth;
+                  if (w > 0) marquee.style.setProperty("--ac-marquee-dur", Math.max(32, w / 44) + "s");
+                });
+              });
+            })
+            .catch(function () { showStatic("Could not load economic calendar.", true); });
+        }
+
+        /* ── Particles ── */
         (function particles() {
           var canvas = document.getElementById("particle-canvas");
           if (!canvas) return;
           var ctx = canvas.getContext("2d");
           var parts = [];
-          function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-          }
+          function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
           function tick() {
             if (!ctx) return;
             ctx.fillStyle = "#050a14";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             for (var i = 0; i < parts.length; i++) {
               var p = parts[i];
-              p.x += p.vx;
-              p.y += p.vy;
+              p.x += p.vx; p.y += p.vy;
               if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
               if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
               ctx.fillStyle = "rgba(0,212,255," + p.a + ")";
@@ -2740,55 +1355,27 @@
           resize();
           window.addEventListener("resize", resize);
           for (var j = 0; j < 48; j++) {
-            parts.push({
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-              vx: (Math.random() - 0.5) * 0.35,
-              vy: (Math.random() - 0.5) * 0.35,
-              s: Math.random() * 1.2 + 0.3,
-              a: Math.random() * 0.12 + 0.04,
-            });
+            parts.push({ x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight, vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35, s: Math.random() * 1.2 + 0.3, a: Math.random() * 0.12 + 0.04 });
           }
           tick();
         })();
 
-        window.addEventListener("resize", function () {
-          requestAnimationFrame(redrawSparklines);
-        });
+        window.addEventListener("resize", function () { requestAnimationFrame(redrawAllSparklines); });
 
-        function applyDefaultBalanceFromAccounts() {
-          var fxB = document.getElementById("calc-fx-balance");
-          var ftB = document.getElementById("calc-ft-balance");
-          var sel = document.getElementById("calc-balance-account");
-          if (!fxB || !ftB) return;
-          var fxT = String(fxB.value).trim();
-          var ftT = String(ftB.value).trim();
-          if (fxT !== "" && Number(fxT) > 0) return;
-          if (ftT !== "" && Number(ftT) > 0) return;
-          for (var i = 0; i < accountsCache.length; i++) {
-            var a = accountsCache[i];
-            if (a.archived) continue;
-            var ls = a.latest_snapshot;
-            if (ls && ls.equity != null) {
-              var s = String(ls.equity);
-              fxB.value = s;
-              ftB.value = s;
-              if (sel) sel.value = a.id;
-              runAllCalc();
-              return;
-            }
-          }
-        }
-
-        ensureUserId();
+        /* ── Boot ── */
         loadFxPairs().then(function () {
-          ensureCalcStorageMigrated();
           loadCalcPrefs();
+          loadOverview();
           loadAccounts();
           loadEconomicNewsBar();
         });
+
       })();
     </script>
-      <script type="module" src="/js/jarvis-auth-guard.js?v=d4f7e2a1"></script>
-</body>
+    <script type="module">
+      import { initJarvisSettings } from "/js/jarvis-settings.js";
+      initJarvisSettings();
+    </script>
+    <script type="module" src="/js/jarvis-auth-guard.js?v=e5a1b2c3"></script>
+  </body>
 </html>

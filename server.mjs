@@ -3827,64 +3827,97 @@ function parseSupabaseUserIdParam(req) {
   return authUserIdFromReq(req) || "";
 }
 
-/** GET /api/accounts?auth_user_id=eq.{email}&include_archived=true */
+/** GET /api/accounts — list non-archived accounts with recent equity log + payout totals */
 async function handleTradingAccountsGet(req, res) {
   const { url, key } = getSupabaseConfig();
-  if (!url || !key) {
-    json(res, 503, { error: "Supabase not configured" });
-    return;
-  }
-
-  const u = new URL(req.url, `http://localhost:${PORT}`);
-  const userId = parseSupabaseUserIdParam(req);
-  const includeArchived =
-    u.searchParams.get("include_archived") === "true" || u.searchParams.get("include_archived") === "1";
-
-  let q = `${url}/rest/v1/trading_accounts?auth_user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc`;
-  if (!includeArchived) q += "&archived=eq.false";
-
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
   try {
-    const r = await fetch(q, {
-      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
-    });
+    const r = await fetch(
+      `${url}/rest/v1/trading_accounts?user_id=eq.${encodeURIComponent(userId)}&status=neq.archived&order=created_at.desc&select=*`,
+      { headers: hdrs }
+    );
     const text = await r.text();
-    if (!r.ok) {
-      json(res, r.status, { error: formatSupabaseError(text, r.status) });
-      return;
-    }
+    if (!r.ok) { json(res, r.status, { error: formatSupabaseError(text, r.status) }); return; }
     let accounts = JSON.parse(text);
     if (!Array.isArray(accounts)) accounts = [];
 
     if (accounts.length) {
-      const ids = accounts.map((a) => a.id).join(",");
-      const r2 = await fetch(
-        `${url}/rest/v1/account_equity_snapshots?auth_user_id=eq.${encodeURIComponent(userId)}&account_id=in.(${ids})&select=id,account_id,equity,recorded_at,note&order=recorded_at.asc`,
-        { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
-      );
-      const t2 = await r2.text();
-      if (r2.ok) {
-        let snaps = [];
-        try {
-          snaps = JSON.parse(t2);
-        } catch {
-          snaps = [];
-        }
-        if (Array.isArray(snaps)) {
-          const by = new Map();
-          for (const s of snaps) {
-            if (!by.has(s.account_id)) by.set(s.account_id, []);
-            by.get(s.account_id).push(s);
-          }
-          for (const row of accounts) {
-            const arr = by.get(row.id) || [];
-            row.recent_snapshots = arr.length > 60 ? arr.slice(-60) : [...arr];
-            row.latest_snapshot = arr.length ? arr[arr.length - 1] : null;
-          }
-        }
+      const idParam = `(${accounts.map((a) => a.id).join(",")})`;
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const [eqRes, pyRes] = await Promise.all([
+        fetch(`${url}/rest/v1/equity_log_entries?user_id=eq.${encodeURIComponent(userId)}&account_id=in.${idParam}&logged_at=gte.${cutoff}&order=logged_at.asc`, { headers: hdrs }),
+        fetch(`${url}/rest/v1/payouts?user_id=eq.${encodeURIComponent(userId)}&account_id=in.${idParam}&select=account_id,amount,paid_at&order=paid_at.desc`, { headers: hdrs }),
+      ]);
+      let equityEntries = [];
+      if (eqRes.ok) { try { equityEntries = JSON.parse(await eqRes.text()); } catch {} }
+      if (!Array.isArray(equityEntries)) equityEntries = [];
+      let payoutRows = [];
+      if (pyRes.ok) { try { payoutRows = JSON.parse(await pyRes.text()); } catch {} }
+      if (!Array.isArray(payoutRows)) payoutRows = [];
+
+      const eqByAcc = new Map();
+      for (const e of equityEntries) {
+        if (!eqByAcc.has(e.account_id)) eqByAcc.set(e.account_id, []);
+        eqByAcc.get(e.account_id).push(e);
+      }
+      const pyTotalByAcc = new Map();
+      const pyLastByAcc = new Map();
+      for (const p of payoutRows) {
+        pyTotalByAcc.set(p.account_id, (pyTotalByAcc.get(p.account_id) || 0) + Number(p.amount));
+        if (!pyLastByAcc.has(p.account_id)) pyLastByAcc.set(p.account_id, p.paid_at);
+      }
+      for (const acc of accounts) {
+        acc.equity_log = eqByAcc.get(acc.id) || [];
+        acc.total_payouts = pyTotalByAcc.get(acc.id) || 0;
+        acc.last_payout_at = pyLastByAcc.get(acc.id) || null;
       }
     }
-
     json(res, 200, { accounts });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** GET /api/accounts/:id — single account with full equity log + all payouts */
+async function handleTradingAccountsGetSingle(req, res) {
+  const pathname = req.url.split("?")[0];
+  const m = pathname.match(/^\/api\/accounts\/([^/]+)\/?$/);
+  if (!m) { json(res, 400, { error: "Invalid path" }); return; }
+  const id = m[1];
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=*`,
+      { headers: hdrs }
+    );
+    const text = await r.text();
+    if (!r.ok) { json(res, r.status, { error: formatSupabaseError(text, r.status) }); return; }
+    const arr = JSON.parse(text);
+    if (!Array.isArray(arr) || !arr.length) { json(res, 404, { error: "Account not found" }); return; }
+    const account = arr[0];
+    const [eqRes, pyRes] = await Promise.all([
+      fetch(`${url}/rest/v1/equity_log_entries?account_id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&order=logged_at.asc`, { headers: hdrs }),
+      fetch(`${url}/rest/v1/payouts?account_id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&order=paid_at.desc`, { headers: hdrs }),
+    ]);
+    let equity_log = [];
+    if (eqRes.ok) { try { equity_log = JSON.parse(await eqRes.text()); } catch {} }
+    if (!Array.isArray(equity_log)) equity_log = [];
+    let payouts = [];
+    if (pyRes.ok) { try { payouts = JSON.parse(await pyRes.text()); } catch {} }
+    if (!Array.isArray(payouts)) payouts = [];
+    account.equity_log = equity_log;
+    account.payouts = payouts;
+    account.total_payouts = payouts.reduce((s, p) => s + Number(p.amount), 0);
+    json(res, 200, { account });
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
   }
@@ -3893,107 +3926,53 @@ async function handleTradingAccountsGet(req, res) {
 /** POST /api/accounts */
 async function handleTradingAccountsPost(req, res) {
   let raw;
-  try {
-    raw = await readBody(req);
-  } catch {
-    json(res, 413, { error: "Payload too large" });
-    return;
-  }
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
   let body;
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    json(res, 400, { error: "Invalid JSON" });
-    return;
-  }
-
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
   const { url, key } = getSupabaseConfig();
-  if (!url || !key) {
-    json(res, 503, { error: "Supabase not configured" });
-    return;
-  }
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
 
-  const userId = authUserIdFromReq(req);
-  if (!userId) {
-    json(res, 401, { error: "Unauthorized" });
-    return;
-  }
   const name = String(body.name || "Account").trim().slice(0, 200);
-  const accountType = String(body.account_type || "eval").toLowerCase();
-  if (!["eval", "funded", "live"].includes(accountType)) {
-    json(res, 400, { error: "account_type must be eval, funded, or live" });
-    return;
-  }
-  const profitTarget = Number(body.profit_target);
-  const maxLoss = Number(body.max_loss_limit);
-  if (!Number.isFinite(profitTarget) || profitTarget < 0) {
-    json(res, 400, { error: "profit_target must be a non-negative number" });
-    return;
-  }
-  if (!Number.isFinite(maxLoss) || maxLoss < 0) {
-    json(res, 400, { error: "max_loss_limit must be a non-negative number" });
-    return;
-  }
-
-  let startingBalance = null;
-  if (body.starting_balance != null && body.starting_balance !== "") {
-    const sb = Number(body.starting_balance);
-    if (!Number.isFinite(sb)) {
-      json(res, 400, { error: "starting_balance must be a number" });
-      return;
-    }
-    startingBalance = sb;
-  }
-
-  let dailyLoss = null;
-  if (body.daily_loss_limit != null && body.daily_loss_limit !== "") {
-    const dl = Number(body.daily_loss_limit);
-    if (!Number.isFinite(dl) || dl < 0) {
-      json(res, 400, { error: "daily_loss_limit must be a non-negative number" });
-      return;
-    }
-    dailyLoss = dl;
-  }
+  const type = String(body.type || "eval").toLowerCase();
+  if (!["eval", "funded", "live"].includes(type)) { json(res, 400, { error: "type must be eval, funded, or live" }); return; }
+  const starting_balance = Number(body.starting_balance);
+  if (!Number.isFinite(starting_balance) || starting_balance < 0) { json(res, 400, { error: "starting_balance must be a non-negative number" }); return; }
 
   const row = {
-    auth_user_id: userId,
-    user_id: legacyEmailForAuthUserId(userId) || userId,
+    user_id: userId,
     name,
-    account_type: accountType,
-    starting_balance: startingBalance,
-    profit_target: profitTarget,
-    max_loss_limit: maxLoss,
-    daily_loss_limit: dailyLoss,
-    archived: false,
+    type,
+    firm_name: body.firm_name ? String(body.firm_name).trim().slice(0, 200) : null,
+    starting_balance,
+    current_equity: starting_balance,
+    profit_target: body.profit_target != null && body.profit_target !== "" ? Number(body.profit_target) || null : null,
+    daily_loss_cap: body.daily_loss_cap != null && body.daily_loss_cap !== "" ? Number(body.daily_loss_cap) || null : null,
+    max_drawdown: body.max_drawdown != null && body.max_drawdown !== "" ? Number(body.max_drawdown) || null : null,
+    default_risk_pct: body.default_risk_pct != null && body.default_risk_pct !== "" ? Number(body.default_risk_pct) : 1,
+    default_pair: body.default_pair ? String(body.default_pair).trim().slice(0, 20) : null,
+    status: "active",
   };
 
+  const postHdrs = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=representation" };
   try {
-    const r = await fetch(`${url}/rest/v1/trading_accounts`, {
-      method: "POST",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(row),
-    });
+    const r = await fetch(`${url}/rest/v1/trading_accounts`, { method: "POST", headers: postHdrs, body: JSON.stringify(row) });
     const text = await r.text();
-    if (!r.ok) {
-      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
-        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
-      });
-      return;
-    }
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = [];
-    }
+    if (!r.ok) { json(res, r.status >= 400 && r.status < 600 ? r.status : 502, { error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}` }); return; }
+    const data = JSON.parse(text);
     const acc = Array.isArray(data) ? data[0] : data;
-    acc.recent_snapshots = [];
-    acc.latest_snapshot = null;
+    if (acc && acc.id) {
+      fetch(`${url}/rest/v1/equity_log_entries`, {
+        method: "POST",
+        headers: postHdrs,
+        body: JSON.stringify({ account_id: acc.id, user_id: userId, equity: starting_balance, note: "Initial balance" }),
+      }).catch(() => {});
+    }
+    acc.equity_log = [];
+    acc.total_payouts = 0;
+    acc.last_payout_at = null;
     json(res, 201, { account: acc });
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
@@ -4004,138 +3983,55 @@ async function handleTradingAccountsPost(req, res) {
 async function handleTradingAccountsPatch(req, res) {
   const pathname = req.url.split("?")[0];
   const m = pathname.match(/^\/api\/accounts\/([^/]+)\/?$/);
-  if (!m) {
-    json(res, 400, { error: "Invalid path" });
-    return;
-  }
+  if (!m) { json(res, 400, { error: "Invalid path" }); return; }
   const id = m[1];
-
   let raw;
-  try {
-    raw = await readBody(req);
-  } catch {
-    json(res, 413, { error: "Payload too large" });
-    return;
-  }
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
   let body;
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    json(res, 400, { error: "Invalid JSON" });
-    return;
-  }
-
-  const userId = authUserIdFromReq(req);
-  if (!userId) {
-    json(res, 401, { error: "Unauthorized" });
-    return;
-  }
-
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
   const { url, key } = getSupabaseConfig();
-  if (!url || !key) {
-    json(res, 503, { error: "Supabase not configured" });
-    return;
-  }
-
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
   try {
     const check = await fetch(
-      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}&select=id`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`,
+      { headers: hdrs }
     );
-    const checkText = await check.text();
-    if (!check.ok) {
-      json(res, check.status, { error: formatSupabaseError(checkText, check.status) });
-      return;
-    }
-    const found = JSON.parse(checkText);
-    if (!Array.isArray(found) || found.length === 0) {
-      json(res, 404, { error: "Account not found" });
-      return;
-    }
+    if (!check.ok) { json(res, check.status, { error: "Ownership check failed" }); return; }
+    const found = JSON.parse(await check.text());
+    if (!Array.isArray(found) || !found.length) { json(res, 404, { error: "Account not found" }); return; }
 
     const patch = { updated_at: new Date().toISOString() };
     if (body.name != null) patch.name = String(body.name).trim().slice(0, 200);
-    if (body.account_type != null) {
-      const t = String(body.account_type).toLowerCase();
-      if (!["eval", "funded", "live"].includes(t)) {
-        json(res, 400, { error: "account_type must be eval, funded, or live" });
-        return;
-      }
-      patch.account_type = t;
+    if (body.type != null) {
+      const t = String(body.type).toLowerCase();
+      if (!["eval", "funded", "live"].includes(t)) { json(res, 400, { error: "type must be eval, funded, or live" }); return; }
+      patch.type = t;
     }
-    if (body.profit_target != null) {
-      const v = Number(body.profit_target);
-      if (!Number.isFinite(v) || v < 0) {
-        json(res, 400, { error: "profit_target must be a non-negative number" });
-        return;
-      }
-      patch.profit_target = v;
-    }
-    if (body.max_loss_limit != null) {
-      const v = Number(body.max_loss_limit);
-      if (!Number.isFinite(v) || v < 0) {
-        json(res, 400, { error: "max_loss_limit must be a non-negative number" });
-        return;
-      }
-      patch.max_loss_limit = v;
-    }
-    if (body.daily_loss_limit !== undefined) {
-      if (body.daily_loss_limit === null || body.daily_loss_limit === "") patch.daily_loss_limit = null;
-      else {
-        const v = Number(body.daily_loss_limit);
-        if (!Number.isFinite(v) || v < 0) {
-          json(res, 400, { error: "daily_loss_limit must be a non-negative number or empty" });
-          return;
-        }
-        patch.daily_loss_limit = v;
-      }
-    }
+    if (body.firm_name !== undefined) patch.firm_name = body.firm_name ? String(body.firm_name).trim().slice(0, 200) : null;
     if (body.starting_balance !== undefined) {
-      if (body.starting_balance === null || body.starting_balance === "") patch.starting_balance = null;
-      else {
-        const v = Number(body.starting_balance);
-        if (!Number.isFinite(v)) {
-          json(res, 400, { error: "starting_balance must be a number or empty" });
-          return;
-        }
-        patch.starting_balance = v;
-      }
+      const v = Number(body.starting_balance);
+      if (!Number.isFinite(v)) { json(res, 400, { error: "starting_balance must be a number" }); return; }
+      patch.starting_balance = v;
     }
-    if (body.archived != null) {
-      patch.archived = Boolean(body.archived);
-    }
+    if (body.profit_target !== undefined) patch.profit_target = body.profit_target != null && body.profit_target !== "" ? Number(body.profit_target) : null;
+    if (body.daily_loss_cap !== undefined) patch.daily_loss_cap = body.daily_loss_cap != null && body.daily_loss_cap !== "" ? Number(body.daily_loss_cap) : null;
+    if (body.max_drawdown !== undefined) patch.max_drawdown = body.max_drawdown != null && body.max_drawdown !== "" ? Number(body.max_drawdown) : null;
+    if (body.default_risk_pct !== undefined) patch.default_risk_pct = body.default_risk_pct != null && body.default_risk_pct !== "" ? Number(body.default_risk_pct) : null;
+    if (body.default_pair !== undefined) patch.default_pair = body.default_pair ? String(body.default_pair).trim().slice(0, 20) : null;
 
-    if (Object.keys(patch).length <= 1) {
-      json(res, 400, { error: "No updatable fields" });
-      return;
-    }
+    if (Object.keys(patch).length <= 1) { json(res, 400, { error: "No updatable fields" }); return; }
 
     const r = await fetch(
-      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&auth_user_id=eq.${encodeURIComponent(userId)}`,
-      {
-        method: "PATCH",
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify(patch),
-      }
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "PATCH", headers: { ...hdrs, "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify(patch) }
     );
     const text = await r.text();
-    if (!r.ok) {
-      json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
-        error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
-      });
-      return;
-    }
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = [];
-    }
+    if (!r.ok) { json(res, r.status >= 400 && r.status < 600 ? r.status : 502, { error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}` }); return; }
+    const data = JSON.parse(text);
     json(res, 200, { account: Array.isArray(data) ? data[0] : data });
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
@@ -4290,6 +4186,213 @@ async function handleAccountSnapshotsPost(req, res) {
       data = [];
     }
     json(res, 201, { snapshot: Array.isArray(data) ? data[0] : data });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/accounts/:id/archive */
+async function handleAccountsArchive(req, res) {
+  const pathname = req.url.split("?")[0];
+  const m = pathname.match(/^\/api\/accounts\/([^/]+)\/archive\/?$/);
+  if (!m) { json(res, 400, { error: "Invalid path" }); return; }
+  const id = m[1];
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  try {
+    const check = await fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`, { headers: hdrs });
+    if (!check.ok) { json(res, 502, { error: "Check failed" }); return; }
+    const found = JSON.parse(await check.text());
+    if (!Array.isArray(found) || !found.length) { json(res, 404, { error: "Account not found" }); return; }
+    await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "PATCH", headers: { ...hdrs, "Content-Type": "application/json" }, body: JSON.stringify({ status: "archived", archived_at: new Date().toISOString(), updated_at: new Date().toISOString() }) }
+    );
+    json(res, 200, { ok: true });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/accounts/:id/mark-passed — eval accounts only */
+async function handleAccountsMarkPassed(req, res) {
+  const pathname = req.url.split("?")[0];
+  const m = pathname.match(/^\/api\/accounts\/([^/]+)\/mark-passed\/?$/);
+  if (!m) { json(res, 400, { error: "Invalid path" }); return; }
+  const id = m[1];
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  try {
+    const check = await fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id,type`, { headers: hdrs });
+    if (!check.ok) { json(res, 502, { error: "Check failed" }); return; }
+    const found = JSON.parse(await check.text());
+    if (!Array.isArray(found) || !found.length) { json(res, 404, { error: "Account not found" }); return; }
+    if (found[0].type !== "eval") { json(res, 400, { error: "Only eval accounts can be marked passed" }); return; }
+    await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "PATCH", headers: { ...hdrs, "Content-Type": "application/json" }, body: JSON.stringify({ status: "passed", updated_at: new Date().toISOString() }) }
+    );
+    json(res, 200, { ok: true });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/accounts/:id/mark-blown */
+async function handleAccountsMarkBlown(req, res) {
+  const pathname = req.url.split("?")[0];
+  const m = pathname.match(/^\/api\/accounts\/([^/]+)\/mark-blown\/?$/);
+  if (!m) { json(res, 400, { error: "Invalid path" }); return; }
+  const id = m[1];
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  try {
+    const check = await fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`, { headers: hdrs });
+    if (!check.ok) { json(res, 502, { error: "Check failed" }); return; }
+    const found = JSON.parse(await check.text());
+    if (!Array.isArray(found) || !found.length) { json(res, 404, { error: "Account not found" }); return; }
+    await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "PATCH", headers: { ...hdrs, "Content-Type": "application/json" }, body: JSON.stringify({ status: "blown", updated_at: new Date().toISOString() }) }
+    );
+    json(res, 200, { ok: true });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/equity-log */
+async function handleEquityLog(req, res) {
+  let raw;
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
+  let body;
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const account_id = String(body.account_id || "").trim();
+  const equity = Number(body.equity);
+  if (!account_id) { json(res, 400, { error: "account_id required" }); return; }
+  if (!Number.isFinite(equity)) { json(res, 400, { error: "equity must be a number" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  const postHdrs = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=representation" };
+  try {
+    const check = await fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(account_id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`, { headers: hdrs });
+    if (!check.ok) { json(res, 502, { error: "Ownership check failed" }); return; }
+    const found = JSON.parse(await check.text());
+    if (!Array.isArray(found) || !found.length) { json(res, 404, { error: "Account not found" }); return; }
+
+    const [r1] = await Promise.all([
+      fetch(`${url}/rest/v1/equity_log_entries`, {
+        method: "POST",
+        headers: postHdrs,
+        body: JSON.stringify({ account_id, user_id: userId, equity, note: body.note ? String(body.note).trim().slice(0, 500) : null }),
+      }),
+      fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(account_id)}&user_id=eq.${encodeURIComponent(userId)}`, {
+        method: "PATCH",
+        headers: postHdrs,
+        body: JSON.stringify({ current_equity: equity, updated_at: new Date().toISOString() }),
+      }),
+    ]);
+    const text = await r1.text();
+    const entry = r1.ok ? JSON.parse(text) : null;
+    json(res, 201, { entry: Array.isArray(entry) ? entry[0] : entry });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/payouts */
+async function handlePayouts(req, res) {
+  let raw;
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
+  let body;
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const account_id = String(body.account_id || "").trim();
+  const amount = Number(body.amount);
+  if (!account_id) { json(res, 400, { error: "account_id required" }); return; }
+  if (!Number.isFinite(amount) || amount <= 0) { json(res, 400, { error: "amount must be a positive number" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  const postHdrs = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=representation" };
+  try {
+    const accRes = await fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(account_id)}&user_id=eq.${encodeURIComponent(userId)}&select=id,current_equity`, { headers: hdrs });
+    if (!accRes.ok) { json(res, 502, { error: "Account fetch failed" }); return; }
+    const accs = JSON.parse(await accRes.text());
+    if (!Array.isArray(accs) || !accs.length) { json(res, 404, { error: "Account not found" }); return; }
+    const newEquity = Number(accs[0].current_equity) - amount;
+    const note = body.note ? String(body.note).trim().slice(0, 500) : null;
+    const [r1] = await Promise.all([
+      fetch(`${url}/rest/v1/payouts`, { method: "POST", headers: postHdrs, body: JSON.stringify({ account_id, user_id: userId, amount, note }) }),
+      fetch(`${url}/rest/v1/equity_log_entries`, { method: "POST", headers: postHdrs, body: JSON.stringify({ account_id, user_id: userId, equity: newEquity, note: `Payout: $${amount}` }) }),
+      fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(account_id)}&user_id=eq.${encodeURIComponent(userId)}`, {
+        method: "PATCH", headers: postHdrs, body: JSON.stringify({ current_equity: newEquity, updated_at: new Date().toISOString() }),
+      }),
+    ]);
+    const text = await r1.text();
+    const payout = r1.ok ? JSON.parse(text) : null;
+    json(res, 201, { payout: Array.isArray(payout) ? payout[0] : payout });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** GET /api/capital-overview */
+async function handleCapitalOverview(req, res) {
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  try {
+    const [accRes, pyRes] = await Promise.all([
+      fetch(`${url}/rest/v1/trading_accounts?user_id=eq.${encodeURIComponent(userId)}&select=id,type,status,starting_balance,current_equity,updated_at`, { headers: hdrs }),
+      fetch(`${url}/rest/v1/payouts?user_id=eq.${encodeURIComponent(userId)}&select=amount`, { headers: hdrs }),
+    ]);
+    let accounts = [];
+    if (accRes.ok) { try { accounts = JSON.parse(await accRes.text()); } catch {} }
+    if (!Array.isArray(accounts)) accounts = [];
+    let payouts = [];
+    if (pyRes.ok) { try { payouts = JSON.parse(await pyRes.text()); } catch {} }
+    if (!Array.isArray(payouts)) payouts = [];
+
+    const active = accounts.filter((a) => a.status === "active");
+    const total_capital_deployed = active.reduce((s, a) => s + Number(a.starting_balance || 0), 0);
+    const total_current_equity = active.reduce((s, a) => s + Number(a.current_equity || 0), 0);
+    const lifetime_payouts = payouts.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const active_accounts_count = active.length;
+
+    const nonActiveEvals = accounts.filter((a) => a.type === "eval" && a.status !== "active");
+    const passedEvals = nonActiveEvals.filter((a) => a.status === "passed").length;
+    const eval_pass_rate = nonActiveEvals.length > 0 ? Math.round((passedEvals / nonActiveEvals.length) * 100) : null;
+
+    const blownAccounts = accounts.filter((a) => a.status === "blown");
+    let days_since_last_blown = null;
+    if (blownAccounts.length) {
+      blownAccounts.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      days_since_last_blown = Math.floor((Date.now() - new Date(blownAccounts[0].updated_at).getTime()) / 86400000);
+    }
+
+    json(res, 200, { total_capital_deployed, total_current_equity, lifetime_payouts, active_accounts_count, eval_pass_rate, days_since_last_blown });
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
   }
@@ -4699,8 +4802,28 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/?$/)) {
+    await handleTradingAccountsGetSingle(req, res);
+    return;
+  }
+
   if (req.method === "GET" && req.url.startsWith("/api/accounts")) {
     await handleTradingAccountsGet(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/archive\/?$/)) {
+    await handleAccountsArchive(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/mark-passed\/?$/)) {
+    await handleAccountsMarkPassed(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/mark-blown\/?$/)) {
+    await handleAccountsMarkBlown(req, res);
     return;
   }
 
@@ -4711,6 +4834,21 @@ async function requestListener(req, res) {
 
   if (req.method === "PATCH" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/?$/)) {
     await handleTradingAccountsPatch(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/capital-overview")) {
+    await handleCapitalOverview(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/equity-log")) {
+    await handleEquityLog(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/payouts")) {
+    await handlePayouts(req, res);
     return;
   }
 
