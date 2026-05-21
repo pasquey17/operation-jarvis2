@@ -3465,9 +3465,9 @@ async function handleJournalTradePatch(req, res) {
     return;
   }
 
-  try {
-    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
-    const r = await fetch(endpoint, {
+  const patchByUserId = async (uid) => {
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(uid)}`;
+    return fetch(endpoint, {
       method: "PATCH",
       headers: {
         apikey: key,
@@ -3477,7 +3477,11 @@ async function handleJournalTradePatch(req, res) {
       },
       body: JSON.stringify(payload),
     });
-    const text = await r.text();
+  };
+
+  try {
+    let r = await patchByUserId(userId);
+    let text = await r.text();
     if (!r.ok) {
       json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
         error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
@@ -3485,11 +3489,21 @@ async function handleJournalTradePatch(req, res) {
       return;
     }
     let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = [];
+    try { data = JSON.parse(text); } catch { data = []; }
+
+    // If no rows matched (row stored under raw UUID from before email fix), retry with UUID.
+    if (Array.isArray(data) && data.length === 0 && authUserId && authUserId !== userId) {
+      r = await patchByUserId(authUserId);
+      text = await r.text();
+      if (!r.ok) {
+        json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+          error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+        });
+        return;
+      }
+      try { data = JSON.parse(text); } catch { data = []; }
     }
+
     json(res, 200, { trade: Array.isArray(data) ? data[0] : data });
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
@@ -3513,19 +3527,38 @@ async function handleJournalTradeDelete(req, res) {
     return;
   }
 
-  try {
-    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`;
-    const r = await fetch(endpoint, {
+  const deleteByUserId = async (uid) => {
+    const endpoint = `${url}/rest/v1/journal_trades?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(uid)}`;
+    return fetch(endpoint, {
       method: "DELETE",
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=representation" },
     });
-    const text = await r.text();
+  };
+
+  try {
+    let r = await deleteByUserId(userId);
+    let text = await r.text();
     if (!r.ok) {
       json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
         error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
       });
       return;
     }
+    let deleted;
+    try { deleted = JSON.parse(text); } catch { deleted = []; }
+
+    // If no rows matched (row stored under raw UUID from before email fix), retry with UUID.
+    if (Array.isArray(deleted) && deleted.length === 0 && authUserId && authUserId !== userId) {
+      r = await deleteByUserId(authUserId);
+      text = await r.text();
+      if (!r.ok) {
+        json(res, r.status >= 400 && r.status < 600 ? r.status : 502, {
+          error: formatSupabaseError(text, r.status) || `Supabase error ${r.status}`,
+        });
+        return;
+      }
+    }
+
     json(res, 200, { ok: true, deleted: id });
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
