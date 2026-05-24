@@ -3850,7 +3850,7 @@ async function handleTradingAccountsGet(req, res) {
       const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const [eqRes, pyRes] = await Promise.all([
         fetch(`${url}/rest/v1/equity_log_entries?user_id=eq.${encodeURIComponent(userId)}&account_id=in.${idParam}&logged_at=gte.${cutoff}&order=logged_at.asc`, { headers: hdrs }),
-        fetch(`${url}/rest/v1/payouts?user_id=eq.${encodeURIComponent(userId)}&account_id=in.${idParam}&select=account_id,amount,paid_at&order=paid_at.desc`, { headers: hdrs }),
+        fetch(`${url}/rest/v1/payouts?user_id=eq.${encodeURIComponent(userId)}&account_id=in.${idParam}&select=account_id,amount,net_amount,paid_at&order=paid_at.desc`, { headers: hdrs }),
       ]);
       let equityEntries = [];
       if (eqRes.ok) { try { equityEntries = JSON.parse(await eqRes.text()); } catch {} }
@@ -3865,14 +3865,17 @@ async function handleTradingAccountsGet(req, res) {
         eqByAcc.get(e.account_id).push(e);
       }
       const pyTotalByAcc = new Map();
+      const pyNetByAcc = new Map();
       const pyLastByAcc = new Map();
       for (const p of payoutRows) {
         pyTotalByAcc.set(p.account_id, (pyTotalByAcc.get(p.account_id) || 0) + Number(p.amount));
+        pyNetByAcc.set(p.account_id, (pyNetByAcc.get(p.account_id) || 0) + Number(p.net_amount != null ? p.net_amount : p.amount));
         if (!pyLastByAcc.has(p.account_id)) pyLastByAcc.set(p.account_id, p.paid_at);
       }
       for (const acc of accounts) {
         acc.equity_log = eqByAcc.get(acc.id) || [];
         acc.total_payouts = pyTotalByAcc.get(acc.id) || 0;
+        acc.total_net_payouts = pyNetByAcc.get(acc.id) || 0;
         acc.last_payout_at = pyLastByAcc.get(acc.id) || null;
       }
     }
@@ -3946,6 +3949,7 @@ async function handleTradingAccountsPost(req, res) {
     name,
     type,
     firm_name: body.firm_name ? String(body.firm_name).trim().slice(0, 200) : null,
+    broker_name: body.broker_name ? String(body.broker_name).trim().slice(0, 200) : null,
     starting_balance,
     current_equity: starting_balance,
     profit_target: body.profit_target != null && body.profit_target !== "" ? Number(body.profit_target) || null : null,
@@ -3953,6 +3957,10 @@ async function handleTradingAccountsPost(req, res) {
     max_drawdown: body.max_drawdown != null && body.max_drawdown !== "" ? Number(body.max_drawdown) || null : null,
     default_risk_pct: body.default_risk_pct != null && body.default_risk_pct !== "" ? Number(body.default_risk_pct) : 1,
     default_pair: body.default_pair ? String(body.default_pair).trim().slice(0, 20) : null,
+    profit_split_pct: body.profit_split_pct != null && body.profit_split_pct !== "" ? Number(body.profit_split_pct) || null : (type === "funded" ? 80 : null),
+    payout_frequency: body.payout_frequency ? String(body.payout_frequency).trim() : null,
+    minimum_trading_days: body.minimum_trading_days != null && body.minimum_trading_days !== "" ? (Math.round(Number(body.minimum_trading_days)) || null) : null,
+    personal_monthly_target: body.personal_monthly_target != null && body.personal_monthly_target !== "" ? Number(body.personal_monthly_target) || null : null,
     status: "active",
   };
 
@@ -4022,6 +4030,11 @@ async function handleTradingAccountsPatch(req, res) {
     if (body.max_drawdown !== undefined) patch.max_drawdown = body.max_drawdown != null && body.max_drawdown !== "" ? Number(body.max_drawdown) : null;
     if (body.default_risk_pct !== undefined) patch.default_risk_pct = body.default_risk_pct != null && body.default_risk_pct !== "" ? Number(body.default_risk_pct) : null;
     if (body.default_pair !== undefined) patch.default_pair = body.default_pair ? String(body.default_pair).trim().slice(0, 20) : null;
+    if (body.broker_name !== undefined) patch.broker_name = body.broker_name ? String(body.broker_name).trim().slice(0, 200) : null;
+    if (body.profit_split_pct !== undefined) patch.profit_split_pct = body.profit_split_pct != null && body.profit_split_pct !== "" ? Number(body.profit_split_pct) : null;
+    if (body.payout_frequency !== undefined) patch.payout_frequency = body.payout_frequency ? String(body.payout_frequency).trim() : null;
+    if (body.minimum_trading_days !== undefined) patch.minimum_trading_days = body.minimum_trading_days != null && body.minimum_trading_days !== "" ? (Math.round(Number(body.minimum_trading_days)) || null) : null;
+    if (body.personal_monthly_target !== undefined) patch.personal_monthly_target = body.personal_monthly_target != null && body.personal_monthly_target !== "" ? Number(body.personal_monthly_target) : null;
 
     if (Object.keys(patch).length <= 1) { json(res, 400, { error: "No updatable fields" }); return; }
 
@@ -4328,9 +4341,24 @@ async function handlePayouts(req, res) {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
   const account_id = String(body.account_id || "").trim();
-  const amount = Number(body.amount);
   if (!account_id) { json(res, 400, { error: "account_id required" }); return; }
-  if (!Number.isFinite(amount) || amount <= 0) { json(res, 400, { error: "amount must be a positive number" }); return; }
+
+  // Funded payouts carry gross_amount + split_pct; simple withdrawals use amount only.
+  const isFundedPayout = body.gross_amount != null;
+  let amount, gross_amount, split_pct, net_amount;
+  if (isFundedPayout) {
+    gross_amount = Number(body.gross_amount);
+    split_pct = Number(body.split_pct);
+    if (!Number.isFinite(gross_amount) || gross_amount <= 0) { json(res, 400, { error: "gross_amount must be a positive number" }); return; }
+    if (!Number.isFinite(split_pct) || split_pct <= 0 || split_pct > 100) { json(res, 400, { error: "split_pct must be between 1 and 100" }); return; }
+    net_amount = Math.round(gross_amount * split_pct) / 100;
+    amount = gross_amount;
+  } else {
+    amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) { json(res, 400, { error: "amount must be a positive number" }); return; }
+    gross_amount = null; split_pct = null; net_amount = null;
+  }
+
   const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
   const postHdrs = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=representation" };
   try {
@@ -4340,9 +4368,12 @@ async function handlePayouts(req, res) {
     if (!Array.isArray(accs) || !accs.length) { json(res, 404, { error: "Account not found" }); return; }
     const newEquity = Number(accs[0].current_equity) - amount;
     const note = body.note ? String(body.note).trim().slice(0, 500) : null;
+    const payoutRow = { account_id, user_id: userId, amount, note };
+    if (gross_amount !== null) { payoutRow.gross_amount = gross_amount; payoutRow.split_pct = split_pct; payoutRow.net_amount = net_amount; }
+    const equityNote = isFundedPayout ? `Payout: $${gross_amount} gross / $${net_amount.toFixed(2)} net` : `Withdrawal: $${amount}`;
     const [r1] = await Promise.all([
-      fetch(`${url}/rest/v1/payouts`, { method: "POST", headers: postHdrs, body: JSON.stringify({ account_id, user_id: userId, amount, note }) }),
-      fetch(`${url}/rest/v1/equity_log_entries`, { method: "POST", headers: postHdrs, body: JSON.stringify({ account_id, user_id: userId, equity: newEquity, note: `Payout: $${amount}` }) }),
+      fetch(`${url}/rest/v1/payouts`, { method: "POST", headers: postHdrs, body: JSON.stringify(payoutRow) }),
+      fetch(`${url}/rest/v1/equity_log_entries`, { method: "POST", headers: postHdrs, body: JSON.stringify({ account_id, user_id: userId, equity: newEquity, note: equityNote }) }),
       fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(account_id)}&user_id=eq.${encodeURIComponent(userId)}`, {
         method: "PATCH", headers: postHdrs, body: JSON.stringify({ current_equity: newEquity, updated_at: new Date().toISOString() }),
       }),
@@ -4366,7 +4397,7 @@ async function handleCapitalOverview(req, res) {
   try {
     const [accRes, pyRes] = await Promise.all([
       fetch(`${url}/rest/v1/trading_accounts?user_id=eq.${encodeURIComponent(userId)}&select=id,type,status,starting_balance,current_equity,updated_at`, { headers: hdrs }),
-      fetch(`${url}/rest/v1/payouts?user_id=eq.${encodeURIComponent(userId)}&select=amount`, { headers: hdrs }),
+      fetch(`${url}/rest/v1/payouts?user_id=eq.${encodeURIComponent(userId)}&select=amount,net_amount`, { headers: hdrs }),
     ]);
     let accounts = [];
     if (accRes.ok) { try { accounts = JSON.parse(await accRes.text()); } catch {} }
@@ -4378,7 +4409,7 @@ async function handleCapitalOverview(req, res) {
     const active = accounts.filter((a) => a.status === "active");
     const total_capital_deployed = active.reduce((s, a) => s + Number(a.starting_balance || 0), 0);
     const total_current_equity = active.reduce((s, a) => s + Number(a.current_equity || 0), 0);
-    const lifetime_payouts = payouts.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const lifetime_payouts = payouts.reduce((s, p) => s + Number(p.net_amount != null ? p.net_amount : p.amount || 0), 0);
     const active_accounts_count = active.length;
 
     const nonActiveEvals = accounts.filter((a) => a.type === "eval" && a.status !== "active");

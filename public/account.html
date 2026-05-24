@@ -305,51 +305,101 @@
         </div>
         <form class="ac-modal-fields" id="ac-account-form" novalidate>
           <input type="hidden" id="ac-form-edit-id" value="" />
+          <!-- Always shown -->
           <div class="ac-field">
             <label for="ac-f-name">Account name</label>
             <input class="ac-input" id="ac-f-name" maxlength="200" placeholder="e.g. FTMO 50K Eval #1" required />
           </div>
-          <div class="ac-modal-row">
-            <div class="ac-field">
-              <label for="ac-f-type">Type</label>
-              <select class="ac-select" id="ac-f-type">
-                <option value="eval">Eval / Challenge</option>
-                <option value="funded">Funded</option>
-                <option value="live">Live Personal</option>
-              </select>
-            </div>
-            <div class="ac-field">
-              <label for="ac-f-firm">Firm name</label>
-              <input class="ac-input" id="ac-f-firm" maxlength="200" placeholder="FTMO, MFF, etc." />
-            </div>
+          <div class="ac-field">
+            <label for="ac-f-type">Type</label>
+            <select class="ac-select" id="ac-f-type">
+              <option value="eval">Eval / Challenge</option>
+              <option value="funded">Funded</option>
+              <option value="live">Live Personal</option>
+            </select>
           </div>
+          <!-- Eval + Funded: firm name -->
+          <div class="ac-field" id="ac-f-firm-row">
+            <label for="ac-f-firm">Firm name</label>
+            <input class="ac-input" id="ac-f-firm" maxlength="200" placeholder="FTMO, MFF, etc." />
+          </div>
+          <!-- Live only: broker name -->
+          <div class="ac-field" id="ac-f-broker-row">
+            <label for="ac-f-broker">Broker name (optional)</label>
+            <input class="ac-input" id="ac-f-broker" maxlength="200" placeholder="IC Markets, etc." />
+          </div>
+          <!-- Always shown -->
           <div class="ac-field">
             <label for="ac-f-start">Starting balance ($)</label>
             <input class="ac-input" type="number" id="ac-f-start" step="0.01" min="0" placeholder="50000" required />
           </div>
-          <div class="ac-modal-row" id="ac-f-profit-row">
-            <div class="ac-field">
-              <label for="ac-f-target">Profit target ($)</label>
-              <input class="ac-input" type="number" id="ac-f-target" step="0.01" min="0" placeholder="3000" />
-            </div>
-            <div class="ac-field">
-              <label for="ac-f-maxdd">Max drawdown ($)</label>
-              <input class="ac-input" type="number" id="ac-f-maxdd" step="0.01" min="0" placeholder="2500" />
+          <!-- Eval only: profit target + min trading days -->
+          <div id="ac-f-eval-rows">
+            <div class="ac-modal-row">
+              <div class="ac-field">
+                <label for="ac-f-target">Profit target ($)</label>
+                <input class="ac-input" type="number" id="ac-f-target" step="0.01" min="0" placeholder="3000" />
+              </div>
+              <div class="ac-field">
+                <label for="ac-f-mindays">Min trading days (optional)</label>
+                <input class="ac-input" type="number" id="ac-f-mindays" step="1" min="0" placeholder="10" />
+              </div>
             </div>
           </div>
-          <div class="ac-modal-row">
-            <div class="ac-field">
-              <label for="ac-f-dailycap">Daily loss cap ($)</label>
-              <input class="ac-input" type="number" id="ac-f-dailycap" step="0.01" min="0" placeholder="optional" />
+          <!-- Eval + Funded: max drawdown + daily loss cap -->
+          <div id="ac-f-dd-rows">
+            <div class="ac-modal-row">
+              <div class="ac-field">
+                <label for="ac-f-maxdd">Max drawdown ($)</label>
+                <input class="ac-input" type="number" id="ac-f-maxdd" step="0.01" min="0" placeholder="2500" />
+              </div>
+              <div class="ac-field">
+                <label for="ac-f-dailycap">Daily loss cap (optional)</label>
+                <input class="ac-input" type="number" id="ac-f-dailycap" step="0.01" min="0" placeholder="optional" />
+              </div>
             </div>
+          </div>
+          <!-- Funded only: profit split + payout frequency -->
+          <div id="ac-f-funded-rows">
+            <div class="ac-modal-row">
+              <div class="ac-field">
+                <label for="ac-f-split">Your profit split %</label>
+                <input class="ac-input" type="number" id="ac-f-split" step="1" min="1" max="100" placeholder="80" value="80" />
+              </div>
+              <div class="ac-field">
+                <label for="ac-f-payfreq">Payout frequency (optional)</label>
+                <select class="ac-select" id="ac-f-payfreq">
+                  <option value="">— Select —</option>
+                  <option value="biweekly">Biweekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="on-demand">On-demand</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <!-- Live only: monthly target + personal max DD -->
+          <div id="ac-f-live-rows">
+            <div class="ac-modal-row">
+              <div class="ac-field">
+                <label for="ac-f-monthtarget">Monthly target (optional)</label>
+                <input class="ac-input" type="number" id="ac-f-monthtarget" step="0.01" min="0" placeholder="optional" />
+              </div>
+              <div class="ac-field">
+                <label for="ac-f-maxdd-live">Personal max DD (optional)</label>
+                <input class="ac-input" type="number" id="ac-f-maxdd-live" step="0.01" min="0" placeholder="optional" />
+              </div>
+            </div>
+          </div>
+          <!-- Always shown -->
+          <div class="ac-modal-row">
             <div class="ac-field">
               <label for="ac-f-riskpct">Default risk %</label>
               <input class="ac-input" type="number" id="ac-f-riskpct" step="0.01" min="0" max="100" placeholder="1" value="1" />
             </div>
-          </div>
-          <div class="ac-field">
-            <label for="ac-f-pair">Default pair</label>
-            <input class="ac-input" id="ac-f-pair" maxlength="20" placeholder="EURUSD" />
+            <div class="ac-field">
+              <label for="ac-f-pair">Default pair (optional)</label>
+              <input class="ac-input" id="ac-f-pair" maxlength="20" placeholder="EURUSD" />
+            </div>
           </div>
           <div class="ac-modal-actions">
             <button type="button" class="ac-btn ac-btn--ghost" id="ac-account-modal-cancel">Cancel</button>
@@ -393,9 +443,30 @@
         </div>
         <form class="ac-modal-fields" id="ac-payout-form" novalidate>
           <input type="hidden" id="ac-payout-account-id" value="" />
-          <div class="ac-field">
-            <label for="ac-payout-amount" id="ac-payout-amount-label">Amount ($)</label>
-            <input class="ac-input" type="number" id="ac-payout-amount" step="0.01" min="0.01" placeholder="500" required />
+          <input type="hidden" id="ac-payout-account-type" value="" />
+          <!-- Funded: gross amount + split -->
+          <div id="ac-payout-funded-fields">
+            <div class="ac-field">
+              <label for="ac-payout-gross">Gross profit paid out ($)</label>
+              <input class="ac-input" type="number" id="ac-payout-gross" step="0.01" min="0.01" placeholder="1000" />
+            </div>
+            <div class="ac-modal-row">
+              <div class="ac-field">
+                <label for="ac-payout-split">Your split %</label>
+                <input class="ac-input" type="number" id="ac-payout-split" step="1" min="1" max="100" value="80" />
+              </div>
+              <div class="ac-field">
+                <label>Your share</label>
+                <div id="ac-payout-net-preview" style="font-family:'Outfit',system-ui,sans-serif;font-size:20px;font-weight:300;color:#00ff88;padding:8px 0;letter-spacing:-0.01em;">—</div>
+              </div>
+            </div>
+          </div>
+          <!-- Live / simple: withdrawal amount -->
+          <div id="ac-payout-simple-fields">
+            <div class="ac-field">
+              <label for="ac-payout-amount">Amount withdrawn ($)</label>
+              <input class="ac-input" type="number" id="ac-payout-amount" step="0.01" min="0.01" placeholder="500" />
+            </div>
           </div>
           <div class="ac-field">
             <label for="ac-payout-note">Note (optional)</label>
@@ -674,6 +745,8 @@
           var barW = profitPct !== null ? Math.min(100, Math.max(0, profitPct)) : 0;
           var blowFloor = (sb !== null && mdd !== null) ? sb - mdd : null;
           var headroom = (eq !== null && blowFloor !== null) ? eq - blowFloor : null;
+          var minDays = acc.minimum_trading_days != null ? Number(acc.minimum_trading_days) : null;
+          var daysLeft = minDays !== null ? Math.max(0, minDays - days) : null;
 
           return '<article class="ac-card ac-card--' + esc(acc.status) + '" data-id="' + acc.id + '">' +
             '<div class="ac-card__head"><div class="ac-card__head-left">' +
@@ -686,7 +759,7 @@
             '<div><div class="ac-card__stat-label">Days active</div><div class="ac-card__stat-value">' + days + 'd</div></div>' +
             '<div><div class="ac-card__stat-label">Headroom</div><div class="ac-card__stat-value ' + (headroom !== null && headroom < 0 ? "ac-card__stat-value--bad" : headroom !== null && headroom < (mdd || 0) * 0.3 ? "ac-card__stat-value--warn" : "") + '">' + fmtMoney(headroom) + '</div></div>' +
             '<div><div class="ac-card__stat-label">Target</div><div class="ac-card__stat-value">' + fmtMoney(pt && sb !== null ? sb + pt : null) + '</div></div>' +
-            '<div><div class="ac-card__stat-label">Daily cap</div><div class="ac-card__stat-value">' + (acc.daily_loss_cap ? fmtMoney(num(acc.daily_loss_cap)) : "—") + '</div></div>' +
+            '<div><div class="ac-card__stat-label">' + (daysLeft !== null ? 'Min days left' : 'Daily cap') + '</div><div class="ac-card__stat-value ' + (daysLeft !== null && daysLeft === 0 ? 'ac-card__stat-value--good' : '') + '">' + (daysLeft !== null ? daysLeft + 'd' : (acc.daily_loss_cap ? fmtMoney(num(acc.daily_loss_cap)) : "—")) + '</div></div>' +
             '</div>' +
             '<div class="ac-prog-wrap"><div class="ac-prog-labels"><span class="ac-prog-label">Profit target</span><span class="ac-prog-pct">' + fmtPct(profitPct) + '</span></div>' +
             '<div class="ac-prog-bar"><div class="ac-prog-fill" style="width:' + barW + '%"></div></div></div>' +
@@ -701,10 +774,14 @@
           var mdd = num(acc.max_drawdown);
           var blowFloor = (sb !== null && mdd !== null) ? sb - mdd : null;
           var headroom = (eq !== null && blowFloor !== null) ? eq - blowFloor : null;
-          var lifetimePy = acc.total_payouts || 0;
+          var grossPy = acc.total_payouts || 0;
+          var netPy = acc.total_net_payouts != null ? acc.total_net_payouts : grossPy;
+          var splitPct = num(acc.profit_split_pct);
           var daysSincePy = acc.last_payout_at
             ? Math.floor((Date.now() - new Date(acc.last_payout_at).getTime()) / 86400000)
             : null;
+          var freqLabels = { biweekly: "Biweekly", monthly: "Monthly", "on-demand": "On-demand" };
+          var freqLabel = acc.payout_frequency ? (freqLabels[acc.payout_frequency] || acc.payout_frequency) : "—";
 
           return '<article class="ac-card ac-card--' + esc(acc.status) + '" data-id="' + acc.id + '">' +
             '<div class="ac-card__head"><div class="ac-card__head-left">' +
@@ -714,10 +791,12 @@
             '</div></div>' +
             '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
             '<div class="ac-card__stats">' +
-            '<div><div class="ac-card__stat-label">Lifetime payouts</div><div class="ac-card__stat-value ac-card__stat-value--good">' + fmtMoney(lifetimePy) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Lifetime gross</div><div class="ac-card__stat-value">' + fmtMoney(grossPy) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Your share</div><div class="ac-card__stat-value ac-card__stat-value--good">' + fmtMoney(netPy) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Split</div><div class="ac-card__stat-value">' + (splitPct !== null ? splitPct + '%' : '—') + '</div></div>' +
             '<div><div class="ac-card__stat-label">Since last payout</div><div class="ac-card__stat-value">' + (daysSincePy !== null ? daysSincePy + 'd' : '—') + '</div></div>' +
             '<div><div class="ac-card__stat-label">Headroom</div><div class="ac-card__stat-value ' + (headroom !== null && headroom < 0 ? "ac-card__stat-value--bad" : "") + '">' + fmtMoney(headroom) + '</div></div>' +
-            '<div><div class="ac-card__stat-label">Daily cap</div><div class="ac-card__stat-value">' + (acc.daily_loss_cap ? fmtMoney(num(acc.daily_loss_cap)) : "—") + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Payout cycle</div><div class="ac-card__stat-value">' + esc(freqLabel) + '</div></div>' +
             '</div>' +
             sparkHtml(acc.id) +
             actionsHtml(acc) +
@@ -730,12 +809,28 @@
           var totalRetPct = (eq !== null && sb !== null && sb > 0) ? ((eq - sb) / sb * 100) : null;
           var peak = peakEquity(acc);
           var dd = (eq !== null) ? peak - eq : null;
+          var mt = num(acc.personal_monthly_target);
+          var brokerLabel = acc.broker_name || acc.firm_name || null;
+          // Monthly target: compare current equity gain this month vs target
+          var monthPnl = null;
+          if (mt !== null && eq !== null) {
+            var log = acc.equity_log || [];
+            var monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+            var msISO = monthStart.toISOString();
+            var ref = null;
+            for (var li = log.length - 1; li >= 0; li--) {
+              if ((log[li].logged_at || "") < msISO) { ref = num(log[li].equity); break; }
+            }
+            if (ref === null) ref = sb;
+            if (ref !== null) monthPnl = eq - ref;
+          }
+          var mtBarW = (mt !== null && monthPnl !== null && mt > 0) ? Math.min(100, Math.max(0, (monthPnl / mt) * 100)) : 0;
 
           return '<article class="ac-card ac-card--' + esc(acc.status) + '" data-id="' + acc.id + '">' +
             '<div class="ac-card__head"><div class="ac-card__head-left">' +
             '<div class="ac-card__tags">' + typeBadge("live") + '</div>' +
             '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
-            (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
+            (brokerLabel ? '<div class="ac-card__firm">' + esc(brokerLabel) + '</div>' : '') +
             '</div></div>' +
             '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
             '<div class="ac-card__stats">' +
@@ -744,6 +839,8 @@
             '<div><div class="ac-card__stat-label">Days active</div><div class="ac-card__stat-value">' + daysActive(acc) + 'd</div></div>' +
             '<div><div class="ac-card__stat-label">Starting</div><div class="ac-card__stat-value">' + fmtMoney(sb) + '</div></div>' +
             '</div>' +
+            (mt !== null ? '<div class="ac-prog-wrap"><div class="ac-prog-labels"><span class="ac-prog-label">Monthly target</span><span class="ac-prog-pct">' + (monthPnl !== null ? fmtMoney(monthPnl) + ' / ' + fmtMoney(mt) : '—') + '</span></div>' +
+            '<div class="ac-prog-bar"><div class="ac-prog-fill' + (monthPnl !== null && monthPnl < 0 ? " ac-prog-fill--danger" : "") + '" style="width:' + mtBarW + '%"></div></div></div>' : '') +
             sparkHtml(acc.id) +
             actionsHtml(acc) +
             '</article>';
@@ -850,34 +947,51 @@
         }
 
         /* ── Add / Edit Account Modal ── */
+        function syncModalFields(type) {
+          var isEval = type === "eval";
+          var isFunded = type === "funded";
+          var isLive = type === "live";
+          document.getElementById("ac-f-firm-row").style.display   = isLive ? "none" : "";
+          document.getElementById("ac-f-broker-row").style.display  = isLive ? "" : "none";
+          document.getElementById("ac-f-eval-rows").style.display   = isEval ? "" : "none";
+          document.getElementById("ac-f-dd-rows").style.display     = (isEval || isFunded) ? "" : "none";
+          document.getElementById("ac-f-funded-rows").style.display = isFunded ? "" : "none";
+          document.getElementById("ac-f-live-rows").style.display   = isLive ? "" : "none";
+        }
+
         function openAccountModal(acc) {
           var form = document.getElementById("ac-account-form");
           form.reset();
           document.getElementById("ac-form-edit-id").value = acc ? acc.id : "";
           document.getElementById("ac-account-modal-title").textContent = acc ? "Edit Account" : "Add Account";
+          var type = acc ? (acc.type || "eval") : "eval";
+          document.getElementById("ac-f-type").value = type;
           if (acc) {
             document.getElementById("ac-f-name").value = acc.name || "";
-            document.getElementById("ac-f-type").value = acc.type || "eval";
             document.getElementById("ac-f-firm").value = acc.firm_name || "";
+            document.getElementById("ac-f-broker").value = acc.broker_name || "";
             document.getElementById("ac-f-start").value = acc.starting_balance != null ? acc.starting_balance : "";
             document.getElementById("ac-f-target").value = acc.profit_target != null ? acc.profit_target : "";
+            document.getElementById("ac-f-mindays").value = acc.minimum_trading_days != null ? acc.minimum_trading_days : "";
             document.getElementById("ac-f-maxdd").value = acc.max_drawdown != null ? acc.max_drawdown : "";
+            document.getElementById("ac-f-maxdd-live").value = acc.max_drawdown != null ? acc.max_drawdown : "";
             document.getElementById("ac-f-dailycap").value = acc.daily_loss_cap != null ? acc.daily_loss_cap : "";
+            document.getElementById("ac-f-split").value = acc.profit_split_pct != null ? acc.profit_split_pct : "80";
+            document.getElementById("ac-f-payfreq").value = acc.payout_frequency || "";
+            document.getElementById("ac-f-monthtarget").value = acc.personal_monthly_target != null ? acc.personal_monthly_target : "";
             document.getElementById("ac-f-riskpct").value = acc.default_risk_pct != null ? acc.default_risk_pct : "1";
             document.getElementById("ac-f-pair").value = acc.default_pair || "";
           } else {
             document.getElementById("ac-f-riskpct").value = "1";
+            document.getElementById("ac-f-split").value = "80";
           }
-          updateProfitRowVisibility();
+          syncModalFields(type);
           openModal("ac-account-modal");
         }
 
-        function updateProfitRowVisibility() {
-          var type = document.getElementById("ac-f-type").value;
-          var row = document.getElementById("ac-f-profit-row");
-          row.style.display = type === "live" ? "none" : "";
-        }
-        document.getElementById("ac-f-type").addEventListener("change", updateProfitRowVisibility);
+        document.getElementById("ac-f-type").addEventListener("change", function () {
+          syncModalFields(this.value);
+        });
 
         document.getElementById("ac-account-form").addEventListener("submit", function (e) {
           e.preventDefault();
@@ -885,25 +999,43 @@
           var type = document.getElementById("ac-f-type").value;
           var startVal = document.getElementById("ac-f-start").value.trim();
           if (!startVal) { setStatus("Starting balance is required", true); return; }
+          var isLive = type === "live";
+          var isFunded = type === "funded";
+          var isEval = type === "eval";
           var payload = {
             name: document.getElementById("ac-f-name").value.trim(),
             type: type,
-            firm_name: document.getElementById("ac-f-firm").value.trim() || null,
             starting_balance: Number(startVal),
-            profit_target: document.getElementById("ac-f-target").value.trim() || null,
-            daily_loss_cap: document.getElementById("ac-f-dailycap").value.trim() || null,
-            max_drawdown: document.getElementById("ac-f-maxdd").value.trim() || null,
-            default_risk_pct: document.getElementById("ac-f-riskpct").value.trim() || 1,
+            default_risk_pct: Number(document.getElementById("ac-f-riskpct").value.trim() || "1"),
             default_pair: document.getElementById("ac-f-pair").value.trim() || null,
           };
-          if (payload.profit_target !== null) payload.profit_target = Number(payload.profit_target);
-          if (payload.daily_loss_cap !== null) payload.daily_loss_cap = Number(payload.daily_loss_cap);
-          if (payload.max_drawdown !== null) payload.max_drawdown = Number(payload.max_drawdown);
-          payload.default_risk_pct = Number(payload.default_risk_pct);
+          if (isLive) {
+            payload.broker_name = document.getElementById("ac-f-broker").value.trim() || null;
+            var mt = document.getElementById("ac-f-monthtarget").value.trim();
+            payload.personal_monthly_target = mt ? Number(mt) : null;
+            var ldd = document.getElementById("ac-f-maxdd-live").value.trim();
+            payload.max_drawdown = ldd ? Number(ldd) : null;
+          } else {
+            payload.firm_name = document.getElementById("ac-f-firm").value.trim() || null;
+            var dd = document.getElementById("ac-f-maxdd").value.trim();
+            payload.max_drawdown = dd ? Number(dd) : null;
+            var dc = document.getElementById("ac-f-dailycap").value.trim();
+            payload.daily_loss_cap = dc ? Number(dc) : null;
+          }
+          if (isEval) {
+            var pt = document.getElementById("ac-f-target").value.trim();
+            payload.profit_target = pt ? Number(pt) : null;
+            var md = document.getElementById("ac-f-mindays").value.trim();
+            payload.minimum_trading_days = md ? Math.round(Number(md)) : null;
+          }
+          if (isFunded) {
+            payload.profit_split_pct = Number(document.getElementById("ac-f-split").value.trim() || "80");
+            payload.payout_frequency = document.getElementById("ac-f-payfreq").value || null;
+          }
 
-          var url = editId ? "/api/accounts/" + encodeURIComponent(editId) : "/api/accounts";
+          var apiUrl = editId ? "/api/accounts/" + encodeURIComponent(editId) : "/api/accounts";
           var method = editId ? "PATCH" : "POST";
-          apiFetch(url, { method: method, headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify(payload) })
+          apiFetch(apiUrl, { method: method, headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify(payload) })
             .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
             .then(function (x) {
               if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
@@ -932,14 +1064,38 @@
             .catch(function (err) { setStatus(err.message, true); });
         });
 
-        /* ── Log Payout ── */
+        /* ── Log Payout / Withdrawal ── */
+        function updatePayoutNetPreview() {
+          var gross = Number(document.getElementById("ac-payout-gross").value);
+          var split = Number(document.getElementById("ac-payout-split").value);
+          var el = document.getElementById("ac-payout-net-preview");
+          if (Number.isFinite(gross) && gross > 0 && Number.isFinite(split) && split > 0) {
+            el.textContent = fmtMoney(Math.round(gross * split) / 100);
+          } else {
+            el.textContent = "—";
+          }
+        }
+        document.getElementById("ac-payout-gross").addEventListener("input", updatePayoutNetPreview);
+        document.getElementById("ac-payout-split").addEventListener("input", updatePayoutNetPreview);
+
         document.getElementById("ac-payout-form").addEventListener("submit", function (e) {
           e.preventDefault();
           var accId = document.getElementById("ac-payout-account-id").value;
-          var amount = Number(document.getElementById("ac-payout-amount").value);
+          var accType = document.getElementById("ac-payout-account-type").value;
           var note = document.getElementById("ac-payout-note").value.trim() || null;
-          if (!Number.isFinite(amount) || amount <= 0) { setStatus("Invalid amount", true); return; }
-          apiFetch("/api/payouts", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ account_id: accId, amount: amount, note: note }) })
+          var payload;
+          if (accType === "funded") {
+            var gross = Number(document.getElementById("ac-payout-gross").value);
+            var split = Number(document.getElementById("ac-payout-split").value);
+            if (!Number.isFinite(gross) || gross <= 0) { setStatus("Enter gross profit paid out", true); return; }
+            if (!Number.isFinite(split) || split <= 0 || split > 100) { setStatus("Split % must be 1–100", true); return; }
+            payload = { account_id: accId, gross_amount: gross, split_pct: split, note: note };
+          } else {
+            var amount = Number(document.getElementById("ac-payout-amount").value);
+            if (!Number.isFinite(amount) || amount <= 0) { setStatus("Invalid amount", true); return; }
+            payload = { account_id: accId, amount: amount, note: note };
+          }
+          apiFetch("/api/payouts", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify(payload) })
             .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
             .then(function (x) {
               if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
@@ -972,11 +1128,18 @@
           }
 
           if (action === "log-payout") {
+            var isFunded = acc && acc.type === "funded";
             var isLive = acc && acc.type === "live";
             document.getElementById("ac-payout-modal-title").textContent = isLive ? "Log Withdrawal" : "Log Payout";
             document.getElementById("ac-payout-account-id").value = id;
+            document.getElementById("ac-payout-account-type").value = acc ? acc.type : "";
+            document.getElementById("ac-payout-gross").value = "";
+            document.getElementById("ac-payout-split").value = (acc && acc.profit_split_pct != null) ? acc.profit_split_pct : "80";
+            document.getElementById("ac-payout-net-preview").textContent = "—";
             document.getElementById("ac-payout-amount").value = "";
             document.getElementById("ac-payout-note").value = "";
+            document.getElementById("ac-payout-funded-fields").style.display = isFunded ? "" : "none";
+            document.getElementById("ac-payout-simple-fields").style.display = isFunded ? "none" : "";
             openModal("ac-payout-modal");
             return;
           }
