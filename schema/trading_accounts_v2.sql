@@ -46,3 +46,12 @@ create table if not exists payouts (
 create index if not exists idx_trading_accounts_user on trading_accounts(user_id);
 create index if not exists idx_equity_log_account on equity_log_entries(account_id);
 create index if not exists idx_payouts_account on payouts(account_id);
+
+-- PostgREST only caches tables that have been granted to at least one configured role.
+-- Without these grants the table is invisible to the REST API even after schema reloads.
+grant usage on schema public to anon, authenticated;
+grant all on table public.trading_accounts to anon, authenticated, service_role;
+grant all on table public.equity_log_entries to anon, authenticated, service_role;
+grant all on table public.payouts to anon, authenticated, service_role;
+
+notify pgrst, 'reload schema';
