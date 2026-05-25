@@ -109,8 +109,101 @@
       .ac-badge--active { color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); }
 
       /* ── Equity hero ── */
-      .ac-card__equity-row { display: flex; align-items: baseline; gap: 10px; }
-      .ac-card__equity { font-family: "Outfit",system-ui,sans-serif; font-size: 26px; font-weight: 300; color: #fff; letter-spacing: -0.02em; line-height: 1; }
+      .ac-card__equity-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+      .ac-equity-edit { display: flex; align-items: center; gap: 6px; min-width: 0; }
+      .ac-equity-edit__view { display: inline-flex; align-items: center; gap: 4px; }
+      .ac-equity-display {
+        font-family: "Outfit", system-ui, sans-serif;
+        font-size: 26px;
+        font-weight: 300;
+        color: #fff;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+        transition: color 0.2s, text-shadow 0.2s;
+      }
+      .ac-equity-display:hover { color: #00d4ff; }
+      .ac-equity-display.ac-card__equity--flash {
+        color: #00ff88;
+        text-shadow: 0 0 18px rgba(0, 255, 136, 0.75);
+      }
+      .ac-equity-edit__pencil {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 1px solid rgba(0, 212, 255, 0.16);
+        border-radius: 6px;
+        background: rgba(0, 212, 255, 0.04);
+        color: rgba(0, 212, 255, 0.45);
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+      }
+      .ac-card:hover .ac-equity-edit__pencil,
+      .ac-equity-edit.is-editing .ac-equity-edit__pencil { opacity: 1; }
+      .ac-equity-edit__pencil:hover {
+        color: rgba(0, 212, 255, 0.95);
+        border-color: rgba(0, 212, 255, 0.45);
+        background: rgba(0, 212, 255, 0.1);
+      }
+      .ac-equity-edit__form {
+        display: none;
+        align-items: center;
+        gap: 6px;
+      }
+      .ac-equity-edit.is-editing .ac-equity-edit__view { display: none; }
+      .ac-equity-edit.is-editing .ac-equity-edit__form { display: inline-flex; }
+      .ac-equity-edit__input {
+        width: min(148px, 42vw);
+        box-sizing: border-box;
+        background: rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(0, 212, 255, 0.45);
+        border-radius: 8px;
+        padding: 4px 8px;
+        color: #fff;
+        font-family: "Outfit", system-ui, sans-serif;
+        font-size: 26px;
+        font-weight: 300;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        outline: none;
+      }
+      .ac-equity-edit__input:focus { border-color: rgba(0, 212, 255, 0.75); box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.12); }
+      .ac-equity-edit__confirm,
+      .ac-equity-edit__cancel {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border-radius: 7px;
+        border: 1px solid transparent;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+      .ac-equity-edit__confirm {
+        border-color: rgba(0, 255, 136, 0.35);
+        background: rgba(0, 255, 136, 0.1);
+        color: #00ff88;
+      }
+      .ac-equity-edit__confirm:hover { background: rgba(0, 255, 136, 0.18); border-color: rgba(0, 255, 136, 0.6); }
+      .ac-equity-edit__confirm:disabled { opacity: 0.45; cursor: wait; }
+      .ac-equity-edit__cancel {
+        border-color: rgba(255, 68, 102, 0.35);
+        background: rgba(255, 68, 102, 0.08);
+        color: #ff4466;
+      }
+      .ac-equity-edit__cancel:hover { background: rgba(255, 68, 102, 0.16); border-color: rgba(255, 68, 102, 0.55); }
+      @media (max-width: 640px) {
+        .ac-equity-edit__pencil { opacity: 0.55; }
+      }
       .ac-card__pnl { font-family: "Share Tech Mono","Courier New",monospace; font-size: 12px; }
       .ac-card__pnl--pos { color: #00ff88; }
       .ac-card__pnl--neg { color: #ff4466; }
@@ -517,30 +610,6 @@
     </div>
 
     <!-- ══ Log Equity Modal ══ -->
-    <div class="ac-modal-overlay" id="ac-equity-modal" aria-hidden="true">
-      <div class="ac-modal" role="dialog" aria-modal="true" aria-labelledby="ac-equity-modal-title">
-        <div class="ac-modal__top">
-          <h2 id="ac-equity-modal-title">Log Equity</h2>
-          <button type="button" class="ac-modal__x" id="ac-equity-modal-close" aria-label="Close">×</button>
-        </div>
-        <form class="ac-modal-fields" id="ac-equity-form" novalidate>
-          <input type="hidden" id="ac-equity-account-id" value="" />
-          <div class="ac-field">
-            <label for="ac-equity-val">Current equity ($)</label>
-            <input class="ac-input" type="number" id="ac-equity-val" step="0.01" placeholder="50000" required />
-          </div>
-          <div class="ac-field">
-            <label for="ac-equity-note">Note (optional)</label>
-            <input class="ac-input" id="ac-equity-note" maxlength="500" placeholder="End of session, NY close…" />
-          </div>
-          <div class="ac-modal-actions">
-            <button type="button" class="ac-btn ac-btn--ghost" id="ac-equity-modal-cancel">Cancel</button>
-            <button type="submit" class="ac-btn">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- ══ Log Payout / Withdrawal Modal ══ -->
     <div class="ac-modal-overlay" id="ac-payout-modal" aria-hidden="true">
       <div class="ac-modal" role="dialog" aria-modal="true" aria-labelledby="ac-payout-modal-title">
@@ -739,6 +808,7 @@
         var lotCalcMod = null;
         var accountsCache = [];
         var confirmCallback = null;
+        var activeEquityEditId = null;
 
         /* ── Helpers ── */
         function esc(s) {
@@ -843,10 +913,171 @@
 
         function pnlHtml(acc) {
           var pnl = todayPnl(acc);
-          if (pnl === null) return '<span class="ac-card__pnl ac-card__pnl--zero">—</span>';
+          if (pnl === null) {
+            return '<span class="ac-card__pnl ac-card__pnl--zero" data-pnl-for="' + esc(acc.id) + '">—</span>';
+          }
           var cls = pnl > 0 ? "ac-card__pnl--pos" : pnl < 0 ? "ac-card__pnl--neg" : "ac-card__pnl--zero";
           var sign = pnl > 0 ? "+" : "";
-          return '<span class="ac-card__pnl ' + cls + '">' + sign + fmtMoney(pnl) + '</span>';
+          return '<span class="ac-card__pnl ' + cls + '" data-pnl-for="' + esc(acc.id) + '">' + sign + fmtMoney(pnl) + "</span>";
+        }
+
+        function equityEditorHtml(acc) {
+          var id = acc.id;
+          var eq = num(acc.current_equity);
+          var val = eq !== null ? String(eq) : "";
+          return (
+            '<div class="ac-equity-edit" data-equity-id="' +
+            esc(id) +
+            '">' +
+            '<div class="ac-equity-edit__view">' +
+            '<button type="button" class="ac-equity-display" data-action="edit-equity-start" data-id="' +
+            esc(id) +
+            '">' +
+            fmtMoney(eq) +
+            "</button>" +
+            '<button type="button" class="ac-equity-edit__pencil" data-action="edit-equity-start" data-id="' +
+            esc(id) +
+            '" aria-label="Edit equity">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+            '<path d="M12 20h9"/>' +
+            '<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>' +
+            "</svg></button></div>" +
+            '<div class="ac-equity-edit__form" hidden>' +
+            '<input class="ac-equity-edit__input" type="number" step="0.01" inputmode="decimal" data-equity-input="' +
+            esc(id) +
+            '" value="' +
+            esc(val) +
+            '" aria-label="Equity amount" />' +
+            '<button type="button" class="ac-equity-edit__confirm" data-action="edit-equity-save" data-id="' +
+            esc(id) +
+            '" aria-label="Save equity">✓</button>' +
+            '<button type="button" class="ac-equity-edit__cancel" data-action="edit-equity-cancel" data-id="' +
+            esc(id) +
+            '" aria-label="Cancel edit">✕</button>' +
+            "</div></div>"
+          );
+        }
+
+        function cancelEquityEdit(accountId) {
+          var wrap = document.querySelector('.ac-equity-edit[data-equity-id="' + accountId + '"]');
+          if (!wrap) return;
+          wrap.classList.remove("is-editing");
+          var form = wrap.querySelector(".ac-equity-edit__form");
+          if (form) form.hidden = true;
+          if (activeEquityEditId === accountId) activeEquityEditId = null;
+        }
+
+        function cancelAllEquityEdits() {
+          document.querySelectorAll(".ac-equity-edit.is-editing").forEach(function (wrap) {
+            cancelEquityEdit(wrap.getAttribute("data-equity-id"));
+          });
+        }
+
+        function startEquityEdit(accountId) {
+          var acc = accountsCache.find(function (a) {
+            return a.id === accountId;
+          });
+          if (!acc) return;
+          cancelAllEquityEdits();
+          var wrap = document.querySelector('.ac-equity-edit[data-equity-id="' + accountId + '"]');
+          if (!wrap) return;
+          var input = wrap.querySelector('[data-equity-input="' + accountId + '"]');
+          var eq = num(acc.current_equity);
+          if (input) input.value = eq !== null ? String(eq) : "";
+          wrap.classList.add("is-editing");
+          var form = wrap.querySelector(".ac-equity-edit__form");
+          if (form) form.hidden = false;
+          activeEquityEditId = accountId;
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }
+
+        function flashEquitySaved(accountId) {
+          var btn = document.querySelector(
+            '.ac-equity-display[data-id="' + accountId + '"]'
+          );
+          if (!btn) return;
+          btn.classList.add("ac-card__equity--flash");
+          setTimeout(function () {
+            btn.classList.remove("ac-card__equity--flash");
+          }, 1000);
+        }
+
+        function redrawSparklineForAccount(acc) {
+          var c = document.querySelector('.ac-spark-canvas[data-aid="' + acc.id + '"]');
+          var emptyEl = document.querySelector('.ac-spark-empty[data-aid="' + acc.id + '"]');
+          if (!c) return;
+          var log = acc.equity_log || [];
+          if (log.length > 1) {
+            if (emptyEl) emptyEl.style.display = "none";
+            drawSparkline(c, log);
+          } else {
+            if (emptyEl) emptyEl.style.display = "flex";
+            var ctx = c.getContext("2d");
+            if (ctx) { c.width = c.clientWidth || 260; c.height = 44; ctx.clearRect(0, 0, c.width, c.height); }
+          }
+        }
+
+        function replaceCardInDom(acc) {
+          var old = document.querySelector('.ac-card[data-id="' + acc.id + '"]');
+          if (!old) return;
+          var tmp = document.createElement("div");
+          tmp.innerHTML = renderCard(acc);
+          var next = tmp.firstElementChild;
+          if (next) old.replaceWith(next);
+          requestAnimationFrame(function () { redrawSparklineForAccount(acc); });
+        }
+
+        function saveEquityEdit(accountId) {
+          var acc = accountsCache.find(function (a) {
+            return a.id === accountId;
+          });
+          if (!acc) return;
+          var wrap = document.querySelector('.ac-equity-edit[data-equity-id="' + accountId + '"]');
+          if (!wrap) return;
+          var input = wrap.querySelector('[data-equity-input="' + accountId + '"]');
+          var saveBtn = wrap.querySelector('[data-action="edit-equity-save"][data-id="' + accountId + '"]');
+          var equity = input ? Number(input.value) : NaN;
+          if (!Number.isFinite(equity)) {
+            setStatus("Enter a valid equity amount", true);
+            if (input) input.focus();
+            return;
+          }
+          if (saveBtn) saveBtn.disabled = true;
+          apiFetch("/api/equity-log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+            body: JSON.stringify({ account_id: accountId, equity: equity }),
+          })
+            .then(function (r) {
+              return r.json().then(function (j) {
+                return { ok: r.ok, j: j };
+              });
+            })
+            .then(function (x) {
+              if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
+              acc.current_equity = equity;
+              acc.equity_log = acc.equity_log || [];
+              var loggedAt =
+                (x.j && x.j.logged_at) ||
+                (x.j && x.j.entry && x.j.entry.logged_at) ||
+                new Date().toISOString();
+              acc.equity_log.push({ equity: equity, logged_at: loggedAt, note: null });
+              cancelEquityEdit(accountId);
+              replaceCardInDom(acc);
+              populateCalcAccountSelect();
+              loadOverview();
+              flashEquitySaved(accountId);
+            })
+            .catch(function (err) {
+              setStatus(err.message, true);
+            })
+            .finally(function () {
+              if (saveBtn) saveBtn.disabled = false;
+            });
         }
 
         function sparkHtml(id) {
@@ -876,10 +1107,11 @@
         function primaryActionsHtml(acc) {
           var id = acc.id;
           var type = acc.type;
-          var btns = '<button class="ac-action-primary" data-action="log-equity" data-id="' + id + '">Log Equity</button>';
+          var btns = "";
           if (type === "funded") btns += '<button class="ac-action-primary ac-action-primary--payout" data-action="log-payout" data-id="' + id + '">Log Payout</button>';
           if (type === "live") btns += '<button class="ac-action-primary ac-action-primary--payout" data-action="log-payout" data-id="' + id + '">Log Withdrawal</button>';
-          return '<div class="ac-card__primary-actions">' + btns + '</div>';
+          if (!btns) return "";
+          return '<div class="ac-card__primary-actions">' + btns + "</div>";
         }
 
         function renderEvalCard(acc) {
@@ -901,7 +1133,7 @@
             '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
             (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
             '</div>' + kebabHtml(acc) + '</div>' +
-            '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
+            '<div class="ac-card__equity-row">' + equityEditorHtml(acc) + pnlHtml(acc) + "</div>" +
             '<div class="ac-card__stats">' +
             '<div><div class="ac-card__stat-label">Days active</div><div class="ac-card__stat-value">' + days + 'd</div></div>' +
             '<div><div class="ac-card__stat-label">Headroom</div><div class="ac-card__stat-value ' + (headroom !== null && headroom < 0 ? "ac-card__stat-value--bad" : headroom !== null && headroom < (mdd || 0) * 0.3 ? "ac-card__stat-value--warn" : "") + '">' + fmtMoney(headroom) + '</div></div>' +
@@ -937,7 +1169,7 @@
             '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
             (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
             '</div>' + kebabHtml(acc) + '</div>' +
-            '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
+            '<div class="ac-card__equity-row">' + equityEditorHtml(acc) + pnlHtml(acc) + "</div>" +
             '<div class="ac-card__stats">' +
             '<div><div class="ac-card__stat-label">Lifetime gross</div><div class="ac-card__stat-value">' + fmtMoney(grossPy) + '</div></div>' +
             '<div><div class="ac-card__stat-label">Your share</div><div class="ac-card__stat-value ac-card__stat-value--good">' + fmtMoney(netPy) + '</div></div>' +
@@ -980,7 +1212,7 @@
             '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
             (brokerLabel ? '<div class="ac-card__firm">' + esc(brokerLabel) + '</div>' : '') +
             '</div>' + kebabHtml(acc) + '</div>' +
-            '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
+            '<div class="ac-card__equity-row">' + equityEditorHtml(acc) + pnlHtml(acc) + "</div>" +
             '<div class="ac-card__stats">' +
             '<div><div class="ac-card__stat-label">Total return</div><div class="ac-card__stat-value ' + (totalRetPct !== null && totalRetPct > 0 ? "ac-card__stat-value--good" : totalRetPct !== null && totalRetPct < 0 ? "ac-card__stat-value--bad" : "") + '">' + fmtPct(totalRetPct) + '</div></div>' +
             '<div><div class="ac-card__stat-label">DD from peak</div><div class="ac-card__stat-value ' + (dd !== null && dd > 0 ? "ac-card__stat-value--warn" : "") + '">' + (dd !== null && dd > 0 ? fmtMoney(dd) : "—") + '</div></div>' +
@@ -1061,23 +1293,24 @@
         /* ── Modal management ── */
         function openModal(id) { var el = document.getElementById(id); if (el) { el.classList.add("ac-open"); el.setAttribute("aria-hidden","false"); } }
         function closeModal(id) { var el = document.getElementById(id); if (el) { el.classList.remove("ac-open"); el.setAttribute("aria-hidden","true"); } }
-        function closeAllModals() { ["ac-account-modal","ac-equity-modal","ac-payout-modal","ac-confirm-modal"].forEach(closeModal); }
+        function closeAllModals() { ["ac-account-modal","ac-payout-modal","ac-confirm-modal"].forEach(closeModal); }
 
         /* overlay click to close */
-        ["ac-account-modal","ac-equity-modal","ac-payout-modal","ac-confirm-modal","ac-calc-overlay"].forEach(function (id) {
+        ["ac-account-modal","ac-payout-modal","ac-confirm-modal","ac-calc-overlay"].forEach(function (id) {
           var el = document.getElementById(id);
           if (el) el.addEventListener("click", function (e) { if (e.target === el) closeModal(id); });
         });
         document.addEventListener("keydown", function (e) {
           if (e.key !== "Escape") return;
+          if (activeEquityEditId) {
+            cancelEquityEdit(activeEquityEditId);
+            return;
+          }
           if (document.getElementById("ac-calc-overlay").classList.contains("ac-open")) { closeModal("ac-calc-overlay"); return; }
           closeAllModals();
         });
         ["ac-account-modal-close","ac-account-modal-cancel"].forEach(function (id) {
           var el = document.getElementById(id); if (el) el.addEventListener("click", function () { closeModal("ac-account-modal"); });
-        });
-        ["ac-equity-modal-close","ac-equity-modal-cancel"].forEach(function (id) {
-          var el = document.getElementById(id); if (el) el.addEventListener("click", function () { closeModal("ac-equity-modal"); });
         });
         ["ac-payout-modal-close","ac-payout-modal-cancel"].forEach(function (id) {
           var el = document.getElementById(id); if (el) el.addEventListener("click", function () { closeModal("ac-payout-modal"); });
@@ -1196,24 +1429,6 @@
             .catch(function (err) { setStatus(err.message, true); });
         });
 
-        /* ── Log Equity ── */
-        document.getElementById("ac-equity-form").addEventListener("submit", function (e) {
-          e.preventDefault();
-          var accId = document.getElementById("ac-equity-account-id").value;
-          var equity = Number(document.getElementById("ac-equity-val").value);
-          var note = document.getElementById("ac-equity-note").value.trim() || null;
-          if (!Number.isFinite(equity)) { setStatus("Invalid equity value", true); return; }
-          apiFetch("/api/equity-log", { method: "POST", headers: { "Content-Type": "application/json" }, cache: "no-store", body: JSON.stringify({ account_id: accId, equity: equity, note: note }) })
-            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-            .then(function (x) {
-              if (!x.ok) throw new Error((x.j && x.j.error) || "Save failed");
-              closeModal("ac-equity-modal");
-              loadAccounts();
-              loadOverview();
-            })
-            .catch(function (err) { setStatus(err.message, true); });
-        });
-
         /* ── Log Payout / Withdrawal ── */
         function updatePayoutNetPreview() {
           var gross = Number(document.getElementById("ac-payout-gross").value);
@@ -1256,6 +1471,20 @@
             .catch(function (err) { setStatus(err.message, true); });
         });
 
+        document.getElementById("ac-cards-grid").addEventListener("keydown", function (e) {
+          var input = e.target.closest(".ac-equity-edit__input");
+          if (!input) return;
+          var accountId = input.getAttribute("data-equity-input");
+          if (!accountId) return;
+          if (e.key === "Enter") {
+            e.preventDefault();
+            saveEquityEdit(accountId);
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancelEquityEdit(accountId);
+          }
+        });
+
         /* ── Grid event delegation ── */
         document.getElementById("ac-cards-grid").addEventListener("click", function (e) {
           var emptyCta = e.target.closest("#ac-empty-cta");
@@ -1269,11 +1498,18 @@
 
           if (action === "edit") { if (acc) openAccountModal(acc); return; }
 
-          if (action === "log-equity") {
-            document.getElementById("ac-equity-account-id").value = id;
-            document.getElementById("ac-equity-val").value = acc ? (acc.current_equity || "") : "";
-            document.getElementById("ac-equity-note").value = "";
-            openModal("ac-equity-modal");
+          if (action === "edit-equity-start") {
+            startEquityEdit(id);
+            return;
+          }
+
+          if (action === "edit-equity-save") {
+            saveEquityEdit(id);
+            return;
+          }
+
+          if (action === "edit-equity-cancel") {
+            cancelEquityEdit(id);
             return;
           }
 
