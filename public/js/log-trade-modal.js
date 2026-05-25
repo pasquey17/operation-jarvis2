@@ -18,7 +18,7 @@ import {
   makePhotoSlotId,
   sortPhotoSlots,
 } from "./journal-photo-slots-client.mjs";
-import { apiFetch } from "./jarvis-auth.js";
+import { apiFetch, getAuthUserId } from "./jarvis-auth.js";
 
 export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1";
 const FIELD_ORDER_KEY_PREFIX = "jarvis_field_order_v4_";
@@ -61,29 +61,31 @@ export function hasDraftInStorage(userId) {
 }
 
 async function resolveModalUserId(getUserId) {
-  let raw = "";
   if (typeof getUserId === "function") {
     try {
-      raw = await getUserId();
+      const raw = await getUserId();
+      const uid = String(raw ?? "").trim();
+      if (uid) return uid;
     } catch {
-      raw = "";
+      /* fall through */
     }
   }
-  if (raw && typeof raw === "object" && typeof raw.then === "function") {
-    raw = await raw;
+  try {
+    const authUid = String((await getAuthUserId()) ?? "").trim();
+    if (authUid) return authUid;
+  } catch {
+    /* fall through */
   }
-  let uid = String(raw || "").trim();
-  if (!uid) {
-    const auth = globalThis.JarvisAuth;
-    if (auth && typeof auth.getUserId === "function") {
-      try {
-        uid = String((await auth.getUserId()) || "").trim();
-      } catch {
-        uid = "";
-      }
+  const auth = globalThis.JarvisAuth;
+  if (auth && typeof auth.getUserId === "function") {
+    try {
+      const legacyUid = String((await auth.getUserId()) ?? "").trim();
+      if (legacyUid) return legacyUid;
+    } catch {
+      /* fall through */
     }
   }
-  return uid;
+  return "";
 }
 
 function applyDraftToForm(form, userId, pairOptions) {
@@ -128,13 +130,9 @@ function applyDraftToForm(form, userId, pairOptions) {
 
 function saveDraftToStorage(userId, data) {
   const key = draftStorageKey(userId);
-  if (!key) {
-    console.log("[draft] saveDraftToStorage: skipped — userId is empty");
-    return;
-  }
+  if (!key) return;
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    console.log("[draft] saved to", key, data);
   } catch (e) {
     console.warn("[draft] save error", e);
   }
@@ -1479,8 +1477,8 @@ export async function openLogTradeModal(options) {
   let fieldsList = null;
 
   async function closeModal() {
-    let draftUserId = userId;
-    if (!draftUserId) draftUserId = await resolveModalUserId(getUserId);
+    const draftUserId = (await resolveModalUserId(getUserId)) || userId || ltmCurrentUserId;
+    if (draftUserId) ltmCurrentUserId = draftUserId;
 
     if (!editId && !savedSuccessfully && form) {
       try {
@@ -1494,6 +1492,23 @@ export async function openLogTradeModal(options) {
         const summary = (fd.get(TRADE_SUMMARY_FIELD_ID) || "").trim();
         const session = (fd.get("session") || "").trim();
         const account = (fd.get("account") || "").trim();
+        const customFields = {};
+        const coreKeys = new Set([
+          "date",
+          "pair",
+          "pair_other",
+          "direction",
+          "session",
+          "outcome",
+          "rr",
+          "account",
+          TRADE_SUMMARY_FIELD_ID,
+        ]);
+        for (const [k, v] of fd.entries()) {
+          if (coreKeys.has(k)) continue;
+          const val = String(v || "").trim();
+          if (val) customFields[k] = val;
+        }
         const hasData =
           (dateVal && dateVal !== today) ||
           pair ||
@@ -1502,25 +1517,9 @@ export async function openLogTradeModal(options) {
           summary ||
           direction ||
           session ||
-          account;
+          account ||
+          Object.keys(customFields).length > 0;
         if (hasData && draftUserId) {
-          const customFields = {};
-          const coreKeys = new Set([
-            "date",
-            "pair",
-            "pair_other",
-            "direction",
-            "session",
-            "outcome",
-            "rr",
-            "account",
-            TRADE_SUMMARY_FIELD_ID,
-          ]);
-          for (const [k, v] of fd.entries()) {
-            if (coreKeys.has(k)) continue;
-            const val = String(v || "").trim();
-            if (val) customFields[k] = val;
-          }
           saveDraftToStorage(draftUserId, {
             date: dateVal,
             pair,
@@ -1657,10 +1656,6 @@ export async function openLogTradeModal(options) {
 
   initFieldRemoveHandlers(fieldsList, showToast);
 
-  if (!editId) {
-    applyDraftToForm(form, userId, pairOptions);
-  }
-
   document.addEventListener("paste", pasteHandler);
 
   const adderBtn = document.getElementById("ltm-adder-btn");
@@ -1707,6 +1702,12 @@ export async function openLogTradeModal(options) {
   }
   initOutcomeChips(form, syncRR);
   syncRR();
+
+  if (!editId) {
+    const draftUserId = (await resolveModalUserId(getUserId)) || userId || ltmCurrentUserId;
+    if (draftUserId) ltmCurrentUserId = draftUserId;
+    applyDraftToForm(form, draftUserId, pairOptions);
+  }
 
   const submitBtn = document.getElementById("ltm-submit");
   const submitAnotherBtn = document.getElementById("ltm-submit-another");
@@ -1802,16 +1803,20 @@ export async function openLogTradeModal(options) {
         userId,
       };
 
+      const draftUserId =
+        (await resolveModalUserId(getUserId)) || userId || ltmCurrentUserId;
+      if (draftUserId) ltmCurrentUserId = draftUserId;
+
       if (closeAfter) {
         savedSuccessfully = true;
-        clearDraftFromStorage(userId);
+        clearDraftFromStorage(draftUserId);
         void closeModal();
         showToast(editId ? "Trade updated." : "Trade logged.");
         if (onTradeSaved) await onTradeSaved(savedMeta);
         return;
       }
 
-      clearDraftFromStorage(userId);
+      clearDraftFromStorage(draftUserId);
       document.getElementById("ltm-draft-banner")?.remove();
       showToast("Trade logged — add another below.");
       resetFormForAnother();

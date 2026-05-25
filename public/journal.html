@@ -1098,7 +1098,7 @@
 
     <script type="module">
       import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
-      import { hasDraftInStorage } from "/js/log-trade-modal.js?v=d4f7e2a1";
+      import { hasDraftInStorage } from "/js/log-trade-modal.js?v=e7b2d9f4";
     (function () {
       'use strict';
 
@@ -1967,9 +1967,8 @@
       }
 
       function resolveJournalUserId() {
-        if (currentUserId) return Promise.resolve(currentUserId);
         return getAuthUserId().then(function (id) {
-          currentUserId = id || "";
+          if (id) currentUserId = String(id).trim();
           return currentUserId;
         });
       }
@@ -2797,7 +2796,7 @@
         }
         if (src === 'journal_log') {
           try {
-            var mod = await import('/js/log-trade-modal.js?v=d4f7e2a1');
+            var mod = await import('/js/log-trade-modal.js?v=e7b2d9f4');
             await mod.openLogTradeModal({
               getUserId: resolveJournalUserId,
               fetchTradeRowsForPrefill: async function () {
@@ -3370,7 +3369,7 @@
       /* ── LOG TRADE modal (shared: /js/log-trade-modal.js) ── */
       async function openTradeForm() {
         try {
-          var mod = await import('/js/log-trade-modal.js?v=d4f7e2a1');
+          var mod = await import('/js/log-trade-modal.js?v=e7b2d9f4');
           await mod.openLogTradeModal({
             getUserId: resolveJournalUserId,
             fetchTradeRowsForPrefill: async function () {
@@ -3518,9 +3517,13 @@
         }
       }
       document.addEventListener('jarvis:draft-changed', function(e) {
-        if (e.detail && draftUserIdsMatch(e.detail.userId, currentUserId)) {
-          updateDraftBadge(currentUserId);
-        }
+        getAuthUserId().then(function (uid) {
+          if (uid) currentUserId = String(uid).trim();
+          var activeId = uid || currentUserId;
+          if (e.detail && draftUserIdsMatch(e.detail.userId, activeId)) {
+            updateDraftBadge(activeId);
+          }
+        });
       });
 
       /* ── Boot ── */
