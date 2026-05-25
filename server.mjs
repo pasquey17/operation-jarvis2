@@ -3303,6 +3303,14 @@ async function handleJournalPhotoSlotsPatch(req, res) {
   }
 }
 
+/** Normalise a pair string to uppercase with slash (e.g. "xauusd" → "XAU/USD"). */
+function normalizePair(raw) {
+  if (!raw || typeof raw !== "string") return raw;
+  let s = raw.trim().toUpperCase().replace(/\s+/g, "");
+  if (s.length === 6 && !s.includes("/")) s = s.slice(0, 3) + "/" + s.slice(3);
+  return s;
+}
+
 /** GET /api/journal-trades — manual LOG TRADE rows (journal_trades). */
 async function handleJournalTradesGet(req, res) {
   const { url, key } = getSupabaseConfig();
@@ -3376,7 +3384,7 @@ async function handleLogTrade(req, res) {
   const row = {
     user_id: legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId,
     traded_at: body.traded_at || new Date().toISOString(),
-    pair: body.pair || "XAU/USD",
+    pair: normalizePair(body.pair) || "XAU/USD",
     outcome: body.outcome || null,
     rr: Number.isFinite(rrVal) ? rrVal : null,
     session: body.session || null,
@@ -3451,7 +3459,7 @@ async function handleJournalTradePatch(req, res) {
   const rrVal = body.rr != null && body.rr !== "" ? Number(body.rr) : null;
   const patch = {
     traded_at: body.traded_at || undefined,
-    pair: body.pair !== undefined ? body.pair || null : undefined,
+    pair: body.pair !== undefined ? (normalizePair(body.pair) || null) : undefined,
     outcome: body.outcome !== undefined ? body.outcome || null : undefined,
     rr: body.rr !== undefined ? (Number.isFinite(rrVal) ? rrVal : null) : undefined,
     session: body.session !== undefined ? body.session || null : undefined,

@@ -1998,6 +1998,13 @@
         var tradesRes = results[0];
         var journalRes = results[1];
 
+        // Normalise pair to uppercase with slash for deduplication key matching
+        function normPairKey(s) {
+          s = String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+          if (s.length === 6 && s.indexOf('/') === -1) s = s.slice(0, 3) + '/' + s.slice(3);
+          return s;
+        }
+
         var merged = [];
         if (tradesRes.status === 'fulfilled') {
           var data = tradesRes.value;
@@ -2015,6 +2022,22 @@
             merged.push(Object.assign({}, journalRes.value[ji], { _jarvis_trade_source: 'journal_log' }));
           }
         }
+
+        // Suppress journal_log rows whose date+pair matches a notion_table row
+        var notionDatePairKeys = new Set();
+        for (var ni = 0; ni < merged.length; ni++) {
+          if (merged[ni]._jarvis_trade_source === 'notion_table') {
+            var nd = String(merged[ni].date || '').slice(0, 10);
+            var np = normPairKey(merged[ni].pair || '');
+            if (nd && np) notionDatePairKeys.add(nd + '|' + np);
+          }
+        }
+        merged = merged.filter(function(t) {
+          if (t._jarvis_trade_source !== 'journal_log') return true;
+          var jd = String(t.traded_at || '').slice(0, 10);
+          var jp = normPairKey(t.pair || '');
+          return !(jd && jp && notionDatePairKeys.has(jd + '|' + jp));
+        });
 
         merged.sort(cmpSortNewest);
 
