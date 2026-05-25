@@ -67,12 +67,11 @@
       .ac-shell { width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 20px; box-sizing: border-box; }
 
       /* ── Capital overview strip ── */
-      .ac-overview-strip { display: grid; grid-template-columns: repeat(6,1fr); gap: 10px; margin-bottom: 20px; }
+      .ac-overview-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
       .ac-overview-tile { background: rgba(255,255,255,0.03); border: 1px solid rgba(0,212,255,0.12); border-radius: 12px; padding: 12px 14px; min-width: 0; }
       .ac-overview-tile__label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(0,212,255,0.65); margin-bottom: 6px; }
       .ac-overview-tile__value { font-family: "Outfit",system-ui,sans-serif; font-size: 18px; font-weight: 500; color: #fff; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .ac-overview-tile__value--muted { color: rgba(255,255,255,0.45); font-size: 15px; }
-      @media (max-width: 1100px) { .ac-overview-strip { grid-template-columns: repeat(3,1fr); } }
       @media (max-width: 640px) { .ac-overview-strip { grid-template-columns: repeat(2,1fr); } }
 
       /* ── Add account bar ── */
@@ -292,8 +291,6 @@
       .ac-archive-toggle { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.28); background: transparent; border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; transition: color 0.15s; }
       .ac-archive-toggle:hover { color: rgba(255,255,255,0.55); }
 
-      /* ── Overview tile subline ── */
-      .ac-overview-tile__sub { font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; letter-spacing: 0.08em; color: rgba(0,212,255,0.4); margin-top: 3px; }
     </style>
   </head>
   <body>
@@ -358,8 +355,10 @@
       <div class="ac-shell">
         <!-- Capital Overview Strip -->
         <div class="ac-overview-strip" id="ac-overview-strip">
-          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Capital deployed</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-deployed">—</div></div>
-          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Current equity</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-equity">—</div><div class="ac-overview-tile__sub" id="ov-equity-sub"></div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Funded capital</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-funded-capital">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Funded equity</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-funded-equity">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Eval capital</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-eval-capital">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Live capital</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-live-capital">—</div></div>
           <div class="ac-overview-tile"><div class="ac-overview-tile__label">Lifetime payouts</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-payouts">—</div></div>
           <div class="ac-overview-tile"><div class="ac-overview-tile__label">Active accounts</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-active">—</div></div>
           <div class="ac-overview-tile"><div class="ac-overview-tile__label">Eval pass rate</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-passrate">—</div></div>
@@ -755,15 +754,16 @@
         }
         function num(v) { var n = Number(v); return Number.isFinite(n) ? n : null; }
 
-        /* ── Today's P&L vs day-prior equity ── */
+        /* ── Today's P&L: current_equity minus first equity log entry of today ── */
         function todayPnl(acc) {
           var log = acc.equity_log || [];
           var today = new Date().toISOString().slice(0, 10);
-          var ref = null;
-          for (var i = log.length - 1; i >= 0; i--) {
-            if ((log[i].logged_at || "").slice(0, 10) < today) { ref = num(log[i].equity); break; }
+          var firstToday = null;
+          for (var i = 0; i < log.length; i++) {
+            if ((log[i].logged_at || "").slice(0, 10) === today) { firstToday = log[i]; break; }
           }
-          if (ref === null) ref = num(acc.starting_balance);
+          if (!firstToday) return null;
+          var ref = num(firstToday.equity);
           var cur = num(acc.current_equity);
           if (cur === null || ref === null) return null;
           return cur - ref;
@@ -1007,15 +1007,15 @@
             .then(function (x) {
               if (!x.ok) return;
               var j = x.j;
-              document.getElementById("ov-deployed").textContent = fmtMoney(j.total_capital_deployed);
-              document.getElementById("ov-equity").textContent = fmtMoney(j.total_current_equity);
+              document.getElementById("ov-funded-capital").textContent = fmtMoney(j.funded_capital);
+              document.getElementById("ov-funded-equity").textContent = fmtMoney(j.funded_equity);
+              document.getElementById("ov-eval-capital").textContent = fmtMoney(j.eval_capital);
+              document.getElementById("ov-live-capital").textContent = fmtMoney(j.live_capital);
               document.getElementById("ov-payouts").textContent = fmtMoney(j.lifetime_payouts);
               document.getElementById("ov-active").textContent = j.active_accounts_count !== null ? j.active_accounts_count : "—";
               document.getElementById("ov-passrate").textContent = j.eval_pass_rate !== null ? j.eval_pass_rate + "%" : "—";
               document.getElementById("ov-blown").textContent = j.days_since_last_blown !== null ? j.days_since_last_blown + "d" : "Never";
-              var equitySubEl = document.getElementById("ov-equity-sub");
-              if (equitySubEl) equitySubEl.textContent = (j.total_capital_deployed != null && j.total_current_equity != null && j.total_capital_deployed === j.total_current_equity) ? "same as deployed" : "";
-              ["ov-deployed","ov-equity","ov-payouts","ov-active","ov-passrate","ov-blown"].forEach(function (id) {
+              ["ov-funded-capital","ov-funded-equity","ov-eval-capital","ov-live-capital","ov-payouts","ov-active","ov-passrate","ov-blown"].forEach(function (id) {
                 document.getElementById(id).classList.remove("ac-overview-tile__value--muted");
               });
             })

@@ -4399,10 +4399,8 @@ async function handlePayouts(req, res) {
     const note = body.note ? String(body.note).trim().slice(0, 500) : null;
     const payoutRow = { account_id, user_id: userId, amount, note };
     if (gross_amount !== null) { payoutRow.gross_amount = gross_amount; payoutRow.split_pct = split_pct; payoutRow.net_amount = net_amount; }
-    const equityNote = isFundedPayout ? `Payout: $${gross_amount} gross / $${net_amount.toFixed(2)} net` : `Withdrawal: $${amount}`;
     const [r1] = await Promise.all([
       fetch(`${url}/rest/v1/payouts`, { method: "POST", headers: postHdrs, body: JSON.stringify(payoutRow) }),
-      fetch(`${url}/rest/v1/equity_log_entries`, { method: "POST", headers: postHdrs, body: JSON.stringify({ account_id, user_id: userId, equity: newEquity, note: equityNote }) }),
       fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(account_id)}&user_id=eq.${encodeURIComponent(userId)}`, {
         method: "PATCH", headers: postHdrs, body: JSON.stringify({ current_equity: newEquity, updated_at: new Date().toISOString() }),
       }),
@@ -4436,8 +4434,13 @@ async function handleCapitalOverview(req, res) {
     if (!Array.isArray(payouts)) payouts = [];
 
     const active = accounts.filter((a) => a.status === "active");
-    const total_capital_deployed = active.reduce((s, a) => s + Number(a.starting_balance || 0), 0);
-    const total_current_equity = active.reduce((s, a) => s + Number(a.current_equity || 0), 0);
+    const activeFunded = active.filter((a) => a.type === "funded");
+    const activeEval = active.filter((a) => a.type === "eval");
+    const activeLive = active.filter((a) => a.type === "live");
+    const funded_capital = activeFunded.reduce((s, a) => s + Number(a.starting_balance || 0), 0);
+    const funded_equity = activeFunded.reduce((s, a) => s + Number(a.current_equity || 0), 0);
+    const eval_capital = activeEval.reduce((s, a) => s + Number(a.starting_balance || 0), 0);
+    const live_capital = activeLive.reduce((s, a) => s + Number(a.starting_balance || 0), 0);
     const lifetime_payouts = payouts.reduce((s, p) => s + Number(p.net_amount != null ? p.net_amount : p.amount || 0), 0);
     const active_accounts_count = active.length;
 
@@ -4452,7 +4455,7 @@ async function handleCapitalOverview(req, res) {
       days_since_last_blown = Math.floor((Date.now() - new Date(blownAccounts[0].updated_at).getTime()) / 86400000);
     }
 
-    json(res, 200, { total_capital_deployed, total_current_equity, lifetime_payouts, active_accounts_count, eval_pass_rate, days_since_last_blown });
+    json(res, 200, { funded_capital, funded_equity, eval_capital, live_capital, lifetime_payouts, active_accounts_count, eval_pass_rate, days_since_last_blown });
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
   }
