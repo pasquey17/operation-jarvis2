@@ -4796,6 +4796,11 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/notion/connection-status")) {
+    await handleNotionConnectionStatus(req, res);
+    return;
+  }
+
   if (req.method === "POST" && req.url.startsWith("/api/notion/sync-user")) {
     await handleNotionSyncUser(req, res);
     return;
@@ -6108,6 +6113,25 @@ async function syncNotionOAuthForUser(userId) {
     skipped: false,
     journal_fields_synced: fieldSync.ok ? fieldSync.synced ?? 0 : 0,
   };
+}
+
+async function handleNotionConnectionStatus(req, res) {
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 200, { connected: false }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(authUserId)}&select=id&limit=1`,
+      { headers: hdrs }
+    );
+    if (!r.ok) { json(res, 200, { connected: false }); return; }
+    const rows = JSON.parse(await r.text());
+    json(res, 200, { connected: Array.isArray(rows) && rows.length > 0 });
+  } catch {
+    json(res, 200, { connected: false });
+  }
 }
 
 async function handleNotionSyncUser(req, res) {

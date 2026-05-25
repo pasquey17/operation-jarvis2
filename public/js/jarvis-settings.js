@@ -52,7 +52,10 @@ function ensureSettingsDom() {
     '<div class="jv-settings-section">' +
     '<span class="jv-settings-field__label">Notion Integration</span>' +
     '<p class="jv-settings-section__desc">Re-run the column mapping wizard to add new fields, fix mismatched columns, or connect a different Notion database.</p>' +
+    '<div class="jv-settings-notion-row">' +
     '<a href="/notion-setup.html" class="jv-settings-notion-link">Update Column Mapping →</a>' +
+    '<button type="button" class="jv-settings-sync-btn" id="jv-notion-sync-btn" style="display:none">Sync Notion</button>' +
+    "</div>" +
     "</div>" +
     '<button type="button" class="jv-settings-logout" id="jv-settings-logout">Logout</button>' +
     "</div>";
@@ -69,6 +72,13 @@ function populateSettingsFields() {
   void getAuthEmail().then((email) => {
     if (emailEl) emailEl.textContent = email || "—";
   });
+  void fetch("/api/notion/connection-status", { cache: "no-store" })
+    .then((r) => r.ok ? r.json() : { connected: false })
+    .then(({ connected }) => {
+      const syncBtn = document.getElementById("jv-notion-sync-btn");
+      if (syncBtn) syncBtn.style.display = connected ? "" : "none";
+    })
+    .catch(() => {});
 }
 
 let settingsOpen = false;
@@ -128,6 +138,30 @@ function wireSettingsUi() {
     logoutBtn.dataset.jarvisSettingsBound = "1";
     logoutBtn.addEventListener("click", () => {
       void signOut();
+    });
+  }
+  const syncBtn = document.getElementById("jv-notion-sync-btn");
+  if (syncBtn && !syncBtn.dataset.jarvisSettingsBound) {
+    syncBtn.dataset.jarvisSettingsBound = "1";
+    syncBtn.addEventListener("click", () => {
+      syncBtn.disabled = true;
+      syncBtn.textContent = "Syncing…";
+      syncBtn.style.color = "";
+      fetch("/api/notion/sync-user", { method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json" }, body: "{}" })
+        .then((r) => r.ok ? r.json().then(() => true) : Promise.reject())
+        .then(() => {
+          syncBtn.textContent = "✓ Synced";
+          setTimeout(() => {
+            syncBtn.textContent = "Sync Notion";
+            syncBtn.disabled = false;
+          }, 2000);
+        })
+        .catch(() => {
+          syncBtn.textContent = "Sync failed — try again";
+          syncBtn.style.color = "#ff4d4d";
+          syncBtn.disabled = false;
+        });
     });
   }
   const panel = document.getElementById("jv-settings-panel");
