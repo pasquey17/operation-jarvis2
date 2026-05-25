@@ -6120,14 +6120,10 @@ async function handleNotionConnectionStatus(req, res) {
   if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
   const { url, key } = getSupabaseConfig();
   if (!url || !key) { json(res, 200, { connected: false }); return; }
-  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  // notion_connections.user_id stores email, not UUID — use same fallback as other notion handlers
+  const emailUserId = legacyEmailForAuthUserId(authUserId) || authUserId;
   try {
-    const r = await fetch(
-      `${url}/rest/v1/notion_connections?auth_user_id=eq.${encodeURIComponent(authUserId)}&select=id&limit=1`,
-      { headers: hdrs }
-    );
-    if (!r.ok) { json(res, 200, { connected: false }); return; }
-    const rows = JSON.parse(await r.text());
+    const rows = await fetchNotionUserRows(url, key, "notion_connections", emailUserId, authUserId);
     json(res, 200, { connected: Array.isArray(rows) && rows.length > 0 });
   } catch {
     json(res, 200, { connected: false });
