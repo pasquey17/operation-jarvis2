@@ -707,14 +707,7 @@
                 <input class="ac-input" type="number" id="calc-fx-balance" step="0.01" min="0" placeholder="50000" />
               </div>
               <div class="ac-field">
-                <label for="calc-fx-risk-mode">Risk as</label>
-                <select class="ac-select" id="calc-fx-risk-mode">
-                  <option value="pct">Percent of balance</option>
-                  <option value="usd">Fixed dollars</option>
-                </select>
-              </div>
-              <div class="ac-field">
-                <label for="calc-fx-risk-val">Risk value</label>
+                <label for="calc-fx-risk-val">Risk (%)</label>
                 <input class="ac-input" type="number" id="calc-fx-risk-val" step="0.01" min="0" value="1" placeholder="1" />
               </div>
               <div class="ac-field">
@@ -741,14 +734,7 @@
                 <input class="ac-input" type="number" id="calc-ft-balance" step="0.01" min="0" placeholder="50000" />
               </div>
               <div class="ac-field">
-                <label for="calc-ft-risk-mode">Risk as</label>
-                <select class="ac-select" id="calc-ft-risk-mode">
-                  <option value="pct">Percent of balance</option>
-                  <option value="usd">Fixed dollars</option>
-                </select>
-              </div>
-              <div class="ac-field">
-                <label for="calc-ft-risk-val">Risk value</label>
+                <label for="calc-ft-risk-val">Risk (%)</label>
                 <input class="ac-input" type="number" id="calc-ft-risk-val" step="0.01" min="0" value="1" placeholder="1" />
               </div>
               <div class="ac-field">
@@ -1826,19 +1812,12 @@
           function fail(msg) { errEl.textContent = msg; if (lcd) lcd.classList.add("ac-calc-lcd--warn"); if (lcdM) lcdM.textContent = msg; if (lcdS) lcdS.textContent = ""; }
           if (calcFxPip.loading) { if (lcdM) lcdM.textContent = "…"; if (lcdS) lcdS.textContent = "Updating pip value"; return; }
           var bal = parseNum("calc-fx-balance");
-          var mode = document.getElementById("calc-fx-risk-mode").value;
           var rv = parseNum("calc-fx-risk-val");
           var pips = parseNum("calc-fx-pips");
           var pipUsd = calcFxPip.pipUsdPerLot;
-          var riskUsd = null;
-          if (mode === "pct") {
-            if (!Number.isFinite(bal) || bal <= 0) { fail("Enter account balance."); return; }
-            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk percent."); return; }
-            riskUsd = (bal * rv) / 100;
-          } else {
-            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk in dollars."); return; }
-            riskUsd = rv;
-          }
+          if (!Number.isFinite(bal) || bal <= 0) { fail("Enter account balance."); return; }
+          if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk percent."); return; }
+          var riskUsd = (bal * rv) / 100;
           if (!Number.isFinite(pips) || pips <= 0) { fail("Stop in pips must be > 0."); return; }
           if (!Number.isFinite(pipUsd) || pipUsd <= 0) { fail(calcFxPip.error || "Pip value unavailable."); return; }
           var lots = riskUsd / (pips * pipUsd);
@@ -1859,19 +1838,12 @@
           if (lcd) lcd.classList.remove("ac-calc-lcd--warn");
           function fail(msg) { errEl.textContent = msg; if (lcd) lcd.classList.add("ac-calc-lcd--warn"); if (lcdM) lcdM.textContent = msg; if (lcdS) lcdS.textContent = ""; }
           var bal = parseNum("calc-ft-balance");
-          var mode = document.getElementById("calc-ft-risk-mode").value;
           var rv = parseNum("calc-ft-risk-val");
           var stop = parseNum("calc-ft-stop");
           var dpp = parseNum("calc-ft-dpp");
-          var riskUsd = null;
-          if (mode === "pct") {
-            if (!Number.isFinite(bal) || bal <= 0) { fail("Enter account balance."); return; }
-            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk percent."); return; }
-            riskUsd = (bal * rv) / 100;
-          } else {
-            if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk in dollars."); return; }
-            riskUsd = rv;
-          }
+          if (!Number.isFinite(bal) || bal <= 0) { fail("Enter account balance."); return; }
+          if (!Number.isFinite(rv) || rv <= 0) { fail("Enter risk percent."); return; }
+          var riskUsd = (bal * rv) / 100;
           var denom = stop * dpp;
           if (!Number.isFinite(denom) || denom <= 0) { fail("Stop points and $/point must be > 0."); return; }
           var contracts = riskUsd / denom;
@@ -1900,8 +1872,8 @@
           try {
             localStorage.setItem(LS_CALC, JSON.stringify({
               tab: document.getElementById("calc-block-ft").classList.contains("ac-visible") ? "ft" : "fx",
-              fx: { pairSymbol: document.getElementById("calc-fx-pair").value, balance: document.getElementById("calc-fx-balance").value, mode: document.getElementById("calc-fx-risk-mode").value, riskVal: document.getElementById("calc-fx-risk-val").value, pips: document.getElementById("calc-fx-pips").value },
-              ft: { balance: document.getElementById("calc-ft-balance").value, mode: document.getElementById("calc-ft-risk-mode").value, riskVal: document.getElementById("calc-ft-risk-val").value, stop: document.getElementById("calc-ft-stop").value, dpp: document.getElementById("calc-ft-dpp").value },
+              fx: { pairSymbol: document.getElementById("calc-fx-pair").value, balance: document.getElementById("calc-fx-balance").value, riskVal: document.getElementById("calc-fx-risk-val").value, pips: document.getElementById("calc-fx-pips").value },
+              ft: { balance: document.getElementById("calc-ft-balance").value, riskVal: document.getElementById("calc-ft-risk-val").value, stop: document.getElementById("calc-ft-stop").value, dpp: document.getElementById("calc-ft-dpp").value },
             }));
           } catch (e) {}
         }
@@ -1914,13 +1886,11 @@
             var fx = o.fx || {};
             var pairSel = document.getElementById("calc-fx-pair");
             if (fx.balance) document.getElementById("calc-fx-balance").value = fx.balance;
-            if (fx.mode) document.getElementById("calc-fx-risk-mode").value = fx.mode;
             if (fx.riskVal) document.getElementById("calc-fx-risk-val").value = fx.riskVal;
             if (fx.pips) document.getElementById("calc-fx-pips").value = fx.pips;
             if (fx.pairSymbol && fxPairsBySymbol[fx.pairSymbol]) pairSel.value = fx.pairSymbol;
             var ft = o.ft || {};
             if (ft.balance) document.getElementById("calc-ft-balance").value = ft.balance;
-            if (ft.mode) document.getElementById("calc-ft-risk-mode").value = ft.mode;
             if (ft.riskVal) document.getElementById("calc-ft-risk-val").value = ft.riskVal;
             if (ft.stop) document.getElementById("calc-ft-stop").value = ft.stop;
             if (ft.dpp) document.getElementById("calc-ft-dpp").value = ft.dpp;
@@ -1967,10 +1937,8 @@
           document.getElementById("calc-balance-account").value = "";
           document.getElementById("calc-fx-balance").value = "";
           document.getElementById("calc-ft-balance").value = "";
-          document.getElementById("calc-fx-risk-mode").value = "pct";
           document.getElementById("calc-fx-risk-val").value = "1";
           document.getElementById("calc-fx-pips").value = "";
-          document.getElementById("calc-ft-risk-mode").value = "pct";
           document.getElementById("calc-ft-risk-val").value = "1";
           document.getElementById("calc-ft-stop").value = "";
           document.getElementById("calc-ft-dpp").value = "";
@@ -1996,8 +1964,8 @@
               document.getElementById("calc-balance-account").value = acc.id;
             }
             if (risk !== null) {
-              document.getElementById("calc-fx-risk-mode").value = "pct";
               document.getElementById("calc-fx-risk-val").value = String(risk);
+              document.getElementById("calc-ft-risk-val").value = String(risk);
             }
             if (pair && fxPairsBySymbol[pair]) {
               document.getElementById("calc-fx-pair").value = pair;
@@ -2020,7 +1988,7 @@
           this.setAttribute("aria-expanded", open ? "true" : "false");
         });
 
-        ["calc-fx-balance","calc-fx-risk-mode","calc-fx-risk-val","calc-fx-pips","calc-ft-balance","calc-ft-risk-mode","calc-ft-risk-val","calc-ft-stop","calc-ft-dpp"].forEach(function (id) {
+        ["calc-fx-balance","calc-fx-risk-val","calc-fx-pips","calc-ft-balance","calc-ft-risk-val","calc-ft-stop","calc-ft-dpp"].forEach(function (id) {
           var n = document.getElementById(id);
           if (n) { n.addEventListener("input", runAllCalc); n.addEventListener("change", runAllCalc); }
         });
