@@ -1,7 +1,7 @@
 /**
  * Settings gear + slide-in panel (email, timezone, logout) for classic Jarvis pages.
  */
-import { getAuthEmail, signOut } from "./jarvis-auth.js";
+import { apiFetch, getAuthEmail, signOut } from "./jarvis-auth.js";
 
 const ONBOARDING_LS_KEY = "jarvis_onboarding";
 
@@ -72,7 +72,7 @@ function populateSettingsFields() {
   void getAuthEmail().then((email) => {
     if (emailEl) emailEl.textContent = email || "—";
   });
-  void fetch("/api/notion/connection-status", { cache: "no-store" })
+  void apiFetch("/api/notion/connection-status", { cache: "no-store" })
     .then((r) => r.ok ? r.json() : { connected: false })
     .then(({ connected }) => {
       const syncBtn = document.getElementById("jv-notion-sync-btn");
@@ -147,7 +147,7 @@ function wireSettingsUi() {
       syncBtn.disabled = true;
       syncBtn.textContent = "Syncing…";
       syncBtn.style.color = "";
-      fetch("/api/notion/sync-user", { method: "POST", cache: "no-store",
+      apiFetch("/api/notion/sync-user", { method: "POST", cache: "no-store",
         headers: { "Content-Type": "application/json" }, body: "{}" })
         .then((r) => r.ok ? r.json().then(() => true) : Promise.reject())
         .then(() => {
