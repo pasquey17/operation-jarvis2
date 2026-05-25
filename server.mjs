@@ -3835,9 +3835,11 @@ async function handleTradingAccountsGet(req, res) {
   if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
   const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
   const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  const u2 = new URL(req.url, "http://localhost");
+  const includeArchived = u2.searchParams.get("include_archived") === "true";
   try {
     const r = await fetch(
-      `${url}/rest/v1/trading_accounts?user_id=eq.${encodeURIComponent(userId)}&status=neq.archived&order=created_at.desc&select=*`,
+      `${url}/rest/v1/trading_accounts?user_id=eq.${encodeURIComponent(userId)}${includeArchived ? "" : "&status=neq.archived"}&order=created_at.desc&select=*`,
       { headers: hdrs }
     );
     const text = await r.text();
@@ -4224,6 +4226,33 @@ async function handleAccountsArchive(req, res) {
     await fetch(
       `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
       { method: "PATCH", headers: { ...hdrs, "Content-Type": "application/json" }, body: JSON.stringify({ status: "archived", archived_at: new Date().toISOString(), updated_at: new Date().toISOString() }) }
+    );
+    json(res, 200, { ok: true });
+  } catch (e) {
+    json(res, 502, { error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+/** POST /api/accounts/:id/restore — restore an archived account */
+async function handleAccountsRestore(req, res) {
+  const pathname = req.url.split("?")[0];
+  const m = pathname.match(/^\/api\/accounts\/([^/]+)\/restore\/?$/);
+  if (!m) { json(res, 400, { error: "Invalid path" }); return; }
+  const id = m[1];
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId) || authUserId;
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" };
+  try {
+    const check = await fetch(`${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=id`, { headers: hdrs });
+    if (!check.ok) { json(res, 502, { error: "Check failed" }); return; }
+    const found = JSON.parse(await check.text());
+    if (!Array.isArray(found) || !found.length) { json(res, 404, { error: "Account not found" }); return; }
+    await fetch(
+      `${url}/rest/v1/trading_accounts?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "PATCH", headers: { ...hdrs, "Content-Type": "application/json" }, body: JSON.stringify({ status: "active", archived_at: null, updated_at: new Date().toISOString() }) }
     );
     json(res, 200, { ok: true });
   } catch (e) {
@@ -4845,6 +4874,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/archive\/?$/)) {
     await handleAccountsArchive(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.split("?")[0].match(/^\/api\/accounts\/[^/]+\/restore\/?$/)) {
+    await handleAccountsRestore(req, res);
     return;
   }
 

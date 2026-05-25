@@ -212,6 +212,88 @@
       .ac-calc-help-panel { font-family: "Outfit",system-ui,sans-serif; font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.6; margin-bottom: 12px; padding: 10px 12px; border: 1px solid rgba(0,212,255,0.1); border-radius: 8px; }
       .ac-calc-field-full { grid-column: 1/-1; }
       .ac-panel__hr { height: 1px; background: rgba(0,212,255,0.1); margin: 4px 0 14px; }
+
+      /* ── Primary card actions ── */
+      .ac-card__primary-actions { display: flex; gap: 8px; margin-top: 2px; }
+      .ac-action-primary { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 0; border-radius: 6px; border: 1px solid rgba(0,212,255,0.3); background: rgba(0,212,255,0.08); color: rgba(0,212,255,0.9); cursor: pointer; transition: background 0.15s, border-color 0.15s; white-space: nowrap; flex: 1; text-align: center; }
+      .ac-action-primary:hover { background: rgba(0,212,255,0.18); border-color: rgba(0,212,255,0.6); }
+      .ac-action-primary--payout { border-color: rgba(0,255,136,0.3); background: rgba(0,255,136,0.07); color: rgba(0,255,136,0.9); }
+      .ac-action-primary--payout:hover { background: rgba(0,255,136,0.15); border-color: rgba(0,255,136,0.6); }
+
+      /* ── Kebab menu ── */
+      .ac-kebab-wrap { position: relative; flex-shrink: 0; }
+      .ac-kebab-btn { width: 26px; height: 26px; border: 1px solid rgba(0,212,255,0.14); border-radius: 6px; background: transparent; color: rgba(255,255,255,0.35); font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s; letter-spacing: -1px; padding: 0; }
+      .ac-kebab-btn:hover { background: rgba(0,212,255,0.1); color: rgba(0,212,255,0.85); border-color: rgba(0,212,255,0.3); }
+      .ac-kebab-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 500; min-width: 160px; background: rgba(4,9,18,0.98); border: 1px solid rgba(0,212,255,0.2); border-radius: 10px; padding: 4px; box-shadow: 0 12px 40px rgba(0,0,0,0.7); display: none; flex-direction: column; }
+      .ac-kebab-menu.ac-open { display: flex; }
+      .ac-kebab-item { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 12px; border-radius: 6px; border: none; background: transparent; color: rgba(255,255,255,0.6); cursor: pointer; text-align: left; transition: background 0.12s, color 0.12s; white-space: nowrap; width: 100%; }
+      .ac-kebab-item:hover { background: rgba(0,212,255,0.1); color: #00d4ff; }
+      .ac-kebab-item--pass { color: rgba(0,255,136,0.75); }
+      .ac-kebab-item--pass:hover { background: rgba(0,255,136,0.1); color: #00ff88; }
+      .ac-kebab-item--danger { color: rgba(255,68,102,0.75); }
+      .ac-kebab-item--danger:hover { background: rgba(255,68,102,0.1); color: #ff4466; }
+      .ac-kebab-item--archive { color: rgba(255,255,255,0.28); }
+      .ac-kebab-item--archive:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.55); }
+      .ac-kebab-sep { height: 1px; background: rgba(0,212,255,0.1); margin: 3px 0; }
+
+      /* ── Modal section divider ── */
+      .ac-modal-section { margin: 8px 0 2px; }
+      .ac-modal-section__label { font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,212,255,0.6); margin-bottom: 6px; }
+      .ac-modal-section__line { height: 1px; background: #1a2a3a; }
+
+      /* ── History panel (slide-in) ── */
+      .ac-hist-overlay { position: fixed; inset: 0; z-index: 2050; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: none; }
+      .ac-hist-overlay.ac-open { display: block; }
+      .ac-hist-panel { position: fixed; top: 0; right: -500px; width: min(480px,100vw); height: 100dvh; z-index: 2051; background: rgba(4,9,18,0.99); border-left: 1px solid rgba(0,212,255,0.2); box-shadow: -24px 0 60px rgba(0,0,0,0.5); display: flex; flex-direction: column; transition: right 0.3s cubic-bezier(0.22,1,0.36,1); }
+      .ac-hist-overlay.ac-open .ac-hist-panel { right: 0; }
+      .ac-hist-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(0,212,255,0.12); flex-shrink: 0; gap: 12px; }
+      .ac-hist-title { font-family: "Outfit",system-ui,sans-serif; font-size: 14px; font-weight: 400; color: #fff; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ac-hist-close { flex-shrink: 0; width: 32px; height: 32px; border: none; border-radius: 8px; background: transparent; color: rgba(255,255,255,0.4); font-size: 20px; line-height: 1; cursor: pointer; transition: color 0.15s; }
+      .ac-hist-close:hover { color: #00d4ff; }
+      .ac-hist-tabs { display: flex; border-bottom: 1px solid rgba(0,212,255,0.1); flex-shrink: 0; }
+      .ac-hist-tab { flex: 1; padding: 10px; font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; background: transparent; border: none; border-bottom: 2px solid transparent; color: rgba(255,255,255,0.4); cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+      .ac-hist-tab.ac-active { color: #00d4ff; border-bottom-color: #00d4ff; }
+      .ac-hist-body { flex: 1; overflow-y: auto; }
+      .ac-hist-list { list-style: none; margin: 0; padding: 0; }
+      .ac-hist-row { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 4px; }
+      .ac-hist-row:last-child { border-bottom: none; }
+      .ac-hist-row__date { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; color: rgba(0,212,255,0.65); }
+      .ac-hist-row__val { font-family: "Outfit",system-ui,sans-serif; font-size: 16px; font-weight: 300; color: #fff; }
+      .ac-hist-row__change { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; }
+      .ac-hist-row__change--pos { color: #00ff88; }
+      .ac-hist-row__change--neg { color: #ff4466; }
+      .ac-hist-row__note { font-family: "Outfit",system-ui,sans-serif; font-size: 12px; color: rgba(255,255,255,0.4); }
+      .ac-hist-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 24px; text-align: center; }
+      .ac-hist-empty__icon { font-size: 28px; opacity: 0.2; margin-bottom: 10px; }
+      .ac-hist-empty__text { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.08em; color: rgba(255,255,255,0.25); }
+      .ac-hist-loading { display: flex; align-items: center; justify-content: center; padding: 40px; font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; color: rgba(255,255,255,0.3); }
+
+      /* ── Passed eval prompt ── */
+      .ac-passed-prompt { display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1500; background: rgba(4,9,18,0.97); border: 1px solid rgba(0,255,136,0.3); border-radius: 14px; padding: 18px 22px; box-shadow: 0 16px 48px rgba(0,0,0,0.55), 0 0 24px rgba(0,255,136,0.06); max-width: min(520px,calc(100vw - 32px)); width: 100%; }
+      .ac-passed-prompt.ac-open { display: block; }
+      .ac-passed-prompt__msg { font-family: "Outfit",system-ui,sans-serif; font-size: 14px; color: rgba(255,255,255,0.85); margin: 0 0 14px; line-height: 1.5; }
+      .ac-passed-prompt__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+      .ac-passed-prompt__cta { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; padding: 9px 18px; border-radius: 8px; border: 1px solid rgba(0,255,136,0.4); background: rgba(0,255,136,0.1); color: #00ff88; cursor: pointer; transition: background 0.15s; }
+      .ac-passed-prompt__cta:hover { background: rgba(0,255,136,0.2); }
+      .ac-passed-prompt__later { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; padding: 9px 18px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.38); cursor: pointer; transition: background 0.15s; }
+      .ac-passed-prompt__later:hover { background: rgba(255,255,255,0.05); }
+
+      /* ── Archived section ── */
+      .ac-archived-section { margin-top: 28px; display: none; }
+      .ac-archived-section.ac-visible { display: block; }
+      .ac-archived-header { font-family: "Share Tech Mono","Courier New",monospace; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.22); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .ac-archived-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+      @media (max-width: 1100px) { .ac-archived-grid { grid-template-columns: repeat(2,1fr); } }
+      @media (max-width: 640px) { .ac-archived-grid { grid-template-columns: 1fr; } }
+      .ac-card--archived { opacity: 0.5; }
+
+      /* ── Archive toggle ── */
+      .ac-archive-toggle-wrap { margin-top: 20px; display: flex; justify-content: center; }
+      .ac-archive-toggle { font-family: "Share Tech Mono","Courier New",monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.28); background: transparent; border: none; cursor: pointer; padding: 8px 16px; border-radius: 8px; transition: color 0.15s; }
+      .ac-archive-toggle:hover { color: rgba(255,255,255,0.55); }
+
+      /* ── Overview tile subline ── */
+      .ac-overview-tile__sub { font-family: "Share Tech Mono","Courier New",monospace; font-size: 8px; letter-spacing: 0.08em; color: rgba(0,212,255,0.4); margin-top: 3px; }
     </style>
   </head>
   <body>
@@ -277,7 +359,7 @@
         <!-- Capital Overview Strip -->
         <div class="ac-overview-strip" id="ac-overview-strip">
           <div class="ac-overview-tile"><div class="ac-overview-tile__label">Capital deployed</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-deployed">—</div></div>
-          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Current equity</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-equity">—</div></div>
+          <div class="ac-overview-tile"><div class="ac-overview-tile__label">Current equity</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-equity">—</div><div class="ac-overview-tile__sub" id="ov-equity-sub"></div></div>
           <div class="ac-overview-tile"><div class="ac-overview-tile__label">Lifetime payouts</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-payouts">—</div></div>
           <div class="ac-overview-tile"><div class="ac-overview-tile__label">Active accounts</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-active">—</div></div>
           <div class="ac-overview-tile"><div class="ac-overview-tile__label">Eval pass rate</div><div class="ac-overview-tile__value ac-overview-tile__value--muted" id="ov-passrate">—</div></div>
@@ -293,6 +375,17 @@
 
         <!-- Account Cards Grid -->
         <div id="ac-cards-grid" class="ac-cards-grid"></div>
+
+        <!-- Archive toggle -->
+        <div class="ac-archive-toggle-wrap">
+          <button type="button" class="ac-archive-toggle" id="ac-archive-toggle">▸ Show archived accounts</button>
+        </div>
+
+        <!-- Archived section -->
+        <div class="ac-archived-section" id="ac-archived-section">
+          <div class="ac-archived-header">Archived</div>
+          <div class="ac-archived-grid" id="ac-archived-grid"></div>
+        </div>
       </div>
     </div>
 
@@ -305,7 +398,12 @@
         </div>
         <form class="ac-modal-fields" id="ac-account-form" novalidate>
           <input type="hidden" id="ac-form-edit-id" value="" />
-          <!-- Always shown -->
+
+          <!-- ─ Account Details ─ -->
+          <div class="ac-modal-section">
+            <div class="ac-modal-section__label">Account details</div>
+            <div class="ac-modal-section__line"></div>
+          </div>
           <div class="ac-field">
             <label for="ac-f-name">Account name</label>
             <input class="ac-input" id="ac-f-name" maxlength="200" placeholder="e.g. FTMO 50K Eval #1" required />
@@ -328,7 +426,12 @@
             <label for="ac-f-broker">Broker name (optional)</label>
             <input class="ac-input" id="ac-f-broker" maxlength="200" placeholder="IC Markets, etc." />
           </div>
-          <!-- Always shown -->
+
+          <!-- ─ Capital & Rules ─ -->
+          <div class="ac-modal-section">
+            <div class="ac-modal-section__label">Capital &amp; rules</div>
+            <div class="ac-modal-section__line"></div>
+          </div>
           <div class="ac-field">
             <label for="ac-f-start">Starting balance ($)</label>
             <input class="ac-input" type="number" id="ac-f-start" step="0.01" min="0" placeholder="50000" required />
@@ -390,7 +493,12 @@
               </div>
             </div>
           </div>
-          <!-- Always shown -->
+
+          <!-- ─ Trading Defaults ─ -->
+          <div class="ac-modal-section">
+            <div class="ac-modal-section__label">Trading defaults</div>
+            <div class="ac-modal-section__line"></div>
+          </div>
           <div class="ac-modal-row">
             <div class="ac-field">
               <label for="ac-f-riskpct">Default risk %</label>
@@ -593,6 +701,34 @@
       </div>
     </div>
 
+    <!-- ══ History Panel ══ -->
+    <div class="ac-hist-overlay" id="ac-hist-overlay" aria-hidden="true">
+      <div class="ac-hist-panel" role="dialog" aria-modal="true" aria-labelledby="ac-hist-title">
+        <div class="ac-hist-header">
+          <h2 class="ac-hist-title" id="ac-hist-title">History</h2>
+          <button type="button" class="ac-hist-close" id="ac-hist-close" aria-label="Close">×</button>
+        </div>
+        <div class="ac-hist-tabs">
+          <button type="button" class="ac-hist-tab ac-active" id="ac-hist-tab-equity">Equity log</button>
+          <button type="button" class="ac-hist-tab" id="ac-hist-tab-payouts">Payouts</button>
+        </div>
+        <div class="ac-hist-body" id="ac-hist-body">
+          <div class="ac-hist-loading">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Passed Eval Prompt ══ -->
+    <div class="ac-passed-prompt" id="ac-passed-prompt" role="status">
+      <input type="hidden" id="ac-passed-prompt-firm" value="" />
+      <input type="hidden" id="ac-passed-prompt-balance" value="" />
+      <p class="ac-passed-prompt__msg" id="ac-passed-prompt-msg"></p>
+      <div class="ac-passed-prompt__actions">
+        <button type="button" class="ac-passed-prompt__cta" id="ac-passed-prompt-cta">Add Funded Account →</button>
+        <button type="button" class="ac-passed-prompt__later" id="ac-passed-prompt-later">Maybe later</button>
+      </div>
+    </div>
+
     <script type="module">
       import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
 
@@ -720,19 +856,30 @@
             '</div>';
         }
 
-        function actionsHtml(acc) {
+        function kebabHtml(acc) {
           var id = acc.id;
           var type = acc.type;
-          var btns = '';
-          btns += '<button class="ac-action" data-action="log-equity" data-id="' + id + '">Log Equity</button>';
-          if (type === "funded") btns += '<button class="ac-action" data-action="log-payout" data-id="' + id + '">Log Payout</button>';
-          if (type === "live") btns += '<button class="ac-action" data-action="log-payout" data-id="' + id + '">Log Withdrawal</button>';
-          btns += '<button class="ac-action" data-action="calc" data-id="' + id + '">Size</button>';
-          btns += '<button class="ac-action" data-action="edit" data-id="' + id + '">Edit</button>';
-          if (type === "eval") btns += '<button class="ac-action ac-action--pass" data-action="mark-passed" data-id="' + id + '">Passed</button>';
-          btns += '<button class="ac-action ac-action--danger" data-action="mark-blown" data-id="' + id + '">Blown</button>';
-          btns += '<button class="ac-action ac-action--archive" data-action="archive" data-id="' + id + '">Archive</button>';
-          return '<div class="ac-card__actions">' + btns + '</div>';
+          var items = '<button class="ac-kebab-item" data-action="calc" data-id="' + id + '">Position Size</button>';
+          items += '<button class="ac-kebab-item" data-action="edit" data-id="' + id + '">Edit</button>';
+          items += '<button class="ac-kebab-item" data-action="view-history" data-id="' + id + '">View History</button>';
+          items += '<div class="ac-kebab-sep"></div>';
+          if (type === "eval") items += '<button class="ac-kebab-item ac-kebab-item--pass" data-action="mark-passed" data-id="' + id + '">Mark Passed</button>';
+          items += '<button class="ac-kebab-item ac-kebab-item--danger" data-action="mark-blown" data-id="' + id + '">Mark Blown</button>';
+          items += '<div class="ac-kebab-sep"></div>';
+          items += '<button class="ac-kebab-item ac-kebab-item--archive" data-action="archive" data-id="' + id + '">Archive</button>';
+          return '<div class="ac-kebab-wrap">' +
+            '<button class="ac-kebab-btn" data-action="kebab" data-id="' + id + '" aria-label="More options">⋯</button>' +
+            '<div class="ac-kebab-menu" id="ac-kebab-' + id + '">' + items + '</div>' +
+            '</div>';
+        }
+
+        function primaryActionsHtml(acc) {
+          var id = acc.id;
+          var type = acc.type;
+          var btns = '<button class="ac-action-primary" data-action="log-equity" data-id="' + id + '">Log Equity</button>';
+          if (type === "funded") btns += '<button class="ac-action-primary ac-action-primary--payout" data-action="log-payout" data-id="' + id + '">Log Payout</button>';
+          if (type === "live") btns += '<button class="ac-action-primary ac-action-primary--payout" data-action="log-payout" data-id="' + id + '">Log Withdrawal</button>';
+          return '<div class="ac-card__primary-actions">' + btns + '</div>';
         }
 
         function renderEvalCard(acc) {
@@ -753,18 +900,19 @@
             '<div class="ac-card__tags">' + typeBadge("eval") + statusBadge(acc) + '</div>' +
             '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
             (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
-            '</div></div>' +
+            '</div>' + kebabHtml(acc) + '</div>' +
             '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
             '<div class="ac-card__stats">' +
             '<div><div class="ac-card__stat-label">Days active</div><div class="ac-card__stat-value">' + days + 'd</div></div>' +
             '<div><div class="ac-card__stat-label">Headroom</div><div class="ac-card__stat-value ' + (headroom !== null && headroom < 0 ? "ac-card__stat-value--bad" : headroom !== null && headroom < (mdd || 0) * 0.3 ? "ac-card__stat-value--warn" : "") + '">' + fmtMoney(headroom) + '</div></div>' +
             '<div><div class="ac-card__stat-label">Target</div><div class="ac-card__stat-value">' + fmtMoney(pt && sb !== null ? sb + pt : null) + '</div></div>' +
-            '<div><div class="ac-card__stat-label">' + (daysLeft !== null ? 'Min days left' : 'Daily cap') + '</div><div class="ac-card__stat-value ' + (daysLeft !== null && daysLeft === 0 ? 'ac-card__stat-value--good' : '') + '">' + (daysLeft !== null ? daysLeft + 'd' : (acc.daily_loss_cap ? fmtMoney(num(acc.daily_loss_cap)) : "—")) + '</div></div>' +
+            '<div><div class="ac-card__stat-label">Daily cap</div><div class="ac-card__stat-value">' + (acc.daily_loss_cap ? fmtMoney(num(acc.daily_loss_cap)) : "—") + '</div></div>' +
+            (daysLeft !== null ? '<div><div class="ac-card__stat-label">Min days left</div><div class="ac-card__stat-value ' + (daysLeft === 0 ? 'ac-card__stat-value--good' : '') + '">' + daysLeft + 'd</div></div>' : '') +
             '</div>' +
             '<div class="ac-prog-wrap"><div class="ac-prog-labels"><span class="ac-prog-label">Profit target</span><span class="ac-prog-pct">' + fmtPct(profitPct) + '</span></div>' +
             '<div class="ac-prog-bar"><div class="ac-prog-fill" style="width:' + barW + '%"></div></div></div>' +
             sparkHtml(acc.id) +
-            actionsHtml(acc) +
+            primaryActionsHtml(acc) +
             '</article>';
         }
 
@@ -788,7 +936,7 @@
             '<div class="ac-card__tags">' + typeBadge("funded") + statusBadge(acc) + '</div>' +
             '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
             (acc.firm_name ? '<div class="ac-card__firm">' + esc(acc.firm_name) + '</div>' : '') +
-            '</div></div>' +
+            '</div>' + kebabHtml(acc) + '</div>' +
             '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
             '<div class="ac-card__stats">' +
             '<div><div class="ac-card__stat-label">Lifetime gross</div><div class="ac-card__stat-value">' + fmtMoney(grossPy) + '</div></div>' +
@@ -799,7 +947,7 @@
             '<div><div class="ac-card__stat-label">Payout cycle</div><div class="ac-card__stat-value">' + esc(freqLabel) + '</div></div>' +
             '</div>' +
             sparkHtml(acc.id) +
-            actionsHtml(acc) +
+            primaryActionsHtml(acc) +
             '</article>';
         }
 
@@ -831,7 +979,7 @@
             '<div class="ac-card__tags">' + typeBadge("live") + '</div>' +
             '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
             (brokerLabel ? '<div class="ac-card__firm">' + esc(brokerLabel) + '</div>' : '') +
-            '</div></div>' +
+            '</div>' + kebabHtml(acc) + '</div>' +
             '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div>' + pnlHtml(acc) + '</div>' +
             '<div class="ac-card__stats">' +
             '<div><div class="ac-card__stat-label">Total return</div><div class="ac-card__stat-value ' + (totalRetPct !== null && totalRetPct > 0 ? "ac-card__stat-value--good" : totalRetPct !== null && totalRetPct < 0 ? "ac-card__stat-value--bad" : "") + '">' + fmtPct(totalRetPct) + '</div></div>' +
@@ -842,7 +990,7 @@
             (mt !== null ? '<div class="ac-prog-wrap"><div class="ac-prog-labels"><span class="ac-prog-label">Monthly target</span><span class="ac-prog-pct">' + (monthPnl !== null ? fmtMoney(monthPnl) + ' / ' + fmtMoney(mt) : '—') + '</span></div>' +
             '<div class="ac-prog-bar"><div class="ac-prog-fill' + (monthPnl !== null && monthPnl < 0 ? " ac-prog-fill--danger" : "") + '" style="width:' + mtBarW + '%"></div></div></div>' : '') +
             sparkHtml(acc.id) +
-            actionsHtml(acc) +
+            primaryActionsHtml(acc) +
             '</article>';
         }
 
@@ -864,7 +1012,9 @@
               document.getElementById("ov-payouts").textContent = fmtMoney(j.lifetime_payouts);
               document.getElementById("ov-active").textContent = j.active_accounts_count !== null ? j.active_accounts_count : "—";
               document.getElementById("ov-passrate").textContent = j.eval_pass_rate !== null ? j.eval_pass_rate + "%" : "—";
-              document.getElementById("ov-blown").textContent = j.days_since_last_blown !== null ? j.days_since_last_blown + "d" : "—";
+              document.getElementById("ov-blown").textContent = j.days_since_last_blown !== null ? j.days_since_last_blown + "d" : "Never";
+              var equitySubEl = document.getElementById("ov-equity-sub");
+              if (equitySubEl) equitySubEl.textContent = (j.total_capital_deployed != null && j.total_current_equity != null && j.total_capital_deployed === j.total_current_equity) ? "same as deployed" : "";
               ["ov-deployed","ov-equity","ov-payouts","ov-active","ov-passrate","ov-blown"].forEach(function (id) {
                 document.getElementById(id).classList.remove("ac-overview-tile__value--muted");
               });
@@ -962,8 +1112,8 @@
         function openAccountModal(acc) {
           var form = document.getElementById("ac-account-form");
           form.reset();
-          document.getElementById("ac-form-edit-id").value = acc ? acc.id : "";
-          document.getElementById("ac-account-modal-title").textContent = acc ? "Edit Account" : "Add Account";
+          document.getElementById("ac-form-edit-id").value = (acc && acc.id) ? acc.id : "";
+          document.getElementById("ac-account-modal-title").textContent = (acc && acc.id) ? "Edit Account" : "Add Account";
           var type = acc ? (acc.type || "eval") : "eval";
           document.getElementById("ac-f-type").value = type;
           if (acc) {
@@ -1149,11 +1299,25 @@
             return;
           }
 
+          if (action === "kebab") {
+            var menuEl = document.getElementById("ac-kebab-" + id);
+            if (!menuEl) return;
+            var isOpen = menuEl.classList.contains("ac-open");
+            closeAllKebabs();
+            if (!isOpen) { menuEl.classList.add("ac-open"); openKebabId = id; }
+            return;
+          }
+
+          if (action === "view-history") {
+            if (acc) openHistoryPanel(acc);
+            return;
+          }
+
           if (action === "mark-passed") {
             openConfirm("Mark this eval as passed? This cannot be undone.", function () {
               apiFetch("/api/accounts/" + encodeURIComponent(id) + "/mark-passed", { method: "POST", cache: "no-store" })
                 .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (x) { if (!x.ok) throw new Error((x.j && x.j.error) || "Failed"); loadAccounts(); loadOverview(); })
+                .then(function (x) { if (!x.ok) throw new Error((x.j && x.j.error) || "Failed"); loadAccounts(); loadOverview(); showPassedPrompt(acc); })
                 .catch(function (err) { setStatus(err.message, true); });
             });
             return;
@@ -1182,6 +1346,198 @@
 
         /* ── Add Account button ── */
         document.getElementById("ac-btn-add").addEventListener("click", function () { openAccountModal(null); });
+
+        /* ── Kebab menu ── */
+        var openKebabId = null;
+        function closeAllKebabs() {
+          if (openKebabId) {
+            var m = document.getElementById("ac-kebab-" + openKebabId);
+            if (m) m.classList.remove("ac-open");
+            openKebabId = null;
+          }
+        }
+        document.addEventListener("click", function (e) {
+          if (!e.target.closest(".ac-kebab-wrap")) closeAllKebabs();
+        });
+
+        /* ── History panel ── */
+        var historyAccId = null;
+        var historyAccType = null;
+        var historyTab = "equity";
+
+        function openHistoryPanel(acc) {
+          historyAccId = acc.id;
+          historyAccType = acc.type;
+          historyTab = "equity";
+          document.getElementById("ac-hist-title").textContent = acc.name || "History";
+          document.getElementById("ac-hist-tab-equity").classList.add("ac-active");
+          document.getElementById("ac-hist-tab-payouts").classList.remove("ac-active");
+          document.getElementById("ac-hist-tab-payouts").style.display = (acc.type === "eval") ? "none" : "";
+          document.getElementById("ac-hist-overlay").setAttribute("aria-hidden", "false");
+          document.getElementById("ac-hist-overlay").classList.add("ac-open");
+          loadHistoryData();
+        }
+
+        function closeHistoryPanel() {
+          document.getElementById("ac-hist-overlay").classList.remove("ac-open");
+          document.getElementById("ac-hist-overlay").setAttribute("aria-hidden", "true");
+          historyAccId = null;
+        }
+
+        function loadHistoryData() {
+          if (!historyAccId) return;
+          var bodyEl = document.getElementById("ac-hist-body");
+          bodyEl.innerHTML = '<div class="ac-hist-loading">Loading…</div>';
+          apiFetch("/api/accounts/" + encodeURIComponent(historyAccId), { cache: "no-store" })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok) { bodyEl.innerHTML = '<div class="ac-hist-empty"><div class="ac-hist-empty__text">Failed to load.</div></div>'; return; }
+              var a = x.j.account;
+              if (historyTab === "equity") renderEquityHistory(a.equity_log || []);
+              else renderPayoutHistory(a.payouts || [], historyAccType);
+            })
+            .catch(function () { document.getElementById("ac-hist-body").innerHTML = '<div class="ac-hist-empty"><div class="ac-hist-empty__text">Failed to load.</div></div>'; });
+        }
+
+        function renderEquityHistory(log) {
+          var bodyEl = document.getElementById("ac-hist-body");
+          if (!log.length) { bodyEl.innerHTML = '<div class="ac-hist-empty"><div class="ac-hist-empty__icon">◎</div><div class="ac-hist-empty__text">No equity entries yet.</div></div>'; return; }
+          var rows = log.slice().reverse();
+          var html = '<ul class="ac-hist-list">';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            var prev = rows[i + 1];
+            var eq = num(r.equity);
+            var prevEq = prev ? num(prev.equity) : null;
+            var change = (eq !== null && prevEq !== null) ? eq - prevEq : null;
+            var chgCls = change !== null ? (change > 0 ? "ac-hist-row__change--pos" : change < 0 ? "ac-hist-row__change--neg" : "") : "";
+            var chgStr = change !== null && change !== 0 ? ((change > 0 ? "+" : "") + fmtMoney(change)) : "";
+            var dt = r.logged_at ? new Date(r.logged_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+            html += '<li class="ac-hist-row">' +
+              '<div class="ac-hist-row__date">' + esc(dt) + '</div>' +
+              '<div style="display:flex;align-items:baseline;gap:10px">' +
+              '<div class="ac-hist-row__val">' + fmtMoney(eq) + '</div>' +
+              (chgStr ? '<div class="ac-hist-row__change ' + chgCls + '">' + esc(chgStr) + '</div>' : '') +
+              '</div>' +
+              (r.note ? '<div class="ac-hist-row__note">' + esc(r.note) + '</div>' : '') +
+              '</li>';
+          }
+          html += '</ul>';
+          bodyEl.innerHTML = html;
+        }
+
+        function renderPayoutHistory(payouts, type) {
+          var bodyEl = document.getElementById("ac-hist-body");
+          if (!payouts.length) { bodyEl.innerHTML = '<div class="ac-hist-empty"><div class="ac-hist-empty__icon">◎</div><div class="ac-hist-empty__text">No payouts yet.</div></div>'; return; }
+          var html = '<ul class="ac-hist-list">';
+          for (var i = 0; i < payouts.length; i++) {
+            var p = payouts[i];
+            var dt = p.paid_at ? new Date(p.paid_at).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+            html += '<li class="ac-hist-row">';
+            html += '<div class="ac-hist-row__date">' + esc(dt) + '</div>';
+            if (type === "funded" && p.gross_amount != null) {
+              html += '<div style="display:flex;align-items:baseline;gap:10px">' +
+                '<div class="ac-hist-row__val">' + fmtMoney(num(p.gross_amount)) + '</div>' +
+                '<div class="ac-hist-row__change" style="color:rgba(255,255,255,0.35)">gross · ' + esc(String(p.split_pct || 80)) + '% split</div>' +
+                '</div>' +
+                '<div style="font-family:\'Outfit\',sans-serif;font-size:13px;color:#00ff88">Your share: ' + fmtMoney(num(p.net_amount)) + '</div>';
+            } else {
+              html += '<div class="ac-hist-row__val">' + fmtMoney(num(p.amount)) + '</div>';
+            }
+            if (p.note) html += '<div class="ac-hist-row__note">' + esc(p.note) + '</div>';
+            html += '</li>';
+          }
+          html += '</ul>';
+          bodyEl.innerHTML = html;
+        }
+
+        document.getElementById("ac-hist-overlay").addEventListener("click", function (e) { if (e.target === this) closeHistoryPanel(); });
+        document.getElementById("ac-hist-close").addEventListener("click", closeHistoryPanel);
+        document.getElementById("ac-hist-tab-equity").addEventListener("click", function () {
+          if (historyTab === "equity") return;
+          historyTab = "equity";
+          this.classList.add("ac-active");
+          document.getElementById("ac-hist-tab-payouts").classList.remove("ac-active");
+          loadHistoryData();
+        });
+        document.getElementById("ac-hist-tab-payouts").addEventListener("click", function () {
+          if (historyTab === "payouts") return;
+          historyTab = "payouts";
+          this.classList.add("ac-active");
+          document.getElementById("ac-hist-tab-equity").classList.remove("ac-active");
+          loadHistoryData();
+        });
+
+        /* ── Passed eval prompt ── */
+        function showPassedPrompt(acc) {
+          if (!acc) return;
+          var firm = acc.firm_name || "your firm";
+          document.getElementById("ac-passed-prompt-msg").textContent = "🎉 Eval passed! Want to add your funded account for " + firm + "?";
+          document.getElementById("ac-passed-prompt-firm").value = acc.firm_name || "";
+          document.getElementById("ac-passed-prompt-balance").value = acc.starting_balance != null ? acc.starting_balance : "";
+          document.getElementById("ac-passed-prompt").classList.add("ac-open");
+        }
+        document.getElementById("ac-passed-prompt-cta").addEventListener("click", function () {
+          var firm = document.getElementById("ac-passed-prompt-firm").value;
+          var bal = document.getElementById("ac-passed-prompt-balance").value;
+          document.getElementById("ac-passed-prompt").classList.remove("ac-open");
+          openAccountModal({ type: "funded", firm_name: firm || null, starting_balance: bal ? Number(bal) : null, profit_split_pct: 80, name: "", broker_name: null, max_drawdown: null, daily_loss_cap: null, payout_frequency: null, minimum_trading_days: null, personal_monthly_target: null, default_risk_pct: 1, default_pair: null, id: null });
+        });
+        document.getElementById("ac-passed-prompt-later").addEventListener("click", function () {
+          document.getElementById("ac-passed-prompt").classList.remove("ac-open");
+        });
+
+        /* ── Archived section ── */
+        var showingArchived = false;
+
+        function renderArchivedCard(acc) {
+          var eq = num(acc.current_equity);
+          return '<article class="ac-card ac-card--archived" data-id="' + acc.id + '">' +
+            '<div class="ac-card__head"><div class="ac-card__head-left">' +
+            '<div class="ac-card__tags">' + typeBadge(acc.type) + '</div>' +
+            '<h3 class="ac-card__name">' + esc(acc.name) + '</h3>' +
+            ((acc.firm_name || acc.broker_name) ? '<div class="ac-card__firm">' + esc(acc.firm_name || acc.broker_name) + '</div>' : '') +
+            '</div></div>' +
+            '<div class="ac-card__equity-row"><div class="ac-card__equity">' + fmtMoney(eq) + '</div></div>' +
+            '<div class="ac-card__primary-actions"><button class="ac-action-primary" data-action="restore" data-id="' + acc.id + '">Restore</button></div>' +
+            '</article>';
+        }
+
+        function loadArchived() {
+          apiFetch("/api/accounts?include_archived=true", { cache: "no-store" })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (x) {
+              if (!x.ok) return;
+              var all = Array.isArray(x.j.accounts) ? x.j.accounts : [];
+              var archived = all.filter(function (a) { return a.status === "archived"; });
+              var grid = document.getElementById("ac-archived-grid");
+              grid.innerHTML = archived.length
+                ? archived.map(renderArchivedCard).join("")
+                : '<p style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:rgba(255,255,255,0.25);padding:20px;">No archived accounts.</p>';
+            })
+            .catch(function () {});
+        }
+
+        document.getElementById("ac-archive-toggle").addEventListener("click", function () {
+          showingArchived = !showingArchived;
+          var section = document.getElementById("ac-archived-section");
+          section.classList.toggle("ac-visible", showingArchived);
+          this.textContent = showingArchived ? "▾ Hide archived accounts" : "▸ Show archived accounts";
+          if (showingArchived) loadArchived();
+        });
+
+        document.getElementById("ac-archived-grid").addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-action]");
+          if (!btn) return;
+          var action = btn.getAttribute("data-action");
+          var id = btn.getAttribute("data-id");
+          if (action === "restore") {
+            apiFetch("/api/accounts/" + encodeURIComponent(id) + "/restore", { method: "POST", cache: "no-store" })
+              .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+              .then(function (x) { if (!x.ok) throw new Error((x.j && x.j.error) || "Failed"); loadAccounts(); loadArchived(); loadOverview(); })
+              .catch(function (err) { setStatus(err.message, true); });
+          }
+        });
 
         /* ── Position size calculator ── */
         function loadLotCalcMod() {
