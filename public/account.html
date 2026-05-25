@@ -75,9 +75,11 @@
       @media (max-width: 640px) { .ac-overview-strip { grid-template-columns: repeat(2,1fr); } }
 
       /* ── Add account bar ── */
-      .ac-add-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 16px; }
+      .ac-add-bar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
       .ac-btn-add { font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #00d4ff; background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.4); border-radius: 10px; padding: 10px 20px; cursor: pointer; transition: background 0.18s, border-color 0.18s, box-shadow 0.18s; white-space: nowrap; }
       .ac-btn-add:hover { background: rgba(0,212,255,0.15); border-color: rgba(0,212,255,0.7); box-shadow: 0 0 16px rgba(0,212,255,0.18); }
+      .ac-btn-calc { font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.55); background: transparent; border: 1px solid rgba(0,212,255,0.22); border-radius: 10px; padding: 10px 20px; cursor: pointer; transition: background 0.18s, border-color 0.18s, color 0.18s; white-space: nowrap; }
+      .ac-btn-calc:hover { color: rgba(0,212,255,0.9); background: rgba(0,212,255,0.05); border-color: rgba(0,212,255,0.45); }
 
       /* ── Status bar ── */
       .ac-status { font-family: "Share Tech Mono","Courier New",monospace; font-size: 11px; color: rgba(255,130,130,0.9); margin-bottom: 12px; min-height: 1px; }
@@ -454,6 +456,7 @@
 
         <!-- Add Account Button -->
         <div class="ac-add-bar">
+          <button type="button" class="ac-btn-calc" id="ac-btn-calc">Position Size</button>
           <button type="button" class="ac-btn-add" id="ac-btn-add">+ Add Account</button>
         </div>
 
@@ -1576,6 +1579,7 @@
 
         /* ── Add Account button ── */
         document.getElementById("ac-btn-add").addEventListener("click", function () { openAccountModal(null); });
+        document.getElementById("ac-btn-calc").addEventListener("click", function () { openCalcModal(null); });
 
         /* ── Kebab menu ── */
         var openKebabId = null;
@@ -1959,6 +1963,27 @@
 
         document.getElementById("calc-balance-account").addEventListener("change", applyCalcBalanceFromSelect);
 
+        function resetCalcModalDefaults() {
+          document.getElementById("calc-balance-account").value = "";
+          document.getElementById("calc-fx-balance").value = "";
+          document.getElementById("calc-ft-balance").value = "";
+          document.getElementById("calc-fx-risk-mode").value = "pct";
+          document.getElementById("calc-fx-risk-val").value = "1";
+          document.getElementById("calc-fx-pips").value = "";
+          document.getElementById("calc-ft-risk-mode").value = "pct";
+          document.getElementById("calc-ft-risk-val").value = "1";
+          document.getElementById("calc-ft-stop").value = "";
+          document.getElementById("calc-ft-dpp").value = "";
+          var pairSel = document.getElementById("calc-fx-pair");
+          if (pairSel && pairSel.options.length) pairSel.selectedIndex = 0;
+          setCalcTab("fx");
+          var helpPanel = document.getElementById("calc-help-panel");
+          var helpBtn = document.getElementById("calc-help-btn");
+          if (helpPanel) helpPanel.hidden = true;
+          if (helpBtn) helpBtn.setAttribute("aria-expanded", "false");
+          refreshFxPipAuto();
+        }
+
         function openCalcModal(acc) {
           populateCalcAccountSelect();
           if (acc) {
@@ -1979,6 +2004,8 @@
               refreshFxPipAuto();
             }
             runAllCalc();
+          } else {
+            resetCalcModalDefaults();
           }
           var pipsEl = document.getElementById("calc-fx-pips");
           if (pipsEl && String(pipsEl.value).trim() === "") pipsEl.value = "25";
