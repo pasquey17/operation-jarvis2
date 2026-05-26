@@ -4771,7 +4771,7 @@ async function requestListener(req, res) {
     return;
   }
 
-  if (req.method === "GET" && req.url.startsWith("/api/notion/connect")) {
+  if (req.method === "GET" && pathOnly === "/api/notion/connect") {
     await handleNotionConnect(req, res);
     return;
   }
