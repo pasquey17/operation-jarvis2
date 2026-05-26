@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Root-relative URLs: deployment auth/redirect quirks can mis-resolve plain "css/" and "js/" paths. -->
     <base href="/" />
+    <script>try{document.documentElement.dataset.theme=localStorage.getItem('jarvis_theme')==='light'?'light':'dark';}catch(e){document.documentElement.dataset.theme='dark';}</script>
     <title>JARVIS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,7 +26,7 @@
         right: 0;
         height: 52px;
         z-index: 1000;
-        background: rgba(0, 0, 0, 0.85);
+        background: var(--nav-bg, rgba(0,0,0,0.85));
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-bottom: 1px solid rgba(0, 212, 255, 0.2);

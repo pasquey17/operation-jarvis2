@@ -81,8 +81,7 @@ function writeCachedDisplayName(userId, name) {
 /** @param {"dark"|"light"} theme */
 export function applyJarvisTheme(theme) {
   const t = theme === "light" ? "light" : "dark";
-  document.body.classList.remove("theme-dark", "theme-light");
-  document.body.classList.add(t === "light" ? "theme-light" : "theme-dark");
+  document.documentElement.dataset.theme = t;
   try {
     localStorage.setItem(THEME_LS_KEY, t);
   } catch {
