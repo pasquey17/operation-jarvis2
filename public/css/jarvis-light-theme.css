@@ -1,0 +1,336 @@
+/**
+ * Light theme component overrides — load LAST in <head> (after page inline styles).
+ * Variables live in style.css :root[data-theme="light"].
+ */
+
+/* ── Shell (beats page inline #050a14 backgrounds) ── */
+[data-theme="light"] html,
+[data-theme="light"] body {
+  background: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Nav (shared across all pages) ── */
+[data-theme="light"] .jv-nav {
+  background: var(--nav-bg) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+[data-theme="light"] .jv-nav__brand {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .jv-nav__links a,
+[data-theme="light"] .jv-nav__dropdown a {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .jv-nav__links a:hover,
+[data-theme="light"] .jv-nav__dropdown a:hover {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .jv-nav__links a.jv-nav--active,
+[data-theme="light"] .jv-nav__links a[aria-current="page"],
+[data-theme="light"] .jv-nav__dropdown a.jv-nav--active,
+[data-theme="light"] .jv-nav__dropdown a[aria-current="page"] {
+  color: var(--accent) !important;
+  border-bottom-color: var(--accent) !important;
+  border-left-color: var(--accent) !important;
+}
+
+[data-theme="light"] .jv-nav__hamburger span {
+  background: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .jv-nav__hamburger:hover span {
+  background: var(--accent) !important;
+}
+
+[data-theme="light"] .jv-nav__dropdown {
+  background: var(--nav-bg) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+[data-theme="light"] #particle-canvas {
+  opacity: 0.15;
+}
+
+/* ── Journal ── */
+[data-theme="light"] .jn-title,
+[data-theme="light"] .jn-title-letter {
+  color: var(--text-primary) !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+[data-theme="light"] .jn-subtitle {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .jn-card {
+  background: var(--bg-card) !important;
+  border: none !important;
+  border-radius: 16px !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .jn-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--card-shadow-hover) !important;
+  border: none !important;
+}
+
+[data-theme="light"] .jn-card[data-outcome="win"] {
+  border-left: 3px solid #00ff88 !important;
+  background: var(--bg-card) !important;
+}
+
+[data-theme="light"] .jn-card[data-outcome="loss"] {
+  border-left: 3px solid #ff4466 !important;
+  background: var(--bg-card) !important;
+}
+
+[data-theme="light"] .jn-card[data-outcome="be"] {
+  border-left: 3px solid #8899aa !important;
+  background: var(--bg-card) !important;
+}
+
+[data-theme="light"] .jn-card__date,
+[data-theme="light"] .jn-card__pair,
+[data-theme="light"] .jn-card__model {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .jn-card__chevron {
+  color: rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-theme="light"] .jn-stat-pill {
+  background: var(--bg-card) !important;
+  border: none !important;
+  border-radius: 16px !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .jn-stat-pill:hover {
+  box-shadow: var(--card-shadow-hover) !important;
+}
+
+[data-theme="light"] .jn-stat-value {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .jn-stat-label {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .jn-week-pills > div:nth-child(1) .jn-stat-value::after,
+[data-theme="light"] .jn-week-pills > div:nth-child(3) .jn-stat-value::after {
+  background: var(--accent) !important;
+}
+
+[data-theme="light"] .jn-state {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .jn-log-btn,
+[data-theme="light"] .jn-edit-btn {
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .jn-acc-panel,
+[data-theme="light"] .jn-filter-panel {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--card-shadow-hover) !important;
+}
+
+/* ── Analytics ── */
+[data-theme="light"] .an-title {
+  color: var(--text-primary) !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+[data-theme="light"] .an-subtitle {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .an-report,
+[data-theme="light"] .an-card,
+[data-theme="light"] .an-panel,
+[data-theme="light"] .an-kpi-tile,
+[data-theme="light"] .an-chart-card {
+  background: var(--bg-card) !important;
+  border: none !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .an-report:hover,
+[data-theme="light"] .an-card:hover {
+  box-shadow: var(--card-shadow-hover) !important;
+}
+
+[data-theme="light"] .an-report__title,
+[data-theme="light"] .an-kpi-label,
+[data-theme="light"] .an-card__label {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .an-report__meta,
+[data-theme="light"] .an-kpi-sub,
+[data-theme="light"] .an-card__sub {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .an-report__kpi-val,
+[data-theme="light"] .an-kpi-val,
+[data-theme="light"] .an-report__kpi-v,
+[data-theme="light"] .an-report__cell-v {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .an-report__kpi-k,
+[data-theme="light"] .an-report__cell-k {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .an-badge {
+  background: var(--accent-glow) !important;
+  border-color: rgba(0, 136, 187, 0.22) !important;
+  color: var(--accent) !important;
+}
+
+/* ── Calendar ── */
+[data-theme="light"] .cal-title {
+  color: var(--text-primary) !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+}
+
+[data-theme="light"] .cal-subtitle {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .cal-grid-wrap,
+[data-theme="light"] .cal-side-panel,
+[data-theme="light"] .cal-day-cell {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .cal-day-cell:hover {
+  box-shadow: var(--card-shadow-hover) !important;
+}
+
+[data-theme="light"] .cal-k,
+[data-theme="light"] .cal-panel__meta {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .cal-v,
+[data-theme="light"] .cal-panel__title {
+  color: var(--text-primary) !important;
+}
+
+/* ── Account ── */
+[data-theme="light"] .ac-overview-tile,
+[data-theme="light"] .ac-card {
+  background: var(--bg-card) !important;
+  border: none !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .ac-card:hover {
+  box-shadow: var(--card-shadow-hover) !important;
+}
+
+[data-theme="light"] .ac-overview-tile__label {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .ac-card__stat-label,
+[data-theme="light"] .ac-card__firm {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .ac-overview-tile__value,
+[data-theme="light"] .ac-card__equity,
+[data-theme="light"] .ac-equity-display,
+[data-theme="light"] .ac-card__stat-value {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .ac-card__name {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .ac-card--passed {
+  box-shadow: var(--card-shadow), inset 3px 0 0 #00ff88 !important;
+}
+
+[data-theme="light"] .ac-card--blown {
+  box-shadow: var(--card-shadow), inset 3px 0 0 #ff4466 !important;
+}
+
+[data-theme="light"] .ac-news-bar {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* ── Home index ── */
+[data-theme="light"] .jarvis-home #system-snapshot {
+  background: var(--bg-card) !important;
+  border: none !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .jarvis-home .snapshot-insight {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .jarvis-home .metric-cell {
+  background: var(--bg-card) !important;
+  border: none !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .jarvis-home .metric-cell:hover {
+  box-shadow: var(--card-shadow-hover) !important;
+  background: var(--bg-card) !important;
+}
+
+[data-theme="light"] .jarvis-home .metric-cell .snapshot-label {
+  color: var(--accent) !important;
+}
+
+[data-theme="light"] .jarvis-home .metric-cell .snapshot-value {
+  color: var(--text-primary) !important;
+  -webkit-text-stroke: 0 !important;
+  text-shadow: none !important;
+}
+
+[data-theme="light"] .jarvis-home .metric-cell .snapshot-value::after {
+  background: var(--accent) !important;
+}
+
+[data-theme="light"] .jarvis-home .comm-dock,
+[data-theme="light"] .jarvis-home [data-mode="chat"] .chat-scroll {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+[data-theme="light"] .jarvis-home .standby-title,
+[data-theme="light"] .jarvis-home .hud-chrome__mark {
+  color: var(--text-primary) !important;
+  text-shadow: none !important;
+  -webkit-text-stroke: 0 !important;
+}
