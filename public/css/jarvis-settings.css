@@ -1,4 +1,4 @@
-/* Settings gear + slide-in panel — classic Jarvis pages */
+/* Settings gear + slide-in panel v2 — classic Jarvis pages */
 .jv-nav__actions {
   display: flex;
   align-items: center;
@@ -57,7 +57,8 @@
   right: 0;
   bottom: 0;
   z-index: 11001;
-  width: min(320px, 92vw);
+  width: 320px;
+  max-width: 100vw;
   background: #050a14;
   border-left: 1px solid rgba(0, 212, 255, 0.22);
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.55);
@@ -79,8 +80,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.12);
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #1a2a3a;
+  flex-shrink: 0;
 }
 
 .jv-settings-panel__title {
@@ -118,11 +120,129 @@
 
 .jv-settings-panel__body {
   flex: 1;
-  padding: 20px 18px;
+  padding: 24px 20px 28px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
   overflow-y: auto;
+}
+
+/* ── Profile ── */
+.jv-settings-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.jv-settings-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid #00d4ff;
+  background: #0d1b2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.jv-settings-profile__email {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.45);
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.jv-settings-name-wrap {
+  width: 100%;
+  max-width: 260px;
+}
+
+.jv-settings-name-display {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.jv-settings-name-display--empty {
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 300;
+}
+
+.jv-settings-name-display:hover,
+.jv-settings-name-display:focus-visible {
+  border-color: rgba(0, 212, 255, 0.25);
+  background: rgba(0, 212, 255, 0.05);
+  outline: none;
+}
+
+.jv-settings-name-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  outline: none;
+}
+
+.jv-settings-name-input:focus {
+  border-color: rgba(0, 212, 255, 0.75);
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.12);
+}
+
+/* ── Section dividers ── */
+.jv-settings-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 16px;
+  border-top: 1px solid #1a2a3a;
+  padding-top: 16px;
+}
+
+.jv-settings-section-divider--subtle {
+  margin-top: 28px;
+  margin-bottom: 14px;
+}
+
+.jv-settings-section-label {
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #00d4ff;
+  flex-shrink: 0;
+}
+
+/* ── Blocks & fields ── */
+.jv-settings-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .jv-settings-field {
@@ -136,7 +256,7 @@
   font-size: 9px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(0, 212, 255, 0.75);
+  color: rgba(0, 212, 255, 0.65);
 }
 
 .jv-settings-field__value {
@@ -147,13 +267,191 @@
   word-break: break-word;
 }
 
-.jv-settings-logout {
+/* ── Theme toggle ── */
+.jv-settings-theme-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.jv-settings-theme-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+
+.jv-settings-theme-btn + .jv-settings-theme-btn {
+  border-left: 1px solid rgba(0, 212, 255, 0.18);
+}
+
+.jv-settings-theme-btn--active {
+  background: rgba(0, 212, 255, 0.14);
+  color: #00d4ff;
+}
+
+.jv-settings-theme-btn:hover:not(.jv-settings-theme-btn--active),
+.jv-settings-theme-btn:focus-visible:not(.jv-settings-theme-btn--active) {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 212, 255, 0.06);
+  outline: none;
+}
+
+/* ── Notion connections ── */
+.jv-settings-notion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.jv-settings-notion-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.jv-settings-notion-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Outfit", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  flex-shrink: 0;
+}
+
+.jv-settings-notion-label {
+  font-size: 15px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.jv-settings-notion-badge {
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.jv-settings-notion-badge--on {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.28);
+}
+
+.jv-settings-notion-badge--off {
+  color: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.jv-settings-notion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jv-settings-link-btn,
+.jv-settings-sync-btn,
+.jv-settings-disconnect-btn {
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-family: "Share Tech Mono", "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.jv-settings-link-btn {
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.06);
+  color: #00d4ff;
+}
+
+.jv-settings-link-btn:hover,
+.jv-settings-link-btn:focus-visible {
+  background: rgba(0, 212, 255, 0.14);
+  border-color: rgba(0, 212, 255, 0.55);
+  outline: none;
+}
+
+.jv-settings-sync-btn {
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.06);
+  color: #00d4ff;
+}
+
+.jv-settings-sync-btn:hover:not(:disabled),
+.jv-settings-sync-btn:focus-visible:not(:disabled) {
+  background: rgba(0, 212, 255, 0.14);
+  border-color: rgba(0, 212, 255, 0.55);
+  outline: none;
+}
+
+.jv-settings-sync-btn--error {
+  color: #ff4466;
+  border-color: rgba(255, 68, 102, 0.4);
+}
+
+.jv-settings-sync-btn:disabled,
+.jv-settings-disconnect-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.jv-settings-disconnect-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.jv-settings-disconnect-btn:hover:not(:disabled),
+.jv-settings-disconnect-btn:focus-visible:not(:disabled) {
+  border-color: rgba(255, 68, 102, 0.35);
+  color: rgba(255, 130, 150, 0.9);
+  background: rgba(255, 68, 102, 0.06);
+  outline: none;
+}
+
+/* ── Logout ── */
+.jv-settings-danger {
   margin-top: auto;
+  padding-top: 4px;
+}
+
+.jv-settings-logout {
+  width: 100%;
   padding: 12px 16px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 212, 255, 0.35);
-  background: rgba(0, 212, 255, 0.08);
-  color: #00d4ff;
+  border: 1px solid rgba(255, 68, 102, 0.4);
+  background: transparent;
+  color: #ff4466;
   font-family: "Share Tech Mono", "Courier New", monospace;
   font-size: 11px;
   letter-spacing: 0.14em;
@@ -164,88 +462,99 @@
 
 .jv-settings-logout:hover,
 .jv-settings-logout:focus-visible {
-  background: rgba(0, 212, 255, 0.16);
-  border-color: rgba(0, 212, 255, 0.6);
+  background: rgba(255, 68, 102, 0.1);
+  border-color: rgba(255, 68, 102, 0.65);
   outline: none;
 }
 
-.jv-settings-divider {
-  border: none;
-  border-top: 1px solid rgba(0, 212, 255, 0.12);
-  margin: 4px 0;
+/* ── Light theme: settings panel ── */
+body.theme-light .jv-settings-overlay {
+  background: rgba(10, 10, 10, 0.35);
 }
 
-.jv-settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+body.theme-light .jv-settings-panel {
+  background: #ffffff;
+  border-left-color: rgba(0, 212, 255, 0.28);
+  color: #0a0a0a;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
 }
 
-.jv-settings-section__desc {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 300;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.55);
+body.theme-light .jv-settings-panel__head {
+  border-bottom-color: #e8eef2;
 }
 
-.jv-settings-notion-link {
-  display: inline-block;
-  padding: 9px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  background: rgba(0, 212, 255, 0.06);
-  color: #00d4ff;
-  font-family: "Share Tech Mono", "Courier New", monospace;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-decoration: none;
-  transition: background 0.2s, border-color 0.2s;
-  align-self: flex-start;
+body.theme-light .jv-settings-panel__close {
+  color: rgba(10, 10, 10, 0.5);
+  border-color: rgba(0, 212, 255, 0.25);
 }
 
-.jv-settings-notion-link:hover,
-.jv-settings-notion-link:focus-visible {
-  background: rgba(0, 212, 255, 0.14);
-  border-color: rgba(0, 212, 255, 0.55);
-  outline: none;
+body.theme-light .jv-settings-avatar {
+  background: #f0f6fa;
+  color: #0a0a0a;
 }
 
-.jv-settings-notion-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+body.theme-light .jv-settings-profile__email {
+  color: rgba(10, 10, 10, 0.45);
 }
 
-.jv-settings-sync-btn {
-  padding: 9px 14px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  background: rgba(0, 212, 255, 0.06);
-  color: #00d4ff;
-  font-family: "Share Tech Mono", "Courier New", monospace;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, opacity 0.2s;
+body.theme-light .jv-settings-name-display {
+  color: #0a0a0a;
 }
 
-.jv-settings-sync-btn:hover:not(:disabled),
-.jv-settings-sync-btn:focus-visible:not(:disabled) {
-  background: rgba(0, 212, 255, 0.14);
-  border-color: rgba(0, 212, 255, 0.55);
-  outline: none;
+body.theme-light .jv-settings-name-display--empty {
+  color: rgba(10, 10, 10, 0.35);
 }
 
-.jv-settings-sync-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
+body.theme-light .jv-settings-name-input {
+  background: #f8fafb;
+  color: #0a0a0a;
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+body.theme-light .jv-settings-section-divider {
+  border-top-color: #e8eef2;
+}
+
+body.theme-light .jv-settings-field__value {
+  color: rgba(10, 10, 10, 0.88);
+}
+
+body.theme-light .jv-settings-theme-toggle {
+  background: #f4f8fa;
+  border-color: rgba(0, 212, 255, 0.25);
+}
+
+body.theme-light .jv-settings-theme-btn {
+  color: rgba(10, 10, 10, 0.45);
+}
+
+body.theme-light .jv-settings-theme-btn--active {
+  background: rgba(0, 212, 255, 0.12);
+  color: #0099cc;
+}
+
+body.theme-light .jv-settings-notion-icon {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #0a0a0a;
+}
+
+body.theme-light .jv-settings-notion-label {
+  color: #0a0a0a;
+}
+
+body.theme-light .jv-settings-notion-badge--off {
+  color: rgba(10, 10, 10, 0.4);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 768px) {
   .jv-nav__hamburger {
     margin-left: 0 !important;
+  }
+
+  .jv-settings-panel {
+    width: 100vw;
   }
 }

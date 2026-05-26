@@ -18,6 +18,30 @@
   --panel-bg: rgba(255, 255, 255, 0.03);
   --panel-border: rgba(0, 212, 255, 0.15);
   --panel-shadow: 0 0 40px rgba(0, 212, 255, 0.08), 0 0 80px rgba(0, 212, 255, 0.04);
+  --nav-bg: rgba(0, 0, 0, 0.85);
+  --nav-text: rgba(255, 255, 255, 0.55);
+  --nav-text-active: #00d4ff;
+}
+
+/* Theme: dark (default) — variables above */
+body.theme-dark {
+  color-scheme: dark;
+}
+
+/* Theme: light */
+body.theme-light {
+  color-scheme: light;
+  --bg: #ffffff;
+  --bg-panel: rgba(0, 0, 0, 0.03);
+  --text: #0a0a0a;
+  --muted: #5a6a7a;
+  --silver: #4a5a6a;
+  --panel-bg: rgba(0, 0, 0, 0.02);
+  --panel-border: rgba(0, 212, 255, 0.22);
+  --panel-shadow: 0 0 40px rgba(0, 212, 255, 0.06), 0 0 80px rgba(0, 212, 255, 0.03);
+  --nav-bg: rgba(255, 255, 255, 0.92);
+  --nav-text: rgba(10, 10, 10, 0.55);
+  --nav-text-active: #0099cc;
 }
 
 *,
@@ -36,7 +60,7 @@ body {
   height: 100%;
   height: 100dvh;
   overflow: hidden;
-  background-color: #000000;
+  background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-mono);
   -webkit-font-smoothing: antialiased;
@@ -1971,4 +1995,47 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   .ltm-adder-name,
   .ltm-adder-type { width: 100%; }
   .ltm-corner { width: 22px; height: 22px; }
+}
+
+/* ═══════════ Light theme — global shell overrides ═══════════ */
+body.theme-light .jv-nav {
+  background: var(--nav-bg) !important;
+  border-bottom-color: rgba(0, 212, 255, 0.18) !important;
+}
+
+body.theme-light .jv-nav__brand,
+body.theme-light .jv-nav__links a,
+body.theme-light .jv-nav__dropdown a {
+  color: var(--nav-text) !important;
+}
+
+body.theme-light .jv-nav__links a:hover,
+body.theme-light .jv-nav__dropdown a:hover {
+  color: rgba(10, 10, 10, 0.85) !important;
+}
+
+body.theme-light .jv-nav__links a.jv-nav--active,
+body.theme-light .jv-nav__links a[aria-current="page"],
+body.theme-light .jv-nav__dropdown a.jv-nav--active,
+body.theme-light .jv-nav__dropdown a[aria-current="page"] {
+  color: var(--nav-text-active) !important;
+  border-bottom-color: var(--nav-text-active) !important;
+  border-left-color: var(--nav-text-active) !important;
+}
+
+body.theme-light .jv-nav__hamburger span {
+  background: rgba(10, 10, 10, 0.55) !important;
+}
+
+body.theme-light .jv-nav__hamburger:hover span {
+  background: var(--nav-text-active) !important;
+}
+
+body.theme-light .jv-nav__dropdown {
+  background: var(--nav-bg) !important;
+  border-bottom-color: rgba(0, 212, 255, 0.18) !important;
+}
+
+body.theme-light #particle-canvas {
+  opacity: 0.12;
 }
