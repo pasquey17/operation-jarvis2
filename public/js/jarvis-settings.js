@@ -88,6 +88,11 @@ export function applyJarvisTheme(theme) {
     /* ignore */
   }
   syncThemeToggleUi(t);
+  try {
+    window.dispatchEvent(new CustomEvent("jarvis-theme-change", { detail: { theme: t } }));
+  } catch {
+    /* ignore */
+  }
 }
 
 function readStoredTheme() {

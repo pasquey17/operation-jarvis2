@@ -915,6 +915,11 @@ async function showColdOpenGreeting() {
 
 /* ═══════════ Deep space star field ═══════════ */
 let particleMode = "idle";
+
+function isLightTheme() {
+  return document.documentElement.dataset.theme === "light";
+}
+
 const STAR_COUNT = 150;
 const stars = [];
 const shootingStars = [];
@@ -930,7 +935,10 @@ class Star {
     this.twinkleSpeed = 0.003 + Math.random() * 0.012;
     this.twinklePhase = Math.random() * Math.PI * 2;
     const r = Math.random();
-    if (r < 0.65)      { this.cr = 210; this.cg = 228; this.cb = 255; }
+    if (isLightTheme()) {
+      this.cr = 138; this.cg = 150; this.cb = 166;
+      this.baseAlpha = Math.random() * 0.25 + 0.08;
+    } else if (r < 0.65)      { this.cr = 210; this.cg = 228; this.cb = 255; }
     else if (r < 0.88) { this.cr = 255; this.cg = 255; this.cb = 255; }
     else               { this.cr = 120; this.cg = 200; this.cb = 255; }
   }
@@ -1038,15 +1046,15 @@ function initParticles() {
       return;
     }
     lastSpaceFrame = now;
-    pCtx.fillStyle = "#050a14";
+    const light = isLightTheme();
+    pCtx.fillStyle = light ? "#eef2f7" : "#050a14";
     pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
-    drawNebula();
+    if (!light) drawNebula();
     for (const s of stars) {
       s.update();
       s.draw(pCtx);
     }
-    // Shooting stars every 12–20 s at 30fps
-    if (frameCount > shootNextAt && shootingStars.length < 1) {
+    if (!light && frameCount > shootNextAt && shootingStars.length < 1) {
       shootNextAt = frameCount + (15 + Math.random() * 10) * 30;
       shootingStars.push(new ShootingStar());
       console.log("shooting star fired");
@@ -1061,6 +1069,10 @@ function initParticles() {
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
+
+  window.addEventListener("jarvis-theme-change", () => {
+    resize();
+  });
 }
 
 /* ═══════════ Orb mode ═══════════ */

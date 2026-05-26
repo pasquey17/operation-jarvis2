@@ -847,7 +847,7 @@
         font-family: 'Outfit', sans-serif !important;
       }
     </style>
-    <link rel="stylesheet" href="/css/jarvis-light-theme.css?v=f3a8c2e1" />
+    <link rel="stylesheet" href="/css/jarvis-light-theme.css?v=b7c4e9f2" />
   </head>
   <body>
     <!-- ═══════════════════ NAV BAR ═══════════════════ -->
@@ -1918,10 +1918,12 @@
           }
           lastFrameTime = now;
           frameCount++;
+          var light = document.documentElement.dataset.theme === 'light';
 
-          ctx.fillStyle = '#050a14';
+          ctx.fillStyle = light ? '#eef2f7' : '#050a14';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+          if (!light) {
           var nx = nebula.x * canvas.width;
           var ny = nebula.y * canvas.height;
           var nr = nebula.r * Math.max(canvas.width, canvas.height);
@@ -1930,19 +1932,20 @@
           ng.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = ng;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
 
           var t = now / 1000;
           for (var i = 0; i < stars.length; i++) {
             var s = stars[i];
             var tw = 0.5 + 0.5 * Math.sin(t * (1000 / s.tw) * Math.PI * 2 + s.tp);
-            var alpha = s.a * (0.6 + 0.4 * tw);
+            var alpha = s.a * (0.6 + 0.4 * tw) * (light ? 0.35 : 1);
             ctx.beginPath();
             ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+            ctx.fillStyle = light ? 'rgba(138,150,166,' + alpha + ')' : 'rgba(255,255,255,' + alpha + ')';
             ctx.fill();
           }
 
-          if (frameCount >= shootNextAt) {
+          if (!light && frameCount >= shootNextAt) {
             shooters.push(new ShootingStar());
             shootNextAt = frameCount + (15 + Math.random() * 10) * 30;
             console.log('shooting star fired');

@@ -469,84 +469,120 @@
 
 /* ── Light theme: settings panel ── */
 [data-theme="light"] .jv-settings-overlay {
-  background: rgba(10, 10, 10, 0.35);
+  background: rgba(15, 30, 50, 0.5);
 }
 
 [data-theme="light"] .jv-settings-panel {
   background: #ffffff;
-  border-left-color: rgba(0, 212, 255, 0.28);
-  color: #0a0a0a;
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+  border-left: 1px solid var(--border-color, #d0d7e0);
+  color: var(--text-primary, #0a1220);
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(15, 30, 50, 0.12));
 }
 
 [data-theme="light"] .jv-settings-panel__head {
-  border-bottom-color: #e8eef2;
+  border-bottom-color: var(--border-color, #d0d7e0);
+}
+
+[data-theme="light"] .jv-settings-panel__title {
+  color: var(--text-primary, #0a1220);
 }
 
 [data-theme="light"] .jv-settings-panel__close {
-  color: rgba(10, 10, 10, 0.5);
-  border-color: rgba(0, 212, 255, 0.25);
+  color: var(--text-muted, #8a96a6);
+  border-color: var(--border-color, #d0d7e0);
+}
+
+[data-theme="light"] .jv-settings-panel__close:hover,
+[data-theme="light"] .jv-settings-panel__close:focus-visible {
+  color: var(--accent, #0077aa);
+  border-color: var(--accent-border, rgba(0, 119, 170, 0.25));
+  background: var(--accent-bg, rgba(0, 119, 170, 0.08));
 }
 
 [data-theme="light"] .jv-settings-avatar {
-  background: #f0f6fa;
-  color: #0a0a0a;
+  background: var(--bg-primary, #eef2f7);
+  color: var(--text-primary, #0a1220);
+  border: 1px solid var(--border-color, #d0d7e0);
 }
 
 [data-theme="light"] .jv-settings-profile__email {
-  color: rgba(10, 10, 10, 0.45);
+  color: var(--text-muted, #8a96a6);
 }
 
 [data-theme="light"] .jv-settings-name-display {
-  color: #0a0a0a;
+  color: var(--text-primary, #0a1220);
 }
 
 [data-theme="light"] .jv-settings-name-display--empty {
-  color: rgba(10, 10, 10, 0.35);
+  color: var(--text-muted, #8a96a6);
 }
 
 [data-theme="light"] .jv-settings-name-input {
-  background: #f8fafb;
-  color: #0a0a0a;
-  border-color: rgba(0, 212, 255, 0.4);
+  background: var(--bg-card, #ffffff);
+  color: var(--text-primary, #0a1220);
+  border-color: var(--border-color, #d0d7e0);
+}
+
+[data-theme="light"] .jv-settings-name-input:focus {
+  border-color: var(--accent, #0077aa);
+  box-shadow: 0 0 0 3px var(--accent-bg, rgba(0, 119, 170, 0.08));
 }
 
 [data-theme="light"] .jv-settings-section-divider {
-  border-top-color: #e8eef2;
+  border-top-color: var(--border-color, #d0d7e0);
+}
+
+[data-theme="light"] .jv-settings-section-label {
+  color: var(--accent, #0077aa);
 }
 
 [data-theme="light"] .jv-settings-field__value {
-  color: rgba(10, 10, 10, 0.88);
+  color: var(--text-secondary, #4a5568);
 }
 
 [data-theme="light"] .jv-settings-theme-toggle {
-  background: #f4f8fa;
-  border-color: rgba(0, 212, 255, 0.25);
+  background: var(--bg-primary, #eef2f7);
+  border-color: var(--border-color, #d0d7e0);
 }
 
 [data-theme="light"] .jv-settings-theme-btn {
-  color: rgba(10, 10, 10, 0.45);
+  color: var(--text-muted, #8a96a6);
 }
 
 [data-theme="light"] .jv-settings-theme-btn--active {
-  background: rgba(0, 212, 255, 0.12);
-  color: #0099cc;
+  background: var(--bg-card, #ffffff);
+  color: var(--accent, #0077aa);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 30, 50, 0.06));
 }
 
 [data-theme="light"] .jv-settings-notion-icon {
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.1);
-  color: #0a0a0a;
+  background: var(--bg-primary, #eef2f7);
+  border-color: var(--border-color, #d0d7e0);
+  color: var(--text-primary, #0a1220);
 }
 
 [data-theme="light"] .jv-settings-notion-label {
-  color: #0a0a0a;
+  color: var(--text-primary, #0a1220);
 }
 
 [data-theme="light"] .jv-settings-notion-badge--off {
-  color: rgba(10, 10, 10, 0.4);
-  background: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.1);
+  color: var(--text-muted, #8a96a6);
+  background: var(--bg-primary, #eef2f7);
+  border-color: var(--border-color, #d0d7e0);
+}
+
+[data-theme="light"] .jv-settings-logout {
+  background: transparent;
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  color: #dc2626;
+  box-shadow: none;
+}
+
+[data-theme="light"] .jv-settings-logout:hover,
+[data-theme="light"] .jv-settings-logout:focus-visible {
+  background: rgba(220, 38, 38, 0.06);
+  border-color: #dc2626;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {

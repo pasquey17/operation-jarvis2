@@ -825,7 +825,7 @@
       }
       /* Chart.js duration is set in JS from prefers-reduced-motion */
     </style>
-    <link rel="stylesheet" href="/css/jarvis-light-theme.css?v=f3a8c2e1" />
+    <link rel="stylesheet" href="/css/jarvis-light-theme.css?v=b7c4e9f2" />
   </head>
   <body>
     <!-- ═══ NAV ═══ -->
@@ -1283,13 +1283,45 @@
           return 900;
         }
 
-        function ttBase() {
+        function isLightTheme() {
+          return document.documentElement.dataset.theme === 'light';
+        }
+
+        function chartPalette() {
+          if (isLightTheme()) {
+            return {
+              tick: '#4a5568',
+              grid: '#d0d7e0',
+              border: '#b0bbc8',
+              accent: '#0077aa',
+              tooltipBg: '#ffffff',
+              tooltipBorder: 'rgba(0, 119, 170, 0.25)',
+              titleColor: '#0a1220',
+              bodyColor: '#4a5568',
+              defaultColor: '#4a5568'
+            };
+          }
           return {
-            backgroundColor: 'rgba(5,10,20,0.96)',
-            borderColor: 'rgba(0,212,255,0.35)',
-            borderWidth: 1,
+            tick: 'rgba(255,255,255,0.42)',
+            grid: 'rgba(0,212,255,0.06)',
+            border: 'rgba(0,212,255,0.12)',
+            accent: '#00d4ff',
+            tooltipBg: 'rgba(5,10,20,0.96)',
+            tooltipBorder: 'rgba(0,212,255,0.35)',
             titleColor: '#ffffff',
             bodyColor: 'rgba(255,255,255,0.78)',
+            defaultColor: 'rgba(255,255,255,0.65)'
+          };
+        }
+
+        function ttBase() {
+          var p = chartPalette();
+          return {
+            backgroundColor: p.tooltipBg,
+            borderColor: p.tooltipBorder,
+            borderWidth: 1,
+            titleColor: p.titleColor,
+            bodyColor: p.bodyColor,
             padding: 12,
             displayColors: true,
             titleFont: { family: '"Share Tech Mono",monospace', size: 11 },
@@ -1298,8 +1330,14 @@
             boxPadding: 8
           };
         }
-        function axX(o) { return Object.assign({ grid: { color: 'rgba(0,212,255,0.06)' }, border: { color: 'rgba(0,212,255,0.12)' }, ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 8, font: { size: 10 } } }, o || {}); }
-        function axY(o) { return Object.assign({ grid: { color: 'rgba(0,212,255,0.06)' }, border: { color: 'rgba(0,212,255,0.12)' }, ticks: { color: 'rgba(255,255,255,0.42)', maxTicksLimit: 8, font: { size: 10 } } }, o || {}); }
+        function axX(o) {
+          var p = chartPalette();
+          return Object.assign({ grid: { color: p.grid }, border: { color: p.border }, ticks: { color: p.tick, maxTicksLimit: 8, font: { size: 10 } } }, o || {});
+        }
+        function axY(o) {
+          var p = chartPalette();
+          return Object.assign({ grid: { color: p.grid }, border: { color: p.border }, ticks: { color: p.tick, maxTicksLimit: 8, font: { size: 10 } } }, o || {});
+        }
         function baseOpts(o) {
           return Object.assign({
             responsive: true,
@@ -3364,7 +3402,8 @@
         /* ── Render all ── */
         function renderAll(trades) {
           if (!window.Chart) return;
-          Chart.defaults.color = 'rgba(255,255,255,0.65)';
+          var p = chartPalette();
+          Chart.defaults.color = p.defaultColor;
           Chart.defaults.font.family = '"Outfit",system-ui,sans-serif';
 
           var tradesAsc = trades.slice().sort(function(a,b){return tradeDate(a)-tradeDate(b);}).filter(function(t){return !isNaN(tradeDate(t));});
@@ -3409,16 +3448,30 @@
         function initParticles() {
           var canvas=document.getElementById('particle-canvas'); if(!canvas) return;
           var ctx=canvas.getContext('2d');
+          var light = document.documentElement.dataset.theme === 'light';
           function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
           resize(); window.addEventListener('resize',resize);
-          var N = 280;
+          var N = light ? 120 : 280;
           var particles=[];
           for(var i=0;i<N;i++){
             var r=Math.random();
-            particles.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,size:Math.random()*.8+.2,base:Math.random()*.45+.06,tw:Math.random()*Math.PI*2,cr:r<.65?0:r<.93?192:255,cg:r<.65?191:r<.93?192:255,cb:255});
+            var cr,cg,cb,base;
+            if (light) {
+              cr=138; cg=150; cb=166; base=Math.random()*0.2+0.06;
+            } else {
+              cr=r<.65?0:r<.93?192:255;
+              cg=r<.65?191:r<.93?192:255;
+              cb=255;
+              base=Math.random()*0.45+0.06;
+            }
+            particles.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,size:Math.random()*.8+.2,base:base,tw:Math.random()*Math.PI*2,cr:cr,cg:cg,cb:cb});
           }
           (function loop(){
             ctx.clearRect(0,0,canvas.width,canvas.height);
+            if (light) {
+              ctx.fillStyle = '#eef2f7';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
             for(var j=0;j<particles.length;j++){
               var p=particles[j];p.tw+=.018;var a=p.base*(.72+.28*Math.sin(p.tw));
               p.x+=p.vx;p.y+=p.vy;
@@ -3466,6 +3519,10 @@
           initScrollAnim();
 
           window.addEventListener('resize', debounce(function () { renderAll(allTrades); }, 320));
+
+          window.addEventListener('jarvis-theme-change', function () {
+            if (allTrades.length) renderAll(allTrades);
+          });
 
           function runParticles() {
             try { initParticles(); } catch (e2) {}

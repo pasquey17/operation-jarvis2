@@ -382,7 +382,7 @@
       .ac-archive-toggle:hover { color: rgba(255,255,255,0.55); }
 
     </style>
-    <link rel="stylesheet" href="/css/jarvis-light-theme.css?v=f3a8c2e1" />
+    <link rel="stylesheet" href="/css/jarvis-light-theme.css?v=b7c4e9f2" />
   </head>
   <body>
     <nav class="jv-nav" aria-label="Main navigation">
@@ -858,7 +858,10 @@
           var pad = 4;
           if (hi === lo) { hi += 1; lo -= 1; }
           ctx.beginPath();
-          ctx.strokeStyle = vals[vals.length - 1] >= vals[0] ? "rgba(0,212,255,0.6)" : "rgba(255,68,102,0.55)";
+          var light = document.documentElement.dataset.theme === "light";
+          ctx.strokeStyle = vals[vals.length - 1] >= vals[0]
+            ? (light ? "#16a34a" : "rgba(0,212,255,0.6)")
+            : (light ? "#dc2626" : "rgba(255,68,102,0.55)");
           ctx.lineWidth = 1.5;
           vals.forEach(function (v, i) {
             var x = pad + (i / (vals.length - 1)) * (cw - pad * 2);
@@ -2107,6 +2110,7 @@
         })();
 
         window.addEventListener("resize", function () { requestAnimationFrame(redrawAllSparklines); });
+        window.addEventListener("jarvis-theme-change", function () { requestAnimationFrame(redrawAllSparklines); });
 
         /* ── Boot ── */
         loadFxPairs().then(function () {
