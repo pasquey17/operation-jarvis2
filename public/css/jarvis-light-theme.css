@@ -587,17 +587,17 @@
 /* ═══════════ Home ═══════════ */
 [data-theme="light"] .jarvis-home .orb-mount {
   animation: none !important;
-  filter: none !important;
-  opacity: 0.38;
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 36px rgba(0, 119, 170, 0.28)) !important;
 }
 
 [data-theme="light"] .jarvis-home .orb-mount:hover {
-  filter: none !important;
-  opacity: 0.48;
+  filter: drop-shadow(0 0 48px rgba(0, 119, 170, 0.38)) !important;
+  opacity: 1 !important;
 }
 
 [data-theme="light"] .jarvis-home #orb-canvas {
-  opacity: 0.4;
+  opacity: 1 !important;
 }
 
 [data-theme="light"] .jarvis-home #system-snapshot {
@@ -657,11 +657,28 @@
   background: var(--accent) !important;
 }
 
-[data-theme="light"] .jarvis-home .comm-dock,
-[data-theme="light"] .jarvis-home [data-mode="chat"] .chat-scroll {
+[data-theme="light"] .jarvis-home .comm-dock {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="light"] .jarvis-home .comm-dock::before,
+[data-theme="light"] .jarvis-home .comm-dock::after {
+  display: none !important;
+}
+
+[data-theme="light"] .jarvis-home .comm-dock__body {
+  background: transparent !important;
+}
+
+[data-theme="light"] .jarvis-home .chat-scroll,
+[data-theme="light"] .jarvis-home[data-mode="chat"] .chat-scroll {
+  background: var(--bg-card) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 [data-theme="light"] .jarvis-home .standby-title {
@@ -670,18 +687,36 @@
   -webkit-text-stroke: 0 !important;
 }
 
+[data-theme="light"] .jarvis-home .standby-sub {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="light"] .jarvis-home .msg {
+  color: var(--text-primary) !important;
+}
+
 [data-theme="light"] .jarvis-home .msg--user {
   background: var(--accent-bg) !important;
   border: 1px solid var(--accent-border) !important;
+  border-right: 2px solid var(--accent) !important;
   color: var(--text-primary) !important;
   backdrop-filter: none !important;
 }
 
+[data-theme="light"] .jarvis-home .msg--jarvis,
 [data-theme="light"] .jarvis-home .msg--assistant,
-[data-theme="light"] .msg--assistant {
+[data-theme="light"] .msg--jarvis {
   background: var(--bg-primary) !important;
   border: 1px solid var(--border-color) !important;
-  color: var(--text-secondary) !important;
+  border-left: 3px solid var(--accent) !important;
+  color: var(--text-primary) !important;
+  padding: 16px 20px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-theme="light"] .jarvis-home .msg-inline-link {
+  color: var(--accent) !important;
 }
 
 [data-theme="light"] .jarvis-home .chat-form input[type="text"] {

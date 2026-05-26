@@ -52,7 +52,7 @@
 
 /* ─── Light theme — fintech-style hierarchy (not dark-mode glow patterns) ─── */
 :root[data-theme="light"] {
-  --bg-primary:    #eef2f7;
+  --bg-primary:    #d8dde3;
   --bg-secondary:  #ffffff;
   --bg-card:       #ffffff;
   --bg-elevated:   #ffffff;
@@ -93,7 +93,7 @@
   --bg-msg-user:    var(--accent-bg);
   --overlay:        rgba(15, 30, 50, 0.5);
   --select-bg:      var(--bg-card);
-  --sticky-gradient: linear-gradient(180deg, rgba(238, 242, 247, 0) 0%, rgba(238, 242, 247, 0.97) 32%);
+  --sticky-gradient: linear-gradient(180deg, rgba(216, 221, 227, 0) 0%, rgba(216, 221, 227, 0.97) 32%);
   --win:            #16a34a;
   --loss:           #dc2626;
 
@@ -2220,4 +2220,10 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 
 [data-theme="light"] .ltm-section-label::after {
   background: var(--border-color) !important;
+}
+
+[data-theme="light"] .msg--jarvis {
+  color: var(--text-primary) !important;
+  background: var(--bg-primary) !important;
+  border-left: 3px solid var(--accent) !important;
 }

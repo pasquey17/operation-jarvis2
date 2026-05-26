@@ -500,7 +500,7 @@
 }
 
 [data-theme="light"] .jv-settings-avatar {
-  background: var(--bg-primary, #eef2f7);
+  background: var(--bg-primary, #d8dde3);
   color: var(--text-primary, #0a1220);
   border: 1px solid var(--border-color, #d0d7e0);
 }
@@ -541,7 +541,7 @@
 }
 
 [data-theme="light"] .jv-settings-theme-toggle {
-  background: var(--bg-primary, #eef2f7);
+  background: var(--bg-primary, #d8dde3);
   border-color: var(--border-color, #d0d7e0);
 }
 
@@ -556,7 +556,7 @@
 }
 
 [data-theme="light"] .jv-settings-notion-icon {
-  background: var(--bg-primary, #eef2f7);
+  background: var(--bg-primary, #d8dde3);
   border-color: var(--border-color, #d0d7e0);
   color: var(--text-primary, #0a1220);
 }
@@ -567,7 +567,7 @@
 
 [data-theme="light"] .jv-settings-notion-badge--off {
   color: var(--text-muted, #8a96a6);
-  background: var(--bg-primary, #eef2f7);
+  background: var(--bg-primary, #d8dde3);
   border-color: var(--border-color, #d0d7e0);
 }
 

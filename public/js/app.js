@@ -1047,7 +1047,7 @@ function initParticles() {
     }
     lastSpaceFrame = now;
     const light = isLightTheme();
-    pCtx.fillStyle = light ? "#eef2f7" : "#050a14";
+    pCtx.fillStyle = light ? "#d8dde3" : "#050a14";
     pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
     if (!light) drawNebula();
     for (const s of stars) {
@@ -1480,6 +1480,21 @@ function startOrb() {
   const BLUE = [0, 212, 255];
   const BLUE_DEEP = [0, 75, 165];
   const BLUE_HOT = [215, 252, 255];
+  const LIGHT_BLUE = [0, 119, 170];
+  const LIGHT_BLUE_DEEP = [0, 85, 122];
+  const LIGHT_BLUE_HOT = [160, 205, 225];
+  const LIGHT_ORB_ALPHA = 0.52;
+
+  function orbColors() {
+    if (isLightTheme()) {
+      return { b: LIGHT_BLUE, deep: LIGHT_BLUE_DEEP, hot: LIGHT_BLUE_HOT, a: LIGHT_ORB_ALPHA };
+    }
+    return { b: BLUE, deep: BLUE_DEEP, hot: BLUE_HOT, a: 1 };
+  }
+
+  function oAlpha(v, a) {
+    return v * a;
+  }
   const PI2 = Math.PI * 2;
 
   const reducedMotion =
@@ -1855,6 +1870,7 @@ function startOrb() {
   /** Fast fills + selective gradients — layered discs read as soft “gas” without shader cost. */
   function drawBucketsScreen() {
     ctx.globalCompositeOperation = "lighter";
+    const pal = orbColors();
     const gradAlphaMin = 0.54;
     const gradRadMin = 1.08;
     const mistLo = 0.13;
@@ -1868,13 +1884,13 @@ function startOrb() {
         const alpha = pack[j + 3];
         if (alpha >= gradAlphaMin && rad >= gradRadMin) {
           const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad * (1.62 + alpha * 0.32));
-          g.addColorStop(0, `rgba(255,255,255,${alpha * 0.78})`);
+          g.addColorStop(0, `rgba(255,255,255,${oAlpha(alpha * 0.78, pal.a)})`);
           g.addColorStop(
             0.32,
-            `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.86})`
+            `rgba(${pal.hot[0]},${pal.hot[1]},${pal.hot[2]},${oAlpha(alpha * 0.86, pal.a)})`
           );
-          g.addColorStop(0.72, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${alpha * 0.36})`);
-          g.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
+          g.addColorStop(0.72, `rgba(${pal.b[0]},${pal.b[1]},${pal.b[2]},${oAlpha(alpha * 0.36, pal.a)})`);
+          g.addColorStop(1, `rgba(${pal.deep[0]},${pal.deep[1]},${pal.deep[2]},0)`);
           ctx.fillStyle = g;
           ctx.beginPath();
           ctx.arc(sx, sy, rad, 0, PI2);
@@ -1883,24 +1899,24 @@ function startOrb() {
           const o = alpha * 0.9;
           ctx.beginPath();
           ctx.arc(sx, sy, rad * 0.62, 0, PI2);
-          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${o * 0.38})`;
+          ctx.fillStyle = `rgba(${pal.hot[0]},${pal.hot[1]},${pal.hot[2]},${oAlpha(o * 0.38, pal.a)})`;
           ctx.fill();
           ctx.beginPath();
           ctx.arc(sx, sy, rad * 0.4, 0, PI2);
-          ctx.fillStyle = `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${o * 0.28})`;
+          ctx.fillStyle = `rgba(${pal.b[0]},${pal.b[1]},${pal.b[2]},${oAlpha(o * 0.28, pal.a)})`;
           ctx.fill();
           ctx.beginPath();
           ctx.arc(sx, sy, rad * 0.18, 0, PI2);
-          ctx.fillStyle = `rgba(255,255,255,${o * 0.16})`;
+          ctx.fillStyle = `rgba(255,255,255,${oAlpha(o * 0.16, pal.a)})`;
           ctx.fill();
         } else {
           ctx.beginPath();
           ctx.arc(sx, sy, rad * 0.52, 0, PI2);
-          ctx.fillStyle = `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${alpha * 0.86})`;
+          ctx.fillStyle = `rgba(${pal.hot[0]},${pal.hot[1]},${pal.hot[2]},${oAlpha(alpha * 0.86, pal.a)})`;
           ctx.fill();
           ctx.beginPath();
           ctx.arc(sx, sy, rad * 0.14, 0, PI2);
-          ctx.fillStyle = `rgba(255,255,255,${alpha * (0.26 + alpha * 0.14)})`;
+          ctx.fillStyle = `rgba(255,255,255,${oAlpha(alpha * (0.26 + alpha * 0.14), pal.a)})`;
           ctx.fill();
         }
       }
@@ -1986,14 +2002,15 @@ function startOrb() {
       Math.sin(timeSec * 0.21) * 0.085;
 
     ctx.clearRect(0, 0, logicalW, logicalH);
+    const pal = orbColors();
 
     const breathIdle = projScale * (1 + 0.018 * Math.sin(timeSec * 0.72));
     const breathActive = projScale * (1.06 + 0.045 * Math.sin(timeSec * 2.1));
     const breathOuter = breathIdle * (1 - e) + breathActive * e;
     const halo = ctx.createRadialGradient(cx - breathOuter * 0.06, cy - breathOuter * 0.1, 0, cx, cy, breathOuter * 1.32);
-    halo.addColorStop(0, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${0.06 + 0.05 * e})`);
-    halo.addColorStop(0.35, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${0.045 + 0.04 * e})`);
-    halo.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
+    halo.addColorStop(0, `rgba(${pal.hot[0]},${pal.hot[1]},${pal.hot[2]},${oAlpha(0.06 + 0.05 * e, pal.a)})`);
+    halo.addColorStop(0.35, `rgba(${pal.b[0]},${pal.b[1]},${pal.b[2]},${oAlpha(0.045 + 0.04 * e, pal.a)})`);
+    halo.addColorStop(1, `rgba(${pal.deep[0]},${pal.deep[1]},${pal.deep[2]},0)`);
     ctx.globalCompositeOperation = "screen";
     ctx.fillStyle = halo;
     ctx.beginPath();
@@ -2010,10 +2027,10 @@ function startOrb() {
       cy,
       veilR * 1.48
     );
-    veil.addColorStop(0, `rgba(255,255,255,${0.024 + 0.014 * e})`);
-    veil.addColorStop(0.22, `rgba(${BLUE_HOT[0]},${BLUE_HOT[1]},${BLUE_HOT[2]},${0.048 + 0.024 * e})`);
-    veil.addColorStop(0.52, `rgba(${BLUE[0]},${BLUE[1]},${BLUE[2]},${0.038 + 0.02 * e})`);
-    veil.addColorStop(1, `rgba(${BLUE_DEEP[0]},${BLUE_DEEP[1]},${BLUE_DEEP[2]},0)`);
+    veil.addColorStop(0, `rgba(255,255,255,${oAlpha(0.024 + 0.014 * e, pal.a)})`);
+    veil.addColorStop(0.22, `rgba(${pal.hot[0]},${pal.hot[1]},${pal.hot[2]},${oAlpha(0.048 + 0.024 * e, pal.a)})`);
+    veil.addColorStop(0.52, `rgba(${pal.b[0]},${pal.b[1]},${pal.b[2]},${oAlpha(0.038 + 0.02 * e, pal.a)})`);
+    veil.addColorStop(1, `rgba(${pal.deep[0]},${pal.deep[1]},${pal.deep[2]},0)`);
     ctx.globalCompositeOperation = "lighter";
     ctx.fillStyle = veil;
     ctx.beginPath();
@@ -2035,10 +2052,10 @@ function startOrb() {
     const mid = ctx.createRadialGradient(cx - cr * 0.18, cy - cr * 0.14, 0, cx, cy, cr * 1.38);
     const midBright =
       (0.58 + 0.18 * Math.sin(timeSec * 0.91)) * (1 - e) + 0.98 * e;
-    mid.addColorStop(0, `rgba(255, 255, 255, ${0.42 * midBright})`);
-    mid.addColorStop(0.12, `rgba(${BLUE_HOT[0]}, ${BLUE_HOT[1]}, ${BLUE_HOT[2]}, ${0.52 * midBright})`);
-    mid.addColorStop(0.45, `rgba(${BLUE[0]}, ${BLUE[1]}, ${BLUE[2]}, ${0.62 * midBright})`);
-    mid.addColorStop(0.86, `rgba(${BLUE_DEEP[0]}, ${BLUE_DEEP[1]}, ${BLUE_DEEP[2]}, 0)`);
+    mid.addColorStop(0, `rgba(255, 255, 255, ${oAlpha(0.42 * midBright, pal.a)})`);
+    mid.addColorStop(0.12, `rgba(${pal.hot[0]}, ${pal.hot[1]}, ${pal.hot[2]}, ${oAlpha(0.52 * midBright, pal.a)})`);
+    mid.addColorStop(0.45, `rgba(${pal.b[0]}, ${pal.b[1]}, ${pal.b[2]}, ${oAlpha(0.62 * midBright, pal.a)})`);
+    mid.addColorStop(0.86, `rgba(${pal.deep[0]}, ${pal.deep[1]}, ${pal.deep[2]}, 0)`);
 
     ctx.fillStyle = mid;
     ctx.beginPath();
@@ -2047,10 +2064,10 @@ function startOrb() {
 
     const inner = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 0.72);
     const coreHot = (0.62 + 0.16 * Math.sin(timeSec * 1.07)) * (1 - e) + e;
-    inner.addColorStop(0, `rgba(255, 255, 255, ${0.98 * coreHot})`);
-    inner.addColorStop(0.2, `rgba(${BLUE_HOT[0]}, ${BLUE_HOT[1]}, ${BLUE_HOT[2]}, ${0.94 * coreHot})`);
-    inner.addColorStop(0.5, `rgba(${BLUE[0]}, ${BLUE[1]}, ${BLUE[2]}, ${0.92 * coreHot})`);
-    inner.addColorStop(1, "rgba(0, 191, 255, 0)");
+    inner.addColorStop(0, `rgba(255, 255, 255, ${oAlpha(0.98 * coreHot, pal.a)})`);
+    inner.addColorStop(0.2, `rgba(${pal.hot[0]}, ${pal.hot[1]}, ${pal.hot[2]}, ${oAlpha(0.94 * coreHot, pal.a)})`);
+    inner.addColorStop(0.5, `rgba(${pal.b[0]}, ${pal.b[1]}, ${pal.b[2]}, ${oAlpha(0.92 * coreHot, pal.a)})`);
+    inner.addColorStop(1, `rgba(${pal.b[0]}, ${pal.b[1]}, ${pal.b[2]}, 0)`);
 
     ctx.fillStyle = inner;
     ctx.beginPath();
