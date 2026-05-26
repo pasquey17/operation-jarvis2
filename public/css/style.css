@@ -1893,6 +1893,32 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   opacity: 0.45;
   cursor: not-allowed;
 }
+.trade-submit-btn--primary {
+  flex: 1 1 160px;
+  border: 1px solid var(--blue);
+  background: rgba(0, 212, 255, 0.88);
+  color: #001820;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.22);
+}
+.trade-submit-btn--primary:hover:not(:disabled) {
+  background: #00d4ff;
+  color: #001018;
+  box-shadow: 0 0 28px rgba(0, 212, 255, 0.35);
+}
+.trade-submit-btn--finish {
+  flex: 1 1 140px;
+  border: 1px solid rgba(0, 212, 255, 0.38);
+  background: transparent;
+  color: rgba(0, 212, 255, 0.78);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  box-shadow: none;
+}
+.trade-submit-btn--finish:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.55);
+  color: #00d4ff;
+}
 
 /* Section labels */
 .ltm-section-label {
@@ -2000,25 +2026,6 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
 }
 .ltm-adder-cancel:hover { border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
 
-/* Draft restore banner */
-.ltm-draft-banner {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  margin: 0 34px 12px;
-  padding: 8px 12px;
-  background: rgba(0,212,255,0.07);
-  border: 1px solid rgba(0,212,255,0.22);
-  border-radius: 6px;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em;
-  color: rgba(0,212,255,0.8);
-}
-.ltm-draft-clear {
-  background: none; border: none; padding: 0;
-  color: rgba(0,212,255,0.55); font-family: inherit; font-size: 11px;
-  letter-spacing: 0.06em; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 2px;
-}
-.ltm-draft-clear:hover { color: #00d4ff; }
-
 @media (max-width: 768px) {
   .ltm-reorder-toggle { display: block; }
   .ltm-drag-handle { display: none; }
@@ -2040,8 +2047,7 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   .ltm-customize-panel { margin-left: 0; }
   .ltm-section-label,
   .ltm-photo-section,
-  .ltm-adder-wrap,
-  .ltm-draft-banner { margin-left: 0; }
+  .ltm-adder-wrap { margin-left: 0; }
   .ltm-panel-scroll { padding-left: 16px; padding-right: 16px; }
   .ltm-reorder-toggle { margin-left: 16px; margin-right: 16px; }
   .ltm-actions-sticky { padding-left: 16px; padding-right: 16px; }

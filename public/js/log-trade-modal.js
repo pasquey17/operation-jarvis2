@@ -24,7 +24,6 @@ export const LOG_DEFAULTS_STORAGE_KEY = "jarvis_log_defaults_v1";
 const FIELD_ORDER_KEY_PREFIX = "jarvis_field_order_v4_";
 const FIELD_ORDER_KEY_LEGACY = "jarvis_field_order_v3";
 const HIDDEN_FIELDS_KEY = "jarvis_hidden_journal_fields_v1";
-const DRAFT_KEY_PREFIX = "jarvis_draft_trade_";
 const PAIR_OTHER = "Other";
 const MAX_ORPHAN_PHOTOS = 8;
 const MAX_TOTAL_PHOTOS = 24;
@@ -42,23 +41,6 @@ let ltmExtraPhotos = [];
 let ltmFocusedSlotId = null;
 let ltmCurrentUserId = "";
 let ltmPersistPhotoSlots = async () => {};
-
-function draftStorageKey(userId) {
-  const uid = String(userId || "").trim().toLowerCase();
-  if (!uid) return null;
-  return DRAFT_KEY_PREFIX + uid;
-}
-
-/** @param {unknown} userId */
-export function hasDraftInStorage(userId) {
-  const key = draftStorageKey(userId);
-  if (!key) return false;
-  try {
-    return !!localStorage.getItem(key);
-  } catch {
-    return false;
-  }
-}
 
 async function resolveModalUserId(getUserId) {
   if (typeof getUserId === "function") {
@@ -86,95 +68,6 @@ async function resolveModalUserId(getUserId) {
     }
   }
   return "";
-}
-
-function applyDraftToForm(form, userId, pairOptions) {
-  const draft = readDraftFromStorage(userId);
-  if (!draft || typeof draft !== "object") return false;
-
-  const scrollDiv = form.querySelector(".ltm-panel-scroll");
-  if (scrollDiv && !document.getElementById("ltm-draft-banner")) {
-    const banner = document.createElement("div");
-    banner.className = "ltm-draft-banner";
-    banner.id = "ltm-draft-banner";
-    banner.innerHTML =
-      "Draft restored — continue where you left off. " +
-      '<button type="button" class="ltm-draft-clear" id="ltm-draft-clear">Clear draft</button>';
-    form.insertBefore(banner, scrollDiv);
-    document.getElementById("ltm-draft-clear")?.addEventListener("click", () => {
-      clearDraftFromStorage(userId);
-      document.getElementById("ltm-draft-banner")?.remove();
-    });
-  }
-
-  if (draft.date) {
-    const dateInp = document.getElementById("ltm-f-date");
-    if (dateInp) dateInp.value = draft.date;
-  }
-  if (draft.pair) setFormValue(form, "pair", draft.pair, pairOptions);
-  if (draft.direction) setFormValue(form, "direction", draft.direction, pairOptions);
-  if (draft.session) setFormValue(form, "session", draft.session, pairOptions);
-  if (draft.outcome) setFormValue(form, "outcome", draft.outcome, pairOptions);
-  if (draft.rr != null && draft.rr !== "") setFormValue(form, "rr", String(draft.rr), pairOptions);
-  if (draft.account) setFormValue(form, "account", draft.account, pairOptions);
-  if (draft.summary) setFormValue(form, TRADE_SUMMARY_FIELD_ID, draft.summary, pairOptions);
-  if (draft.customFields && typeof draft.customFields === "object") {
-    for (const [k, v] of Object.entries(draft.customFields)) {
-      if (v) setFormValue(form, k, v, pairOptions);
-    }
-  }
-  initPairOtherToggle(form);
-  syncOutcomeChipsFromSelect(form);
-  return true;
-}
-
-function saveDraftToStorage(userId, data) {
-  const key = draftStorageKey(userId);
-  if (!key) return;
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.warn("[draft] save error", e);
-  }
-  try {
-    document.dispatchEvent(
-      new CustomEvent("jarvis:draft-changed", {
-        detail: {
-          userId: String(userId || "").trim().toLowerCase(),
-          hasDraft: true,
-        },
-      })
-    );
-  } catch {}
-}
-
-function clearDraftFromStorage(userId) {
-  const key = draftStorageKey(userId);
-  if (!key) return;
-  try { localStorage.removeItem(key); } catch {}
-  try {
-    document.dispatchEvent(
-      new CustomEvent("jarvis:draft-changed", {
-        detail: {
-          userId: String(userId || "").trim().toLowerCase(),
-          hasDraft: false,
-        },
-      })
-    );
-  } catch {}
-}
-
-function readDraftFromStorage(userId) {
-  const key = draftStorageKey(userId);
-  if (!key) return null;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
-  } catch {
-    return null;
-  }
 }
 
 function escHtml(s) {
@@ -1375,7 +1268,8 @@ function buildOverlayHtml(today, orderedFields, hasAccounts, isEdit) {
             ? ""
             : `<button type="button" class="trade-submit-btn trade-submit-btn--secondary" id="ltm-submit-another">SAVE &amp; LOG ANOTHER</button>`
         }
-        <button type="submit" class="trade-submit-btn" id="ltm-submit">SAVE TRADE</button>
+        <button type="button" class="trade-submit-btn trade-submit-btn--finish" id="ltm-finish-later">SAVE &amp; FINISH LATER</button>
+        <button type="submit" class="trade-submit-btn trade-submit-btn--primary" id="ltm-submit">SAVE TRADE</button>
       </div>
     </form>
   </div>
@@ -1477,67 +1371,8 @@ export async function openLogTradeModal(options) {
   let fieldsList = null;
 
   async function closeModal() {
-    const draftUserId = (await resolveModalUserId(getUserId)) || userId || ltmCurrentUserId;
-    if (draftUserId) ltmCurrentUserId = draftUserId;
-
-    if (!editId && !savedSuccessfully && form) {
-      try {
-        const fd = new FormData(form);
-        const dateVal = (fd.get("date") || "").trim();
-        const pairRaw = (fd.get("pair") || "").trim();
-        const pair = pairRaw === PAIR_OTHER ? (fd.get("pair_other") || "").trim() : pairRaw;
-        const direction = (fd.get("direction") || "").trim();
-        const outcome = (fd.get("outcome") || "").trim();
-        const rrRaw = (fd.get("rr") || "").trim();
-        const summary = (fd.get(TRADE_SUMMARY_FIELD_ID) || "").trim();
-        const session = (fd.get("session") || "").trim();
-        const account = (fd.get("account") || "").trim();
-        const customFields = {};
-        const coreKeys = new Set([
-          "date",
-          "pair",
-          "pair_other",
-          "direction",
-          "session",
-          "outcome",
-          "rr",
-          "account",
-          TRADE_SUMMARY_FIELD_ID,
-        ]);
-        for (const [k, v] of fd.entries()) {
-          if (coreKeys.has(k)) continue;
-          const val = String(v || "").trim();
-          if (val) customFields[k] = val;
-        }
-        const hasData =
-          (dateVal && dateVal !== today) ||
-          pair ||
-          outcome ||
-          rrRaw ||
-          summary ||
-          direction ||
-          session ||
-          account ||
-          Object.keys(customFields).length > 0;
-        if (hasData && draftUserId) {
-          saveDraftToStorage(draftUserId, {
-            date: dateVal,
-            pair,
-            direction,
-            session,
-            outcome,
-            rr: rrRaw,
-            account,
-            summary,
-            customFields,
-            savedAt: Date.now(),
-          });
-        }
-      } catch {
-        /* never block close */
-      }
-    }
-    const orderUserId = draftUserId || userId;
+    const orderUserId = (await resolveModalUserId(getUserId)) || userId || ltmCurrentUserId;
+    if (orderUserId) ltmCurrentUserId = orderUserId;
     if (fieldsList && orderUserId) persistFieldOrderFromDom(fieldsList, orderUserId);
     overlay.classList.remove("trade-form-overlay--visible");
     document.getElementById("ltm-panel")?.classList.remove("trade-form-panel--visible");
@@ -1629,7 +1464,6 @@ export async function openLogTradeModal(options) {
             const d = await res.json().catch(() => ({}));
             throw new Error(readApiErrorMessage(d) || `Delete failed (${res.status})`);
           }
-          clearDraftFromStorage(userId);
           void closeModal();
           showToast("Trade deleted.");
           if (onTradeSaved) await onTradeSaved();
@@ -1703,14 +1537,9 @@ export async function openLogTradeModal(options) {
   initOutcomeChips(form, syncRR);
   syncRR();
 
-  if (!editId) {
-    const draftUserId = (await resolveModalUserId(getUserId)) || userId || ltmCurrentUserId;
-    if (draftUserId) ltmCurrentUserId = draftUserId;
-    applyDraftToForm(form, draftUserId, pairOptions);
-  }
-
   const submitBtn = document.getElementById("ltm-submit");
   const submitAnotherBtn = document.getElementById("ltm-submit-another");
+  const finishLaterBtn = document.getElementById("ltm-finish-later");
 
   function setSavingState(saving) {
     if (submitBtn) {
@@ -1718,6 +1547,7 @@ export async function openLogTradeModal(options) {
       if (!saving) submitBtn.textContent = editId ? "SAVE CHANGES" : "SAVE TRADE";
     }
     if (submitAnotherBtn) submitAnotherBtn.disabled = saving;
+    if (finishLaterBtn) finishLaterBtn.disabled = saving;
   }
 
   function resetFormForAnother() {
@@ -1733,11 +1563,22 @@ export async function openLogTradeModal(options) {
     form.querySelector(".ltm-outcome-chip")?.focus?.();
   }
 
-  async function saveTrade(closeAfter) {
-    const validation = validateLogTradeForm(form, fieldsList);
-    if (!validation.ok) {
-      showToast(validation.message, true);
-      return;
+  async function saveTrade({ closeAfter = true, partial = false } = {}) {
+    if (!partial) {
+      const validation = validateLogTradeForm(form, fieldsList);
+      if (!validation.ok) {
+        showToast(validation.message, true);
+        return;
+      }
+    } else {
+      clearFormValidation(form);
+      const dateEl = form.elements.namedItem("date");
+      const dateVal = dateEl && "value" in dateEl ? String(dateEl.value || "").trim() : "";
+      if (!dateVal) {
+        showToast("Date is required.", true);
+        dateEl?.focus?.();
+        return;
+      }
     }
 
     const fd = new FormData(form);
@@ -1774,9 +1615,9 @@ export async function openLogTradeModal(options) {
       const basePayload = {
         traded_at: `${dateVal}T00:00:00.000Z`,
         pair: pair || null,
-        outcome,
+        outcome: outcome || null,
         rr: rr !== null && !Number.isNaN(rr) ? rr : null,
-        session,
+        session: session || null,
         account: account || null,
         custom_data,
       };
@@ -1803,21 +1644,18 @@ export async function openLogTradeModal(options) {
         userId,
       };
 
-      const draftUserId =
-        (await resolveModalUserId(getUserId)) || userId || ltmCurrentUserId;
-      if (draftUserId) ltmCurrentUserId = draftUserId;
-
-      if (closeAfter) {
+      if (closeAfter || partial) {
         savedSuccessfully = true;
-        clearDraftFromStorage(draftUserId);
         void closeModal();
-        showToast(editId ? "Trade updated." : "Trade logged.");
+        if (partial) {
+          showToast("Saved as incomplete — edit anytime from the journal");
+        } else {
+          showToast(editId ? "Trade updated." : "Trade logged.");
+        }
         if (onTradeSaved) await onTradeSaved(savedMeta);
         return;
       }
 
-      clearDraftFromStorage(draftUserId);
-      document.getElementById("ltm-draft-banner")?.remove();
       showToast("Trade logged — add another below.");
       resetFormForAnother();
       if (onTradeSaved) await onTradeSaved(savedMeta);
@@ -1830,12 +1668,18 @@ export async function openLogTradeModal(options) {
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    void saveTrade(true);
+    void saveTrade({ closeAfter: true, partial: false });
   });
 
   if (submitAnotherBtn) {
     submitAnotherBtn.addEventListener("click", () => {
-      void saveTrade(false);
+      void saveTrade({ closeAfter: false, partial: false });
+    });
+  }
+
+  if (finishLaterBtn) {
+    finishLaterBtn.addEventListener("click", () => {
+      void saveTrade({ closeAfter: true, partial: true });
     });
   }
 

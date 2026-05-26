@@ -211,27 +211,6 @@
       }
       .jn-log-btn:active { transform: translateY(0); }
 
-      /* ── DRAFT badge on LOG TRADE button ── */
-      .jn-log-btn__draft-dot {
-        display: inline-block;
-        margin-left: 8px;
-        padding: 1px 6px;
-        border-radius: 4px;
-        background: rgba(0,0,0,0.35);
-        border: 1px solid rgba(0,0,0,0.5);
-        color: #000;
-        font-size: 9px;
-        letter-spacing: 0.14em;
-        animation: jn-draft-pulse 1.8s ease-in-out infinite;
-        vertical-align: middle;
-        position: relative;
-        top: -1px;
-      }
-      @keyframes jn-draft-pulse {
-        0%, 100% { opacity: 0.55; }
-        50% { opacity: 1; box-shadow: 0 0 6px rgba(0,0,0,0.4); }
-      }
-
       /* ── LOG TRADE + Edit — stacked under filter ── */
       .jn-action-stack {
         display: flex;
@@ -631,7 +610,11 @@
       .jn-badge--long  { background: rgba(0,212,255,0.12) !important; color: #00d4ff !important; border-color: rgba(0,212,255,0.35) !important; }
       .jn-badge--short { background: rgba(255,100,100,0.12) !important; color: #ff8888 !important; border-color: rgba(255,100,100,0.35) !important; }
       .jn-badge--acct  { background: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.38) !important; border-color: rgba(255,255,255,0.1) !important; font-weight: 400; font-size: 9px; }
-
+      .jn-badge--incomplete {
+        background: rgba(245, 158, 11, 0.14) !important;
+        color: rgba(251, 191, 36, 0.95) !important;
+        border-color: rgba(245, 158, 11, 0.42) !important;
+      }
 
       .jn-card__photo-hit {
         display: inline-flex; align-items: center; margin-left: 6px; padding: 2px 6px;
@@ -1093,7 +1076,6 @@
 
     <script type="module">
       import { getAuthUserId, getAuthEmail, apiFetch } from "/js/jarvis-auth.js";
-      import { hasDraftInStorage } from "/js/log-trade-modal.js?v=e7b2d9f4";
     (function () {
       'use strict';
 
@@ -1105,8 +1087,6 @@
       let allTrades      = [];
       let filteredTrades = [];
       let displayedCount = 0;
-      /** Most recent journal_trade with missing key fields, or null. */
-      let incompleteJournalTrade = null;
       /** When true, trade cards show inline edit/delete controls. */
       let journalEditMode = false;
       let activeFilters  = {
@@ -2625,6 +2605,11 @@
         }
 
         var editable = isJournalTradeEditable(trade);
+        var incomplete =
+          trade._jarvis_trade_source === 'journal_log' && isIncompleteJournalTrade(trade);
+        var incompleteBadge = incomplete
+          ? '<span class="jn-badge jn-badge--incomplete">INCOMPLETE</span>'
+          : '';
         var disAttr = editable ? '' : ' disabled';
         var tEdit = editable ? 'Edit trade' : 'Not editable — source type';
         var tDel = editable ? 'Delete trade' : 'Not editable — source type';
@@ -2651,13 +2636,14 @@
           '  </div>';
 
         return [
-          '<article class="jn-card" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '">',
+          '<article class="jn-card" data-outcome="' + esc(outcome) + '" data-idx="' + idx + '"' + (incomplete ? ' data-incomplete="true"' : '') + '>',
           coverPiece,
           '  <div class="jn-card__top">',
           '    <span class="jn-card__date">' + esc(dateShort) + '</span>',
           '    <div class="jn-card__bands">',
           '      <div class="jn-card__left">',
           '      ' + outcomeBadgeHtml(outcome),
+          '      ' + incompleteBadge,
           '      ' + directionBadgeHtml(trade),
           '      ' + pairHtml + chartHint,
           modelDisplay ? '      <span class="jn-card__model">' + esc(modelDisplay) + '</span>' : '',
@@ -2794,7 +2780,7 @@
         }
         if (src === 'journal_log') {
           try {
-            var mod = await import('/js/log-trade-modal.js?v=e7b2d9f4');
+            var mod = await import('/js/log-trade-modal.js?v=f8c3a1b2');
             await mod.openLogTradeModal({
               getUserId: resolveJournalUserId,
               fetchTradeRowsForPrefill: async function () {
@@ -3170,7 +3156,17 @@
         if (card && inList) {
           if (e.target.closest('.jn-card__quick-actions')) return;
           var idx = parseInt(card.getAttribute('data-idx'), 10);
-          if (!isNaN(idx)) openTradeModal(idx);
+          if (isNaN(idx)) return;
+          var cardTrade = filteredTrades[idx];
+          if (
+            cardTrade &&
+            cardTrade._jarvis_trade_source === 'journal_log' &&
+            isIncompleteJournalTrade(cardTrade)
+          ) {
+            void openJournalTradeEditorFromRow(cardTrade);
+            return;
+          }
+          openTradeModal(idx);
         }
       });
 
@@ -3367,7 +3363,7 @@
       /* ── LOG TRADE modal (shared: /js/log-trade-modal.js) ── */
       async function openTradeForm() {
         try {
-          var mod = await import('/js/log-trade-modal.js?v=e7b2d9f4');
+          var mod = await import('/js/log-trade-modal.js?v=f8c3a1b2');
           await mod.openLogTradeModal({
             getUserId: resolveJournalUserId,
             fetchTradeRowsForPrefill: async function () {
@@ -3402,8 +3398,6 @@
       async function refreshJournalData() {
         try {
           allTrades = await fetchAllTrades();
-          await refreshIncompleteJournalTrade();
-          updateDraftBadge(currentUserId);
           renderWeeklyStats(computeWeeklyStats(allTrades));
           buildFilterOptions(allTrades);
           applyFilters();
@@ -3460,6 +3454,7 @@
 
       /* ── Incomplete trade helpers ── */
       function isIncompleteJournalTrade(t) {
+        if (!t || t._jarvis_trade_source !== 'journal_log') return false;
         var outcome = (t.outcome || '').trim().toLowerCase();
         var pair = (t.pair || '').trim();
         var rr = t.rr;
@@ -3467,70 +3462,9 @@
         return !outcome || !pair || (rrMissing && outcome !== 'be');
       }
 
-      function findIncompleteJournalTrade(trades) {
-        if (!Array.isArray(trades)) return null;
-        var journal = trades.filter(function(t) { return t._jarvis_trade_source === 'journal_log'; });
-        journal.sort(function(a, b) {
-          return new Date(b.traded_at || b.date || 0) - new Date(a.traded_at || a.date || 0);
-        });
-        for (var i = 0; i < journal.length; i++) {
-          if (isIncompleteJournalTrade(journal[i])) return journal[i];
-        }
-        return null;
-      }
-
-      async function refreshIncompleteJournalTrade() {
-        try {
-          var r = await apiFetch('/api/journal-trades', { cache: 'no-store' });
-          var rows = await r.json();
-          if (!Array.isArray(rows)) rows = [];
-          incompleteJournalTrade = findIncompleteJournalTrade(
-            rows.map(function (t) {
-              return Object.assign({}, t, { _jarvis_trade_source: 'journal_log' });
-            })
-          );
-        } catch (e) {
-          incompleteJournalTrade = findIncompleteJournalTrade(allTrades);
-        }
-      }
-
-      /* ── Draft badge ── */
-      function draftUserIdsMatch(a, b) {
-        return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
-      }
-
-      function updateDraftBadge(uid) {
-        var btn = document.getElementById('jn-log-btn');
-        if (!btn) return;
-        var dot = btn.querySelector('.jn-log-btn__draft-dot');
-        var hasDraft = hasDraftInStorage(uid);
-        var showBadge = hasDraft || !!incompleteJournalTrade;
-        if (showBadge && !dot) {
-          var span = document.createElement('span');
-          span.className = 'jn-log-btn__draft-dot';
-          span.textContent = 'DRAFT';
-          btn.appendChild(span);
-        } else if (!showBadge && dot) {
-          dot.remove();
-        }
-      }
-      document.addEventListener('jarvis:draft-changed', function(e) {
-        getAuthUserId().then(function (uid) {
-          if (uid) currentUserId = String(uid).trim();
-          var activeId = uid || currentUserId;
-          if (e.detail && draftUserIdsMatch(e.detail.userId, activeId)) {
-            updateDraftBadge(activeId);
-          }
-        });
-      });
-
       /* ── Boot ── */
       document.getElementById('jn-log-btn').addEventListener('click', function() {
-        if (!hasDraftInStorage(currentUserId) && incompleteJournalTrade) {
-          void openJournalTradeEditorFromRow(incompleteJournalTrade);
-        } else {
-          void openTradeForm();
-        }
+        void openTradeForm();
       });
       document.getElementById('jn-edit-trade-btn')?.addEventListener('click', function () {
         toggleJournalEditMode();
@@ -3539,13 +3473,10 @@
       async function boot() {
         initParticles();
         await ensureUserId();
-        updateDraftBadge(currentUserId);
         var list = document.getElementById('jn-list');
         list.innerHTML = '<div class="jn-state">Loading trades…</div>';
         try { allTrades = await fetchAllTrades(); }
         catch(e) { list.innerHTML = '<div class="jn-state">Failed to load trades. Check your connection.</div>'; return; }
-        await refreshIncompleteJournalTrade();
-        updateDraftBadge(currentUserId);
         if (allTrades.length === 0) {
           list.innerHTML = '<div class="jn-state">Syncing from Notion…</div>';
         } else {
