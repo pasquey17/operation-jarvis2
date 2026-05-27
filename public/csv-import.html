@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/css/style.css?v=d4f7e2a1" />
     <link rel="stylesheet" href="/css/jarvis-settings.css?v=d4f7e2a1" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
       html, body {
         overflow: auto !important;
@@ -135,27 +136,6 @@
         transition: background 0.3s;
       }
       .ci-step-line--done { background: rgba(0,212,255,0.35); }
-      .ci-step-label-row {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 28px;
-        margin-top: -24px;
-        padding: 0 0;
-      }
-      .ci-step-label {
-        font-family: "Share Tech Mono", monospace;
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--text-secondary, #8899aa);
-        text-align: center;
-        width: 28px;
-        flex-shrink: 0;
-        transition: color 0.3s;
-      }
-      .ci-step-label--active { color: var(--accent, #00d4ff); }
-      .ci-step-label--done { color: rgba(0,212,255,0.55); }
-      .ci-step-label-spacer { flex: 1; }
 
       /* ═══════════ WIZARD PANEL ═══════════ */
       .ci-panel {
@@ -219,7 +199,7 @@
       .ci-dropzone {
         border: 2px dashed rgba(0,212,255,0.25);
         border-radius: 12px;
-        padding: 48px 24px;
+        padding: 40px 24px 32px;
         text-align: center;
         cursor: pointer;
         transition: border-color 0.2s, background 0.2s;
@@ -251,6 +231,23 @@
         margin-top: 6px;
         opacity: 0.7;
       }
+      .ci-dropzone__hints {
+        margin-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: center;
+      }
+      .ci-dropzone__hint {
+        font-family: "Outfit", sans-serif;
+        font-size: 0.75rem;
+        color: var(--text-secondary, #8899aa);
+        opacity: 0.6;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ci-dropzone__hint-icon { font-size: 11px; opacity: 0.7; }
       .ci-dropzone__filename {
         font-family: "Share Tech Mono", monospace;
         font-size: 12px;
@@ -354,8 +351,36 @@
         color: var(--text-secondary, #8899aa);
         border: 1px solid rgba(136,153,170,0.2);
       }
+
+      /* Confidence dot + select wrapper */
+      .ci-map-select-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ci-conf-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        transition: background 0.25s, box-shadow 0.25s;
+      }
+      .ci-conf-dot--high {
+        background: #00ff88;
+        box-shadow: 0 0 6px rgba(0,255,136,0.5);
+      }
+      .ci-conf-dot--medium {
+        background: #ffaa44;
+        box-shadow: 0 0 6px rgba(255,170,68,0.4);
+      }
+      .ci-conf-dot--none {
+        background: rgba(136,153,170,0.25);
+        box-shadow: none;
+      }
+
       .ci-map-select {
-        width: 100%;
+        flex: 1;
+        min-width: 0;
         padding: 8px 10px;
         background: rgba(0,0,0,0.4);
         border: 1px solid rgba(0,212,255,0.18);
@@ -523,12 +548,6 @@
       }
       .ci-btn--primary:hover { background: #33ddff; box-shadow: 0 0 16px rgba(0,212,255,0.4); }
       .ci-btn--primary:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
-      .ci-btn--secondary {
-        background: rgba(255,255,255,0.06);
-        color: var(--text-primary, #fff);
-        border: 1px solid rgba(255,255,255,0.12);
-      }
-      .ci-btn--secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
       .ci-btn--ghost {
         background: transparent;
         color: var(--text-secondary, #8899aa);
@@ -541,7 +560,6 @@
         border: 1px solid rgba(255,255,255,0.15);
       }
       .ci-btn--notion:hover { background: rgba(255,255,255,0.12); }
-
       .ci-btn-row--center { justify-content: center; }
 
       /* ═══════════ ERROR BANNER ═══════════ */
@@ -631,7 +649,7 @@
         <!-- STEP 1: Upload -->
         <section class="ci-step-section ci-step-section--active" id="ci-step-1" aria-label="Step 1 of 5: Upload">
           <h1 class="ci-heading">Import your trade history</h1>
-          <p class="ci-subheading">Upload a CSV file to bring your historical trades into Jarvis.</p>
+          <p class="ci-subheading">Upload a CSV or ZIP file to bring your historical trades into Jarvis.</p>
 
           <div class="ci-notice">
             <span class="ci-notice__icon">⚡</span>
@@ -640,13 +658,17 @@
             </p>
           </div>
 
-          <div class="ci-dropzone" id="ci-dropzone" role="button" tabindex="0" aria-label="Drop CSV file here or click to select">
+          <div class="ci-dropzone" id="ci-dropzone" role="button" tabindex="0" aria-label="Drop CSV or ZIP file here or click to select">
             <span class="ci-dropzone__icon">📂</span>
-            <div class="ci-dropzone__text">Drop your CSV file here</div>
+            <div class="ci-dropzone__text">Drop your CSV or Notion ZIP export here</div>
             <div class="ci-dropzone__sub">or click to select a file</div>
+            <div class="ci-dropzone__hints">
+              <div class="ci-dropzone__hint"><span class="ci-dropzone__hint-icon">📦</span> Exporting from Notion? Upload the ZIP file directly.</div>
+              <div class="ci-dropzone__hint"><span class="ci-dropzone__hint-icon">📊</span> Using Excel or another app? Upload your CSV file.</div>
+            </div>
             <div class="ci-dropzone__filename" id="ci-filename" hidden></div>
           </div>
-          <input type="file" id="ci-file-input" accept=".csv,text/csv" aria-hidden="true" />
+          <input type="file" id="ci-file-input" accept=".csv,.zip,text/csv,application/zip" aria-hidden="true" />
 
           <div id="ci-preview-wrap" hidden>
             <div class="ci-table-wrap">
@@ -667,7 +689,7 @@
         <!-- STEP 2: Map Columns -->
         <section class="ci-step-section" id="ci-step-2" aria-label="Step 2 of 5: Map columns">
           <h1 class="ci-heading">Map your columns</h1>
-          <p class="ci-subheading">Tell Jarvis which CSV column corresponds to each field. Required fields must be mapped to continue.</p>
+          <p class="ci-subheading">Tell Jarvis which CSV column corresponds to each field. Required fields must be mapped to continue. Coloured dots show auto-detection confidence.</p>
 
           <div class="ci-map-grid" id="ci-map-grid"></div>
 
@@ -751,10 +773,11 @@
       // ── State ──────────────────────────────────────────────────
       let currentStep = 1;
       let parsedHeaders = [];
-      let parsedRows = [];     // raw PapaParse rows (objects)
+      let parsedRows = [];
       let mapping = {};        // { jarvisField: csvColumn }
-      let validTrades = [];    // normalized trade objects ready for import
-      let skippedRows = [];    // { rowIndex, reason }
+      let confidence = {};     // { jarvisField: "high"|"medium"|"none" }
+      let validTrades = [];
+      let skippedRows = [];
 
       const REQUIRED_FIELDS = ["date", "pair", "outcome"];
       const ALL_FIELDS = [
@@ -769,29 +792,94 @@
         { key: "account",   label: "Account",   required: false, hint: "Trading account name" },
       ];
 
-      // Auto-detect column name → Jarvis field
-      const DETECT_PATTERNS = {
-        date:      [/^date$/i, /^trade.?date$/i, /^entry.?date$/i, /^time$/i, /^timestamp$/i, /^datetime$/i],
-        pair:      [/^pair$/i, /^symbol$/i, /^instrument$/i, /^asset$/i, /^ticker$/i, /^market$/i, /^currency.?pair$/i],
-        outcome:   [/^outcome$/i, /^result$/i, /^win.?loss$/i, /^p.?l$/i, /^status$/i, /^trade.?result$/i],
-        direction: [/^direction$/i, /^type$/i, /^side$/i, /^buy.?sell$/i, /^long.?short$/i, /^trade.?type$/i],
-        rr:        [/^r.?r$/i, /^rr$/i, /^risk.?reward$/i, /^r.?multiple$/i, /^return.?r$/i, /^p.?l.?r$/i, /^pl_r$/i],
-        session:   [/^session$/i, /^market.?session$/i, /^trading.?session$/i],
-        model:     [/^model$/i, /^strategy$/i, /^setup$/i, /^pattern$/i, /^entry.?type$/i],
-        notes:     [/^notes$/i, /^comments$/i, /^remarks$/i, /^description$/i, /^memo$/i, /^journal$/i],
-        account:   [/^account$/i, /^account.?name$/i, /^broker$/i],
+      // ── Fuzzy auto-detection ───────────────────────────────────
+
+      // Normalize to lowercase alphanumeric only for comparison
+      function normKey(s) {
+        return String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+      }
+
+      // Keywords for each field: each entry is [term, baseScore]
+      // Higher score = stronger signal
+      const FIELD_KEYWORDS = {
+        date: [
+          ["tradedate", 100], ["entrydate", 100], ["tradedatetime", 95], ["opendate", 90],
+          ["opendatetime", 90], ["datetime", 85], ["timestamp", 80], ["date", 75], ["time", 40],
+          ["traded", 60], ["open", 30],
+        ],
+        pair: [
+          ["currencypair", 100], ["pair", 100], ["symbol", 95], ["instrument", 95],
+          ["ticker", 90], ["asset", 80], ["market", 70], ["product", 65],
+        ],
+        outcome: [
+          ["outcome", 100], ["traderesult", 100], ["winloss", 95], ["result", 90],
+          ["win", 60], ["loss", 60], ["pandl", 55], ["pnl", 50], ["profit", 45], ["status", 40],
+        ],
+        rr: [
+          ["rratio", 100], ["rr", 100], ["riskreward", 100], ["rmultiple", 95],
+          ["riskratio", 90], ["multiple", 85], ["ratio", 70], ["risk", 55], ["reward", 55],
+          ["returnr", 60], ["plr", 60],
+        ],
+        direction: [
+          ["direction", 100], ["longshort", 100], ["buysell", 100], ["side", 90],
+          ["bias", 85], ["position", 80], ["tradetype", 75], ["type", 40],
+          ["long", 45], ["short", 45], ["buy", 45], ["sell", 45],
+        ],
+        session: [
+          ["session", 100], ["tradingsession", 100], ["marketsession", 100],
+          ["window", 70], ["timezone", 65], ["london", 60], ["newyork", 60],
+          ["asia", 60], ["ny", 55], ["market", 30],
+        ],
+        model: [
+          ["model", 100], ["setup", 95], ["strategy", 95], ["playbook", 90],
+          ["pattern", 85], ["system", 80], ["entrytype", 80], ["tradetype", 75],
+          ["entry", 50],
+        ],
+        notes: [
+          ["notes", 100], ["journal", 95], ["thoughts", 90], ["teaching", 85],
+          ["summary", 80], ["review", 80], ["description", 75], ["comment", 75],
+          ["remarks", 70], ["memo", 65],
+        ],
+        account: [
+          ["account", 100], ["accountname", 100], ["broker", 90], ["firm", 85],
+          ["fund", 80], ["challenge", 75],
+        ],
       };
 
-      function autoDetectMappings(headers) {
-        const result = {};
-        for (const [field, patterns] of Object.entries(DETECT_PATTERNS)) {
-          for (const header of headers) {
-            if (patterns.some(p => p.test(header.trim()))) {
-              result[field] = header;
-              break;
-            }
-          }
+      // Score a single header against a field's keywords
+      function scoreHeader(header, fieldKey) {
+        const norm = normKey(header);
+        if (!norm) return 0;
+        const keywords = FIELD_KEYWORDS[fieldKey] || [];
+        let best = 0;
+        for (const [term, baseScore] of keywords) {
+          if (norm === term) { best = Math.max(best, baseScore * 1.4); continue; }
+          if (norm.startsWith(term) || term.startsWith(norm)) { best = Math.max(best, baseScore * 1.1); continue; }
+          if (norm.includes(term)) { best = Math.max(best, baseScore * 0.85); }
         }
+        return best;
+      }
+
+      // Returns { column, confidence } for each field
+      function autoDetectMappings(headers) {
+        const result = {};  // { field: { column, confidence } }
+
+        for (const fieldKey of Object.keys(FIELD_KEYWORDS)) {
+          let bestScore = 0;
+          let bestHeader = null;
+
+          for (const h of headers) {
+            const s = scoreHeader(h, fieldKey);
+            if (s > bestScore) { bestScore = s; bestHeader = h; }
+          }
+
+          let conf = "none";
+          if (bestScore >= 75) conf = "high";
+          else if (bestScore >= 35) conf = "medium";
+
+          result[fieldKey] = { column: conf !== "none" ? bestHeader : null, confidence: conf };
+        }
+
         return result;
       }
 
@@ -821,7 +909,6 @@
 
       dropzone.addEventListener("click", () => fileInput.click());
       dropzone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
-
       dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("ci-dropzone--dragover"); });
       dropzone.addEventListener("dragleave", () => dropzone.classList.remove("ci-dropzone--dragover"));
       dropzone.addEventListener("drop", e => {
@@ -830,45 +917,95 @@
         const file = e.dataTransfer?.files?.[0];
         if (file) handleFile(file);
       });
-
       fileInput.addEventListener("change", () => {
         const file = fileInput.files?.[0];
         if (file) handleFile(file);
       });
 
-      function handleFile(file) {
-        if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
-          showError("ci-error-1", "Please select a .csv file.");
+      async function handleFile(file) {
+        hideError("ci-error-1");
+        const nameLow = file.name.toLowerCase();
+        const isZip = nameLow.endsWith(".zip");
+        const isCsv = nameLow.endsWith(".csv") || file.type === "text/csv";
+
+        if (!isZip && !isCsv) {
+          showError("ci-error-1", "Please select a .csv or .zip file.");
           return;
         }
-        hideError("ci-error-1");
 
-        Papa.parse(file, {
+        if (isZip) {
+          await handleZip(file);
+        } else {
+          parseCsv(file, null, file.name);
+        }
+      }
+
+      async function handleZip(file) {
+        try {
+          const zip = await JSZip.loadAsync(file);
+          const csvEntries = [];
+          zip.forEach((path, entry) => {
+            if (!entry.dir && path.toLowerCase().endsWith(".csv")) {
+              csvEntries.push({ path, entry });
+            }
+          });
+
+          if (csvEntries.length === 0) {
+            showError("ci-error-1", "No CSV files found in the ZIP. Make sure you're uploading a Notion or trading app export.");
+            return;
+          }
+
+          // Read all to find best candidate
+          const csvData = await Promise.all(
+            csvEntries.map(async ({ path, entry }) => ({
+              path,
+              text: await entry.async("string"),
+            }))
+          );
+
+          // Prefer *_all.csv (Notion export pattern), else pick the largest
+          let chosen = csvData.find(f => f.path.toLowerCase().includes("_all.csv"))
+                    || csvData.sort((a, b) => b.text.length - a.text.length)[0];
+
+          const displayName = `${file.name} → ${chosen.path}`;
+          parseCsv(null, chosen.text, displayName);
+        } catch (err) {
+          showError("ci-error-1", `Failed to read ZIP: ${err.message}`);
+        }
+      }
+
+      function parseCsv(fileOrNull, textOrNull, displayName) {
+        const opts = {
           header: true,
           skipEmptyLines: true,
           complete(results) {
             if (!results.data?.length) {
-              showError("ci-error-1", "The CSV file appears to be empty.");
+              showError("ci-error-1", "The CSV file appears to be empty or has no data rows.");
               return;
             }
             parsedHeaders = results.meta.fields || [];
             parsedRows = results.data;
 
             const filenameEl = document.getElementById("ci-filename");
-            filenameEl.textContent = `${file.name} — ${parsedRows.length} rows`;
+            filenameEl.textContent = `${displayName} — ${parsedRows.length} rows`;
             filenameEl.hidden = false;
 
             renderPreviewTable(parsedHeaders, parsedRows.slice(0, 5));
             document.getElementById("ci-preview-wrap").hidden = false;
             document.getElementById("ci-preview-note").textContent =
               `Showing first ${Math.min(5, parsedRows.length)} of ${parsedRows.length} rows`;
-
             document.getElementById("ci-btn-1-continue").disabled = false;
           },
           error(err) {
             showError("ci-error-1", `Failed to parse CSV: ${err.message}`);
           },
-        });
+        };
+
+        if (textOrNull !== null) {
+          Papa.parse(textOrNull, opts);
+        } else {
+          Papa.parse(fileOrNull, opts);
+        }
       }
 
       function renderPreviewTable(headers, rows) {
@@ -888,43 +1025,71 @@
       // ── STEP 2: Column mapping ──────────────────────────────────
       function buildMappingUI() {
         const detected = autoDetectMappings(parsedHeaders);
-        mapping = { ...detected };
+        mapping = {};
+        confidence = {};
+        for (const [field, { column, confidence: conf }] of Object.entries(detected)) {
+          if (column) mapping[field] = column;
+          confidence[field] = conf;
+        }
 
         const grid = document.getElementById("ci-map-grid");
         grid.innerHTML = "";
 
         for (const field of ALL_FIELDS) {
-          const row = document.createElement("div");
-          row.className = "ci-map-row";
+          const conf = confidence[field.key] || "none";
+          const mapped = mapping[field.key] || "";
 
           const colOptions = parsedHeaders.map(h =>
-            `<option value="${escAttr(h)}" ${mapping[field.key] === h ? "selected" : ""}>${escHtml(h)}</option>`
+            `<option value="${escAttr(h)}" ${mapped === h ? "selected" : ""}>${escHtml(h)}</option>`
           ).join("");
 
+          const confTitle = conf === "high" ? "High confidence auto-match"
+                          : conf === "medium" ? "Possible match — please verify"
+                          : "Not auto-detected";
+
+          const row = document.createElement("div");
+          row.className = "ci-map-row";
           row.innerHTML = `
             <div class="ci-map-field">
               <span class="ci-map-field__name">${escHtml(field.label)}</span>
               <span class="ci-map-field__badge ${field.required ? "ci-map-field__badge--req" : "ci-map-field__badge--opt"}">${field.required ? "required" : "optional"}</span>
             </div>
-            <select class="ci-map-select" data-field="${escAttr(field.key)}" aria-label="Map ${escHtml(field.label)} to CSV column">
-              <option value="">— skip —</option>
-              ${colOptions}
-            </select>
+            <div class="ci-map-select-wrap">
+              <span class="ci-conf-dot ci-conf-dot--${conf}" data-conf-for="${escAttr(field.key)}" title="${confTitle}"></span>
+              <select class="ci-map-select" data-field="${escAttr(field.key)}" aria-label="Map ${escHtml(field.label)} to CSV column">
+                <option value="">— Not mapped —</option>
+                ${colOptions}
+              </select>
+            </div>
           `;
-
           grid.appendChild(row);
         }
 
+        // Single delegated listener (remove old one by replacing grid innerHTML above)
         grid.addEventListener("change", onMappingChange);
         checkStep2Continue();
       }
 
       function onMappingChange(e) {
         if (!e.target.matches("[data-field]")) return;
-        const field = e.target.dataset.field;
+        const fieldKey = e.target.dataset.field;
         const value = e.target.value;
-        if (value) mapping[field] = value;
-        else delete mapping[field];
+        if (value) {
+          mapping[fieldKey] = value;
+          // Manual selection = high confidence
+          const dot = document.querySelector(`[data-conf-for="${fieldKey}"]`);
+          if (dot) {
+            dot.className = "ci-conf-dot ci-conf-dot--high";
+            dot.title = "Manually mapped";
+          }
+        } else {
+          delete mapping[fieldKey];
+          const dot = document.querySelector(`[data-conf-for="${fieldKey}"]`);
+          if (dot) {
+            dot.className = "ci-conf-dot ci-conf-dot--none";
+            dot.title = "Not mapped";
+          }
+        }
         checkStep2Continue();
       }
 
@@ -945,18 +1110,12 @@
         skippedRows = [];
 
         for (let i = 0; i < parsedRows.length; i++) {
-          const raw = parsedRows[i];
-          const reason = validateRow(raw, i + 1);
-          if (reason) {
-            skippedRows.push({ row: i + 1, reason });
-          } else {
-            validTrades.push(mapRow(raw));
-          }
+          const reason = validateRow(parsedRows[i]);
+          if (reason) skippedRows.push({ row: i + 1, reason });
+          else validTrades.push(mapRow(parsedRows[i]));
         }
 
-        // Stats
-        const statsEl = document.getElementById("ci-confirm-stats");
-        statsEl.innerHTML = `
+        document.getElementById("ci-confirm-stats").innerHTML = `
           <div class="ci-stat-card">
             <span class="ci-stat-card__value">${validTrades.length}</span>
             <span class="ci-stat-card__label">Trades to import</span>
@@ -968,67 +1127,62 @@
           </div>` : ""}
         `;
 
-        // Skipped
         const skipWrap = document.getElementById("ci-skip-wrap");
         if (skippedRows.length > 0) {
           skipWrap.hidden = false;
-          document.getElementById("ci-skip-items").innerHTML = skippedRows.slice(0, 20).map(s =>
-            `<div class="ci-skip-list__item">Row ${s.row}: ${escHtml(s.reason)}</div>`
-          ).join("") + (skippedRows.length > 20 ? `<div class="ci-skip-list__item">… and ${skippedRows.length - 20} more</div>` : "");
+          document.getElementById("ci-skip-items").innerHTML =
+            skippedRows.slice(0, 20).map(s => `<div class="ci-skip-list__item">Row ${s.row}: ${escHtml(s.reason)}</div>`).join("") +
+            (skippedRows.length > 20 ? `<div class="ci-skip-list__item">… and ${skippedRows.length - 20} more</div>` : "");
         } else {
           skipWrap.hidden = true;
         }
 
-        // Preview first 10 valid
         const previewCols = ["date", "pair", "outcome", "rr", "session"];
-        const thead = document.getElementById("ci-confirm-thead");
-        const tbody = document.getElementById("ci-confirm-tbody");
-        thead.innerHTML = `<tr>${previewCols.map(c => `<th>${c.toUpperCase()}</th>`).join("")}</tr>`;
-        const preview = validTrades.slice(0, 10);
-        tbody.innerHTML = preview.map(t =>
-          `<tr>${previewCols.map(c => `<td>${escHtml(t[c] != null ? String(t[c]) : "—")}</td>`).join("")}</tr>`
-        ).join("");
+        document.getElementById("ci-confirm-thead").innerHTML =
+          `<tr>${previewCols.map(c => `<th>${c.toUpperCase()}</th>`).join("")}</tr>`;
+        document.getElementById("ci-confirm-tbody").innerHTML =
+          validTrades.slice(0, 10).map(t =>
+            `<tr>${previewCols.map(c => `<td>${escHtml(t[c] != null ? String(t[c]) : "—")}</td>`).join("")}</tr>`
+          ).join("");
         document.getElementById("ci-confirm-note").textContent =
           validTrades.length > 10 ? `Showing first 10 of ${validTrades.length} trades` : "";
 
-        // Import button label
-        document.getElementById("ci-btn-3-import").textContent = `Import ${validTrades.length} trade${validTrades.length !== 1 ? "s" : ""}`;
-        document.getElementById("ci-btn-3-import").disabled = validTrades.length === 0;
+        const importBtn = document.getElementById("ci-btn-3-import");
+        importBtn.textContent = `Import ${validTrades.length} trade${validTrades.length !== 1 ? "s" : ""}`;
+        importBtn.disabled = validTrades.length === 0;
       }
 
-      function validateRow(raw, rowNum) {
+      function validateRow(raw) {
         const dateVal = raw[mapping.date] ?? "";
-        if (!dateVal.trim()) return "Missing date";
-        if (!isValidDate(dateVal)) return `Invalid date: "${truncate(dateVal, 30)}"`;
+        if (!dateVal.toString().trim()) return "Missing date";
+        if (!isValidDate(dateVal)) return `Invalid date: "${truncate(String(dateVal), 30)}"`;
 
         const pairVal = raw[mapping.pair] ?? "";
-        if (!pairVal.trim()) return "Missing pair";
+        if (!pairVal.toString().trim()) return "Missing pair";
 
         const outcomeVal = raw[mapping.outcome] ?? "";
-        if (!normalizeOutcome(outcomeVal)) return `Invalid outcome: "${truncate(outcomeVal, 20)}"`;
+        if (!normalizeOutcome(outcomeVal)) return `Invalid outcome: "${truncate(String(outcomeVal), 20)}"`;
 
         if (mapping.rr) {
-          const rrVal = raw[mapping.rr] ?? "";
-          if (rrVal.trim() !== "" && isNaN(Number(rrVal))) return `Invalid R:R: "${truncate(rrVal, 20)}"`;
+          const rrVal = (raw[mapping.rr] ?? "").toString().trim();
+          if (rrVal !== "" && isNaN(Number(rrVal))) return `Invalid R:R: "${truncate(rrVal, 20)}"`;
         }
-
-        return null; // valid
+        return null;
       }
 
       function mapRow(raw) {
         const t = {};
         t.date = raw[mapping.date] ?? "";
-        t.pair = (raw[mapping.pair] ?? "").trim().toUpperCase().replace(/\s+/g, "");
-        // Add slash for 6-char pairs
+        t.pair = (raw[mapping.pair] ?? "").toString().trim().toUpperCase().replace(/\s+/g, "");
         if (t.pair.length === 6 && !t.pair.includes("/")) t.pair = t.pair.slice(0, 3) + "/" + t.pair.slice(3);
         t.outcome = normalizeOutcome(raw[mapping.outcome] ?? "");
-        t.rr = mapping.rr ? ((raw[mapping.rr] ?? "").trim() || null) : null;
+        t.rr = mapping.rr ? ((raw[mapping.rr] ?? "").toString().trim() || null) : null;
         if (t.rr !== null) { const n = Number(t.rr); t.rr = isNaN(n) ? null : n; }
-        t.session = mapping.session ? (raw[mapping.session] ?? "").trim() || null : null;
-        t.direction = mapping.direction ? (raw[mapping.direction] ?? "").trim() || null : null;
-        t.model = mapping.model ? (raw[mapping.model] ?? "").trim() || null : null;
-        t.notes = mapping.notes ? (raw[mapping.notes] ?? "").trim() || null : null;
-        t.account = mapping.account ? (raw[mapping.account] ?? "").trim() || null : null;
+        t.session   = mapping.session   ? (raw[mapping.session]   ?? "").toString().trim() || null : null;
+        t.direction = mapping.direction ? (raw[mapping.direction] ?? "").toString().trim() || null : null;
+        t.model     = mapping.model     ? (raw[mapping.model]     ?? "").toString().trim() || null : null;
+        t.notes     = mapping.notes     ? (raw[mapping.notes]     ?? "").toString().trim() || null : null;
+        t.account   = mapping.account   ? (raw[mapping.account]   ?? "").toString().trim() || null : null;
         return t;
       }
 
@@ -1043,9 +1197,6 @@
         const total = validTrades.length;
         const BATCH = 50;
         let imported = 0;
-        let skipped = 0;
-        const allErrors = [];
-
         updateProgress(0, total, 0);
 
         try {
@@ -1056,19 +1207,11 @@
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ trades: batch }),
             });
-
             const data = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              throw new Error(data.error || `Server error (${res.status})`);
-            }
-
+            if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
             imported += data.imported || 0;
-            skipped += data.skipped || 0;
-            if (Array.isArray(data.errors)) allErrors.push(...data.errors);
-
             updateProgress(Math.min(i + BATCH, total), total, imported);
           }
-
           document.getElementById("ci-success-count").textContent = imported;
           goToStep(5);
         } catch (err) {
@@ -1080,26 +1223,41 @@
         const pct = total > 0 ? Math.round((done / total) * 100) : 0;
         document.getElementById("ci-progress-fill").style.width = `${pct}%`;
         document.getElementById("ci-progress-label").textContent = done >= total ? "Import complete" : "Importing…";
-        document.getElementById("ci-progress-counter").textContent =
-          `${imported} of ${total} processed`;
+        document.getElementById("ci-progress-counter").textContent = `${imported} of ${total} processed`;
       }
 
-      // ── Helpers ─────────────────────────────────────────────────
+      // ── Date validation (client-side) ──────────────────────────
+      const MONTH_NAMES = ["january","february","march","april","may","june",
+                           "july","august","september","october","november","december"];
+
       function isValidDate(s) {
         if (!s) return false;
         s = String(s).trim();
-        const part = s.split(/[T ]/)[0].trim();
+
+        // Strip leading weekday (e.g. "Monday 14/10/2025")
+        const stripped = s.replace(/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)[,\s]+/i, "");
+        if (stripped !== s) return isValidDate(stripped);
+
+        // "Month DD, YYYY..." or "Month DD YYYY"
+        const monthMatch = stripped.match(/^([A-Za-z]+)\s+(\d{1,2})[,\s]\s*(\d{4})/);
+        if (monthMatch) {
+          const mIdx = MONTH_NAMES.indexOf(monthMatch[1].toLowerCase());
+          if (mIdx !== -1) {
+            const yr = parseInt(monthMatch[3]);
+            return yr >= 1900 && yr <= 2100;
+          }
+        }
+
+        const part = stripped.split(/[T ]/)[0].trim();
+
         // ISO / YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}/.test(part)) {
+        if (/^\d{4}-\d{1,2}-\d{1,2}/.test(part)) {
           const d = new Date(part + "T12:00:00Z");
           return !isNaN(d.getTime()) && d.getFullYear() >= 1900;
         }
-        // DD/MM/YYYY or MM/DD/YYYY or similar with separators
+        // DD/MM/YYYY, MM/DD/YYYY, variants
         const m = part.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-        if (m) {
-          const yr = parseInt(m[3]);
-          return yr >= 1900 && yr <= 2100;
-        }
+        if (m) { const yr = parseInt(m[3]); return yr >= 1900 && yr <= 2100; }
         // YYYY/MM/DD
         const m2 = part.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
         if (m2) {
@@ -1109,32 +1267,33 @@
         return false;
       }
 
+      // ── Outcome normalisation ──────────────────────────────────
       function normalizeOutcome(raw) {
         if (!raw) return null;
-        const o = String(raw).trim().toUpperCase().replace(/[-_\s]/g, "");
-        if (o === "WIN" || o === "W" || o === "WON") return "win";
-        if (o === "LOSS" || o === "L" || o === "LOSE" || o === "LOST") return "loss";
-        if (o === "BE" || o === "BREAKEVEN") return "be";
+        // Strip dots, spaces, underscores, dashes before comparing
+        const o = String(raw).trim().toUpperCase().replace(/[\.\-_\s]/g, "");
+        if (o === "WIN" || o === "W" || o === "WON")                     return "win";
+        if (o === "LOSS" || o === "L" || o === "LOSE" || o === "LOST")   return "loss";
+        if (o === "BE" || o === "B" || o === "BREAKEVEN" || o === "BREAKEVEN" || o === "BREAKEVEN") return "be";
         return null;
       }
 
+      // ── Misc helpers ───────────────────────────────────────────
       function escHtml(s) {
         return String(s ?? "")
           .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
           .replace(/"/g, "&quot;");
       }
       function escAttr(s) { return escHtml(s); }
-      function truncate(s, n) { return s.length > n ? s.slice(0, n) + "…" : s; }
+      function truncate(s, n) { return String(s).length > n ? String(s).slice(0, n) + "…" : String(s); }
 
       function showError(id, msg) {
         const el = document.getElementById(id);
-        el.textContent = msg;
-        el.style.display = "block";
+        el.textContent = msg; el.style.display = "block";
       }
       function hideError(id) {
         const el = document.getElementById(id);
-        el.style.display = "none";
-        el.textContent = "";
+        el.style.display = "none"; el.textContent = "";
       }
     </script>
   </body>

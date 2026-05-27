@@ -3524,6 +3524,24 @@ function parseFlexibleDate(s) {
   s = String(s).trim();
   if (!s) return null;
 
+  // Strip leading weekday prefix: "Monday 14/10/2025" → "14/10/2025"
+  s = s.replace(/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)[,\s]+/i, "").trim();
+
+  // Month-name formats: "October 14, 2025", "October 14, 2025 11:30 AM (GMT+10:30)"
+  const MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
+  const monthNameMatch = s.match(/^([A-Za-z]+)\s+(\d{1,2})[,\s]\s*(\d{4})/);
+  if (monthNameMatch) {
+    const mIdx = MONTHS.indexOf(monthNameMatch[1].toLowerCase());
+    if (mIdx !== -1) {
+      const yr = parseInt(monthNameMatch[3]);
+      const dy = parseInt(monthNameMatch[2]);
+      if (yr >= 1900 && yr <= 2100 && dy >= 1 && dy <= 31) {
+        const d = new Date(`${yr}-${String(mIdx + 1).padStart(2, "0")}-${String(dy).padStart(2, "0")}T12:00:00Z`);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+  }
+
   // Take only the date portion if a time component is present
   const datePart = s.split(/[T ]/)[0].trim();
 
@@ -3561,10 +3579,10 @@ function parseFlexibleDate(s) {
 /** Normalises outcome to lowercase "win", "loss", or "be". Returns null if unrecognised. */
 function normalizeOutcomeForImport(raw) {
   if (!raw) return null;
-  const o = String(raw).trim().toUpperCase().replace(/[-_\s]/g, "");
+  const o = String(raw).trim().toUpperCase().replace(/[.\-_\s]/g, "");
   if (o === "WIN" || o === "W" || o === "WON") return "win";
   if (o === "LOSS" || o === "L" || o === "LOSE" || o === "LOST") return "loss";
-  if (o === "BE" || o === "BREAKEVEN") return "be";
+  if (o === "BE" || o === "B" || o === "BREAKEVEN") return "be";
   return null;
 }
 
