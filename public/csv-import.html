@@ -942,36 +942,57 @@
 
       async function handleZip(file) {
         try {
-          const zip = await JSZip.loadAsync(file);
-          const csvEntries = [];
-          zip.forEach((path, entry) => {
-            if (!entry.dir && path.toLowerCase().endsWith(".csv")) {
-              csvEntries.push({ path, entry });
-            }
-          });
-
-          if (csvEntries.length === 0) {
+          const csvData = await extractCsvFromZip(file, file.name, 0);
+          if (!csvData || csvData.length === 0) {
             showError("ci-error-1", "No CSV files found in the ZIP. Make sure you're uploading a Notion or trading app export.");
             return;
           }
-
-          // Read all to find best candidate
-          const csvData = await Promise.all(
-            csvEntries.map(async ({ path, entry }) => ({
-              path,
-              text: await entry.async("string"),
-            }))
-          );
-
           // Prefer *_all.csv (Notion export pattern), else pick the largest
-          let chosen = csvData.find(f => f.path.toLowerCase().includes("_all.csv"))
-                    || csvData.sort((a, b) => b.text.length - a.text.length)[0];
-
-          const displayName = `${file.name} → ${chosen.path}`;
-          parseCsv(null, chosen.text, displayName);
+          const chosen = csvData.find(f => f.path.toLowerCase().includes("_all.csv"))
+                      || csvData.slice().sort((a, b) => b.text.length - a.text.length)[0];
+          parseCsv(null, chosen.text, chosen.displayPath);
         } catch (err) {
           showError("ci-error-1", `Failed to read ZIP: ${err.message}`);
         }
+      }
+
+      // Recursively extracts CSVs from a ZIP (or ArrayBuffer/Uint8Array), up to maxDepth levels.
+      // Returns array of { path, text, displayPath } or empty array if nothing found.
+      async function extractCsvFromZip(source, parentName, depth) {
+        if (depth > 3) return [];
+
+        const zip = await JSZip.loadAsync(source);
+        const csvEntries = [];
+        const zipEntries = [];
+
+        zip.forEach((path, entry) => {
+          if (entry.dir) return;
+          const lp = path.toLowerCase();
+          if (lp.endsWith(".csv")) csvEntries.push({ path, entry });
+          else if (lp.endsWith(".zip")) zipEntries.push({ path, entry });
+        });
+
+        // Found CSVs at this level — read and return them
+        if (csvEntries.length > 0) {
+          return Promise.all(
+            csvEntries.map(async ({ path, entry }) => ({
+              path,
+              text: await entry.async("string"),
+              displayPath: `${parentName} → ${path}`,
+            }))
+          );
+        }
+
+        // No CSVs — recurse into any inner ZIPs
+        if (zipEntries.length > 0) {
+          for (const { path, entry } of zipEntries) {
+            const innerBuf = await entry.async("arraybuffer");
+            const results = await extractCsvFromZip(innerBuf, `${parentName} → ${path}`, depth + 1);
+            if (results.length > 0) return results;
+          }
+        }
+
+        return [];
       }
 
       function parseCsv(fileOrNull, textOrNull, displayName) {
