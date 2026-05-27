@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <script>try{document.documentElement.dataset.theme=localStorage.getItem('jarvis_theme')==='light'?'light':'dark';}catch(e){document.documentElement.dataset.theme='dark';}</script>
+    <title>CSV IMPORT · JARVIS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css?v=d4f7e2a1" />
+    <link rel="stylesheet" href="/css/jarvis-settings.css?v=d4f7e2a1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+      html, body {
+        overflow: auto !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        background: var(--bg-primary, #050a14) !important;
+      }
+
+      /* ═══════════ NAV ═══════════ */
+      .jv-nav {
+        position: fixed; top: 0; left: 0; right: 0; height: 52px;
+        z-index: 1000; background: var(--nav-bg, rgba(0,0,0,0.85));
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0,212,255,0.2);
+        display: flex; align-items: center; padding: 0 24px; gap: 0;
+      }
+      .jv-nav__brand {
+        color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase;
+        white-space: nowrap; flex-shrink: 0; text-decoration: none;
+      }
+      .jv-nav__links {
+        display: flex; align-items: center; gap: 32px; list-style: none;
+        margin: 0 auto; padding: 0;
+      }
+      .jv-nav__links a {
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px;
+        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
+        padding-bottom: 2px; border-bottom: 1px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__links a:hover { color: rgba(255,255,255,0.85) !important; }
+      .jv-nav__links a.jv-nav--active,
+      .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
+      .jv-nav__actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+      .jv-nav__settings {
+        background: none; border: none; cursor: pointer; padding: 6px;
+        color: rgba(255,255,255,0.5); transition: color 0.2s; display: flex; align-items: center;
+      }
+      .jv-nav__settings:hover { color: #00d4ff; }
+      .jv-nav__hamburger {
+        display: none; flex-direction: column; justify-content: center; gap: 5px;
+        background: none; border: none; cursor: pointer; padding: 4px; flex-shrink: 0;
+      }
+      .jv-nav__hamburger span {
+        display: block; width: 20px; height: 1.5px;
+        background: rgba(255,255,255,0.6); border-radius: 2px; transition: background 0.2s;
+      }
+      .jv-nav__hamburger:hover span { background: #00d4ff; }
+      .jv-nav__dropdown {
+        display: none; position: fixed; top: 52px; left: 0; right: 0;
+        background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,212,255,0.15);
+        z-index: 999; flex-direction: column; padding: 8px 0;
+      }
+      .jv-nav__dropdown.jv-nav--open { display: flex; }
+      .jv-nav__dropdown a {
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px;
+        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
+        padding: 12px 24px; border-left: 2px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85) !important; }
+      @media (max-width: 768px) {
+        .jv-nav__links { display: none; }
+        .jv-nav__hamburger { display: flex; }
+        .jv-nav__brand { font-size: 13px; }
+      }
+
+      /* ═══════════ PAGE ═══════════ */
+      .ci-page {
+        min-height: 100dvh;
+        padding: 80px 20px 60px;
+        max-width: 720px;
+        margin: 0 auto;
+        box-sizing: border-box;
+      }
+
+      /* ═══════════ STEP INDICATOR ═══════════ */
+      .ci-step-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-bottom: 40px;
+        padding: 0 4px;
+      }
+      .ci-step-dot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1px solid rgba(0,212,255,0.25);
+        color: var(--text-secondary, #8899aa);
+        font-family: "Share Tech Mono", monospace;
+        font-size: 11px;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+        background: var(--bg-primary, #050a14);
+      }
+      .ci-step-dot--active {
+        border-color: var(--accent, #00d4ff);
+        color: var(--accent, #00d4ff);
+        box-shadow: 0 0 12px rgba(0,212,255,0.3);
+      }
+      .ci-step-dot--done {
+        background: rgba(0,212,255,0.12);
+        border-color: rgba(0,212,255,0.4);
+        color: var(--accent, #00d4ff);
+      }
+      .ci-step-line {
+        flex: 1;
+        height: 1px;
+        background: rgba(0,212,255,0.12);
+        margin: 0 -1px;
+        transition: background 0.3s;
+      }
+      .ci-step-line--done { background: rgba(0,212,255,0.35); }
+      .ci-step-label-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        margin-top: -24px;
+        padding: 0 0;
+      }
+      .ci-step-label {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-secondary, #8899aa);
+        text-align: center;
+        width: 28px;
+        flex-shrink: 0;
+        transition: color 0.3s;
+      }
+      .ci-step-label--active { color: var(--accent, #00d4ff); }
+      .ci-step-label--done { color: rgba(0,212,255,0.55); }
+      .ci-step-label-spacer { flex: 1; }
+
+      /* ═══════════ WIZARD PANEL ═══════════ */
+      .ci-panel {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(0,212,255,0.15);
+        border-radius: 16px;
+        padding: 36px 40px;
+        box-shadow: 0 0 40px rgba(0,212,255,0.06);
+      }
+      @media (max-width: 600px) {
+        .ci-panel { padding: 24px 20px; }
+      }
+
+      .ci-step-section { display: none; }
+      .ci-step-section--active { display: block; }
+
+      /* ═══════════ TYPOGRAPHY ═══════════ */
+      .ci-heading {
+        font-family: "Outfit", sans-serif;
+        font-weight: 200;
+        font-size: clamp(1.6rem, 4vw, 2.2rem);
+        color: var(--text-primary, #fff);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin: 0 0 8px;
+      }
+      .ci-subheading {
+        font-family: "Outfit", sans-serif;
+        font-size: 0.9rem;
+        color: var(--text-secondary, #8899aa);
+        margin: 0 0 28px;
+        line-height: 1.6;
+      }
+
+      /* ═══════════ ONE-TIME NOTICE ═══════════ */
+      .ci-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        background: rgba(0,212,255,0.05);
+        border: 1px solid rgba(0,212,255,0.2);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 28px;
+      }
+      .ci-notice__icon {
+        font-size: 16px;
+        flex-shrink: 0;
+        margin-top: 1px;
+        color: var(--accent, #00d4ff);
+      }
+      .ci-notice__text {
+        font-family: "Outfit", sans-serif;
+        font-size: 0.82rem;
+        line-height: 1.6;
+        color: var(--text-primary, #fff);
+        opacity: 0.85;
+      }
+
+      /* ═══════════ DRAG-DROP ZONE ═══════════ */
+      .ci-dropzone {
+        border: 2px dashed rgba(0,212,255,0.25);
+        border-radius: 12px;
+        padding: 48px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        background: rgba(0,212,255,0.02);
+        position: relative;
+      }
+      .ci-dropzone:hover,
+      .ci-dropzone--dragover {
+        border-color: rgba(0,212,255,0.6);
+        background: rgba(0,212,255,0.06);
+      }
+      .ci-dropzone__icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+        display: block;
+        opacity: 0.6;
+      }
+      .ci-dropzone__text {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-secondary, #8899aa);
+      }
+      .ci-dropzone__sub {
+        font-family: "Outfit", sans-serif;
+        font-size: 0.78rem;
+        color: var(--text-secondary, #8899aa);
+        margin-top: 6px;
+        opacity: 0.7;
+      }
+      .ci-dropzone__filename {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 12px;
+        color: var(--accent, #00d4ff);
+        margin-top: 8px;
+      }
+      #ci-file-input { display: none; }
+
+      /* ═══════════ PREVIEW TABLE ═══════════ */
+      .ci-table-wrap {
+        margin-top: 24px;
+        overflow-x: auto;
+        border-radius: 10px;
+        border: 1px solid rgba(0,212,255,0.12);
+      }
+      .ci-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 11px;
+      }
+      .ci-table th {
+        padding: 10px 12px;
+        text-align: left;
+        background: rgba(0,212,255,0.08);
+        color: var(--accent, #00d4ff);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 10px;
+        white-space: nowrap;
+        border-bottom: 1px solid rgba(0,212,255,0.12);
+      }
+      .ci-table td {
+        padding: 8px 12px;
+        color: var(--text-primary, #fff);
+        opacity: 0.85;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        white-space: nowrap;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ci-table tr:last-child td { border-bottom: none; }
+      .ci-table tbody tr:hover td { background: rgba(0,212,255,0.04); }
+      .ci-preview-note {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 10px;
+        color: var(--text-secondary, #8899aa);
+        margin-top: 8px;
+        letter-spacing: 0.06em;
+      }
+
+      /* ═══════════ COLUMN MAPPING ═══════════ */
+      .ci-map-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 28px;
+      }
+      .ci-map-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.06);
+        transition: border-color 0.2s;
+      }
+      .ci-map-row:hover { border-color: rgba(0,212,255,0.15); }
+      .ci-map-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .ci-map-field__name {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 11px;
+        color: var(--text-primary, #fff);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .ci-map-field__badge {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 1px 5px;
+        border-radius: 3px;
+        display: inline-block;
+        margin-top: 2px;
+      }
+      .ci-map-field__badge--req {
+        background: rgba(0,212,255,0.12);
+        color: var(--accent, #00d4ff);
+        border: 1px solid rgba(0,212,255,0.3);
+      }
+      .ci-map-field__badge--opt {
+        background: rgba(136,153,170,0.1);
+        color: var(--text-secondary, #8899aa);
+        border: 1px solid rgba(136,153,170,0.2);
+      }
+      .ci-map-select {
+        width: 100%;
+        padding: 8px 10px;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(0,212,255,0.18);
+        border-radius: 6px;
+        color: var(--text-primary, #fff);
+        font-family: "Share Tech Mono", monospace;
+        font-size: 11px;
+        cursor: pointer;
+        outline: none;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238899aa'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        padding-right: 28px;
+        transition: border-color 0.2s;
+      }
+      .ci-map-select:focus { border-color: var(--accent, #00d4ff); }
+      .ci-map-select option { background: #0d1b2a; color: #fff; }
+
+      /* ═══════════ STATS ROW ═══════════ */
+      .ci-stats-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+      }
+      .ci-stat-card {
+        flex: 1;
+        min-width: 120px;
+        padding: 16px 20px;
+        background: rgba(0,212,255,0.04);
+        border: 1px solid rgba(0,212,255,0.15);
+        border-radius: 10px;
+        text-align: center;
+      }
+      .ci-stat-card__value {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 1.5rem;
+        color: var(--accent, #00d4ff);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .ci-stat-card__label {
+        font-family: "Outfit", sans-serif;
+        font-size: 0.72rem;
+        color: var(--text-secondary, #8899aa);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .ci-stat-card--warn .ci-stat-card__value { color: #ffaa44; }
+      .ci-stat-card--warn { border-color: rgba(255,170,68,0.25); background: rgba(255,170,68,0.04); }
+
+      /* ═══════════ SKIPPED LIST ═══════════ */
+      .ci-skip-list {
+        background: rgba(255,100,50,0.04);
+        border: 1px solid rgba(255,100,50,0.15);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 20px;
+        max-height: 120px;
+        overflow-y: auto;
+      }
+      .ci-skip-list__title {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #ff6655;
+        margin-bottom: 8px;
+      }
+      .ci-skip-list__item {
+        font-family: "Outfit", sans-serif;
+        font-size: 0.77rem;
+        color: rgba(255,255,255,0.6);
+        padding: 2px 0;
+      }
+
+      /* ═══════════ PROGRESS ═══════════ */
+      .ci-progress-wrap {
+        text-align: center;
+        padding: 20px 0;
+      }
+      .ci-progress-label {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent, #00d4ff);
+        margin-bottom: 20px;
+      }
+      .ci-progress-bar-track {
+        height: 4px;
+        background: rgba(0,212,255,0.1);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+      .ci-progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, rgba(0,212,255,0.6), var(--accent, #00d4ff));
+        border-radius: 2px;
+        width: 0%;
+        transition: width 0.4s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+      }
+      .ci-progress-counter {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 11px;
+        color: var(--text-secondary, #8899aa);
+      }
+
+      /* ═══════════ SUCCESS ═══════════ */
+      .ci-success-icon {
+        font-size: 48px;
+        text-align: center;
+        margin-bottom: 20px;
+        display: block;
+      }
+      .ci-success-count {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 2.5rem;
+        color: var(--accent, #00d4ff);
+        text-align: center;
+        display: block;
+        margin-bottom: 4px;
+        text-shadow: 0 0 20px rgba(0,212,255,0.4);
+      }
+      .ci-success-count-label {
+        font-family: "Outfit", sans-serif;
+        font-size: 0.85rem;
+        color: var(--text-secondary, #8899aa);
+        text-align: center;
+        display: block;
+        margin-bottom: 28px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      /* ═══════════ BUTTONS ═══════════ */
+      .ci-btn-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 28px;
+        flex-wrap: wrap;
+      }
+      .ci-btn {
+        padding: 11px 24px;
+        border-radius: 8px;
+        font-family: "Share Tech Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ci-btn--primary {
+        background: var(--accent, #00d4ff);
+        color: #000;
+        font-weight: 600;
+      }
+      .ci-btn--primary:hover { background: #33ddff; box-shadow: 0 0 16px rgba(0,212,255,0.4); }
+      .ci-btn--primary:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+      .ci-btn--secondary {
+        background: rgba(255,255,255,0.06);
+        color: var(--text-primary, #fff);
+        border: 1px solid rgba(255,255,255,0.12);
+      }
+      .ci-btn--secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+      .ci-btn--ghost {
+        background: transparent;
+        color: var(--text-secondary, #8899aa);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+      .ci-btn--ghost:hover { color: var(--text-primary, #fff); border-color: rgba(255,255,255,0.18); }
+      .ci-btn--notion {
+        background: rgba(255,255,255,0.08);
+        color: var(--text-primary, #fff);
+        border: 1px solid rgba(255,255,255,0.15);
+      }
+      .ci-btn--notion:hover { background: rgba(255,255,255,0.12); }
+
+      .ci-btn-row--center { justify-content: center; }
+
+      /* ═══════════ ERROR BANNER ═══════════ */
+      .ci-error-banner {
+        display: none;
+        background: rgba(255,60,60,0.08);
+        border: 1px solid rgba(255,60,60,0.3);
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+        font-family: "Outfit", sans-serif;
+        font-size: 0.82rem;
+        color: #ff6655;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- NAV -->
+    <nav class="jv-nav" aria-label="Main navigation">
+      <a class="jv-nav__brand" href="/index.html">JARVIS</a>
+      <ul class="jv-nav__links" role="list">
+        <li><a href="/index.html">Home</a></li>
+        <li><a href="/journal.html">Journal</a></li>
+        <li><a href="/analytics.html">Analytics</a></li>
+        <li><a href="/calendar.html">Calendar</a></li>
+        <li><a href="/account.html">Account</a></li>
+      </ul>
+      <div class="jv-nav__actions">
+        <button type="button" class="jv-nav__settings" id="jv-settings-btn" aria-label="Open settings" aria-expanded="false" aria-controls="jv-settings-panel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+        <button class="jv-nav__hamburger" id="jv-nav-hamburger" aria-label="Toggle navigation" aria-expanded="false" aria-controls="jv-nav-dropdown">
+          <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
+      <a href="/index.html">Home</a>
+      <a href="/journal.html">Journal</a>
+      <a href="/analytics.html">Analytics</a>
+      <a href="/calendar.html">Calendar</a>
+      <a href="/account.html">Account</a>
+    </div>
+
+    <script>
+      (function () {
+        var btn = document.getElementById('jv-nav-hamburger');
+        var dd  = document.getElementById('jv-nav-dropdown');
+        btn.addEventListener('click', function () {
+          var open = dd.classList.toggle('jv-nav--open');
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          dd.setAttribute('aria-hidden', open ? 'false' : 'true');
+        });
+        document.addEventListener('click', function (e) {
+          if (!btn.contains(e.target) && !dd.contains(e.target)) {
+            dd.classList.remove('jv-nav--open');
+            btn.setAttribute('aria-expanded', 'false');
+            dd.setAttribute('aria-hidden', 'true');
+          }
+        });
+      })();
+    </script>
+
+    <!-- MAIN PAGE -->
+    <main class="ci-page">
+
+      <!-- Step Indicator -->
+      <div class="ci-step-indicator" id="ci-step-indicator" aria-label="Import progress">
+        <div class="ci-step-dot ci-step-dot--active" id="ci-dot-1">1</div>
+        <div class="ci-step-line" id="ci-line-1"></div>
+        <div class="ci-step-dot" id="ci-dot-2">2</div>
+        <div class="ci-step-line" id="ci-line-2"></div>
+        <div class="ci-step-dot" id="ci-dot-3">3</div>
+        <div class="ci-step-line" id="ci-line-3"></div>
+        <div class="ci-step-dot" id="ci-dot-4">4</div>
+        <div class="ci-step-line" id="ci-line-4"></div>
+        <div class="ci-step-dot" id="ci-dot-5">5</div>
+      </div>
+
+      <div class="ci-panel">
+
+        <!-- STEP 1: Upload -->
+        <section class="ci-step-section ci-step-section--active" id="ci-step-1" aria-label="Step 1 of 5: Upload">
+          <h1 class="ci-heading">Import your trade history</h1>
+          <p class="ci-subheading">Upload a CSV file to bring your historical trades into Jarvis.</p>
+
+          <div class="ci-notice">
+            <span class="ci-notice__icon">⚡</span>
+            <p class="ci-notice__text">
+              <strong>This is a one-time import.</strong> Your CSV data won't sync automatically — future trades should be logged using Jarvis's built-in journal or by connecting Notion.
+            </p>
+          </div>
+
+          <div class="ci-dropzone" id="ci-dropzone" role="button" tabindex="0" aria-label="Drop CSV file here or click to select">
+            <span class="ci-dropzone__icon">📂</span>
+            <div class="ci-dropzone__text">Drop your CSV file here</div>
+            <div class="ci-dropzone__sub">or click to select a file</div>
+            <div class="ci-dropzone__filename" id="ci-filename" hidden></div>
+          </div>
+          <input type="file" id="ci-file-input" accept=".csv,text/csv" aria-hidden="true" />
+
+          <div id="ci-preview-wrap" hidden>
+            <div class="ci-table-wrap">
+              <table class="ci-table" id="ci-preview-table">
+                <thead id="ci-preview-thead"></thead>
+                <tbody id="ci-preview-tbody"></tbody>
+              </table>
+            </div>
+            <p class="ci-preview-note" id="ci-preview-note"></p>
+          </div>
+
+          <div class="ci-btn-row">
+            <button class="ci-btn ci-btn--primary" id="ci-btn-1-continue" disabled>Continue →</button>
+          </div>
+          <div class="ci-error-banner" id="ci-error-1"></div>
+        </section>
+
+        <!-- STEP 2: Map Columns -->
+        <section class="ci-step-section" id="ci-step-2" aria-label="Step 2 of 5: Map columns">
+          <h1 class="ci-heading">Map your columns</h1>
+          <p class="ci-subheading">Tell Jarvis which CSV column corresponds to each field. Required fields must be mapped to continue.</p>
+
+          <div class="ci-map-grid" id="ci-map-grid"></div>
+
+          <div class="ci-btn-row">
+            <button class="ci-btn ci-btn--primary" id="ci-btn-2-continue" disabled>Continue →</button>
+            <button class="ci-btn ci-btn--ghost" id="ci-btn-2-back">← Back</button>
+          </div>
+          <div class="ci-error-banner" id="ci-error-2"></div>
+        </section>
+
+        <!-- STEP 3: Preview & Confirm -->
+        <section class="ci-step-section" id="ci-step-3" aria-label="Step 3 of 5: Preview">
+          <h1 class="ci-heading">Ready to import</h1>
+          <p class="ci-subheading">Review the trades below before importing. Rows that can't be validated will be skipped.</p>
+
+          <div class="ci-stats-row" id="ci-confirm-stats"></div>
+
+          <div id="ci-skip-wrap" hidden>
+            <div class="ci-skip-list" id="ci-skip-list">
+              <div class="ci-skip-list__title">Rows to be skipped</div>
+              <div id="ci-skip-items"></div>
+            </div>
+          </div>
+
+          <div class="ci-table-wrap">
+            <table class="ci-table" id="ci-confirm-table">
+              <thead id="ci-confirm-thead"></thead>
+              <tbody id="ci-confirm-tbody"></tbody>
+            </table>
+          </div>
+          <p class="ci-preview-note" id="ci-confirm-note"></p>
+
+          <div class="ci-btn-row">
+            <button class="ci-btn ci-btn--primary" id="ci-btn-3-import">Import trades</button>
+            <button class="ci-btn ci-btn--ghost" id="ci-btn-3-back">← Back</button>
+          </div>
+          <div class="ci-error-banner" id="ci-error-3"></div>
+        </section>
+
+        <!-- STEP 4: Importing -->
+        <section class="ci-step-section" id="ci-step-4" aria-label="Step 4 of 5: Importing">
+          <div class="ci-progress-wrap">
+            <div class="ci-progress-label" id="ci-progress-label">Importing…</div>
+            <div class="ci-progress-bar-track">
+              <div class="ci-progress-bar-fill" id="ci-progress-fill"></div>
+            </div>
+            <div class="ci-progress-counter" id="ci-progress-counter"></div>
+          </div>
+          <div class="ci-error-banner" id="ci-error-4"></div>
+        </section>
+
+        <!-- STEP 5: Success -->
+        <section class="ci-step-section" id="ci-step-5" aria-label="Step 5 of 5: Complete">
+          <span class="ci-success-icon">✓</span>
+          <span class="ci-success-count" id="ci-success-count">0</span>
+          <span class="ci-success-count-label">trades imported</span>
+
+          <div class="ci-notice">
+            <span class="ci-notice__icon">⚡</span>
+            <p class="ci-notice__text">
+              Your historical trade data is now in Jarvis. <strong>Remember — CSV import is one-time.</strong> To keep Jarvis updated going forward, log new trades using the in-built journal or connect Notion.
+            </p>
+          </div>
+
+          <div class="ci-btn-row ci-btn-row--center">
+            <a href="/journal.html" class="ci-btn ci-btn--primary">Go to journal →</a>
+            <a href="/notion-setup.html" class="ci-btn ci-btn--notion" id="ci-btn-notion-link">Connect Notion for live sync →</a>
+          </div>
+        </section>
+
+      </div><!-- /ci-panel -->
+    </main>
+
+    <script type="module">
+      import { apiFetch, requireAuthPage } from "/js/jarvis-auth.js";
+      import { initJarvisSettings } from "/js/jarvis-settings.js";
+
+      await requireAuthPage();
+      await initJarvisSettings();
+
+      // ── State ──────────────────────────────────────────────────
+      let currentStep = 1;
+      let parsedHeaders = [];
+      let parsedRows = [];     // raw PapaParse rows (objects)
+      let mapping = {};        // { jarvisField: csvColumn }
+      let validTrades = [];    // normalized trade objects ready for import
+      let skippedRows = [];    // { rowIndex, reason }
+
+      const REQUIRED_FIELDS = ["date", "pair", "outcome"];
+      const ALL_FIELDS = [
+        { key: "date",      label: "Date",      required: true,  hint: "When the trade was taken" },
+        { key: "pair",      label: "Pair",      required: true,  hint: "Instrument/symbol (e.g. XAU/USD)" },
+        { key: "outcome",   label: "Outcome",   required: true,  hint: "Win, Loss, or BE" },
+        { key: "direction", label: "Direction", required: false, hint: "Long or Short" },
+        { key: "rr",        label: "R:R",       required: false, hint: "Risk:reward ratio (number)" },
+        { key: "session",   label: "Session",   required: false, hint: "London, New York, Asia…" },
+        { key: "model",     label: "Model",     required: false, hint: "Entry setup/strategy" },
+        { key: "notes",     label: "Notes",     required: false, hint: "Trade journal notes" },
+        { key: "account",   label: "Account",   required: false, hint: "Trading account name" },
+      ];
+
+      // Auto-detect column name → Jarvis field
+      const DETECT_PATTERNS = {
+        date:      [/^date$/i, /^trade.?date$/i, /^entry.?date$/i, /^time$/i, /^timestamp$/i, /^datetime$/i],
+        pair:      [/^pair$/i, /^symbol$/i, /^instrument$/i, /^asset$/i, /^ticker$/i, /^market$/i, /^currency.?pair$/i],
+        outcome:   [/^outcome$/i, /^result$/i, /^win.?loss$/i, /^p.?l$/i, /^status$/i, /^trade.?result$/i],
+        direction: [/^direction$/i, /^type$/i, /^side$/i, /^buy.?sell$/i, /^long.?short$/i, /^trade.?type$/i],
+        rr:        [/^r.?r$/i, /^rr$/i, /^risk.?reward$/i, /^r.?multiple$/i, /^return.?r$/i, /^p.?l.?r$/i, /^pl_r$/i],
+        session:   [/^session$/i, /^market.?session$/i, /^trading.?session$/i],
+        model:     [/^model$/i, /^strategy$/i, /^setup$/i, /^pattern$/i, /^entry.?type$/i],
+        notes:     [/^notes$/i, /^comments$/i, /^remarks$/i, /^description$/i, /^memo$/i, /^journal$/i],
+        account:   [/^account$/i, /^account.?name$/i, /^broker$/i],
+      };
+
+      function autoDetectMappings(headers) {
+        const result = {};
+        for (const [field, patterns] of Object.entries(DETECT_PATTERNS)) {
+          for (const header of headers) {
+            if (patterns.some(p => p.test(header.trim()))) {
+              result[field] = header;
+              break;
+            }
+          }
+        }
+        return result;
+      }
+
+      // ── Step navigation ────────────────────────────────────────
+      function goToStep(n) {
+        document.getElementById(`ci-step-${currentStep}`).classList.remove("ci-step-section--active");
+        currentStep = n;
+        document.getElementById(`ci-step-${n}`).classList.add("ci-step-section--active");
+        updateStepIndicator(n);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function updateStepIndicator(active) {
+        for (let i = 1; i <= 5; i++) {
+          const dot = document.getElementById(`ci-dot-${i}`);
+          dot.classList.toggle("ci-step-dot--active", i === active);
+          dot.classList.toggle("ci-step-dot--done", i < active);
+          if (i < 5) {
+            document.getElementById(`ci-line-${i}`).classList.toggle("ci-step-line--done", i < active);
+          }
+        }
+      }
+
+      // ── STEP 1: File upload ────────────────────────────────────
+      const dropzone = document.getElementById("ci-dropzone");
+      const fileInput = document.getElementById("ci-file-input");
+
+      dropzone.addEventListener("click", () => fileInput.click());
+      dropzone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
+
+      dropzone.addEventListener("dragover", e => { e.preventDefault(); dropzone.classList.add("ci-dropzone--dragover"); });
+      dropzone.addEventListener("dragleave", () => dropzone.classList.remove("ci-dropzone--dragover"));
+      dropzone.addEventListener("drop", e => {
+        e.preventDefault();
+        dropzone.classList.remove("ci-dropzone--dragover");
+        const file = e.dataTransfer?.files?.[0];
+        if (file) handleFile(file);
+      });
+
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files?.[0];
+        if (file) handleFile(file);
+      });
+
+      function handleFile(file) {
+        if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
+          showError("ci-error-1", "Please select a .csv file.");
+          return;
+        }
+        hideError("ci-error-1");
+
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete(results) {
+            if (!results.data?.length) {
+              showError("ci-error-1", "The CSV file appears to be empty.");
+              return;
+            }
+            parsedHeaders = results.meta.fields || [];
+            parsedRows = results.data;
+
+            const filenameEl = document.getElementById("ci-filename");
+            filenameEl.textContent = `${file.name} — ${parsedRows.length} rows`;
+            filenameEl.hidden = false;
+
+            renderPreviewTable(parsedHeaders, parsedRows.slice(0, 5));
+            document.getElementById("ci-preview-wrap").hidden = false;
+            document.getElementById("ci-preview-note").textContent =
+              `Showing first ${Math.min(5, parsedRows.length)} of ${parsedRows.length} rows`;
+
+            document.getElementById("ci-btn-1-continue").disabled = false;
+          },
+          error(err) {
+            showError("ci-error-1", `Failed to parse CSV: ${err.message}`);
+          },
+        });
+      }
+
+      function renderPreviewTable(headers, rows) {
+        const thead = document.getElementById("ci-preview-thead");
+        const tbody = document.getElementById("ci-preview-tbody");
+        thead.innerHTML = `<tr>${headers.map(h => `<th>${escHtml(h)}</th>`).join("")}</tr>`;
+        tbody.innerHTML = rows.map(row =>
+          `<tr>${headers.map(h => `<td title="${escHtml(String(row[h] ?? ""))}">${escHtml(truncate(String(row[h] ?? ""), 20))}</td>`).join("")}</tr>`
+        ).join("");
+      }
+
+      document.getElementById("ci-btn-1-continue").addEventListener("click", () => {
+        buildMappingUI();
+        goToStep(2);
+      });
+
+      // ── STEP 2: Column mapping ──────────────────────────────────
+      function buildMappingUI() {
+        const detected = autoDetectMappings(parsedHeaders);
+        mapping = { ...detected };
+
+        const grid = document.getElementById("ci-map-grid");
+        grid.innerHTML = "";
+
+        for (const field of ALL_FIELDS) {
+          const row = document.createElement("div");
+          row.className = "ci-map-row";
+
+          const colOptions = parsedHeaders.map(h =>
+            `<option value="${escAttr(h)}" ${mapping[field.key] === h ? "selected" : ""}>${escHtml(h)}</option>`
+          ).join("");
+
+          row.innerHTML = `
+            <div class="ci-map-field">
+              <span class="ci-map-field__name">${escHtml(field.label)}</span>
+              <span class="ci-map-field__badge ${field.required ? "ci-map-field__badge--req" : "ci-map-field__badge--opt"}">${field.required ? "required" : "optional"}</span>
+            </div>
+            <select class="ci-map-select" data-field="${escAttr(field.key)}" aria-label="Map ${escHtml(field.label)} to CSV column">
+              <option value="">— skip —</option>
+              ${colOptions}
+            </select>
+          `;
+
+          grid.appendChild(row);
+        }
+
+        grid.addEventListener("change", onMappingChange);
+        checkStep2Continue();
+      }
+
+      function onMappingChange(e) {
+        if (!e.target.matches("[data-field]")) return;
+        const field = e.target.dataset.field;
+        const value = e.target.value;
+        if (value) mapping[field] = value;
+        else delete mapping[field];
+        checkStep2Continue();
+      }
+
+      function checkStep2Continue() {
+        const allRequired = REQUIRED_FIELDS.every(f => mapping[f]);
+        document.getElementById("ci-btn-2-continue").disabled = !allRequired;
+      }
+
+      document.getElementById("ci-btn-2-continue").addEventListener("click", () => {
+        buildConfirmStep();
+        goToStep(3);
+      });
+      document.getElementById("ci-btn-2-back").addEventListener("click", () => goToStep(1));
+
+      // ── STEP 3: Preview & confirm ──────────────────────────────
+      function buildConfirmStep() {
+        validTrades = [];
+        skippedRows = [];
+
+        for (let i = 0; i < parsedRows.length; i++) {
+          const raw = parsedRows[i];
+          const reason = validateRow(raw, i + 1);
+          if (reason) {
+            skippedRows.push({ row: i + 1, reason });
+          } else {
+            validTrades.push(mapRow(raw));
+          }
+        }
+
+        // Stats
+        const statsEl = document.getElementById("ci-confirm-stats");
+        statsEl.innerHTML = `
+          <div class="ci-stat-card">
+            <span class="ci-stat-card__value">${validTrades.length}</span>
+            <span class="ci-stat-card__label">Trades to import</span>
+          </div>
+          ${skippedRows.length > 0 ? `
+          <div class="ci-stat-card ci-stat-card--warn">
+            <span class="ci-stat-card__value">${skippedRows.length}</span>
+            <span class="ci-stat-card__label">Rows to skip</span>
+          </div>` : ""}
+        `;
+
+        // Skipped
+        const skipWrap = document.getElementById("ci-skip-wrap");
+        if (skippedRows.length > 0) {
+          skipWrap.hidden = false;
+          document.getElementById("ci-skip-items").innerHTML = skippedRows.slice(0, 20).map(s =>
+            `<div class="ci-skip-list__item">Row ${s.row}: ${escHtml(s.reason)}</div>`
+          ).join("") + (skippedRows.length > 20 ? `<div class="ci-skip-list__item">… and ${skippedRows.length - 20} more</div>` : "");
+        } else {
+          skipWrap.hidden = true;
+        }
+
+        // Preview first 10 valid
+        const previewCols = ["date", "pair", "outcome", "rr", "session"];
+        const thead = document.getElementById("ci-confirm-thead");
+        const tbody = document.getElementById("ci-confirm-tbody");
+        thead.innerHTML = `<tr>${previewCols.map(c => `<th>${c.toUpperCase()}</th>`).join("")}</tr>`;
+        const preview = validTrades.slice(0, 10);
+        tbody.innerHTML = preview.map(t =>
+          `<tr>${previewCols.map(c => `<td>${escHtml(t[c] != null ? String(t[c]) : "—")}</td>`).join("")}</tr>`
+        ).join("");
+        document.getElementById("ci-confirm-note").textContent =
+          validTrades.length > 10 ? `Showing first 10 of ${validTrades.length} trades` : "";
+
+        // Import button label
+        document.getElementById("ci-btn-3-import").textContent = `Import ${validTrades.length} trade${validTrades.length !== 1 ? "s" : ""}`;
+        document.getElementById("ci-btn-3-import").disabled = validTrades.length === 0;
+      }
+
+      function validateRow(raw, rowNum) {
+        const dateVal = raw[mapping.date] ?? "";
+        if (!dateVal.trim()) return "Missing date";
+        if (!isValidDate(dateVal)) return `Invalid date: "${truncate(dateVal, 30)}"`;
+
+        const pairVal = raw[mapping.pair] ?? "";
+        if (!pairVal.trim()) return "Missing pair";
+
+        const outcomeVal = raw[mapping.outcome] ?? "";
+        if (!normalizeOutcome(outcomeVal)) return `Invalid outcome: "${truncate(outcomeVal, 20)}"`;
+
+        if (mapping.rr) {
+          const rrVal = raw[mapping.rr] ?? "";
+          if (rrVal.trim() !== "" && isNaN(Number(rrVal))) return `Invalid R:R: "${truncate(rrVal, 20)}"`;
+        }
+
+        return null; // valid
+      }
+
+      function mapRow(raw) {
+        const t = {};
+        t.date = raw[mapping.date] ?? "";
+        t.pair = (raw[mapping.pair] ?? "").trim().toUpperCase().replace(/\s+/g, "");
+        // Add slash for 6-char pairs
+        if (t.pair.length === 6 && !t.pair.includes("/")) t.pair = t.pair.slice(0, 3) + "/" + t.pair.slice(3);
+        t.outcome = normalizeOutcome(raw[mapping.outcome] ?? "");
+        t.rr = mapping.rr ? ((raw[mapping.rr] ?? "").trim() || null) : null;
+        if (t.rr !== null) { const n = Number(t.rr); t.rr = isNaN(n) ? null : n; }
+        t.session = mapping.session ? (raw[mapping.session] ?? "").trim() || null : null;
+        t.direction = mapping.direction ? (raw[mapping.direction] ?? "").trim() || null : null;
+        t.model = mapping.model ? (raw[mapping.model] ?? "").trim() || null : null;
+        t.notes = mapping.notes ? (raw[mapping.notes] ?? "").trim() || null : null;
+        t.account = mapping.account ? (raw[mapping.account] ?? "").trim() || null : null;
+        return t;
+      }
+
+      document.getElementById("ci-btn-3-import").addEventListener("click", startImport);
+      document.getElementById("ci-btn-3-back").addEventListener("click", () => goToStep(2));
+
+      // ── STEP 4: Import ──────────────────────────────────────────
+      async function startImport() {
+        hideError("ci-error-3");
+        goToStep(4);
+
+        const total = validTrades.length;
+        const BATCH = 50;
+        let imported = 0;
+        let skipped = 0;
+        const allErrors = [];
+
+        updateProgress(0, total, 0);
+
+        try {
+          for (let i = 0; i < validTrades.length; i += BATCH) {
+            const batch = validTrades.slice(i, i + BATCH);
+            const res = await apiFetch("/api/csv-import", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ trades: batch }),
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(data.error || `Server error (${res.status})`);
+            }
+
+            imported += data.imported || 0;
+            skipped += data.skipped || 0;
+            if (Array.isArray(data.errors)) allErrors.push(...data.errors);
+
+            updateProgress(Math.min(i + BATCH, total), total, imported);
+          }
+
+          document.getElementById("ci-success-count").textContent = imported;
+          goToStep(5);
+        } catch (err) {
+          showError("ci-error-4", `Import failed: ${err.message}`);
+        }
+      }
+
+      function updateProgress(done, total, imported) {
+        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        document.getElementById("ci-progress-fill").style.width = `${pct}%`;
+        document.getElementById("ci-progress-label").textContent = done >= total ? "Import complete" : "Importing…";
+        document.getElementById("ci-progress-counter").textContent =
+          `${imported} of ${total} processed`;
+      }
+
+      // ── Helpers ─────────────────────────────────────────────────
+      function isValidDate(s) {
+        if (!s) return false;
+        s = String(s).trim();
+        const part = s.split(/[T ]/)[0].trim();
+        // ISO / YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}/.test(part)) {
+          const d = new Date(part + "T12:00:00Z");
+          return !isNaN(d.getTime()) && d.getFullYear() >= 1900;
+        }
+        // DD/MM/YYYY or MM/DD/YYYY or similar with separators
+        const m = part.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+        if (m) {
+          const yr = parseInt(m[3]);
+          return yr >= 1900 && yr <= 2100;
+        }
+        // YYYY/MM/DD
+        const m2 = part.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+        if (m2) {
+          const d = new Date(`${m2[1]}-${m2[2].padStart(2,"0")}-${m2[3].padStart(2,"0")}T12:00:00Z`);
+          return !isNaN(d.getTime());
+        }
+        return false;
+      }
+
+      function normalizeOutcome(raw) {
+        if (!raw) return null;
+        const o = String(raw).trim().toUpperCase().replace(/[-_\s]/g, "");
+        if (o === "WIN" || o === "W" || o === "WON") return "win";
+        if (o === "LOSS" || o === "L" || o === "LOSE" || o === "LOST") return "loss";
+        if (o === "BE" || o === "BREAKEVEN") return "be";
+        return null;
+      }
+
+      function escHtml(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+      function escAttr(s) { return escHtml(s); }
+      function truncate(s, n) { return s.length > n ? s.slice(0, n) + "…" : s; }
+
+      function showError(id, msg) {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.style.display = "block";
+      }
+      function hideError(id) {
+        const el = document.getElementById(id);
+        el.style.display = "none";
+        el.textContent = "";
+      }
+    </script>
+  </body>
+</html>

@@ -3518,6 +3518,138 @@ async function handleJournalTradePatch(req, res) {
   }
 }
 
+/** Parses a date string in various formats. Returns a Date or null. */
+function parseFlexibleDate(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  if (!s) return null;
+
+  // Take only the date portion if a time component is present
+  const datePart = s.split(/[T ]/)[0].trim();
+
+  // ISO and other formats native Date handles (YYYY-MM-DD, etc.)
+  let d = new Date(`${datePart}T12:00:00Z`);
+  if (!isNaN(d.getTime()) && d.getFullYear() >= 1900) return d;
+
+  // DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
+  let m = datePart.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (m) {
+    const [, a, b, yr] = m;
+    // Prefer DD/MM if day-first makes sense
+    if (parseInt(a) <= 31 && parseInt(b) <= 12) {
+      d = new Date(`${yr}-${b.padStart(2, "0")}-${a.padStart(2, "0")}T12:00:00Z`);
+      if (!isNaN(d.getTime())) return d;
+    }
+    // Fallback: MM/DD
+    if (parseInt(a) <= 12 && parseInt(b) <= 31) {
+      d = new Date(`${yr}-${a.padStart(2, "0")}-${b.padStart(2, "0")}T12:00:00Z`);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+
+  // YYYY/MM/DD or YYYY.MM.DD
+  m = datePart.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+  if (m) {
+    const [, yr, mo, dy] = m;
+    d = new Date(`${yr}-${mo.padStart(2, "0")}-${dy.padStart(2, "0")}T12:00:00Z`);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  return null;
+}
+
+/** Normalises outcome to lowercase "win", "loss", or "be". Returns null if unrecognised. */
+function normalizeOutcomeForImport(raw) {
+  if (!raw) return null;
+  const o = String(raw).trim().toUpperCase().replace(/[-_\s]/g, "");
+  if (o === "WIN" || o === "W" || o === "WON") return "win";
+  if (o === "LOSS" || o === "L" || o === "LOSE" || o === "LOST") return "loss";
+  if (o === "BE" || o === "BREAKEVEN") return "be";
+  return null;
+}
+
+/** POST /api/csv-import — bulk-inserts CSV-sourced trades into journal_trades. */
+async function handleCsvImport(req, res) {
+  let raw;
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
+  let body;
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
+
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const userId = legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId;
+
+  const incoming = Array.isArray(body.trades) ? body.trades : [];
+  if (incoming.length === 0) { json(res, 400, { error: "No trades provided" }); return; }
+
+  const validRows = [];
+  const errors = [];
+
+  for (let i = 0; i < incoming.length; i++) {
+    const t = incoming[i];
+    const rowNum = i + 1;
+
+    const parsedDate = parseFlexibleDate(t.date);
+    if (!parsedDate) { errors.push({ row: rowNum, reason: `Invalid date: "${t.date}"` }); continue; }
+
+    const pairRaw = (t.pair || "").trim();
+    if (!pairRaw) { errors.push({ row: rowNum, reason: "Missing pair/instrument" }); continue; }
+
+    const outcome = normalizeOutcomeForImport(t.outcome);
+    if (!outcome) { errors.push({ row: rowNum, reason: `Invalid outcome: "${t.outcome}"` }); continue; }
+
+    let rr = null;
+    if (t.rr != null && t.rr !== "") {
+      const rrVal = Number(t.rr);
+      if (!Number.isFinite(rrVal)) { errors.push({ row: rowNum, reason: `Invalid RR: "${t.rr}"` }); continue; }
+      rr = rrVal;
+    }
+
+    validRows.push({
+      user_id: userId,
+      traded_at: parsedDate.toISOString(),
+      pair: normalizePair(pairRaw) || pairRaw.toUpperCase(),
+      outcome,
+      rr,
+      session: (t.session || "").trim() || null,
+      account: (t.account || "").trim() || null,
+      custom_data: {
+        direction: (t.direction || "").trim() || null,
+        model: (t.model || "").trim() || null,
+        notes: (t.notes || "").trim() || null,
+        source: "csv_import",
+      },
+    });
+  }
+
+  let imported = 0;
+  const BATCH = 100;
+  for (let i = 0; i < validRows.length; i += BATCH) {
+    const batch = validRows.slice(i, i + BATCH);
+    const r = await fetch(`${url}/rest/v1/journal_trades`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(batch),
+    });
+    if (!r.ok) {
+      const text = await r.text();
+      json(res, 502, { error: formatSupabaseError(text, r.status) || `Supabase HTTP ${r.status}` });
+      return;
+    }
+    imported += batch.length;
+  }
+
+  json(res, 200, { imported, skipped: errors.length, errors: errors.slice(0, 100) });
+}
+
 /** DELETE /api/journal-trades?id={uuid} */
 async function handleJournalTradeDelete(req, res) {
   const u = new URL(req.url, `http://localhost:${PORT}`);
@@ -4858,6 +4990,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/log-trade")) {
     await handleLogTrade(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/csv-import")) {
+    await handleCsvImport(req, res);
     return;
   }
 

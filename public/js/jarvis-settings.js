@@ -167,6 +167,10 @@ function buildSettingsPanelHtml() {
     '<button type="button" class="jv-settings-disconnect-btn" id="jv-notion-disconnect-btn" hidden>Disconnect</button>' +
     "</div>" +
     "</section>" +
+    '<div class="jv-settings-section-divider"><span class="jv-settings-section-label">Data</span></div>' +
+    '<section class="jv-settings-block" aria-label="Data">' +
+    '<a href="/csv-import.html" class="jv-settings-link-btn">CSV Import</a>' +
+    "</section>" +
     '<div class="jv-settings-section-divider jv-settings-section-divider--subtle"></div>' +
     '<section class="jv-settings-block jv-settings-danger" aria-label="Sign out">' +
     '<button type="button" class="jv-settings-logout" id="jv-settings-logout">Logout</button>' +
