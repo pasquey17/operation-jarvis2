@@ -401,6 +401,80 @@
       .ci-map-select:focus { border-color: var(--accent, #00d4ff); }
       .ci-map-select option { background: #0d1b2a; color: #fff; }
 
+      /* ═══════════ ADDITIONAL FIELDS ═══════════ */
+      .ci-extra-section {
+        margin-top: 24px;
+        margin-bottom: 4px;
+        padding: 16px 18px;
+        border-radius: 10px;
+        background: rgba(0,212,255,0.03);
+        border: 1px solid rgba(0,212,255,0.12);
+      }
+      .ci-extra-header {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .ci-extra-title {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent, #00d4ff);
+      }
+      .ci-extra-count {
+        font-family: "Share Tech Mono", monospace;
+        font-size: 10px;
+        color: rgba(136,153,170,0.7);
+        letter-spacing: 0.06em;
+      }
+      .ci-extra-desc {
+        font-size: 12px;
+        color: rgba(136,153,170,0.85);
+        line-height: 1.5;
+        margin: 0 0 12px;
+      }
+      .ci-extra-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .ci-extra-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 9px 4px 10px;
+        border-radius: 5px;
+        background: rgba(0,212,255,0.08);
+        border: 1px solid rgba(0,212,255,0.22);
+        font-family: "Share Tech Mono", monospace;
+        font-size: 10px;
+        color: rgba(255,255,255,0.8);
+        letter-spacing: 0.04em;
+        transition: opacity 0.15s, background 0.15s;
+      }
+      .ci-extra-chip--excluded {
+        background: rgba(136,153,170,0.06);
+        border-color: rgba(136,153,170,0.18);
+        color: rgba(136,153,170,0.45);
+        text-decoration: line-through;
+      }
+      .ci-extra-chip__x {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+        color: rgba(136,153,170,0.5);
+        transition: color 0.15s;
+        flex-shrink: 0;
+      }
+      .ci-extra-chip__x:hover { color: var(--accent, #00d4ff); }
+      .ci-extra-chip--excluded .ci-extra-chip__x { color: rgba(0,212,255,0.4); }
+      .ci-extra-chip--excluded .ci-extra-chip__x:hover { color: var(--accent, #00d4ff); }
+
       /* ═══════════ STATS ROW ═══════════ */
       .ci-stats-row {
         display: flex;
@@ -774,8 +848,9 @@
       let currentStep = 1;
       let parsedHeaders = [];
       let parsedRows = [];
-      let mapping = {};        // { jarvisField: csvColumn }
-      let confidence = {};     // { jarvisField: "high"|"medium"|"none" }
+      let mapping = {};           // { jarvisField: csvColumn }
+      let confidence = {};        // { jarvisField: "high"|"medium"|"none" }
+      let excludedCustomCols = new Set(); // columns user has manually excluded from additional fields
       let validTrades = [];
       let skippedRows = [];
 
@@ -1088,6 +1163,8 @@
 
         // Single delegated listener (remove old one by replacing grid innerHTML above)
         grid.addEventListener("change", onMappingChange);
+        excludedCustomCols = new Set();
+        renderAdditionalFields();
         checkStep2Continue();
       }
 
@@ -1111,12 +1188,67 @@
             dot.title = "Not mapped";
           }
         }
+        renderAdditionalFields();
         checkStep2Continue();
       }
 
       function checkStep2Continue() {
         const allRequired = REQUIRED_FIELDS.every(f => mapping[f]);
         document.getElementById("ci-btn-2-continue").disabled = !allRequired;
+      }
+
+      // Returns CSV headers that are not currently mapped to any Jarvis field
+      // and have at least one non-empty value across all rows.
+      function getCustomCols() {
+        const mappedCols = new Set(Object.values(mapping).filter(Boolean));
+        return parsedHeaders.filter(h => {
+          if (mappedCols.has(h)) return false;
+          return parsedRows.some(row => {
+            const v = row[h];
+            return v != null && String(v).trim() !== "";
+          });
+        });
+      }
+
+      function renderAdditionalFields() {
+        const existing = document.getElementById("ci-extra-section");
+        if (existing) existing.remove();
+
+        const customCols = getCustomCols();
+        if (customCols.length === 0) return;
+
+        const includedCount = customCols.filter(h => !excludedCustomCols.has(h)).length;
+
+        const section = document.createElement("div");
+        section.id = "ci-extra-section";
+        section.className = "ci-extra-section";
+        section.innerHTML =
+          `<div class="ci-extra-header">` +
+            `<span class="ci-extra-title">Additional Fields</span>` +
+            `<span class="ci-extra-count">${includedCount} column${includedCount !== 1 ? "s" : ""} will be preserved</span>` +
+          `</div>` +
+          `<p class="ci-extra-desc">These columns from your CSV will also be imported and stored with each trade. Click × to exclude a column.</p>` +
+          `<div class="ci-extra-chips">` +
+            customCols.map(h => {
+              const excl = excludedCustomCols.has(h);
+              return `<span class="ci-extra-chip${excl ? " ci-extra-chip--excluded" : ""}" data-col="${escAttr(h)}">` +
+                `${escHtml(h)}` +
+                `<button class="ci-extra-chip__x" data-col="${escAttr(h)}" aria-label="${excl ? "Include" : "Exclude"} ${escHtml(h)}" type="button">${excl ? "+" : "×"}</button>` +
+              `</span>`;
+            }).join("") +
+          `</div>`;
+
+        section.addEventListener("click", e => {
+          const btn = e.target.closest(".ci-extra-chip__x");
+          if (!btn) return;
+          const col = btn.dataset.col;
+          if (excludedCustomCols.has(col)) excludedCustomCols.delete(col);
+          else excludedCustomCols.add(col);
+          renderAdditionalFields();
+        });
+
+        const btnRow = document.querySelector("#ci-step-2 .ci-btn-row");
+        btnRow.parentNode.insertBefore(section, btnRow);
       }
 
       document.getElementById("ci-btn-2-continue").addEventListener("click", () => {
@@ -1204,6 +1336,18 @@
         t.model     = mapping.model     ? (raw[mapping.model]     ?? "").toString().trim() || null : null;
         t.notes     = mapping.notes     ? (raw[mapping.notes]     ?? "").toString().trim() || null : null;
         t.account   = mapping.account   ? (raw[mapping.account]   ?? "").toString().trim() || null : null;
+
+        // Collect additional (unmapped, non-excluded) columns into custom_data
+        const customCols = getCustomCols().filter(h => !excludedCustomCols.has(h));
+        if (customCols.length > 0) {
+          const extra = {};
+          for (const h of customCols) {
+            const v = (raw[h] ?? "").toString().trim();
+            if (v !== "") extra[h] = v;
+          }
+          if (Object.keys(extra).length > 0) t.custom_data = extra;
+        }
+
         return t;
       }
 

@@ -3635,6 +3635,7 @@ async function handleCsvImport(req, res) {
       session: (t.session || "").trim() || null,
       account: (t.account || "").trim() || null,
       custom_data: {
+        ...(t.custom_data && typeof t.custom_data === "object" && !Array.isArray(t.custom_data) ? t.custom_data : {}),
         direction: (t.direction || "").trim() || null,
         model: (t.model || "").trim() || null,
         notes: (t.notes || "").trim() || null,
