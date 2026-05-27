@@ -29,6 +29,47 @@ const CHAT_PLACEHOLDER_EXAMPLES = [
 
 let snapshotRequestSeq = 0;
 
+/** Client-side mirror of server's deriveTradingSnapshot — used to merge journal_trades. */
+function deriveSnapshot(trades) {
+  if (!Array.isArray(trades) || trades.length === 0) {
+    return { total: 0, wins: 0, losses: 0, be: 0, decided: 0, winRate: null, avgRR: null, expectancy: null, bestSession: null };
+  }
+  const norm = (v) => String(v ?? "").trim().toUpperCase();
+  const rrNum = (v) => {
+    if (v === null || v === undefined) return NaN;
+    if (typeof v === "string" && !v.trim()) return NaN;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : NaN;
+  };
+  let wins = 0, losses = 0, be = 0, rrSum = 0, rrCount = 0, expSum = 0, expCount = 0;
+  const sessionCounts = new Map();
+  for (const t of trades) {
+    const o = norm(t?.outcome);
+    if (o === "WIN" || o === "W") wins++;
+    else if (o === "LOSS" || o === "L") losses++;
+    else if (o === "BE" || o === "BREAKEVEN" || o === "BREAK EVEN") be++;
+    const rr = rrNum(t?.rr);
+    if (Number.isFinite(rr)) {
+      if (o === "WIN" || o === "W") { rrSum += rr; rrCount++; expSum += rr; expCount++; }
+      else if (o === "LOSS" || o === "L") { expSum -= Math.abs(rr); expCount++; }
+      else if (o === "BE" || o === "BREAKEVEN" || o === "BREAK EVEN") { expCount++; }
+    }
+    const s = norm(t?.session);
+    if (s) sessionCounts.set(s, (sessionCounts.get(s) || 0) + 1);
+  }
+  const decided = wins + losses + be;
+  let bestSession = null, bestCount = -1;
+  for (const [k, v] of sessionCounts) if (v > bestCount) { bestCount = v; bestSession = k; }
+  return {
+    total: trades.length,
+    wins, losses, be, decided,
+    winRate: trades.length ? (wins / trades.length) * 100 : null,
+    avgRR: rrCount ? rrSum / rrCount : null,
+    expectancy: decided ? expSum / decided : null,
+    bestSession,
+  };
+}
+
 /** Normalize /api/trades JSON (handles optional `payload` wrapper or bad shapes). */
 function normalizeTradesApiBody(data) {
   if (!data || typeof data !== "object") {
@@ -1232,7 +1273,12 @@ async function loadTradesAttempt() {
   if (els.snapInsight) {
     els.snapInsight.textContent = "Fetching ledger…";
   }
-  const res = await apiFetch(API_TRADES);
+
+  // Fetch Notion-synced trades and manually-logged journal trades in parallel.
+  const [res, journalRes] = await Promise.all([
+    apiFetch(API_TRADES),
+    apiFetch("/api/journal-trades").catch(() => null),
+  ]);
   const data = await res.json().catch(() => ({}));
   console.log("FRONTEND RAW DATA:", data);
 
@@ -1252,17 +1298,28 @@ async function loadTradesAttempt() {
   }
 
   const normalized = normalizeTradesApiBody(data);
+
+  // Merge journal trades into snapshot so manually-logged trades appear immediately.
+  let journalRows = [];
+  if (journalRes?.ok) {
+    const jData = await journalRes.json().catch(() => []);
+    if (Array.isArray(jData)) journalRows = jData;
+  }
+  const snapshot = journalRows.length > 0
+    ? deriveSnapshot([...normalized.records, ...journalRows])
+    : normalized.snapshot;
+
   tradeData = {
     headers: normalized.headers,
     records: normalized.records,
-    snapshot: normalized.snapshot,
+    snapshot,
     ...(normalized.warning ? { warning: normalized.warning } : {}),
     ...(normalized.notionSyncWarning ? { notionSyncWarning: normalized.notionSyncWarning } : {}),
   };
   if (normalized.notionSyncWarning && els.snapInsight) {
     els.snapInsight.textContent = normalized.notionSyncWarning;
   }
-  console.log("FRONTEND RECORDS:", tradeData.records.length);
+  console.log("FRONTEND RECORDS:", tradeData.records.length, "JOURNAL ROWS:", journalRows.length);
   tradesLoaded = true;
   renderSnapshot();
   updateSendEnabled();
