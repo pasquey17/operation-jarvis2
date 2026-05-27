@@ -127,7 +127,7 @@ export function PathPickerPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.08, ease }}
-        className="grid gap-6 md:grid-cols-2"
+        className="grid gap-6 md:grid-cols-3"
       >
         <PathCard
           title="I journal in Notion"
@@ -154,11 +154,16 @@ export function PathPickerPage() {
             window.location.href = "/app/onboarding/?step=profile";
           }}
         />
+        <PathCard
+          title="I have a CSV export"
+          body="Already tracking trades elsewhere? Import your history as a one-time upload and Jarvis will start learning from it."
+          actionLabel="Import CSV →"
+          variant="outline"
+          onAction={() => {
+            window.location.href = "/csv-import.html";
+          }}
+        />
       </motion.div>
-
-      <p className="mt-10 text-center font-mono text-[10px] tracking-[0.14em] text-white/38">
-        CSV import and other integrations coming soon.
-      </p>
     </motion.div>
   );
 }
