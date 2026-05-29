@@ -236,6 +236,70 @@
       }
       .map-select:focus { border-color: rgba(0,212,255,0.55); }
       .map-select option { background: #0a0a10; color: #fff; }
+      /* searchable column picker */
+      .map-col-picker { position: relative; width: 100%; min-width: 0; }
+      .map-col-picker::after {
+        content: "";
+        position: absolute;
+        right: 9px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0; height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid rgba(0,212,255,0.55);
+        pointer-events: none;
+      }
+      .map-col-input {
+        width: 100%;
+        background: rgba(0,0,0,0.55);
+        border: 1px solid rgba(0,212,255,0.16);
+        border-radius: 6px;
+        color: #fff;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        padding: 6px 26px 6px 10px;
+        outline: none;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+        cursor: text;
+      }
+      .map-col-input:focus { border-color: rgba(0,212,255,0.55); }
+      .map-col-input::placeholder { color: rgba(255,255,255,0.25); }
+      .map-col-options {
+        position: absolute;
+        top: calc(100% + 3px);
+        left: 0;
+        right: 0;
+        background: rgba(5,5,18,0.98);
+        border: 1px solid rgba(0,212,255,0.25);
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 200;
+        display: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      }
+      .map-col-options.open { display: block; }
+      .map-col-option {
+        padding: 7px 12px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: rgba(255,255,255,0.7);
+        cursor: pointer;
+        border-bottom: 1px solid rgba(0,212,255,0.04);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        transition: background 0.1s, color 0.1s;
+      }
+      .map-col-option:last-child { border-bottom: none; }
+      .map-col-option:hover { background: rgba(0,212,255,0.08); color: #00d4ff; }
+      .map-col-option.selected { background: rgba(0,212,255,0.06); color: rgba(0,212,255,0.9); }
+      .map-col-option.skip-opt { color: rgba(255,255,255,0.3); font-style: italic; }
+      .map-col-options::-webkit-scrollbar { width: 4px; }
+      .map-col-options::-webkit-scrollbar-track { background: transparent; }
+      .map-col-options::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 2px; }
       /* add-field button */
       .add-field-btn {
         width: 100%;
@@ -640,6 +704,13 @@
             notionColumns = Array.isArray(data.columns) ? data.columns : [];
             notionDataSourceId = data.data_source_id ?? null;
             aiMapping = data.mapping || {};
+            // Fix 3: log auto-map result for diagnosis
+            console.log("[auto-map] result:", {
+              confidence: data.confidence,
+              matched: Object.keys(aiMapping),
+              unmatched: data.unmatched_fields,
+              columns: notionColumns.length,
+            });
             document.getElementById("ai-spinner").style.display = "none";
             if (data.confidence === "high") {
               showAiConfirmation(aiMapping);
@@ -647,9 +718,20 @@
               showAiFallback(aiMapping);
             }
           } catch (e) {
+            console.log("[auto-map] request failed:", e.message);
             document.getElementById("ai-spinner").style.display = "none";
-            document.getElementById("ai-status").textContent = e.message;
-            setTimeout(() => showAiFallback(aiMapping), 1200);
+            // Fix 1: if auto-map failed before columns were returned, fetch them now
+            if (notionColumns.length === 0) {
+              document.getElementById("ai-status").textContent = "Auto-detection unavailable, loading columns...";
+              try {
+                const cr = await apiFetch(`/api/notion/columns?database_id=${encodeURIComponent(dbId)}`, { cache: "no-store" });
+                const cd = await cr.json();
+                if (cr.ok && Array.isArray(cd.columns)) notionColumns = cd.columns;
+                if (cd.data_source_id) notionDataSourceId = cd.data_source_id;
+              } catch {}
+            }
+            document.getElementById("ai-status").textContent = "";
+            showAiFallback(aiMapping);
           }
         }
 
@@ -721,34 +803,91 @@
           }
         }
 
-        // Build a full Notion-column <select> with all 34 options; preselect autoVal if provided.
-        function makeNotionSelect(autoVal) {
+        // Searchable column picker — replaces plain <select>.
+        // A hidden input with class "map-select" keeps the raw value so save-mapping-btn works unchanged.
+        function makeNotionPicker(autoVal) {
           const wrap = document.createElement("div");
-          wrap.className = "map-select-wrap";
-          const sel = document.createElement("select");
-          sel.className = "map-select";
-          const blank = document.createElement("option");
-          blank.value = "";
-          blank.textContent = "— skip —";
-          sel.appendChild(blank);
-          notionColumns.forEach(({ name, type, samples }) => {
-            const opt = document.createElement("option");
-            opt.value = name;
+          wrap.className = "map-col-picker";
+
+          const hidden = document.createElement("input");
+          hidden.type = "hidden";
+          hidden.className = "map-select";
+          hidden.value = autoVal || "";
+
+          const inp = document.createElement("input");
+          inp.type = "text";
+          inp.className = "map-col-input";
+          inp.placeholder = "— skip —";
+          inp.autocomplete = "off";
+          inp.setAttribute("spellcheck", "false");
+          if (autoVal) inp.value = autoVal;
+
+          const dropdown = document.createElement("div");
+          dropdown.className = "map-col-options";
+
+          function colLabel(col) {
             let suffix = "";
-            if (Array.isArray(samples) && samples.length > 0) {
-              suffix = ` (${samples.slice(0, 2).join(", ")})`;
-            } else if (type === "rollup") {
-              suffix = " [rollup]";
-            } else if (type === "relation") {
-              suffix = " [relation]";
-            } else if (type === "formula") {
-              suffix = " [formula]";
-            }
-            opt.textContent = name + suffix;
-            if (name === autoVal) opt.selected = true;
-            sel.appendChild(opt);
+            if (Array.isArray(col.samples) && col.samples.length > 0) {
+              suffix = ` (${col.samples.slice(0, 2).join(", ")})`;
+            } else if (col.type === "rollup") suffix = " [rollup]";
+            else if (col.type === "relation") suffix = " [relation]";
+            else if (col.type === "formula") suffix = " [formula]";
+            return col.name + suffix;
+          }
+
+          function renderOptions(q) {
+            dropdown.innerHTML = "";
+            const skipDiv = document.createElement("div");
+            skipDiv.className = "map-col-option skip-opt";
+            skipDiv.textContent = "— skip —";
+            skipDiv.dataset.value = "";
+            dropdown.appendChild(skipDiv);
+            const filter = (q || "").toLowerCase().trim();
+            notionColumns.forEach((col) => {
+              if (filter && !col.name.toLowerCase().includes(filter)) return;
+              const div = document.createElement("div");
+              div.className = "map-col-option" + (col.name === hidden.value ? " selected" : "");
+              div.textContent = colLabel(col);
+              div.dataset.value = col.name;
+              dropdown.appendChild(div);
+            });
+          }
+
+          function pick(value) {
+            hidden.value = value;
+            inp.value = value;
+            inp.placeholder = value ? "" : "— skip —";
+            dropdown.classList.remove("open");
+          }
+
+          inp.addEventListener("focus", () => {
+            inp.select();
+            renderOptions("");
+            dropdown.classList.add("open");
           });
-          wrap.appendChild(sel);
+
+          inp.addEventListener("input", () => {
+            renderOptions(inp.value);
+            if (!dropdown.classList.contains("open")) dropdown.classList.add("open");
+          });
+
+          inp.addEventListener("blur", () => {
+            setTimeout(() => {
+              dropdown.classList.remove("open");
+              if (inp.value !== hidden.value) inp.value = hidden.value;
+            }, 160);
+          });
+
+          dropdown.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            const opt = e.target.closest(".map-col-option");
+            if (!opt) return;
+            pick(opt.dataset.value);
+          });
+
+          wrap.appendChild(hidden);
+          wrap.appendChild(inp);
+          wrap.appendChild(dropdown);
           return wrap;
         }
 
@@ -775,7 +914,7 @@
             lbl.title = label;
             lbl.innerHTML = label + (required ? '<span class="required-star">*</span>' : '');
             leftEl = lbl;
-            rightEl = makeNotionSelect(autoVal !== undefined ? autoVal : bestNotionMatch(hints));
+            rightEl = makeNotionPicker(autoVal !== undefined ? autoVal : bestNotionMatch(hints));
 
           } else if (type === "extra") {
             const { notionColName } = data;
@@ -785,7 +924,7 @@
             lbl.title = notionColName;
             lbl.textContent = notionColName;
             leftEl = lbl;
-            rightEl = makeNotionSelect(notionColName);
+            rightEl = makeNotionPicker(notionColName);
 
           } else { // "custom"
             const inp = document.createElement("input");
@@ -793,7 +932,7 @@
             inp.type = "text";
             inp.placeholder = "field name";
             leftEl = inp;
-            rightEl = makeNotionSelect("");
+            rightEl = makeNotionPicker("");
           }
 
           const arrow = document.createElement("span");
