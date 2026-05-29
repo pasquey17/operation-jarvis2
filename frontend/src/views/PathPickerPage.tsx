@@ -133,6 +133,7 @@ export function PathPickerPage() {
         <PathCard
           title="I journal in Notion"
           body="Connect your existing Notion database. Jarvis reads your trade history and starts building your intelligence profile."
+          notice="📌 When Notion asks which pages to share, select your entire trading workspace — not just your trades table. Jarvis needs access to linked databases (pairs, sessions, models) to resolve your data correctly."
           actionLabel="Connect Notion →"
           variant="primary"
           onAction={async () => {
@@ -172,12 +173,14 @@ export function PathPickerPage() {
 function PathCard({
   title,
   body,
+  notice,
   actionLabel,
   variant,
   onAction,
 }: {
   title: string;
   body: string;
+  notice?: string;
   actionLabel: string;
   variant: "primary" | "outline";
   onAction: () => void;
@@ -190,11 +193,16 @@ function PathCard({
       <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.22, ease }} className="relative z-[1] flex flex-1 flex-col">
         <h2 className="text-xl font-semibold tracking-[-0.02em] text-white md:text-2xl">{title}</h2>
         <p className="mt-3 flex-1 text-[14px] leading-[1.65] text-white/62">{body}</p>
+        {notice && (
+          <div className="mt-4 rounded-[10px] border border-[rgba(251,191,36,0.35)] bg-[rgba(251,191,36,0.07)] px-3.5 py-3 text-[12px] leading-[1.6] text-[rgba(255,255,255,0.78)]">
+            {notice}
+          </div>
+        )}
         <button
           type="button"
           onClick={onAction}
           className={
-            "mt-8 w-full rounded-[14px] px-5 py-3 font-mono text-[11px] tracking-[0.18em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(0,212,255,0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a14] " +
+            "mt-6 w-full rounded-[14px] px-5 py-3 font-mono text-[11px] tracking-[0.18em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(0,212,255,0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#050a14] " +
             (isPrimary
               ? "border border-[#00d4ff] bg-[#00d4ff] text-[#050a14] hover:bg-[#33ddff] hover:border-[#33ddff] shadow-[0_0_24px_rgba(0,212,255,0.25)]"
               : "border border-[#00d4ff] bg-transparent text-[#00d4ff] hover:bg-[rgba(0,212,255,0.08)]")

@@ -9,7 +9,8 @@
  * - multi_select → multiselect
  * - checkbox → dropdown ["Yes","No"]
  * - date → text (skip property names matching core "date" etc.; see shouldSkipJournalFieldName)
- * - title, files, formula, rollup, relation, people, created_*, last_edited_*, unique_id → skipped
+ * - relation → text (exposes all tracked Notion fields in the log trade form)
+ * - title, files, formula, rollup, people, created_*, last_edited_*, unique_id → skipped
  *
  * Core/template skips: public/js/log-trade-field-skip.mjs (keep in sync with LOG TRADE modal).
  */
@@ -24,7 +25,6 @@ const SKIP_TYPES = new Set([
   "files",
   "formula",
   "rollup",
-  "relation",
   "people",
   "created_by",
   "created_time",
@@ -117,6 +117,11 @@ export function mapNotionPropertyToJournalField(propName, prop) {
     if (shouldSkipJournalFieldName(propName)) {
       return { skip: true, reason: "core_date" };
     }
+    return { row: { ...base, field_type: "text", field_options: null } };
+  }
+
+  // Relation fields: expose as free-text so all tracked fields appear in the form
+  if (type === "relation") {
     return { row: { ...base, field_type: "text", field_options: null } };
   }
 

@@ -451,6 +451,24 @@
       @media (max-width: 520px) {
         .setup-panel { padding: 24px 18px; }
       }
+
+      /* ── sharing callout ── */
+      .share-callout {
+        display: flex;
+        gap: 12px;
+        background: rgba(255, 180, 0, 0.07);
+        border: 1px solid rgba(255, 180, 0, 0.35);
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-bottom: 20px;
+      }
+      .share-callout__icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+      .share-callout__text {
+        font-size: 13px;
+        line-height: 1.6;
+        color: rgba(255,255,255,0.82);
+      }
+      .share-callout__text strong { color: #fbbf24; }
     </style>
   </head>
   <body>
@@ -501,6 +519,10 @@
         <div class="setup-panel__eyebrow">Step 1 of 3</div>
         <h1 class="setup-panel__title">Select your trade journal</h1>
         <p class="setup-panel__sub">Choose the Notion database that contains your trades. Only databases shared with Jarvis will appear.</p>
+        <div class="share-callout">
+          <span class="share-callout__icon">📌</span>
+          <p class="share-callout__text"><strong>Important:</strong> When Notion asks which pages to share, select your <strong>entire trading workspace</strong> — or the top-level parent page that contains all your databases. If you only share your trades table, Jarvis can't read linked data like pairs, sessions, or models.</p>
+        </div>
         <div id="db-list"></div>
         <div class="status-msg error" id="db-error"></div>
       </div>

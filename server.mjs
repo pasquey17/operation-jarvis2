@@ -5642,6 +5642,62 @@ async function buildRelationLookupCache(accessToken, mainDatabaseId) {
   return cache;
 }
 
+/** Collect every relation page ID referenced across all trade pages. */
+function collectRelationIds(allPages) {
+  const ids = new Set();
+  for (const page of allPages) {
+    for (const prop of Object.values(page.properties ?? {})) {
+      if (prop?.type === "relation" && Array.isArray(prop.relation)) {
+        for (const r of prop.relation) {
+          if (r?.id) ids.add(r.id);
+        }
+      }
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * Fetch individual pages not already in the cache via GET /v1/pages/{id}.
+ * Notion often permits page-level access even when the parent DB wasn't shared.
+ */
+async function lazyFetchRelationPages(accessToken, cache, pageIds) {
+  const missing = pageIds.filter(id => !cache.has(normalizePageId(id)));
+  if (missing.length === 0) return { fetched: 0, failed: 0 };
+
+  console.log("[NOTION-SYNC] lazy-fetch: resolving %d uncached relation IDs", missing.length);
+  let fetched = 0;
+  let failed = 0;
+
+  for (let i = 0; i < missing.length; i++) {
+    if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 150));
+    const id = missing[i];
+    try {
+      const r = await fetch(`https://api.notion.com/v1/pages/${encodeURIComponent(id)}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Notion-Version": "2022-06-28",
+        },
+      });
+      if (!r.ok) {
+        failed++;
+        console.log("[NOTION-SYNC] lazy-fetch: id=%s status=%d (inaccessible)", id, r.status);
+        continue;
+      }
+      const page = await r.json();
+      const title = extractPageTitle(page);
+      if (title) { cache.set(normalizePageId(id), title); fetched++; }
+      else failed++;
+    } catch (e) {
+      failed++;
+      console.log("[NOTION-SYNC] lazy-fetch: id=%s err=%s", id, String(e.message ?? e));
+    }
+  }
+
+  console.log("[NOTION-SYNC] lazy-fetch: done fetched=%d failed=%d", fetched, failed);
+  return { fetched, failed };
+}
+
 /** Resolve prop value for sync, looking up relation IDs in cache. Returns "" not null. */
 function oauthExtractPropValue(prop, cache) {
   if (!prop) return "";
@@ -5743,8 +5799,8 @@ const FOREX_PAIRS_RE = /\b(XAU\/?USD|GOLD|XAGUSD|BTC\/?USD|ETH\/?USD|EUR\/?USD|G
 function normalizeOutcome(s) {
   const lower = String(s ?? "").trim().toLowerCase();
   if (!lower) return null;
-  if (/\bwin\b|won|profit|green|✓|✅|pass/.test(lower)) return "win";
-  if (/\bloss\b|lost|red|fail|❌|stopped/.test(lower)) return "loss";
+  if (/\bwin\b|won|profit|green|take.?profit|partial.?win|✓|✅|pass/.test(lower)) return "win";
+  if (/\bloss\b|lost|red|fail|stop.?loss|partial.?loss|❌|stopped/.test(lower)) return "loss";
   if (/break.?even|be\b|scratch|0r/.test(lower)) return "breakeven";
   return null;
 }
@@ -5776,27 +5832,44 @@ function resolveOAuthRR(props, mapping) {
 }
 
 function resolveOAuthOutcome(props, mapping, cache, rrClean) {
-  // 1. Mapped outcome column
+  // 1. Mapped outcome column — full type chain
   if (mapping?.outcome) {
     const prop = findPropByName(props, mapping.outcome);
     if (prop) {
-      const v = String(oauthExtractPropValue(prop, cache)).trim();
-      const norm = normalizeOutcome(v);
-      if (norm) return norm;
-      if (v) return v.toLowerCase();
+      // Checkbox: true → win, false → loss (direct boolean outcome)
+      if (prop.type === "checkbox") {
+        if (typeof prop.checkbox === "boolean") return prop.checkbox ? "win" : "loss";
+      // Formula boolean: same mapping
+      } else if (prop.type === "formula" && prop.formula?.type === "boolean") {
+        const b = prop.formula.boolean;
+        if (typeof b === "boolean") return b ? "win" : "loss";
+      } else {
+        // select, status, relation (resolved to title), rich_text, etc.
+        const v = String(oauthExtractPropValue(prop, cache)).trim();
+        const norm = normalizeOutcome(v);
+        if (norm) return norm;
+        // Don't return raw unrecognised strings — fall through to RR inference
+      }
     }
   }
-  // 2. Any select/status prop with outcome-ish name
+  // 2. Scan for outcome-named select/status/formula props
   const outcomeNames = ["outcome", "result", "trade result", "p&l", "win/loss"];
   for (const [name, prop] of Object.entries(props)) {
     if (mapping?.outcome && name === mapping.outcome) continue;
     if (!outcomeNames.some(n => name.toLowerCase().includes(n))) continue;
-    if (!prop || (prop.type !== "select" && prop.type !== "status" && prop.type !== "formula")) continue;
-    const v = String(oauthExtractPropValue(prop, cache)).trim();
-    const norm = normalizeOutcome(v);
-    if (norm) return norm;
+    if (!prop) continue;
+    if (prop.type === "checkbox") {
+      if (typeof prop.checkbox === "boolean") return prop.checkbox ? "win" : "loss";
+    } else if (prop.type === "formula" && prop.formula?.type === "boolean") {
+      const b = prop.formula.boolean;
+      if (typeof b === "boolean") return b ? "win" : "loss";
+    } else if (prop.type === "select" || prop.type === "status" || prop.type === "relation") {
+      const v = String(oauthExtractPropValue(prop, cache)).trim();
+      const norm = normalizeOutcome(v);
+      if (norm) return norm;
+    }
   }
-  // 3. RR inference
+  // 3. RR sign inference
   if (rrClean != null) {
     if (rrClean > 0) return "win";
     if (rrClean < 0) return "loss";
@@ -5804,6 +5877,8 @@ function resolveOAuthOutcome(props, mapping, cache, rrClean) {
   }
   return "unknown";
 }
+
+const PAIR_SCAN_TYPES = new Set(["title", "rich_text", "select", "multi_select", "status", "formula", "relation"]);
 
 function resolveOAuthPair(props, mapping, cache) {
   // 1. Mapped pair column
@@ -5814,24 +5889,24 @@ function resolveOAuthPair(props, mapping, cache) {
       if (v && !SYNC_UUID_RE.test(v)) return v;
     }
   }
-  // 2. Scan all columns for known instrument patterns
+  // 2. Scan text-bearing columns for known instrument patterns
   for (const prop of Object.values(props)) {
-    if (!prop) continue;
+    if (!prop || !PAIR_SCAN_TYPES.has(prop.type)) continue;
     const v = String(oauthExtractPropValue(prop, cache)).trim();
-    if (!v) continue;
+    if (!v || SYNC_UUID_RE.test(v)) continue;
     const m = FOREX_PAIRS_RE.exec(v);
     if (m) return m[0].toUpperCase().replace("/", "");
   }
   return "";
 }
 
-/** Recursively replace relation [{id, type:"page_id"}] arrays with resolved title strings in notion_extras. */
+/** Recursively replace UUID string arrays (relation IDs from notion-serialize-props) with resolved titles. */
 function resolveUuidsInExtras(obj, cache) {
   if (!obj || typeof obj !== "object") return obj;
   if (Array.isArray(obj)) {
-    // Relation array: [{id: uuid, type: "page_id"}, ...]
-    if (obj.length > 0 && obj.every(x => x && typeof x === "object" && x.type === "page_id" && typeof x.id === "string")) {
-      const titles = obj.map(x => cache?.get(normalizePageId(x.id))).filter(Boolean);
+    // notion-serialize-props stores relations as plain UUID string arrays: ["abc123", "def456"]
+    if (obj.length > 0 && obj.every(x => typeof x === "string" && SYNC_UUID_RE.test(x.replace(/-/g, "")))) {
+      const titles = obj.map(x => cache?.get(normalizePageId(x))).filter(Boolean);
       return titles.length > 0 ? titles.join(", ") : null;
     }
     return obj.map(item => resolveUuidsInExtras(item, cache));
@@ -6025,8 +6100,10 @@ async function handleNotionAutoMap(req, res) {
     const pagesData = pagesRes.ok ? await pagesRes.json() : { results: [] };
     const pages = pagesData.results ?? [];
 
-    // Build relation cache so samples show resolved titles not UUIDs
+    // Build relation cache + lazy-fetch uncached relation IDs from sample pages
     const amCache = await buildRelationLookupCache(accessToken, databaseId);
+    const amRelIds = collectRelationIds(pages);
+    await lazyFetchRelationPages(accessToken, amCache, amRelIds);
 
     const amSampleStr = (prop) => {
       if (!prop) return null;
@@ -6769,14 +6846,21 @@ async function syncNotionOAuthForUser(userId) {
   console.log("[NOTION-SYNC] fetched pages=%d db=%s user=%s mapping_keys=%s",
     allPages.length, dbId, userId, Object.keys(mapping).filter(k => !k.startsWith("__")).join(","));
 
-  // Build workspace relation cache so relation fields resolve to titles, not UUIDs
+  // Layer 1: workspace-wide cache (fast path — finds all shared supporting DBs)
   const lookupCache = await buildRelationLookupCache(accessToken, dbId);
+
+  // Layer 2: lazy per-ID fetch for any relation IDs not resolved by workspace search
+  const allRelationIds = collectRelationIds(allPages);
+  const lazyStats = await lazyFetchRelationPages(accessToken, lookupCache, allRelationIds);
+  console.log("[NOTION-SYNC] relation-cache: workspace=%d lazy-added=%d lazy-failed=%d total=%d user=%s",
+    lookupCache.size - lazyStats.fetched, lazyStats.fetched, lazyStats.failed, lookupCache.size, userId);
 
   const tableEnc = encodeURIComponent(tableRaw);
   const batch = [];
   const batchPages = [];
   let skippedCount = 0;
   const skippedReasons = {};
+  let sampleLogged = false;
 
   for (const page of allPages) {
     const props = page.properties ?? {};
@@ -6838,6 +6922,17 @@ async function syncNotionOAuthForUser(userId) {
       archived: false,
       updated_at: new Date().toISOString(),
     });
+
+    // Log first resolved trade for diagnosis
+    if (!sampleLogged) {
+      sampleLogged = true;
+      const pairProp = mapping.pair ? findPropByName(props, mapping.pair) : null;
+      const pairRaw = pairProp ? (pairProp.type === "relation"
+        ? (pairProp.relation ?? []).map(r => r?.id).join(",")
+        : String(notionPropValue(pairProp) ?? "")) : "(no mapping)";
+      console.log("[NOTION-SYNC] sample-trade=%s cache-size=%d pair-raw=%s pair-resolved=%s outcome=%s rr=%s",
+        page.id, lookupCache.size, pairRaw.slice(0, 40), pairVal, outcomeVal, rrClean);
+    }
   }
 
   console.log("[NOTION-SYNC] mapped rows=%d skipped=%d%s user=%s elapsed=%dms",
