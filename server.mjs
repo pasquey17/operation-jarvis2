@@ -5481,20 +5481,74 @@ function getServiceRoleKey() {
 function notionPropValue(prop) {
   if (!prop) return null;
   switch (prop.type) {
-    case "title":       return prop.title?.[0]?.plain_text ?? null;
-    case "rich_text":   return prop.rich_text?.[0]?.plain_text ?? null;
-    case "number":      return prop.number ?? null;
-    case "select":      return prop.select?.name ?? null;
-    case "multi_select":return prop.multi_select?.map((o) => o.name).join(", ") ?? null;
-    case "date":        return prop.date?.start ?? null;
-    case "checkbox":    return prop.checkbox ?? null;
-    case "url":         return prop.url ?? null;
-    case "files":       return prop.files?.map((f) => f.external?.url ?? f.file?.url).filter(Boolean) ?? null;
-    case "email":       return prop.email ?? null;
-    case "phone_number":return prop.phone_number ?? null;
-    case "formula":     return prop.formula?.string ?? prop.formula?.number ?? null;
-    default:            return null;
+    case "title":
+      return Array.isArray(prop.title) ? prop.title.map(b => b?.plain_text ?? "").join("") || null : null;
+    case "rich_text":
+      return Array.isArray(prop.rich_text) ? prop.rich_text.map(b => b?.plain_text ?? "").join("") || null : null;
+    case "number": return prop.number ?? null;
+    case "select": return prop.select?.name ?? null;
+    case "status": return prop.status?.name ?? null;
+    case "multi_select":
+      return Array.isArray(prop.multi_select) && prop.multi_select.length > 0
+        ? prop.multi_select.map(o => o?.name ?? "").filter(Boolean).join(", ") : null;
+    case "date": return prop.date?.start ?? null;
+    case "checkbox": return prop.checkbox ?? null;
+    case "url": return prop.url ?? null;
+    case "email": return prop.email ?? null;
+    case "phone_number": return prop.phone_number ?? null;
+    case "files":
+      return Array.isArray(prop.files)
+        ? prop.files.map(f => f.external?.url ?? f.file?.url).filter(Boolean)
+        : null;
+    case "formula": {
+      const f = prop.formula;
+      if (!f) return null;
+      if (f.type === "string") return f.string ?? null;
+      if (f.type === "number") return typeof f.number === "number" ? f.number : null;
+      if (f.type === "boolean") return f.boolean ?? null;
+      if (f.type === "date") return f.date?.start ?? null;
+      return null;
+    }
+    case "relation":
+      return Array.isArray(prop.relation) && prop.relation.length > 0
+        ? prop.relation.map(r => r?.id).filter(Boolean).join(", ") : null;
+    case "rollup": {
+      const r = prop.rollup;
+      if (!r) return null;
+      if (r.type === "number") return typeof r.number === "number" ? r.number : null;
+      if (r.type === "date") return r.date?.start ?? null;
+      if (r.type === "array" && Array.isArray(r.array)) {
+        for (const item of r.array) {
+          const v = item && typeof item === "object" && "type" in item ? notionPropValue(item) : (item ?? null);
+          if (v != null && v !== "") return v;
+        }
+        return null;
+      }
+      return null;
+    }
+    case "people":
+      return Array.isArray(prop.people) && prop.people.length > 0
+        ? prop.people.map(p => p?.name || p?.id).filter(Boolean).join(", ") : null;
+    case "created_by":
+    case "last_edited_by":
+      return prop[prop.type]?.name || prop[prop.type]?.id || null;
+    case "created_time": return prop.created_time ?? null;
+    case "last_edited_time": return prop.last_edited_time ?? null;
+    case "unique_id": {
+      const uid = prop.unique_id;
+      if (!uid) return null;
+      return uid.prefix ? `${uid.prefix}-${uid.number}` : String(uid.number ?? "");
+    }
+    default: return null;
   }
+}
+
+function notionGetProp(props, colName) {
+  if (!props || !colName) return null;
+  const prop = Object.prototype.hasOwnProperty.call(props, colName)
+    ? props[colName]
+    : Object.entries(props).find(([k]) => k.toLowerCase() === String(colName).toLowerCase())?.[1];
+  return notionPropValue(prop ?? null);
 }
 
 async function handleNotionColumns(req, res) {
@@ -5537,8 +5591,16 @@ async function handleNotionColumns(req, res) {
 
     const schema = JSON.parse(schemaRaw);
 
-    // Helper: query one page and extract columns from its properties
-    const columnsFromPageQuery = async (endpoint) => {
+    // Stringify a prop value for sample display — compact, human-readable
+    const sampleStr = (prop) => {
+      const v = notionPropValue(prop);
+      if (v == null || v === "") return null;
+      if (Array.isArray(v)) return v.slice(0, 2).join(", ") || null;
+      return String(v).slice(0, 40) || null;
+    };
+
+    // Fetch up to N pages and extract {name, type, samples} per column
+    const fetchSamplePages = async (endpoint, pageCount = 3) => {
       const r = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -5546,25 +5608,44 @@ async function handleNotionColumns(req, res) {
           "Notion-Version": "2025-09-03",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ page_size: 1 }),
+        body: JSON.stringify({ page_size: pageCount }),
       });
       const text = await r.text();
-      console.log(`[notion/columns] query ${endpoint} → ${r.status}:`, text.slice(0, 300));
+      console.log(`[notion/columns] sample query ${endpoint} → ${r.status}:`, text.slice(0, 300));
       if (!r.ok) return null;
       const data = JSON.parse(text);
-      const first = data.results?.[0];
-      if (!first?.properties) return null;
-      return Object.entries(first.properties).map(([name, prop]) => ({ name, type: prop.type ?? "unknown" }));
+      const pages = data.results ?? [];
+      if (!pages.length || !pages[0]?.properties) return null;
+
+      const sampleMap = {};
+      for (const page of pages) {
+        for (const [name, prop] of Object.entries(page.properties ?? {})) {
+          if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
+          if (sampleMap[name].samples.length < 3) {
+            const s = sampleStr(prop);
+            if (s && !sampleMap[name].samples.includes(s)) sampleMap[name].samples.push(s);
+          }
+        }
+      }
+      return Object.entries(sampleMap).map(([name, { type, samples }]) => ({ name, type, samples }));
     };
 
-    // For merged databases, Notion requires /data_sources/{id}/query (same endpoint the native sync uses)
-    // data_sources[].id stripped of dashes is the correct format for that endpoint.
+    // Columns from schema properties (no sample values — enrich below if possible)
+    const columnsFromSchema = (schema.properties && Object.keys(schema.properties).length > 0)
+      ? Object.entries(schema.properties).map(([name, prop]) => ({
+          name,
+          type: prop.type ?? "unknown",
+          samples: [],
+        }))
+      : null;
+
+    // For merged databases, Notion requires /data_sources/{id}/query
     const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
     if (dataSources.length > 0) {
       const rawId = dataSources[0].id ?? dataSources[0];
       const dataSourceId = String(rawId).replace(/-/g, "");
       console.log("[notion/columns] merged DB — querying data_source:", dataSourceId);
-      const cols = await columnsFromPageQuery(
+      const cols = await fetchSamplePages(
         `https://api.notion.com/v1/data_sources/${dataSourceId}/query`
       );
       if (cols) {
@@ -5575,24 +5656,20 @@ async function handleNotionColumns(req, res) {
       json(res, 502, { error: "Could not retrieve columns from merged database data source." }); return;
     }
 
-    // Standard DB: schema.properties may already have what we need
-    if (schema.properties && Object.keys(schema.properties).length > 0) {
-      const columns = Object.entries(schema.properties).map(([name, prop]) => ({
-        name,
-        type: prop.type ?? "unknown",
-      }));
-      console.log("[notion/columns] schema properties →", columns.length, "columns");
-      json(res, 200, { columns });
+    // Standard DB: try to get samples from page query, fall back to schema
+    const sampledCols = await fetchSamplePages(`https://api.notion.com/v1/databases/${databaseId}/query`);
+    if (sampledCols) {
+      console.log("[notion/columns] page-query columns:", sampledCols.length, "columns");
+      json(res, 200, { columns: sampledCols });
       return;
     }
 
-    // Standard DB fallback: query one page
-    const cols = await columnsFromPageQuery(`https://api.notion.com/v1/databases/${databaseId}/query`);
-    if (cols) {
-      console.log("[notion/columns] page-query columns:", cols.map(c => c.name));
-      json(res, 200, { columns: cols });
+    if (columnsFromSchema) {
+      console.log("[notion/columns] schema properties →", columnsFromSchema.length, "columns (no samples)");
+      json(res, 200, { columns: columnsFromSchema });
       return;
     }
+
     json(res, 200, { columns: [], debug: "No pages found in database" });
   } catch (e) {
     json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
@@ -5920,7 +5997,7 @@ async function notionOAuthFetchAllPages(userId) {
     return { ok: false, skipped: false, reason: String(e.message ?? e), pages: [] };
   }
 
-  return { ok: true, skipped: false, pages: allPages, mapping, accessToken };
+  return { ok: true, skipped: false, pages: allPages, mapping, accessToken, databaseId };
 }
 
 /** Same shape as `extractTradeImagesFromProps` in notion-sync.mjs — every `files` property on the page. */
@@ -6222,17 +6299,23 @@ async function handleNotionReconcileArchive(req, res) {
  * @returns { ok: false, skipped: false, reason, oauthAuthError?, status? }
  */
 async function syncNotionOAuthForUser(userId) {
+  const syncStart = Date.now();
   const { url, tableRaw } = getSupabaseConfig();
   const srKey = getServiceRoleKey();
   if (!url || !srKey) {
+    console.log("[NOTION-SYNC] abort: Supabase not configured user=%s", userId);
     return { ok: false, skipped: false, reason: "Supabase not configured" };
   }
 
+  console.log("[NOTION-SYNC] start user=%s", userId);
+
   const ctx = await notionOAuthFetchAllPages(userId);
   if (ctx.skipped) {
+    console.log("[NOTION-SYNC] skipped user=%s reason=%s", userId, ctx.reason);
     return { skipped: true, reason: ctx.reason };
   }
   if (!ctx.ok) {
+    console.log("[NOTION-SYNC] fetch-failed user=%s reason=%s", userId, ctx.reason);
     return {
       ok: false,
       skipped: false,
@@ -6245,18 +6328,50 @@ async function syncNotionOAuthForUser(userId) {
   const allPages = ctx.pages;
   const mapping = ctx.mapping;
   const accessToken = ctx.accessToken;
+  const dbId = ctx.databaseId ?? "(unknown)";
+  console.log("[NOTION-SYNC] fetched pages=%d db=%s user=%s mapping_keys=%s",
+    allPages.length, dbId, userId, Object.keys(mapping).filter(k => !k.startsWith("__")).join(","));
+
   const tableEnc = encodeURIComponent(tableRaw);
   const batch = [];
   const batchPages = [];
+  let skippedCount = 0;
+  const skippedReasons = {};
 
   for (const page of allPages) {
     const props = page.properties ?? {};
-    const get = (field) => notionPropValue(props[mapping[field]]);
+    const get = (field) => notionGetProp(props, mapping[field]);
+
+    const dateVal = resolveNotionTradeDateIso(page, mapping, get);
+    const pairVal = get("pair");
+
+    // Skip only when BOTH date and pair are absent — a tradeable row needs at least one anchor
+    if (!dateVal && !pairVal) {
+      skippedCount++;
+      const reason = "no_date_and_no_pair";
+      skippedReasons[reason] = (skippedReasons[reason] ?? 0) + 1;
+      console.log("[NOTION-SYNC] skip page=%s reason=%s", page.id, reason);
+      continue;
+    }
+
+    // Graceful date fallback: use today if date is missing but pair is present
+    const resolvedDate = dateVal ?? new Date().toISOString().slice(0, 10);
 
     const rrRaw = get("rr");
     const rrNum = rrRaw != null ? Number(String(rrRaw).replace(/[^0-9.\-]/g, "")) : null;
-    const dateVal = resolveNotionTradeDateIso(page, mapping, get);
-    if (!dateVal) continue;
+    const rrClean = rrNum != null && !isNaN(rrNum) ? rrNum : null;
+
+    // Outcome inference: if mapped outcome is missing but RR is present, derive it
+    let outcomeVal = get("outcome") ?? null;
+    if (!outcomeVal && rrClean != null) {
+      outcomeVal = rrClean > 0 ? "win" : rrClean < 0 ? "loss" : "breakeven";
+    }
+    if (!outcomeVal) outcomeVal = "unknown";
+
+    const directionVal = get("direction") ?? "Not set";
+    const sessionVal = get("session") ?? "";
+    const pairResolved = pairVal ?? "";
+    const modelVal = get("model") ?? "";
 
     const notionExtras = serializeNotionProperties(props);
     batchPages.push(page);
@@ -6264,14 +6379,14 @@ async function syncNotionOAuthForUser(userId) {
       notion_id: page.id,
       auth_user_id: userId,
       user_id: legacyEmailForAuthUserId(userId) || userId,
-      date: dateVal,
-      outcome: get("outcome") ?? "unknown",
-      rr: rrNum != null && !isNaN(rrNum) ? rrNum : null,
-      session: get("session") ?? "",
-      pair: get("pair") ?? "",
-      direction: get("direction") ?? "",
+      date: resolvedDate,
+      outcome: outcomeVal,
+      rr: rrClean,
+      session: sessionVal,
+      pair: pairResolved,
+      direction: directionVal,
       notes: get("notes"),
-      model: get("model") ?? "",
+      model: modelVal,
       notion_url: page.url ?? null,
       trade_images: [],
       notion_extras: notionExtras,
@@ -6281,6 +6396,11 @@ async function syncNotionOAuthForUser(userId) {
     });
   }
 
+  console.log("[NOTION-SYNC] mapped rows=%d skipped=%d%s user=%s elapsed=%dms",
+    batch.length, skippedCount,
+    skippedCount > 0 ? ` (${JSON.stringify(skippedReasons)})` : "",
+    userId, Date.now() - syncStart);
+
   await enrichOAuthSyncTradeImages(accessToken, batch, batchPages, mapping);
 
   const fetched = allPages.length;
@@ -6289,6 +6409,7 @@ async function syncNotionOAuthForUser(userId) {
     const upsertCols =
       "notion_id,auth_user_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,notion_extras,notion_sync_source,archived,updated_at";
     try {
+      let upsertedTotal = 0;
       for (let i = 0; i < batch.length; i += OAUTH_TRADE_UPSERT_BATCH) {
         const slice = batch.slice(i, i + OAUTH_TRADE_UPSERT_BATCH);
         const upsertRes = await fetch(`${url}/rest/v1/${tableEnc}?on_conflict=notion_id&columns=${upsertCols}`, {
@@ -6303,15 +6424,24 @@ async function syncNotionOAuthForUser(userId) {
         });
         if (!upsertRes.ok) {
           const err = await upsertRes.text().catch(() => "unknown");
+          console.log("[NOTION-SYNC] upsert-fail batch_start=%d status=%s err=%s user=%s",
+            i, upsertRes.status, err.slice(0, 200), userId);
           return { ok: false, skipped: false, reason: `Trades upsert failed: ${err}` };
         }
+        upsertedTotal += slice.length;
+        console.log("[NOTION-SYNC] upsert batch_start=%d batch_size=%d ok user=%s", i, slice.length, userId);
       }
     } catch (e) {
+      console.log("[NOTION-SYNC] upsert-exception user=%s err=%s", userId, String(e.message ?? e));
       return { ok: false, skipped: false, reason: String(e.message ?? e) };
     }
   }
 
   const fieldSync = await maybeSyncJournalFieldsFromOAuth(userId);
+  const elapsed = Date.now() - syncStart;
+
+  console.log("[NOTION-SYNC] done user=%s fetched=%d upserted=%d skipped=%d elapsed=%dms",
+    userId, fetched, batch.length, skippedCount, elapsed);
 
   return {
     ok: true,

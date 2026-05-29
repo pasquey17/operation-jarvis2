@@ -602,10 +602,13 @@
           blank.value = "";
           blank.textContent = "— skip —";
           sel.appendChild(blank);
-          notionColumns.forEach(({ name }) => {
+          notionColumns.forEach(({ name, samples }) => {
             const opt = document.createElement("option");
             opt.value = name;
-            opt.textContent = name;
+            const sampleText = Array.isArray(samples) && samples.length > 0
+              ? ` (${samples.slice(0, 2).join(", ")})`
+              : "";
+            opt.textContent = name + sampleText;
             if (name === autoVal) opt.selected = true;
             sel.appendChild(opt);
           });
