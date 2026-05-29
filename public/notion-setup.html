@@ -345,6 +345,45 @@
       }
       @keyframes spin { to { transform: rotate(360deg); } }
 
+      /* ── AI confirmation screen ── */
+      .ai-confirm-list { margin: 0 0 20px; padding: 0; list-style: none; }
+      .ai-confirm-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 0;
+        border-bottom: 1px solid rgba(0,212,255,0.06);
+      }
+      .ai-confirm-item:last-child { border-bottom: none; }
+      .ai-confirm-check { color: #00d4ff; font-size: 13px; flex-shrink: 0; }
+      .ai-confirm-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        min-width: 90px;
+        flex-shrink: 0;
+      }
+      .ai-confirm-value { font-family: var(--font-mono); font-size: 12px; color: #fff; }
+      .ai-edit-link {
+        display: block;
+        text-align: center;
+        margin-top: 14px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: rgba(0,212,255,0.5);
+        cursor: pointer;
+        letter-spacing: 0.1em;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        background: none;
+        border: none;
+        padding: 0;
+        width: 100%;
+      }
+      .ai-edit-link:hover { color: #00d4ff; }
+
       @media (max-width: 520px) {
         .setup-panel { padding: 24px 18px; }
       }
@@ -419,6 +458,18 @@
         <div class="status-msg" id="map-status"></div>
       </div>
 
+      <!-- Step 2a: AI auto-detect (primary path before manual wizard) -->
+      <div class="setup-panel" id="step-ai" style="display:none">
+        <div class="setup-panel__eyebrow">Step 2 of 3</div>
+        <h1 class="setup-panel__title" id="ai-title">Analysing your journal...</h1>
+        <p class="setup-panel__sub" id="ai-sub">Jarvis is reading your column structure...</p>
+        <div id="ai-spinner" class="spinner"></div>
+        <ul class="ai-confirm-list" id="ai-confirm-list" style="display:none"></ul>
+        <button class="setup-btn primary" id="ai-confirm-btn" style="display:none">Looks good — sync my trades →</button>
+        <button class="ai-edit-link" id="ai-edit-link" style="display:none">Edit mapping manually</button>
+        <div class="status-msg error" id="ai-status"></div>
+      </div>
+
       <!-- Step 3: Sync -->
       <div class="setup-panel" id="step-sync" style="display:none">
         <div class="setup-panel__eyebrow">Step 3 of 3</div>
@@ -455,6 +506,7 @@
         let selectedDbId = null;
         let notionColumns = [];
         let notionDataSourceId = null;
+        let aiMapping = {};
 
         const JARVIS_FIELDS = [
           { key: "date",      label: "Date",        required: true,  hints: ["date","day","traded"] },
@@ -480,22 +532,22 @@
         }
 
         // ── progress ──
+        const ALL_PANELS = ["step-db", "step-ai", "step-map", "step-sync"];
+        function showPanel(id) {
+          ALL_PANELS.forEach(p => {
+            document.getElementById(p).style.display = (p === id ? "" : "none");
+          });
+        }
+        function setProgressStep(step) {
+          document.getElementById("ps-db").className = "progress-step" + (step === 1 ? " active" : step > 1 ? " done" : "");
+          document.getElementById("ps-map").className = "progress-step" + (step === 2 ? " active" : step > 2 ? " done" : "");
+          document.getElementById("ps-sync").className = "progress-step" + (step === 3 ? " active" : "");
+          document.getElementById("pl-1").className = "progress-line" + (step > 1 ? " done" : "");
+          document.getElementById("pl-2").className = "progress-line" + (step > 2 ? " done" : "");
+        }
         function setStep(step) {
-          document.getElementById("step-db").style.display   = step === 1 ? "" : "none";
-          document.getElementById("step-map").style.display  = step === 2 ? "" : "none";
-          document.getElementById("step-sync").style.display = step === 3 ? "" : "none";
-
-          const psDb   = document.getElementById("ps-db");
-          const psMap  = document.getElementById("ps-map");
-          const psSync = document.getElementById("ps-sync");
-          const pl1    = document.getElementById("pl-1");
-          const pl2    = document.getElementById("pl-2");
-
-          psDb.className   = "progress-step" + (step === 1 ? " active" : step > 1 ? " done" : "");
-          psMap.className  = "progress-step" + (step === 2 ? " active" : step > 2 ? " done" : "");
-          psSync.className = "progress-step" + (step === 3 ? " active" : "");
-          pl1.className    = "progress-line" + (step > 1 ? " done" : "");
-          pl2.className    = "progress-line" + (step > 2 ? " done" : "");
+          showPanel(step === 1 ? "step-db" : step === 2 ? "step-ai" : "step-sync");
+          setProgressStep(step);
         }
 
         // ── step 1: load databases (with retry for post-OAuth token propagation) ──
@@ -521,7 +573,7 @@
                 document.querySelectorAll(".db-card").forEach(c => c.classList.remove("selected"));
                 card.classList.add("selected");
                 selectedDbId = db.id;
-                loadColumns(db.id);
+                loadAndAutoMap(db.id);
               });
               listEl.appendChild(card);
             });
@@ -565,12 +617,89 @@
           }
         }
 
-        // ── step 2: load columns ──
+        // ── step 2: AI auto-map (primary path) ──
+        async function loadAndAutoMap(dbId) {
+          setStep(2);
+          document.getElementById("ai-title").textContent = "Analysing your journal...";
+          document.getElementById("ai-sub").textContent = "Jarvis is reading your column structure...";
+          document.getElementById("ai-spinner").style.display = "block";
+          document.getElementById("ai-confirm-list").style.display = "none";
+          document.getElementById("ai-confirm-btn").style.display = "none";
+          document.getElementById("ai-edit-link").style.display = "none";
+          document.getElementById("ai-status").textContent = "";
+
+          try {
+            const r = await apiFetch("/api/notion/auto-map", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ database_id: dbId }),
+              cache: "no-store",
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Auto-map failed");
+            notionColumns = Array.isArray(data.columns) ? data.columns : [];
+            notionDataSourceId = data.data_source_id ?? null;
+            aiMapping = data.mapping || {};
+            document.getElementById("ai-spinner").style.display = "none";
+            if (data.confidence === "high") {
+              showAiConfirmation(aiMapping);
+            } else {
+              showAiFallback(aiMapping);
+            }
+          } catch (e) {
+            document.getElementById("ai-spinner").style.display = "none";
+            document.getElementById("ai-status").textContent = e.message;
+            setTimeout(() => showAiFallback(aiMapping), 1200);
+          }
+        }
+
+        function showAiConfirmation(mapping) {
+          const FIELD_LABELS = {
+            date: "Date", pair: "Pair", outcome: "Outcome", rr: "RR",
+            direction: "Direction", session: "Session", model: "Entry Model",
+            notes: "Notes", account: "Account", photos: "Photos",
+          };
+          document.getElementById("ai-title").textContent = "Jarvis detected your journal structure ✓";
+          document.getElementById("ai-sub").textContent = "These fields were automatically mapped. Confirm or edit manually.";
+          const list = document.getElementById("ai-confirm-list");
+          list.innerHTML = "";
+          for (const [key, notionCol] of Object.entries(mapping)) {
+            if (!notionCol) continue;
+            const li = document.createElement("li");
+            li.className = "ai-confirm-item";
+            li.innerHTML = `<span class="ai-confirm-check">✓</span><span class="ai-confirm-label">${FIELD_LABELS[key] || key}</span><span class="ai-confirm-value">${notionCol}</span>`;
+            list.appendChild(li);
+          }
+          list.style.display = "block";
+          document.getElementById("ai-confirm-btn").style.display = "block";
+          document.getElementById("ai-edit-link").style.display = "block";
+        }
+
+        function showAiFallback(mapping) {
+          buildMappingForm(mapping);
+          showPanel("step-map");
+          setProgressStep(2);
+          const statusEl = document.getElementById("map-status");
+          const missing = ["date", "pair"].filter(f => !mapping[f]);
+          if (missing.length > 0) {
+            statusEl.textContent = "We couldn't automatically detect a few fields. Help us find them:";
+            statusEl.className = "status-msg";
+          } else if (Object.keys(mapping).length > 0) {
+            statusEl.textContent = `${Object.keys(mapping).length} fields auto-detected. Review and save.`;
+            statusEl.className = "status-msg success";
+          } else {
+            statusEl.textContent = "";
+            statusEl.className = "status-msg";
+          }
+        }
+
+        // ── step 2 fallback: manual column load (kept for compatibility) ──
         async function loadColumns(dbId) {
           const statusEl = document.getElementById("map-status");
           statusEl.textContent = "Loading columns...";
           statusEl.className = "status-msg";
-          setStep(2);
+          showPanel("step-map");
+          setProgressStep(2);
 
           try {
             const r = await apiFetch(`/api/notion/columns?database_id=${encodeURIComponent(dbId)}`, { cache: "no-store" });
@@ -602,13 +731,20 @@
           blank.value = "";
           blank.textContent = "— skip —";
           sel.appendChild(blank);
-          notionColumns.forEach(({ name, samples }) => {
+          notionColumns.forEach(({ name, type, samples }) => {
             const opt = document.createElement("option");
             opt.value = name;
-            const sampleText = Array.isArray(samples) && samples.length > 0
-              ? ` (${samples.slice(0, 2).join(", ")})`
-              : "";
-            opt.textContent = name + sampleText;
+            let suffix = "";
+            if (Array.isArray(samples) && samples.length > 0) {
+              suffix = ` (${samples.slice(0, 2).join(", ")})`;
+            } else if (type === "rollup") {
+              suffix = " [rollup]";
+            } else if (type === "relation") {
+              suffix = " [relation]";
+            } else if (type === "formula") {
+              suffix = " [formula]";
+            }
+            opt.textContent = name + suffix;
             if (name === autoVal) opt.selected = true;
             sel.appendChild(opt);
           });
@@ -632,14 +768,14 @@
           let leftEl, rightEl;
 
           if (type === "jarvis") {
-            const { key, label, required, hints } = data;
+            const { key, label, required, hints, autoVal } = data;
             row.dataset.jarvisKey = key;
             const lbl = document.createElement("span");
             lbl.className = "map-field-label";
             lbl.title = label;
             lbl.innerHTML = label + (required ? '<span class="required-star">*</span>' : '');
             leftEl = lbl;
-            rightEl = makeNotionSelect(bestNotionMatch(hints));
+            rightEl = makeNotionSelect(autoVal !== undefined ? autoVal : bestNotionMatch(hints));
 
           } else if (type === "extra") {
             const { notionColName } = data;
@@ -671,20 +807,22 @@
           return row;
         }
 
-        function buildMappingForm() {
+        function buildMappingForm(preMapping) {
+          const pm = preMapping || {};
           const grid = document.getElementById("map-grid");
           grid.innerHTML = "";
 
-          // Track which Notion columns are claimed by a JARVIS_FIELD auto-match
+          // Track which Notion columns are claimed by preMapping or auto-match
           const claimed = new Set();
-          JARVIS_FIELDS.forEach(({ hints }) => {
-            const m = bestNotionMatch(hints);
+          JARVIS_FIELDS.forEach(({ key, hints }) => {
+            const m = pm[key] || bestNotionMatch(hints);
             if (m) claimed.add(m);
           });
 
-          // 10 fixed Jarvis field rows
+          // 10 fixed Jarvis field rows (pre-populated from AI mapping where available)
           JARVIS_FIELDS.forEach(({ key, label, required, hints }) => {
-            grid.appendChild(makeRow("jarvis", { key, label, required, hints }));
+            const autoVal = pm[key] || bestNotionMatch(hints);
+            grid.appendChild(makeRow("jarvis", { key, label, required, hints, autoVal }));
           });
 
           // Remaining Notion columns not claimed by any Jarvis field
@@ -696,6 +834,36 @@
 
           initDragDrop(grid);
         }
+
+        document.getElementById("ai-confirm-btn").addEventListener("click", async () => {
+          const btn = document.getElementById("ai-confirm-btn");
+          const statusEl = document.getElementById("ai-status");
+          btn.disabled = true;
+          statusEl.textContent = "Saving...";
+          try {
+            const r = await apiFetch("/api/notion/save-mapping", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ database_id: selectedDbId, mapping: aiMapping, data_source_id: notionDataSourceId }),
+              cache: "no-store",
+            });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || "Save failed");
+            statusEl.textContent = "";
+            showPanel("step-sync");
+            setProgressStep(3);
+          } catch (e) {
+            statusEl.textContent = e.message;
+            btn.disabled = false;
+          }
+        });
+
+        document.getElementById("ai-edit-link").addEventListener("click", () => {
+          buildMappingForm(aiMapping);
+          showPanel("step-map");
+          document.getElementById("map-status").textContent = "";
+          document.getElementById("map-status").className = "status-msg";
+        });
 
         let dragEl = null;
         function initDragDrop(grid) {

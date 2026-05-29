@@ -4942,6 +4942,11 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "POST" && req.url.startsWith("/api/notion/auto-map")) {
+    await handleNotionAutoMap(req, res);
+    return;
+  }
+
   if (req.method === "POST" && req.url.startsWith("/api/notion/save-mapping")) {
     await handleNotionSaveMapping(req, res);
     return;
@@ -5591,12 +5596,19 @@ async function handleNotionColumns(req, res) {
 
     const schema = JSON.parse(schemaRaw);
 
-    // Stringify a prop value for sample display — compact, human-readable
+    // Stringify a prop value for sample display — compact, human-readable, never a UUID
+    const UUID_RE = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
     const sampleStr = (prop) => {
+      if (!prop || prop.type === "relation" || prop.type === "people") return null;
       const v = notionPropValue(prop);
       if (v == null || v === "") return null;
-      if (Array.isArray(v)) return v.slice(0, 2).join(", ") || null;
-      return String(v).slice(0, 40) || null;
+      if (Array.isArray(v)) {
+        const filtered = v.filter(s => !UUID_RE.test(String(s).trim()));
+        return filtered.slice(0, 2).join(", ") || null;
+      }
+      const s = String(v).slice(0, 40);
+      if (UUID_RE.test(s.trim())) return null;
+      return s || null;
     };
 
     // Fetch up to N pages and extract {name, type, samples} per column
@@ -5673,6 +5685,146 @@ async function handleNotionColumns(req, res) {
     json(res, 200, { columns: [], debug: "No pages found in database" });
   } catch (e) {
     json(res, 502, { error: `Notion columns error: ${String(e.message ?? e)}` });
+  }
+}
+
+async function handleNotionAutoMap(req, res) {
+  const authUid = authUserIdFromReq(req);
+  if (!authUid) { json(res, 401, { error: "Unauthorized" }); return; }
+
+  let body;
+  try { body = await readBody(req); } catch { json(res, 400, { error: "Invalid request body" }); return; }
+  const databaseId = body?.database_id || "";
+  if (!databaseId) { json(res, 400, { error: "database_id required" }); return; }
+
+  const userId = legacyEmailForAuthUserId(authUid) || authUid;
+  const { url } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) { json(res, 500, { error: "Supabase not configured" }); return; }
+
+  let accessToken;
+  try {
+    const rows = await fetchNotionUserRows(url, srKey, "notion_connections", userId, authUid);
+    accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
+  } catch { json(res, 500, { error: "Failed to read Notion connection" }); return; }
+  if (!accessToken) { json(res, 404, { error: "No Notion connection found" }); return; }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) { json(res, 500, { error: "Anthropic API not configured" }); return; }
+
+  try {
+    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
+    });
+    if (!schemaRes.ok) { json(res, 502, { error: "Failed to fetch Notion schema" }); return; }
+    const schema = await schemaRes.json();
+
+    const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
+    let dataSourceId = null;
+    let queryUrl;
+    if (dataSources.length > 0) {
+      const rawId = dataSources[0].id ?? dataSources[0];
+      dataSourceId = String(rawId).replace(/-/g, "");
+      queryUrl = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
+    } else {
+      queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+    }
+
+    const pagesRes = await fetch(queryUrl, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03", "Content-Type": "application/json" },
+      body: JSON.stringify({ page_size: 5 }),
+    });
+    const pagesData = pagesRes.ok ? await pagesRes.json() : { results: [] };
+    const pages = pagesData.results ?? [];
+
+    const UUID_RE_AM = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+    const amSampleStr = (prop) => {
+      if (!prop || prop.type === "relation" || prop.type === "people") return null;
+      const v = notionPropValue(prop);
+      if (v == null || v === "") return null;
+      if (Array.isArray(v)) {
+        const filtered = v.filter(s => !UUID_RE_AM.test(String(s).trim()));
+        return filtered.slice(0, 2).join(", ") || null;
+      }
+      const s = String(v).slice(0, 40);
+      if (UUID_RE_AM.test(s.trim())) return null;
+      return s || null;
+    };
+
+    const sampleMap = {};
+    for (const page of pages) {
+      for (const [name, prop] of Object.entries(page.properties ?? {})) {
+        if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
+        if (sampleMap[name].samples.length < 3) {
+          const s = amSampleStr(prop);
+          if (s && !sampleMap[name].samples.includes(s)) sampleMap[name].samples.push(s);
+        }
+      }
+    }
+    if (schema.properties) {
+      for (const [name, prop] of Object.entries(schema.properties)) {
+        if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
+      }
+    }
+    const columns = Object.entries(sampleMap).map(([name, { type, samples }]) => ({ name, type, samples }));
+
+    if (columns.length === 0) {
+      json(res, 200, { mapping: {}, confidence: "low", columns: [], data_source_id: dataSourceId });
+      return;
+    }
+
+    const colsForPrompt = columns.map(({ name, type, samples }) => {
+      const sp = samples.length > 0 ? ` — samples: ${samples.join(", ")}` : "";
+      return `"${name}" (${type})${sp}`;
+    }).join("\n");
+
+    const promptText = `You are analysing a Notion trading journal database. Here are the column names, types, and sample values:\n\n${colsForPrompt}\n\nMap each column to the most appropriate Jarvis field:\n- date: the trade date/time\n- pair: the trading instrument/symbol\n- outcome: win/loss/breakeven result\n- rr: risk-reward ratio or R multiple\n- direction: long/short/buy/sell\n- session: trading session (London/NY/Asia)\n- model: trading setup or strategy name\n- notes: trade notes, summary, or review\n- account: trading account name\n- photos: chart images or screenshots\n\nReturn a JSON object where keys are Jarvis field names and values are the exact Notion column names. Only include fields you are confident about. For fields where no clear match exists, omit them entirely.\n\nAlso return a 'confidence' field: 'high' if you matched all required fields (date + pair), 'low' otherwise.\n\nReturn ONLY valid JSON, no other text.`;
+
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 512,
+        messages: [{ role: "user", content: promptText }],
+      }),
+    });
+
+    let mapping = {};
+    let confidence = "low";
+    if (aiRes.ok) {
+      const aiData = await aiRes.json();
+      const rawText = aiData.content?.[0]?.text ?? "";
+      console.log("[notion/auto-map] AI raw:", rawText.slice(0, 400));
+      try {
+        const jsonStr = rawText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+        const parsed = JSON.parse(jsonStr);
+        confidence = parsed.confidence === "high" ? "high" : "low";
+        delete parsed.confidence;
+        const validNames = new Set(columns.map(c => c.name));
+        for (const [k, v] of Object.entries(parsed)) {
+          if (typeof v === "string" && validNames.has(v)) mapping[k] = v;
+        }
+        if (!mapping.date || !mapping.pair) confidence = "low";
+      } catch (e) {
+        console.log("[notion/auto-map] parse error:", e.message);
+      }
+    } else {
+      console.log("[notion/auto-map] AI call failed:", aiRes.status);
+    }
+
+    const ALL_FIELDS = ["date", "pair", "outcome", "rr", "direction", "session", "model", "notes", "account", "photos"];
+    json(res, 200, {
+      mapping,
+      confidence,
+      columns,
+      unmatched_fields: ALL_FIELDS.filter(f => !mapping[f]),
+      data_source_id: dataSourceId,
+    });
+  } catch (e) {
+    console.log("[notion/auto-map] error:", String(e.message ?? e));
+    json(res, 502, { error: String(e.message ?? e) });
   }
 }
 
