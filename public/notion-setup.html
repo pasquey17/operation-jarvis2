@@ -398,7 +398,7 @@
         <div class="setup-panel__eyebrow">Step 1 of 3</div>
         <h1 class="setup-panel__title">Select your trade journal</h1>
         <p class="setup-panel__sub">Choose the Notion database that contains your trades. Only databases shared with Jarvis will appear.</p>
-        <div id="db-list"><div class="status-msg" id="db-loading">Loading databases...</div></div>
+        <div id="db-list"></div>
         <div class="status-msg error" id="db-error"></div>
       </div>
 
@@ -498,20 +498,21 @@
           pl2.className    = "progress-line" + (step > 2 ? " done" : "");
         }
 
-        // ── step 1: load databases ──
+        // ── step 1: load databases (with retry for post-OAuth token propagation) ──
         async function loadDatabases() {
           const listEl = document.getElementById("db-list");
           const errEl  = document.getElementById("db-error");
-          try {
-            const r = await apiFetch(`/api/notion/databases`, { cache: "no-store" });
-            const data = await r.json();
-            if (!r.ok) throw new Error(data.error || "Failed to load databases");
-            const { databases } = data;
+          errEl.textContent = "";
+
+          const MAX_ATTEMPTS = 3;
+          const RETRY_MS = 1500;
+
+          function showLoading(msg) {
+            listEl.innerHTML = `<div class="status-msg">${msg}</div><div class="spinner" style="margin:12px auto 0"></div>`;
+          }
+
+          function renderDatabases(databases) {
             listEl.innerHTML = "";
-            if (!databases || databases.length === 0) {
-              listEl.innerHTML = '<div class="status-msg">No databases found. Make sure you\'ve shared your database with the Jarvis integration in Notion.</div>';
-              return;
-            }
             databases.forEach((db) => {
               const card = document.createElement("div");
               card.className = "db-card";
@@ -524,9 +525,43 @@
               });
               listEl.appendChild(card);
             });
-          } catch (e) {
+          }
+
+          function showFinalError(msg) {
             listEl.innerHTML = "";
-            errEl.textContent = e.message;
+            errEl.textContent = msg;
+            const retryBtn = document.createElement("button");
+            retryBtn.className = "setup-btn";
+            retryBtn.textContent = "Try again";
+            retryBtn.style.marginTop = "12px";
+            retryBtn.addEventListener("click", loadDatabases);
+            listEl.appendChild(retryBtn);
+          }
+
+          for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            showLoading(attempt === 1 ? "Loading databases…" : `Still loading… (${attempt}/${MAX_ATTEMPTS})`);
+            try {
+              const resp = await apiFetch(`/api/notion/databases`, { cache: "no-store" });
+              const data = await resp.json();
+              if (!resp.ok) throw new Error(data.error || "Failed to load databases");
+              const { databases } = data;
+              if (!databases || databases.length === 0) {
+                if (attempt < MAX_ATTEMPTS) {
+                  await new Promise(resolve => setTimeout(resolve, RETRY_MS));
+                  continue;
+                }
+                showFinalError("No databases found. Make sure you've shared your Notion database with the Jarvis integration.");
+                return;
+              }
+              renderDatabases(databases);
+              return;
+            } catch (e) {
+              if (attempt < MAX_ATTEMPTS) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_MS));
+                continue;
+              }
+              showFinalError(e.message);
+            }
           }
         }
 

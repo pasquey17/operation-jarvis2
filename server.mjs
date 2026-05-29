@@ -5279,27 +5279,38 @@ async function handleNotionCallback(req, res) {
     created_at: new Date().toISOString(),
   };
 
-  try {
-    const upsertRes = await fetch(`${url}/rest/v1/notion_connections?on_conflict=user_id`, {
-      method: "POST",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify(row),
-    });
-    if (!upsertRes.ok) {
+  let upsertOk = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const upsertRes = await fetch(`${url}/rest/v1/notion_connections?on_conflict=user_id`, {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify(row),
+      });
+      if (upsertRes.ok) {
+        console.log("[notion/callback] Supabase upsert success for user:", authUserId, "workspace:", row.workspace_name);
+        upsertOk = true;
+        break;
+      }
       const errText = await upsertRes.text().catch(() => "unknown");
-      console.error("[notion/callback] Supabase upsert failed:", upsertRes.status, errText);
-    } else {
-      console.log("[notion/callback] Supabase upsert success for user:", authUserId, "workspace:", row.workspace_name);
+      console.error(`[notion/callback] Supabase upsert failed (attempt ${attempt}):`, upsertRes.status, errText);
+    } catch (e) {
+      console.error(`[notion/callback] Supabase upsert error (attempt ${attempt}):`, String(e.message ?? e));
     }
-  } catch (e) {
-    console.error("[notion/callback] Supabase upsert error:", String(e.message ?? e));
+    if (attempt < 3) await new Promise(r => setTimeout(r, 500 * attempt));
   }
 
+  if (!upsertOk) {
+    console.error("[notion/callback] All upsert attempts failed — token not saved for user:", authUserId);
+  }
+
+  // Small delay so the token write propagates before the client reads it
+  await new Promise(r => setTimeout(r, 500));
   send(res, 302, "", { Location: "/notion-setup.html?onboarding=true" });
 }
 
