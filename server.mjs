@@ -4952,6 +4952,11 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "DELETE" && req.url.startsWith("/api/notion/disconnect")) {
+    await handleNotionDisconnect(req, res);
+    return;
+  }
+
   if (req.method === "POST" && req.url.startsWith("/api/notion/sync-user")) {
     await handleNotionSyncUser(req, res);
     return;
@@ -6283,6 +6288,37 @@ async function handleNotionConnectionStatus(req, res) {
     json(res, 200, { connected: Array.isArray(rows) && rows.length > 0 });
   } catch {
     json(res, 200, { connected: false });
+  }
+}
+
+async function handleNotionDisconnect(req, res) {
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorized" }); return; }
+  const { url } = getSupabaseConfig();
+  const srKey = getServiceRoleKey();
+  if (!url || !srKey) { json(res, 500, { error: "Supabase not configured" }); return; }
+
+  // Rows may be stored under email or UUID — delete both to guarantee a clean wipe
+  const emailUserId = legacyEmailForAuthUserId(authUserId, req.jarvisAuth?.email) || authUserId;
+  const userIds = [...new Set([emailUserId, authUserId])];
+
+  try {
+    await Promise.all(
+      userIds.flatMap((uid) => [
+        fetch(`${url}/rest/v1/notion_connections?user_id=eq.${encodeURIComponent(uid)}`, {
+          method: "DELETE",
+          headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Prefer: "return=minimal" },
+        }),
+        fetch(`${url}/rest/v1/notion_mappings?user_id=eq.${encodeURIComponent(uid)}`, {
+          method: "DELETE",
+          headers: { apikey: srKey, Authorization: `Bearer ${srKey}`, Prefer: "return=minimal" },
+        }),
+      ])
+    );
+    notionSyncInflight.delete(authUserId);
+    json(res, 200, { success: true });
+  } catch (e) {
+    json(res, 500, { error: String(e.message ?? e) });
   }
 }
 

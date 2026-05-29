@@ -4,9 +4,6 @@
  * Run manually in Supabase SQL editor if display_name is missing:
  *   ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS display_name text;
  *
- * Server route needed for Notion disconnect (add to server.mjs when ready):
- *   DELETE /api/notion/disconnect — delete notion_connections row for user, return { success: true }
- *
  * Also add display_name to ALLOWED_FIELDS in handleUserProfile (POST /api/user/profile).
  */
 import { apiFetch, getAuthEmail, getAuthUserId, signOut } from "./jarvis-auth.js";
@@ -448,6 +445,7 @@ function wireSettingsUi() {
         .then((r) => (r.ok ? r.json().catch(() => ({})) : Promise.reject()))
         .then(() => {
           setNotionConnectionUi(false);
+          try { localStorage.removeItem(ONBOARDING_LS_KEY); } catch {}
           disconnectBtn.textContent = "Disconnect";
         })
         .catch(() => {
