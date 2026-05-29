@@ -5556,6 +5556,293 @@ function notionGetProp(props, colName) {
   return notionPropValue(prop ?? null);
 }
 
+// ─── Universal Notion Sync Engine ────────────────────────────────────────────
+
+const SYNC_UUID_RE = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+const normalizePageId = (id) => String(id ?? "").replace(/-/g, "").toLowerCase();
+
+function extractPageTitle(page) {
+  if (!page?.properties) return "";
+  for (const prop of Object.values(page.properties)) {
+    if (prop?.type === "title" && Array.isArray(prop.title)) {
+      const t = prop.title.map(b => b?.plain_text ?? "").join("").trim();
+      if (t) return t;
+    }
+  }
+  return "";
+}
+
+/** Fetch all supporting databases and build Map<normalizedPageId, pageTitle>. */
+async function buildRelationLookupCache(accessToken, mainDatabaseId) {
+  const cache = new Map();
+  const t0 = Date.now();
+  const mainNorm = normalizePageId(mainDatabaseId);
+
+  let databases = [];
+  try {
+    let cursor;
+    let page = 0;
+    do {
+      const body = { filter: { value: "database", property: "object" }, page_size: 100 };
+      if (cursor) body.start_cursor = cursor;
+      const r = await fetch("https://api.notion.com/v1/search", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) break;
+      const data = await r.json();
+      databases.push(...(data.results ?? []).filter(d => normalizePageId(d.id) !== mainNorm));
+      cursor = data.has_more ? data.next_cursor : undefined;
+      page++;
+    } while (cursor && page < 5);
+  } catch (e) {
+    console.log("[NOTION-SYNC] cache: db-search failed: %s", String(e.message ?? e));
+  }
+
+  console.log("[NOTION-SYNC] cache: supporting-dbs=%d", databases.length);
+
+  for (const db of databases) {
+    const dbId = db.id;
+    let pageCursor;
+    let fetched = 0;
+    try {
+      do {
+        const body = { page_size: 100 };
+        if (pageCursor) body.start_cursor = pageCursor;
+        const r = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Notion-Version": "2025-09-03",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) break;
+        const data = await r.json();
+        for (const p of (data.results ?? [])) {
+          const title = extractPageTitle(p);
+          if (title) cache.set(normalizePageId(p.id), title);
+        }
+        fetched += (data.results ?? []).length;
+        pageCursor = data.has_more ? data.next_cursor : undefined;
+      } while (pageCursor);
+    } catch (e) {
+      console.log("[NOTION-SYNC] cache: db=%s err=%s", dbId, String(e.message ?? e));
+    }
+    console.log("[NOTION-SYNC] cache: db=%s pages=%d", dbId, fetched);
+  }
+
+  console.log("[NOTION-SYNC] cache: total-entries=%d elapsed=%dms", cache.size, Date.now() - t0);
+  return cache;
+}
+
+/** Resolve prop value for sync, looking up relation IDs in cache. Returns "" not null. */
+function oauthExtractPropValue(prop, cache) {
+  if (!prop) return "";
+  switch (prop.type) {
+    case "title":
+      return Array.isArray(prop.title) ? prop.title.map(b => b?.plain_text ?? "").join("").trim() : "";
+    case "rich_text":
+      return Array.isArray(prop.rich_text) ? prop.rich_text.map(b => b?.plain_text ?? "").join("").trim() : "";
+    case "number":
+      return prop.number != null ? prop.number : "";
+    case "select":
+      return prop.select?.name ?? "";
+    case "status":
+      return prop.status?.name ?? "";
+    case "multi_select":
+      return Array.isArray(prop.multi_select)
+        ? prop.multi_select.map(o => o?.name ?? "").filter(Boolean).join(", ")
+        : "";
+    case "date":
+      return prop.date?.start ?? "";
+    case "checkbox":
+      return typeof prop.checkbox === "boolean" ? (prop.checkbox ? "Yes" : "No") : "";
+    case "url":
+      return prop.url ?? "";
+    case "email":
+      return prop.email ?? "";
+    case "phone_number":
+      return prop.phone_number ?? "";
+    case "formula": {
+      const f = prop.formula;
+      if (!f) return "";
+      if (f.type === "string") return f.string ?? "";
+      if (f.type === "number") return typeof f.number === "number" ? f.number : "";
+      if (f.type === "boolean") return typeof f.boolean === "boolean" ? (f.boolean ? "Yes" : "No") : "";
+      if (f.type === "date") return f.date?.start ?? "";
+      return "";
+    }
+    case "relation": {
+      if (!Array.isArray(prop.relation) || prop.relation.length === 0) return "";
+      const titles = [];
+      for (const r of prop.relation) {
+        const id = r?.id; if (!id) continue;
+        const title = cache?.get(normalizePageId(id));
+        if (title) titles.push(title);
+      }
+      return titles.join(", ");
+    }
+    case "rollup": {
+      const ro = prop.rollup; if (!ro) return "";
+      if (ro.type === "number") return typeof ro.number === "number" ? ro.number : "";
+      if (ro.type === "date") return ro.date?.start ?? "";
+      if (ro.type === "array" && Array.isArray(ro.array)) {
+        return ro.array.map(item => oauthExtractPropValue(item, cache)).filter(v => v !== "").join(", ");
+      }
+      return "";
+    }
+    case "people":
+      return Array.isArray(prop.people) ? prop.people.map(p => p?.name ?? "").filter(Boolean).join(", ") : "";
+    case "created_by":
+      return prop.created_by?.name ?? "";
+    case "last_edited_by":
+      return prop.last_edited_by?.name ?? "";
+    case "created_time":
+      return prop.created_time ?? "";
+    case "last_edited_time":
+      return prop.last_edited_time ?? "";
+    case "unique_id": {
+      const uid = prop.unique_id; if (!uid) return "";
+      return uid.prefix ? `${uid.prefix}-${uid.number}` : String(uid.number ?? "");
+    }
+    case "files": {
+      if (!Array.isArray(prop.files)) return "";
+      return prop.files.map(f => f.external?.url ?? f.file?.url).filter(Boolean).join(", ");
+    }
+    default: return "";
+  }
+}
+
+function findPropByName(props, colName) {
+  if (!props || !colName) return null;
+  if (Object.prototype.hasOwnProperty.call(props, colName)) return props[colName];
+  const lower = String(colName).toLowerCase();
+  for (const [k, v] of Object.entries(props)) {
+    if (k.toLowerCase() === lower) return v;
+  }
+  return null;
+}
+
+function notionGetPropResolved(props, colName, cache) {
+  const prop = findPropByName(props, colName);
+  if (!prop) return "";
+  return oauthExtractPropValue(prop, cache);
+}
+
+// ─── Semantic resolvers ───────────────────────────────────────────────────────
+
+const FOREX_PAIRS_RE = /\b(XAU\/?USD|GOLD|XAGUSD|BTC\/?USD|ETH\/?USD|EUR\/?USD|GBP\/?USD|USD\/?JPY|USD\/?CAD|AUD\/?USD|NZD\/?USD|USD\/?CHF|GBP\/?JPY|EUR\/?JPY|EUR\/?GBP|NAS\/?DAQ|NASDAQ|NAS100|US30|US500|SPX|NQ|ES|YM|MNQ|MES|MYM|DAX|FTSE|NDX|GC|CL|SI|NG)\b/i;
+
+function normalizeOutcome(s) {
+  const lower = String(s ?? "").trim().toLowerCase();
+  if (!lower) return null;
+  if (/\bwin\b|won|profit|green|✓|✅|pass/.test(lower)) return "win";
+  if (/\bloss\b|lost|red|fail|❌|stopped/.test(lower)) return "loss";
+  if (/break.?even|be\b|scratch|0r/.test(lower)) return "breakeven";
+  return null;
+}
+
+function resolveOAuthRR(props, mapping) {
+  // 1. Mapped column
+  if (mapping?.rr) {
+    const prop = findPropByName(props, mapping.rr);
+    if (prop) {
+      const v = notionPropValue(prop);
+      if (v != null) {
+        const n = typeof v === "number" ? v : Number(String(v).replace(/[^0-9.\-]/g, ""));
+        if (!isNaN(n)) return n;
+      }
+    }
+  }
+  // 2. Heuristic: any number/formula prop with RR-ish name
+  const rrNames = ["rr", "r:r", "r/r", "risk reward", "risk-reward", "r multiple", "pnl"];
+  for (const [name, prop] of Object.entries(props)) {
+    const lower = name.toLowerCase();
+    if (!rrNames.some(n => lower.includes(n))) continue;
+    if (!prop || (prop.type !== "number" && prop.type !== "formula" && prop.type !== "rich_text")) continue;
+    const v = notionPropValue(prop);
+    if (v == null) continue;
+    const n = typeof v === "number" ? v : Number(String(v).replace(/[^0-9.\-]/g, ""));
+    if (!isNaN(n)) return n;
+  }
+  return null;
+}
+
+function resolveOAuthOutcome(props, mapping, cache, rrClean) {
+  // 1. Mapped outcome column
+  if (mapping?.outcome) {
+    const prop = findPropByName(props, mapping.outcome);
+    if (prop) {
+      const v = String(oauthExtractPropValue(prop, cache)).trim();
+      const norm = normalizeOutcome(v);
+      if (norm) return norm;
+      if (v) return v.toLowerCase();
+    }
+  }
+  // 2. Any select/status prop with outcome-ish name
+  const outcomeNames = ["outcome", "result", "trade result", "p&l", "win/loss"];
+  for (const [name, prop] of Object.entries(props)) {
+    if (mapping?.outcome && name === mapping.outcome) continue;
+    if (!outcomeNames.some(n => name.toLowerCase().includes(n))) continue;
+    if (!prop || (prop.type !== "select" && prop.type !== "status" && prop.type !== "formula")) continue;
+    const v = String(oauthExtractPropValue(prop, cache)).trim();
+    const norm = normalizeOutcome(v);
+    if (norm) return norm;
+  }
+  // 3. RR inference
+  if (rrClean != null) {
+    if (rrClean > 0) return "win";
+    if (rrClean < 0) return "loss";
+    return "breakeven";
+  }
+  return "unknown";
+}
+
+function resolveOAuthPair(props, mapping, cache) {
+  // 1. Mapped pair column
+  if (mapping?.pair) {
+    const prop = findPropByName(props, mapping.pair);
+    if (prop) {
+      const v = String(oauthExtractPropValue(prop, cache)).trim();
+      if (v && !SYNC_UUID_RE.test(v)) return v;
+    }
+  }
+  // 2. Scan all columns for known instrument patterns
+  for (const prop of Object.values(props)) {
+    if (!prop) continue;
+    const v = String(oauthExtractPropValue(prop, cache)).trim();
+    if (!v) continue;
+    const m = FOREX_PAIRS_RE.exec(v);
+    if (m) return m[0].toUpperCase().replace("/", "");
+  }
+  return "";
+}
+
+/** Recursively replace relation [{id, type:"page_id"}] arrays with resolved title strings in notion_extras. */
+function resolveUuidsInExtras(obj, cache) {
+  if (!obj || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) {
+    // Relation array: [{id: uuid, type: "page_id"}, ...]
+    if (obj.length > 0 && obj.every(x => x && typeof x === "object" && x.type === "page_id" && typeof x.id === "string")) {
+      const titles = obj.map(x => cache?.get(normalizePageId(x.id))).filter(Boolean);
+      return titles.length > 0 ? titles.join(", ") : null;
+    }
+    return obj.map(item => resolveUuidsInExtras(item, cache));
+  }
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = resolveUuidsInExtras(v, cache);
+  }
+  return out;
+}
+
 async function handleNotionColumns(req, res) {
   const sp = new URL(req.url, "http://localhost").searchParams;
   const authUid = authUserIdFromReq(req);
@@ -5738,18 +6025,16 @@ async function handleNotionAutoMap(req, res) {
     const pagesData = pagesRes.ok ? await pagesRes.json() : { results: [] };
     const pages = pagesData.results ?? [];
 
-    const UUID_RE_AM = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+    // Build relation cache so samples show resolved titles not UUIDs
+    const amCache = await buildRelationLookupCache(accessToken, databaseId);
+
     const amSampleStr = (prop) => {
-      if (!prop || prop.type === "relation" || prop.type === "people") return null;
-      const v = notionPropValue(prop);
-      if (v == null || v === "") return null;
-      if (Array.isArray(v)) {
-        const filtered = v.filter(s => !UUID_RE_AM.test(String(s).trim()));
-        return filtered.slice(0, 2).join(", ") || null;
-      }
-      const s = String(v).slice(0, 40);
-      if (UUID_RE_AM.test(s.trim())) return null;
-      return s || null;
+      if (!prop) return null;
+      const v = oauthExtractPropValue(prop, amCache);
+      if (v === "" || v == null) return null;
+      const s = String(v).slice(0, 60);
+      if (SYNC_UUID_RE.test(s.trim())) return null;
+      return s;
     };
 
     const sampleMap = {};
@@ -6484,6 +6769,9 @@ async function syncNotionOAuthForUser(userId) {
   console.log("[NOTION-SYNC] fetched pages=%d db=%s user=%s mapping_keys=%s",
     allPages.length, dbId, userId, Object.keys(mapping).filter(k => !k.startsWith("__")).join(","));
 
+  // Build workspace relation cache so relation fields resolve to titles, not UUIDs
+  const lookupCache = await buildRelationLookupCache(accessToken, dbId);
+
   const tableEnc = encodeURIComponent(tableRaw);
   const batch = [];
   const batchPages = [];
@@ -6492,12 +6780,15 @@ async function syncNotionOAuthForUser(userId) {
 
   for (const page of allPages) {
     const props = page.properties ?? {};
-    const get = (field) => notionGetProp(props, mapping[field]);
+    const get = (field) => mapping[field] ? notionGetPropResolved(props, mapping[field], lookupCache) : "";
 
-    const dateVal = resolveNotionTradeDateIso(page, mapping, get);
-    const pairVal = get("pair");
+    // Date: use existing multi-strategy resolver (it calls get internally via its own wrapper)
+    const legacyGet = (field) => notionGetProp(props, mapping[field]);
+    const dateVal = resolveNotionTradeDateIso(page, mapping, legacyGet);
 
-    // Skip only when BOTH date and pair are absent — a tradeable row needs at least one anchor
+    // Pair: semantic resolver with relation resolution + instrument pattern fallback
+    const pairVal = resolveOAuthPair(props, mapping, lookupCache);
+
     if (!dateVal && !pairVal) {
       skippedCount++;
       const reason = "no_date_and_no_pair";
@@ -6506,26 +6797,27 @@ async function syncNotionOAuthForUser(userId) {
       continue;
     }
 
-    // Graceful date fallback: use today if date is missing but pair is present
     const resolvedDate = dateVal ?? new Date().toISOString().slice(0, 10);
 
-    const rrRaw = get("rr");
-    const rrNum = rrRaw != null ? Number(String(rrRaw).replace(/[^0-9.\-]/g, "")) : null;
-    const rrClean = rrNum != null && !isNaN(rrNum) ? rrNum : null;
+    // RR: semantic resolver with formula/text fallbacks
+    const rrClean = (() => {
+      const n = resolveOAuthRR(props, mapping);
+      if (n == null) return null;
+      const parsed = typeof n === "number" ? n : Number(String(n).replace(/[^0-9.\-]/g, ""));
+      return !isNaN(parsed) ? parsed : null;
+    })();
 
-    // Outcome inference: if mapped outcome is missing but RR is present, derive it
-    let outcomeVal = get("outcome") ?? null;
-    if (!outcomeVal && rrClean != null) {
-      outcomeVal = rrClean > 0 ? "win" : rrClean < 0 ? "loss" : "breakeven";
-    }
-    if (!outcomeVal) outcomeVal = "unknown";
+    // Outcome: semantic resolver with full fallback chain
+    const outcomeVal = resolveOAuthOutcome(props, mapping, lookupCache, rrClean);
 
-    const directionVal = get("direction") ?? "Not set";
-    const sessionVal = get("session") ?? "";
-    const pairResolved = pairVal ?? "";
-    const modelVal = get("model") ?? "";
+    const directionVal = get("direction") || "Not set";
+    const sessionVal = get("session") || "";
+    const modelVal = get("model") || "";
 
-    const notionExtras = serializeNotionProperties(props);
+    // Serialize extras then resolve any remaining UUIDs in relation arrays
+    const rawExtras = serializeNotionProperties(props);
+    const notionExtras = resolveUuidsInExtras(rawExtras, lookupCache);
+
     batchPages.push(page);
     batch.push({
       notion_id: page.id,
@@ -6535,9 +6827,9 @@ async function syncNotionOAuthForUser(userId) {
       outcome: outcomeVal,
       rr: rrClean,
       session: sessionVal,
-      pair: pairResolved,
+      pair: pairVal,
       direction: directionVal,
-      notes: get("notes"),
+      notes: get("notes") || null,
       model: modelVal,
       notion_url: page.url ?? null,
       trade_images: [],

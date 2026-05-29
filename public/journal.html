@@ -1735,11 +1735,16 @@
           return '<details class="jn-notion-long"><summary class="jn-notion-long__sum">' + prev + '</summary><div class="jn-notion-long__full">' + full + '</div></details>';
         }
         if (Array.isArray(val)) {
+          // Skip raw relation arrays ({id, type:"page_id"}) — unresolved UUIDs add no value
+          if (val.length > 0 && val.every(function(x) { return x && typeof x === 'object' && x.type === 'page_id'; })) return '';
           var chips = [];
+          var UUID_CHIP_RE = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
           for (var i = 0; i < val.length; i++) {
             var x = val[i];
             var s = x !== null && typeof x === 'object' ? JSON.stringify(x) : String(x);
-            if (s.trim()) chips.push('<span class="jn-chip">' + esc(truncate(s, 64)) + '</span>');
+            s = s.trim();
+            if (!s || UUID_CHIP_RE.test(s)) continue;
+            chips.push('<span class="jn-chip">' + esc(truncate(s, 64)) + '</span>');
           }
           return chips.length ? '<div class="jn-notion-row__v-chips">' + chips.join('') + '</div>' : '';
         }
