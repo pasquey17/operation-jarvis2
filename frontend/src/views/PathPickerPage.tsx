@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { apiFetch, supabase } from "../lib/jarvisAuth";
+import { openNotionOAuthConnect } from "../lib/notionOAuth";
 
 type OnboardingStep = "complete" | "mapping" | "profile" | "path-picker";
 
@@ -142,7 +143,7 @@ export function PathPickerPage() {
               setPhase("error");
               return;
             }
-            window.location.href = `/api/notion/connect?user_id=${userId}`;
+            openNotionOAuthConnect(userId);
           }}
         />
         <PathCard
