@@ -5279,6 +5279,10 @@ async function handleNotionCallback(req, res) {
     created_at: new Date().toISOString(),
   };
 
+  console.log("[notion/callback] saving user_id:", row.user_id, "authUserId:", authUserId,
+    "token prefix:", row.access_token ? row.access_token.slice(0, 6) : "MISSING",
+    "workspace:", row.workspace_name, "token fields:", Object.keys(tokenData).join(","));
+
   let upsertOk = false;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -5292,21 +5296,21 @@ async function handleNotionCallback(req, res) {
         },
         body: JSON.stringify(row),
       });
+      const upsertBody = await upsertRes.text().catch(() => "");
       if (upsertRes.ok) {
-        console.log("[notion/callback] Supabase upsert success for user:", authUserId, "workspace:", row.workspace_name);
+        console.log(`[notion/callback] upsert ok (attempt ${attempt}) status=${upsertRes.status} user=${authUserId} user_id=${row.user_id}`);
         upsertOk = true;
         break;
       }
-      const errText = await upsertRes.text().catch(() => "unknown");
-      console.error(`[notion/callback] Supabase upsert failed (attempt ${attempt}):`, upsertRes.status, errText);
+      console.error(`[notion/callback] upsert failed (attempt ${attempt}) status=${upsertRes.status} user=${authUserId} user_id=${row.user_id} body=${upsertBody.slice(0, 400)}`);
     } catch (e) {
-      console.error(`[notion/callback] Supabase upsert error (attempt ${attempt}):`, String(e.message ?? e));
+      console.error(`[notion/callback] upsert error (attempt ${attempt}):`, String(e.message ?? e));
     }
     if (attempt < 3) await new Promise(r => setTimeout(r, 500 * attempt));
   }
 
   if (!upsertOk) {
-    console.error("[notion/callback] All upsert attempts failed — token not saved for user:", authUserId);
+    console.error("[notion/callback] ALL upsert attempts failed — token NOT saved — user:", authUserId, "user_id:", row.user_id);
   }
 
   // Small delay so the token write propagates before the client reads it
@@ -5343,7 +5347,7 @@ async function handleNotionDatabases(req, res) {
     json(res, 401, { error: "Unauthorized" });
     return;
   }
-  // notion_connections.user_id stores email, not UUID
+  // notion_connections.user_id stores email for known users, UUID for new OAuth users
   const userId = legacyEmailForAuthUserId(authUid) || authUid;
 
   const { url, key } = getSupabaseConfig();
@@ -5352,12 +5356,20 @@ async function handleNotionDatabases(req, res) {
     return;
   }
 
+  console.log(`[notion/databases] authUid=${authUid} userId=${userId}`);
+
   let accessToken;
   try {
     const rows = await fetchNotionUserRows(url, key, "notion_connections", userId, authUid);
-    console.log("[notion/databases] rows returned:", Array.isArray(rows) ? rows.length : "parse-failed", "for userId:", userId);
-    accessToken = Array.isArray(rows) && rows.length > 0 ? rows[0].access_token : null;
-    console.log("[notion/databases]", accessToken ? "token found" : "token missing");
+    const rowCount = Array.isArray(rows) ? rows.length : "parse-failed";
+    console.log(`[notion/databases] connection rows=${rowCount}`);
+    if (Array.isArray(rows) && rows.length > 0) {
+      const row = rows[0];
+      accessToken = row.access_token ?? null;
+      console.log(`[notion/databases] token=${accessToken ? `found(${String(accessToken).slice(0, 6)}…)` : "null/missing"} workspace=${row.workspace_name ?? "?"}`);
+    } else {
+      console.log(`[notion/databases] no connection row — authUid=${authUid} userId=${userId}`);
+    }
   } catch (e) {
     console.error("[notion/databases] Supabase fetch error:", String(e.message ?? e));
     json(res, 500, { error: "Failed to read Notion connection" });
@@ -5375,40 +5387,63 @@ async function handleNotionDatabases(req, res) {
     "Content-Type": "application/json",
   };
 
-  try {
-    // Step 1 — search API: top-level databases and pages the integration can access
-    const sr = await fetch("https://api.notion.com/v1/search", {
-      method: "POST",
-      headers: notionHeaders,
-      body: JSON.stringify({}),
-    });
-    console.log("[notion/databases] Notion search status:", sr.status);
-    if (!sr.ok) {
-      const err = await sr.text().catch(() => "unknown");
-      console.error("[notion/databases] Notion search failed:", sr.status, err);
-      json(res, 502, { error: `Notion search failed: ${err}` });
-      return;
+  // Paginated Notion search — collects all pages of results (max 5 pages = 500 items)
+  async function searchAllPages(filter) {
+    const all = [];
+    let cursor = null;
+    for (let page = 0; page < 5; page++) {
+      const body = filter ? { filter } : {};
+      if (cursor) body.start_cursor = cursor;
+      const sr = await fetch("https://api.notion.com/v1/search", {
+        method: "POST",
+        headers: notionHeaders,
+        body: JSON.stringify(body),
+      });
+      console.log(`[notion/databases] search filter=${filter ? filter.value : "none"} page=${page + 1} status=${sr.status}`);
+      if (!sr.ok) {
+        const err = await sr.text().catch(() => "unknown");
+        console.error(`[notion/databases] search failed: ${err.slice(0, 300)}`);
+        break;
+      }
+      const data = await sr.json();
+      const results = data.results ?? [];
+      console.log(`[notion/databases] search filter=${filter ? filter.value : "none"} page=${page + 1} items=${results.length} has_more=${data.has_more} types=${[...new Set(results.map(r => r.object))].join(",") || "none"}`);
+      all.push(...results);
+      if (!data.has_more || !data.next_cursor) break;
+      cursor = data.next_cursor;
     }
-    const searchData = await sr.json();
-    const results = searchData.results ?? [];
+    return all;
+  }
 
-    // Collect top-level databases directly from search
+  try {
+    // Two parallel searches:
+    //   1. filter=database  — explicitly finds all databases the token can access
+    //   2. no filter        — finds pages (to inspect for nested child_database blocks)
+    // Running both ensures we catch databases whether they appear directly or are embedded in pages.
+    const [dbOnlyResults, allResults] = await Promise.all([
+      searchAllPages({ value: "database", property: "object" }),
+      searchAllPages(null),
+    ]);
+
     const dbMap = new Map();
-    const pageIds = [];
-    for (const item of results) {
-      if (item.object === "database") {
+    const pageIds = new Set();
+
+    for (const item of [...dbOnlyResults, ...allResults]) {
+      if (item.object === "database" && !dbMap.has(item.id)) {
         dbMap.set(item.id, {
           id: item.id,
           name: item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "Untitled",
         });
-      } else if (item.object === "page") {
-        pageIds.push(item.id);
+      } else if (item.object === "page" && !pageIds.has(item.id)) {
+        pageIds.add(item.id);
       }
     }
 
-    // Step 2 — fetch child blocks of each page to find nested child_database blocks
+    console.log(`[notion/databases] direct dbs=${dbMap.size} pages_to_inspect=${pageIds.size}`);
+
+    // Inspect child blocks of every page to find nested child_database blocks
     await Promise.all(
-      pageIds.map(async (pageId) => {
+      [...pageIds].map(async (pageId) => {
         try {
           const br = await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
             headers: notionHeaders,
@@ -5429,7 +5464,7 @@ async function handleNotionDatabases(req, res) {
       })
     );
 
-    console.log("[notion/databases] returning", dbMap.size, "databases");
+    console.log(`[notion/databases] total=${dbMap.size}`);
     json(res, 200, { databases: Array.from(dbMap.values()) });
   } catch (e) {
     console.error("[notion/databases] outer error:", String(e.message ?? e));
