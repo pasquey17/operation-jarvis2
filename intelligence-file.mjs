@@ -294,6 +294,12 @@ function structureIntelligenceReport(raw, userId, existingVersion) {
     interpretation: `When "${p.key}" = "${p.value}" (n=${p.count}): WR ${pct(p.winRateWith)} vs ${pct(p.winRateWithout)} without — ${p.diff > 0 ? "positive" : "negative"} signal (${Math.round(Math.abs(p.diff) * 100)}pp difference)`,
   }));
 
+  const customFieldSummary = (raw.customFieldSummary ?? []).map((f) => ({
+    field: f.field,
+    values: f.values,
+    summary: `${f.field}: ${f.values.map((v) => `${v.val} (${v.count})`).join(", ")}`,
+  }));
+
   return {
     userId,
     generatedAt: new Date().toISOString(),
@@ -306,6 +312,7 @@ function structureIntelligenceReport(raw, userId, existingVersion) {
     form,
     drawdown,
     behaviouralPatterns,
+    customFieldSummary,
   };
 }
 

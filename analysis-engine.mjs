@@ -549,6 +549,40 @@ function buildNotionExtrasPatterns(trades) {
   return patterns.slice(0, 5);
 }
 
+function buildCustomFieldSummary(trades) {
+  const fieldMaps = new Map(); // field -> Map<value, count>
+
+  for (const t of trades) {
+    const ne = t.notion_extras;
+    if (!ne || typeof ne !== "object" || Array.isArray(ne)) continue;
+    for (const [k, v] of Object.entries(ne)) {
+      if (SKIP_NE_KEYS.has(k) || isOutcomeDuplicateKey(k)) continue;
+      for (const val of extractNotionValues(v)) {
+        if (!val || val === "false" || val.length >= 100) continue;
+        if (!fieldMaps.has(k)) fieldMaps.set(k, new Map());
+        const vm = fieldMaps.get(k);
+        vm.set(val, (vm.get(val) ?? 0) + 1);
+      }
+    }
+  }
+
+  const result = [];
+  for (const [field, valueMap] of fieldMaps.entries()) {
+    const values = [...valueMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([val, count]) => ({ val, count }));
+    if (values.length > 0) result.push({ field, values });
+  }
+
+  result.sort(
+    (a, b) =>
+      b.values.reduce((s, v) => s + v.count, 0) -
+      a.values.reduce((s, v) => s + v.count, 0)
+  );
+  return result.slice(0, 12);
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function runAnalysisEngine(userId) {
@@ -585,5 +619,6 @@ export async function runAnalysisEngine(userId) {
     drawdown: buildDrawdown(sorted),
     edgeDetection: buildEdgeDetection(sorted),
     notionExtrasPatterns: buildNotionExtrasPatterns(sorted),
+    customFieldSummary: buildCustomFieldSummary(sorted),
   };
 }

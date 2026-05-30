@@ -2058,17 +2058,28 @@
         function formatDateFullCal(t) {
           var d = tradeDate(t);
           if (isNaN(d)) return "—";
+          var hasTime = t && t.has_time === true;
           try {
-            return d.toLocaleString("en-AU", {
-              timeZone: TZ,
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            });
+            if (hasTime) {
+              return d.toLocaleString("en-AU", {
+                timeZone: TZ,
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              });
+            } else {
+              return d.toLocaleDateString("en-AU", {
+                timeZone: TZ,
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+            }
           } catch (e2) {
             return d.toString();
           }
@@ -2713,10 +2724,23 @@
             });
         }
 
+        async function loadUserTimezone() {
+          try {
+            var r = await apiFetch('/api/user/profile');
+            if (r.ok) {
+              var data = await r.json();
+              if (data && data.timezone && typeof data.timezone === 'string') {
+                TZ = data.timezone;
+              }
+            }
+          } catch (e) {}
+        }
+
         async function boot() {
           initParticles();
           wire();
           await ensureUserId();
+          await loadUserTimezone();
 
           var panelHint = document.getElementById("panel-hint");
           if (panelHint) panelHint.textContent = "Loading trades…";

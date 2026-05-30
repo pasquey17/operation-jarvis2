@@ -177,6 +177,7 @@ function formatIntelligenceFileForPrompt(file) {
   const form = file.form ?? {};
   const dd = file.drawdown ?? {};
   const bp = file.behaviouralPatterns ?? [];
+  const cfs = file.customFieldSummary ?? [];
 
   const lines = [];
 
@@ -239,11 +240,18 @@ function formatIntelligenceFileForPrompt(file) {
 
   lines.push(`\nDRAWDOWN: ${dd.summary ?? "No drawdown data."}`);
 
-  const significantPatterns = bp.filter((p) => p.count >= 5 && p.diffPct >= 5);
+  const significantPatterns = bp.filter((p) => p.count >= 5 && p.diffPct >= 3);
   if (significantPatterns.length > 0) {
-    lines.push(`\nBEHAVIOURAL PATTERNS (count≥5, diff≥5pp):`);
+    lines.push(`\nBEHAVIOURAL PATTERNS (count≥5, diff≥3pp):`);
     for (const p of significantPatterns.slice(0, 8)) {
       lines.push(`  ${p.interpretation}`);
+    }
+  }
+
+  if (cfs.length > 0) {
+    lines.push(`\nCUSTOM FIELDS (most common values across all trades):`);
+    for (const f of cfs) {
+      lines.push(`  ${f.summary}`);
     }
   }
 
@@ -3146,9 +3154,11 @@ async function handleJournalFields(req, res) {
     json(res, 401, { error: "Unauthorized" });
     return;
   }
+  // journal_fields uses user_id TEXT (email for legacy users, UUID for new OAuth users)
+  const queryId = legacyEmailForAuthUserId(userId) || userId;
   try {
     const r = await fetch(
-      `${url}/rest/v1/journal_fields?auth_user_id=eq.${encodeURIComponent(userId)}&order=display_order.asc`,
+      `${url}/rest/v1/journal_fields?user_id=eq.${encodeURIComponent(queryId)}&order=display_order.asc`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
     );
     const text = await r.text();
@@ -5133,6 +5143,11 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/user/profile")) {
+    await handleUserProfileGet(req, res);
+    return;
+  }
+
   if (req.method === "POST" && req.url.startsWith("/api/user/profile")) {
     await handleUserProfile(req, res);
     return;
@@ -6211,9 +6226,11 @@ async function maybeSyncJournalFieldsFromOAuth(userId) {
     dataSourceId = null;
   }
 
+  // journal_fields uses user_id TEXT — for legacy users use email so conflict key matches existing rows
+  const writeUid = legacyEmailForAuthUserId(uid) || uid;
   try {
     const result = await syncJournalFieldsFromOAuthConnection({
-      userId: uid,
+      userId: writeUid,
       accessToken: conn.accessToken,
       databaseId: conn.databaseId,
       dataSourceId,
@@ -6336,6 +6353,24 @@ function parseDateToIso(raw) {
 }
 
 /**
+ * Like parseDateToIso but preserves the full timestamp when a time component is present.
+ * Used only for Notion date property `.start` values.
+ * @returns {{ iso: string, hasTime: boolean } | null}
+ */
+function parseDateToResult(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  if (/^\d{4}-\d{2}-\d{2}[Tt]\d/.test(s)) {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return null;
+    return { iso: s, hasTime: true };
+  }
+  const iso = parseDateToIso(raw);
+  return iso ? { iso, hasTime: false } : null;
+}
+
+/**
  * Trade `date` for OAuth sync: prefer real Notion **date** properties (especially "Date")
  * before the user-mapped column — mappings often point at the DB **title**, which may be a
  * display string (e.g. 21/06/2026) that disagrees with the Date property.
@@ -6402,6 +6437,76 @@ function resolveNotionTradeDateIso(page, mapping, get) {
   }
 
   return parseDateToIso(page.created_time);
+}
+
+/**
+ * Like resolveNotionTradeDateIso but returns { iso, hasTime } so the caller can persist
+ * whether a real clock time was present in Notion.  Fallback paths (title text, created_time,
+ * free-text) always set hasTime=false — only Notion date property start values with T+time
+ * set hasTime=true.
+ * @returns {{ iso: string, hasTime: boolean } | null}
+ */
+function resolveNotionTradeDateWithMeta(page, mapping, get) {
+  const props = page?.properties;
+  if (!props || typeof props !== "object") {
+    const iso = parseDateToIso(page?.created_time);
+    return iso ? { iso, hasTime: false } : null;
+  }
+
+  const usedKeys = new Set();
+
+  const tryDatePropKey = (key) => {
+    if (!key || !Object.prototype.hasOwnProperty.call(props, key)) return null;
+    const prop = props[key];
+    if (!prop || prop.type !== "date" || !prop.date?.start) return null;
+    const result = parseDateToResult(prop.date.start);
+    if (!result) return null;
+    usedKeys.add(key);
+    return result;
+  };
+
+  const canonicalDateNames = ["Date", "date", "Trade Date", "trade date", "DATE", "Day", "Trade date"];
+  for (let i = 0; i < canonicalDateNames.length; i++) {
+    const r = tryDatePropKey(canonicalDateNames[i]);
+    if (r) return r;
+  }
+
+  const mapDateName =
+    mapping && typeof mapping.date === "string" && mapping.date.trim() ? mapping.date.trim() : "";
+  if (mapDateName) {
+    const r = tryDatePropKey(mapDateName);
+    if (r) return r;
+  }
+
+  const sortedKeys = Object.keys(props).sort();
+  for (let si = 0; si < sortedKeys.length; si++) {
+    const k = sortedKeys[si];
+    if (usedKeys.has(k)) continue;
+    const r = tryDatePropKey(k);
+    if (r) return r;
+  }
+
+  const mappedProp = mapDateName ? props[mapDateName] : null;
+  if (!mappedProp || mappedProp.type !== "date") {
+    const raw = get("date");
+    if (raw != null && String(raw).trim()) {
+      const iso = parseDateToIso(raw);
+      if (iso) return { iso, hasTime: false };
+    }
+  }
+
+  for (let ti = 0; ti < sortedKeys.length; ti++) {
+    const k = sortedKeys[ti];
+    const prop = props[k];
+    if (!prop || prop.type !== "title" || !Array.isArray(prop.title)) continue;
+    const t = prop.title.map((b) => (typeof b?.plain_text === "string" ? b.plain_text : "")).join("").trim();
+    if (!t) continue;
+    const iso = parseDateToIso(t);
+    if (iso) return { iso, hasTime: false };
+  }
+
+  const iso = parseDateToIso(page.created_time);
+  return iso ? { iso, hasTime: false } : null;
 }
 
 /**
@@ -6866,14 +6971,14 @@ async function syncNotionOAuthForUser(userId) {
     const props = page.properties ?? {};
     const get = (field) => mapping[field] ? notionGetPropResolved(props, mapping[field], lookupCache) : "";
 
-    // Date: use existing multi-strategy resolver (it calls get internally via its own wrapper)
+    // Date: use meta resolver that preserves time when Notion provides it
     const legacyGet = (field) => notionGetProp(props, mapping[field]);
-    const dateVal = resolveNotionTradeDateIso(page, mapping, legacyGet);
+    const dateResult = resolveNotionTradeDateWithMeta(page, mapping, legacyGet);
 
     // Pair: semantic resolver with relation resolution + instrument pattern fallback
     const pairVal = resolveOAuthPair(props, mapping, lookupCache);
 
-    if (!dateVal && !pairVal) {
+    if (!dateResult && !pairVal) {
       skippedCount++;
       const reason = "no_date_and_no_pair";
       skippedReasons[reason] = (skippedReasons[reason] ?? 0) + 1;
@@ -6881,7 +6986,8 @@ async function syncNotionOAuthForUser(userId) {
       continue;
     }
 
-    const resolvedDate = dateVal ?? new Date().toISOString().slice(0, 10);
+    const resolvedDate = dateResult ? dateResult.iso : new Date().toISOString().slice(0, 10);
+    const hasTime = dateResult ? dateResult.hasTime : false;
 
     // RR: semantic resolver with formula/text fallbacks
     const rrClean = (() => {
@@ -6908,6 +7014,7 @@ async function syncNotionOAuthForUser(userId) {
       auth_user_id: userId,
       user_id: legacyEmailForAuthUserId(userId) || userId,
       date: resolvedDate,
+      has_time: hasTime,
       outcome: outcomeVal,
       rr: rrClean,
       session: sessionVal,
@@ -6946,7 +7053,7 @@ async function syncNotionOAuthForUser(userId) {
 
   if (batch.length > 0) {
     const upsertCols =
-      "notion_id,auth_user_id,user_id,date,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,notion_extras,notion_sync_source,archived,updated_at";
+      "notion_id,auth_user_id,user_id,date,has_time,outcome,rr,session,pair,direction,notes,model,notion_url,trade_images,notion_extras,notion_sync_source,archived,updated_at";
     try {
       let upsertedTotal = 0;
       for (let i = 0; i < batch.length; i += OAUTH_TRADE_UPSERT_BATCH) {
@@ -7072,6 +7179,25 @@ async function handleNotionSyncUser(req, res) {
 
   firePostSyncBrain(user_id);
   json(res, 200, { synced: syncMeta.upserted ?? 0, fetched: syncMeta.fetched ?? null });
+}
+
+async function handleUserProfileGet(req, res) {
+  const authUserId = authUserIdFromReq(req);
+  if (!authUserId) { json(res, 401, { error: "Unauthorised" }); return; }
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) { json(res, 500, { error: "Supabase not configured" }); return; }
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/user_profiles?auth_user_id=eq.${encodeURIComponent(authUserId)}&limit=1&select=timezone`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    if (!r.ok) { json(res, 502, { error: "Profile fetch failed" }); return; }
+    const rows = await r.json().catch(() => null);
+    const profile = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+    json(res, 200, { timezone: profile?.timezone ?? null });
+  } catch (e) {
+    json(res, 502, { error: `Profile fetch error: ${String(e.message ?? e)}` });
+  }
 }
 
 async function handleUserProfile(req, res) {
