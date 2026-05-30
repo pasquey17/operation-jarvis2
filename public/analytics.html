@@ -824,6 +824,67 @@
         .an-badge__dot { animation: none; }
       }
       /* Chart.js duration is set in JS from prefers-reduced-motion */
+
+      /* ═══ MOBILE FIXES (≤ 768 px) ═══ */
+      @media (max-width: 768px) {
+        /* ── Shell ── */
+        .an-shell { width: calc(100vw - 24px); }
+        .an-page  { padding-top: 68px; }
+
+        /* ── ISSUE 1: Header — stack title and stats pill vertically ── */
+        .an-header {
+          flex-direction: column;
+          flex-wrap: wrap;
+          overflow-x: visible;
+          gap: 10px;
+          margin-bottom: 16px;
+        }
+        .an-badge { align-self: flex-start; }
+
+        /* ── ISSUE 2: Reports grid — single column, weekly first ── */
+        .an-reports-grid { grid-template-columns: 1fr; }
+
+        /* ── ISSUE 2 (report header): allow title + date badge to wrap ── */
+        .an-report__top {
+          flex-wrap: wrap;
+          overflow-x: visible;
+          gap: 6px 10px;
+        }
+
+        /* ── ISSUE 3: KPI stat boxes — 2 cols so values don't overflow ── */
+        .an-report__kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .an-report__kpi-v {
+          font-size: clamp(1rem, 4.5vw, 1.35rem);
+        }
+
+        /* ── ISSUE 4: Charts inside reports — stack vertically ── */
+        .an-report__charts { grid-template-columns: 1fr; }
+        .an-report__canvas { height: 120px !important; max-height: 120px; }
+
+        /* ── Main chart cards grid — single column ── */
+        .an-grid { grid-template-columns: 1fr; }
+        /* Wide cards (Monte Carlo, model) are already full-width via grid-column: 1/-1
+           so they stay correct on a 1-col grid. */
+
+        /* ── Monte Carlo scenarios — single column on phones ── */
+        .mc-scenarios { grid-template-columns: 1fr; padding: 10px 12px 14px; }
+        .mc-scenario { padding: 12px 14px; }
+        .mc-scenario__final { font-size: clamp(1.3rem, 5.5vw, 1.75rem); }
+
+        /* ── Monte Carlo canvas: tighter on phones ── */
+        .an-canvas--mc { height: min(48vh, 380px); min-height: 260px; }
+
+        /* ── General canvas: prevent overflow ── */
+        .an-canvas, .an-canvas--tall { height: 220px; }
+        .an-canvas--model  { height: 300px; }
+        .an-canvas--drawdown { height: 180px; }
+
+        /* ── Card padding ── */
+        .an-card__body { padding: 0 12px 18px; }
+        .an-card__top  { padding: 14px 14px 8px; gap: 8px; }
+        .mc-sim-params { margin: 0 12px 12px; font-size: 9px; }
+        .mc-risk-bar   { margin: 0 12px 12px; }
+      }
     </style>
     <link rel="stylesheet" href="/css/jarvis-light-theme.css?v=c3a9f1e2" />
   </head>
