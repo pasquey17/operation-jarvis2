@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jarvis — Dev Switch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #000;
+      color: #fff;
+      font-family: "Outfit", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 48px 24px 80px;
+    }
+
+    .mono { font-family: "Share Tech Mono", "Courier New", monospace; }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .eyebrow {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #00d4ff;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 300;
+      color: #fff;
+      letter-spacing: 0.04em;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #8899aa;
+      margin-top: 6px;
+    }
+
+    #status {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 12px;
+      color: #8899aa;
+      min-height: 20px;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    #status.err { color: #ff4d6d; }
+    #status.ok  { color: #00d4ff; }
+
+    .current-session {
+      background: rgba(0,191,255,0.06);
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin-bottom: 32px;
+      width: 100%;
+      max-width: 520px;
+      display: none;
+    }
+    .current-session .cs-label {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #8899aa;
+      margin-bottom: 4px;
+    }
+    .current-session .cs-val {
+      font-size: 14px;
+      color: #00d4ff;
+      font-weight: 500;
+    }
+
+    .user-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .user-card {
+      background: rgba(0,0,0,0.85);
+      border: 1px solid rgba(0,212,255,0.15);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .user-card:hover {
+      border-color: rgba(0,212,255,0.5);
+      box-shadow: 0 0 16px rgba(0,191,255,0.12);
+    }
+    .user-card.loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .user-card.is-self {
+      border-color: rgba(0,212,255,0.35);
+    }
+
+    .uc-left { display: flex; flex-direction: column; gap: 3px; }
+    .uc-email {
+      font-size: 14px;
+      font-weight: 500;
+      color: #fff;
+      word-break: break-all;
+    }
+    .uc-meta {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 10px;
+      color: #8899aa;
+      letter-spacing: 0.05em;
+    }
+    .uc-self-tag {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: rgba(0,212,255,0.12);
+      color: #00d4ff;
+      border-radius: 6px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    .btn-switch {
+      background: rgba(0,191,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 8px;
+      color: #00d4ff;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 7px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-switch:hover {
+      background: rgba(0,191,255,0.22);
+      border-color: rgba(0,212,255,0.6);
+    }
+
+    #denied {
+      display: none;
+      text-align: center;
+      color: #ff4d6d;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Jarvis Internal</div>
+  <h1>Dev Account Switch</h1>
+  <p class="subtitle">Sign in as any user for debugging. No notification is sent.</p>
+</header>
+
+<div id="status"></div>
+
+<div class="current-session" id="current-session">
+  <div class="cs-label">Currently signed in as</div>
+  <div class="cs-val" id="current-email">—</div>
+</div>
+
+<div class="user-grid" id="user-grid"></div>
+<div id="denied">ACCESS DENIED — invalid or missing key</div>
+
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.4/+esm";
+  import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./js/jarvis-config.js";
+
+  const params = new URLSearchParams(window.location.search);
+  const devKey = params.get("key") || "";
+
+  const statusEl   = document.getElementById("status");
+  const gridEl     = document.getElementById("user-grid");
+  const deniedEl   = document.getElementById("denied");
+  const sessionBox = document.getElementById("current-session");
+  const currentEmailEl = document.getElementById("current-email");
+
+  if (!devKey) {
+    deniedEl.style.display = "block";
+    statusEl.textContent = "";
+  } else {
+    init();
+  }
+
+  async function init() {
+    // Show current session
+    try {
+      const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      });
+      const { data } = await sb.auth.getSession();
+      if (data?.session?.user?.email) {
+        currentEmailEl.textContent = data.session.user.email;
+        sessionBox.style.display = "block";
+      }
+    } catch {}
+
+    // Fetch user list
+    setStatus("Fetching users…", "");
+    let users;
+    try {
+      const r = await fetch("/api/admin/users", {
+        headers: { "x-dev-secret": devKey },
+        cache: "no-store",
+      });
+      if (r.status === 401) { showDenied(); return; }
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      users = d.users || [];
+    } catch (e) {
+      setStatus("Error loading users: " + e.message, "err");
+      return;
+    }
+
+    if (!users.length) {
+      setStatus("No users found.", "");
+      return;
+    }
+
+    setStatus("", "");
+
+    const currentEmail = currentEmailEl.textContent;
+
+    users
+      .sort((a, b) => (a.email || "").localeCompare(b.email || ""))
+      .forEach((u) => {
+        const isSelf = u.email === currentEmail;
+        const lastSeen = u.last_sign_in_at
+          ? new Date(u.last_sign_in_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+          : "never";
+
+        const card = document.createElement("div");
+        card.className = "user-card" + (isSelf ? " is-self" : "");
+        card.innerHTML = `
+          <div class="uc-left">
+            <span class="uc-email">${esc(u.email || u.id)}</span>
+            <span class="uc-meta">Last login: ${esc(lastSeen)}</span>
+          </div>
+          ${isSelf
+            ? '<span class="uc-self-tag">You</span>'
+            : '<button class="btn-switch">Switch →</button>'
+          }
+        `;
+
+        if (!isSelf) {
+          card.querySelector(".btn-switch").addEventListener("click", () => switchTo(u, card));
+          card.addEventListener("click", (e) => {
+            if (e.target.classList.contains("btn-switch")) return;
+            switchTo(u, card);
+          });
+        }
+
+        gridEl.appendChild(card);
+      });
+  }
+
+  async function switchTo(user, card) {
+    card.classList.add("loading");
+    setStatus(`Generating session for ${user.email}…`, "");
+
+    const redirectTo = window.location.origin + "/journal.html";
+    const url = `/api/admin/dev-login?email=${encodeURIComponent(user.email)}&redirect_to=${encodeURIComponent(redirectTo)}`;
+
+    try {
+      const r = await fetch(url, {
+        headers: { "x-dev-secret": devKey },
+        cache: "no-store",
+      });
+      if (r.status === 401) { showDenied(); return; }
+      const d = await r.json();
+      if (!r.ok || !d.action_link) throw new Error(d.error || "No action_link returned");
+
+      setStatus(`Signing in as ${user.email}…`, "ok");
+      window.location.href = d.action_link;
+    } catch (e) {
+      setStatus("Error: " + e.message, "err");
+      card.classList.remove("loading");
+    }
+  }
+
+  function showDenied() {
+    deniedEl.style.display = "block";
+    gridEl.innerHTML = "";
+    setStatus("", "");
+  }
+
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = cls || "";
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+</script>
+</body>
+</html>

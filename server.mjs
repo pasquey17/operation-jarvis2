@@ -4842,6 +4842,57 @@ async function handleInitProfiles(req, res) {
   json(res, 200, { results });
 }
 
+// ── Dev impersonation ────────────────────────────────────────────────────────
+
+function checkDevSecret(req, res) {
+  const secret = process.env.DEV_SECRET?.trim();
+  if (!secret) { json(res, 503, { error: "DEV_SECRET not configured" }); return false; }
+  if (req.headers["x-dev-secret"] !== secret) { json(res, 401, { error: "Unauthorized" }); return false; }
+  return true;
+}
+
+async function handleAdminUsers(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const r = await fetch(`${url}/auth/v1/admin/users?per_page=50`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!r.ok) { json(res, 500, { error: "Failed to fetch users" }); return; }
+  const data = await r.json();
+  const users = (data.users || []).map((u) => ({
+    id: u.id,
+    email: u.email,
+    last_sign_in_at: u.last_sign_in_at,
+    created_at: u.created_at,
+  }));
+  json(res, 200, { users });
+}
+
+async function handleAdminDevLogin(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const qp = new URL(req.url, "http://x").searchParams;
+  const email = qp.get("email") || "";
+  const redirectTo = qp.get("redirect_to") || "";
+  if (!email) { json(res, 400, { error: "email required" }); return; }
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const body = { type: "magiclink", email };
+  if (redirectTo) body.redirect_to = redirectTo;
+  const r = await fetch(`${url}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) { json(res, 500, { error: data.message || "Failed to generate link" }); return; }
+  const actionLink = data.action_link || data.properties?.action_link || "";
+  if (!actionLink) { json(res, 500, { error: "No action_link in Supabase response" }); return; }
+  json(res, 200, { action_link: actionLink });
+}
+
 async function requestListener(req, res) {
   if (req.method === "OPTIONS") {
     send(res, 204, "", {
@@ -5121,6 +5172,16 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/admin/sync-journal-fields")) {
     await handleAdminSyncJournalFields(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/admin/users")) {
+    await handleAdminUsers(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/admin/dev-login")) {
+    await handleAdminDevLogin(req, res);
     return;
   }
 
