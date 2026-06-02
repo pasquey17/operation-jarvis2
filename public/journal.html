@@ -2794,7 +2794,7 @@
         }
         if (src === 'journal_log') {
           try {
-            var mod = await import('/js/log-trade-modal.js?v=a9d1f4c7');
+            var mod = await import('/js/log-trade-modal.js?v=b2e6a8d3');
             await mod.openLogTradeModal({
               getUserId: resolveJournalUserId,
               fetchTradeRowsForPrefill: async function () {
@@ -3377,7 +3377,7 @@
       /* ── LOG TRADE modal (shared: /js/log-trade-modal.js) ── */
       async function openTradeForm() {
         try {
-          var mod = await import('/js/log-trade-modal.js?v=a9d1f4c7');
+          var mod = await import('/js/log-trade-modal.js?v=b2e6a8d3');
           await mod.openLogTradeModal({
             getUserId: resolveJournalUserId,
             fetchTradeRowsForPrefill: async function () {

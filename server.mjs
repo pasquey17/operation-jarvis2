@@ -3335,19 +3335,100 @@ function _irWeekday(dateStr) {
   } catch { return null; }
 }
 
-async function _irFetchObservations(authUserId) {
+async function _irFetchReport(authUserId) {
   const { url, key } = getSupabaseConfig();
-  if (!url || !key) return [];
+  if (!url || !key) return null;
   try {
     const res = await fetch(
       `${url}/rest/v1/intelligence_files?auth_user_id=eq.${encodeURIComponent(authUserId)}&select=report&order=version.desc&limit=1`,
       { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json", "Cache-Control": "no-store" } }
     );
-    if (!res.ok) return [];
+    if (!res.ok) return null;
     const rows = await res.json();
-    const obs = rows?.[0]?.report?.observations;
-    return Array.isArray(obs) ? obs : [];
-  } catch { return []; }
+    return rows?.[0]?.report ?? null;
+  } catch { return null; }
+}
+
+async function _irCallHaiku(tradeRow, best, report) {
+  const apiKey = (process.env.ANTHROPIC_API_KEY ?? "").trim();
+  if (!apiKey) return null;
+
+  const pct = (r) => r != null ? `${Math.round(r * 100)}%` : "n/a";
+  const cd = (tradeRow.custom_data && typeof tradeRow.custom_data === "object") ? tradeRow.custom_data : {};
+  const direction = cd.direction || cd.Direction || "";
+  const model = cd.model || cd.Model || cd.setup || cd.Setup || cd["Trading Model"] || "";
+  // Accept any key that looks like notes/summary
+  const notes = cd["Trade Summary"] || cd["trade summary"] || cd["notes"] || cd["Notes"] || cd["summary"] || "";
+
+  const ev = best.evidence;
+  const evStr = best.category === "custom_field"
+    ? `WR with: ${pct(ev.winRateWith)}, WR without: ${pct(ev.winRateWithout)}, n=${ev.sampleSize}`
+    : `WR: ${pct(ev.winRate)}, n=${ev.sampleSize}, delta vs overall: ${ev.delta != null ? (ev.delta > 0 ? "+" : "") + Math.round(ev.delta * 100) + "pp" : "n/a"}`;
+
+  const perf = report?.performance ?? {};
+  const edgeMap = report?.edgeMap ?? {};
+  const leaks = report?.leaks ?? {};
+  const overallWR = pct(perf.winRateRaw);
+  const decided = perf.decided ?? "n/a";
+  const strongestEdge = edgeMap.strongestEdge
+    ? `${edgeMap.strongestEdge.label} (${pct(edgeMap.strongestEdge.winRate)}, ${edgeMap.strongestEdge.tradeCount} trades)`
+    : "n/a";
+  const biggestLeak = leaks.biggestLeak
+    ? `${leaks.biggestLeak.label} (${pct(leaks.biggestLeak.winRate)}, ${leaks.biggestLeak.tradeCount} trades)`
+    : "n/a";
+
+  const tradeLine = [
+    tradeRow.pair && `pair=${tradeRow.pair}`,
+    tradeRow.session && `session=${tradeRow.session}`,
+    direction && `direction=${direction}`,
+    model && `model=${model}`,
+    tradeRow.outcome && `outcome=${tradeRow.outcome}`,
+    tradeRow.rr != null && `rr=${tradeRow.rr}`,
+    notes && `notes="${String(notes).slice(0, 80)}"`,
+  ].filter(Boolean).join(", ");
+
+  const prompt =
+`You are Jarvis, a sharp trading coach reviewing a just-logged trade. Grade it (A+ to F) on how well it aligns with this trader's known patterns, then write 2–3 sharp coaching sentences. Respond ONLY with valid JSON on one line: {"grade":"B-","message":"..."}
+
+Valid grades: A+ A A- B+ B B- C+ C C- D F
+
+TRADE: ${tradeLine}
+
+MATCHED OBSERVATION (${best.type.toUpperCase()} — ${best.category}): ${best.label}
+Evidence: ${evStr}
+
+TRADER STATS:
+- Overall WR: ${overallWR} (${decided} decided trades)
+- Strongest edge: ${strongestEdge}
+- Biggest leak: ${biggestLeak}
+
+Grading guide: red observation = trading a known leak (grade lower — D/F if it also lost); green = edge alignment (grade higher — A if won, B if loss). Be direct. Use real numbers from the data above. Never invent statistics. No filler closers.`;
+
+  try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": ANTHROPIC_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 150, messages: [{ role: "user", content: prompt }] }),
+    });
+    clearTimeout(tid);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw = extractAssistantText(data).replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+    const m = raw.match(/\{[\s\S]*?\}/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    const VALID_GRADES = new Set(["A+","A","A-","B+","B","B-","C+","C","C-","D","F"]);
+    if (!parsed.grade || !VALID_GRADES.has(String(parsed.grade).trim())) return null;
+    if (!parsed.message || typeof parsed.message !== "string" || !parsed.message.trim()) return null;
+    return { grade: String(parsed.grade).trim(), message: parsed.message.trim().slice(0, 400) };
+  } catch { return null; }
 }
 
 function _irMatchObs(obs, trade, weekday) {
@@ -3457,7 +3538,8 @@ function _irSpecificity(obs) {
 
 async function buildInstantRead(authUserId, tradeRow) {
   try {
-    const observations = await _irFetchObservations(authUserId);
+    const report = await _irFetchReport(authUserId);
+    const observations = Array.isArray(report?.observations) ? report.observations : [];
     if (!observations.length) return { found: false };
     const weekday = _irWeekday(tradeRow.traded_at);
     // Collect all matches then rank: specificity → red over green → strength.
@@ -3467,19 +3549,22 @@ async function buildInstantRead(authUserId, tradeRow) {
     }
     if (!matches.length) return { found: false };
     matches.sort((a, b) => {
-      const sd = _irSpecificity(a) - _irSpecificity(b);          // lower tier wins
+      const sd = _irSpecificity(a) - _irSpecificity(b);
       if (sd !== 0) return sd;
-      const rd = (a.type === "red" ? 0 : 1) - (b.type === "red" ? 0 : 1); // red before green
+      const rd = (a.type === "red" ? 0 : 1) - (b.type === "red" ? 0 : 1);
       if (rd !== 0) return rd;
-      return (b.strength ?? 0) - (a.strength ?? 0);              // higher strength wins
+      return (b.strength ?? 0) - (a.strength ?? 0);
     });
     const best = matches[0];
     if (!best) return { found: false };
+    // Try Haiku for a graded response; fall back to the template if it fails or times out.
+    const haiku = await _irCallHaiku(tradeRow, best, report);
     return {
       found: true,
       type: best.type,
       category: best.category,
-      message: _irMessage(best),
+      grade: haiku?.grade ?? null,
+      message: haiku?.message ?? _irMessage(best),
       evidence: best.evidence,
       strength: best.strength,
     };

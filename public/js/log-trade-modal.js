@@ -1747,7 +1747,7 @@ function _injectIrStyles() {
       display: flex;
       align-items: center;
       gap: 0.45rem;
-      margin-bottom: 0.45rem;
+      margin-bottom: 0.6rem;
     }
     .jarvis-read-card__dot {
       width: 6px; height: 6px;
@@ -1771,6 +1771,24 @@ function _injectIrStyles() {
       line-height: 1; flex-shrink: 0;
     }
     .jarvis-read-card__close:hover { color: #aabbcc; }
+    .jarvis-read-card__body {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.875rem;
+    }
+    .jarvis-read-card__grade {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1;
+      min-width: 2.75rem;
+      text-align: center;
+      flex-shrink: 0;
+      padding-top: 0.05em;
+      letter-spacing: -0.02em;
+    }
+    .jarvis-read-card--green .jarvis-read-card__grade { color: #00d4ff; }
+    .jarvis-read-card--red   .jarvis-read-card__grade { color: #ff9a28; }
     .jarvis-read-card__msg {
       margin: 0;
       font-size: 0.875rem;
@@ -1791,13 +1809,19 @@ export function showInstantReadCard(read) {
   const card = document.createElement("div");
   card.id = "jarvis-read-card";
   card.className = `jarvis-read-card jarvis-read-card--${green ? "green" : "red"}`;
+  const gradeHtml = read.grade
+    ? `<span class="jarvis-read-card__grade" aria-label="Grade ${escHtml(read.grade)}">${escHtml(read.grade)}</span>`
+    : "";
   card.innerHTML = `
     <div class="jarvis-read-card__hdr">
       <span class="jarvis-read-card__dot" aria-hidden="true"></span>
       <span class="jarvis-read-card__eyebrow">Jarvis read</span>
       <button class="jarvis-read-card__close" aria-label="Dismiss">&#x2715;</button>
     </div>
-    <p class="jarvis-read-card__msg">${escHtml(read.message)}</p>`;
+    <div class="jarvis-read-card__body">
+      ${gradeHtml}
+      <p class="jarvis-read-card__msg">${escHtml(read.message)}</p>
+    </div>`;
   document.body.appendChild(card);
 
   const dismiss = () => {
