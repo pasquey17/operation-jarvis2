@@ -3450,17 +3450,30 @@ function _irMessage(obs) {
   }
 }
 
+// Specificity tier: 0 = specific attribute (pair/setup/custom_field), 1 = broad (session/day/combo/direction)
+function _irSpecificity(obs) {
+  return ["pair", "setup", "custom_field"].includes(obs.category) ? 0 : 1;
+}
+
 async function buildInstantRead(authUserId, tradeRow) {
   try {
     const observations = await _irFetchObservations(authUserId);
     if (!observations.length) return { found: false };
     const weekday = _irWeekday(tradeRow.traded_at);
-    // Pick highest-strength matching observation.
-    let best = null;
+    // Collect all matches then rank: specificity → red over green → strength.
+    const matches = [];
     for (const obs of observations) {
-      if (!_irMatchObs(obs, tradeRow, weekday)) continue;
-      if (!best || (obs.strength ?? 0) > (best.strength ?? 0)) best = obs;
+      if (_irMatchObs(obs, tradeRow, weekday)) matches.push(obs);
     }
+    if (!matches.length) return { found: false };
+    matches.sort((a, b) => {
+      const sd = _irSpecificity(a) - _irSpecificity(b);          // lower tier wins
+      if (sd !== 0) return sd;
+      const rd = (a.type === "red" ? 0 : 1) - (b.type === "red" ? 0 : 1); // red before green
+      if (rd !== 0) return rd;
+      return (b.strength ?? 0) - (a.strength ?? 0);              // higher strength wins
+    });
+    const best = matches[0];
     if (!best) return { found: false };
     return {
       found: true,
