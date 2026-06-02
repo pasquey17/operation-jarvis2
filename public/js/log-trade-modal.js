@@ -1632,6 +1632,10 @@ export async function openLogTradeModal(options) {
         throw new Error(readApiErrorMessage(d) || `Save failed (${res.status})`);
       }
 
+      // Parse response to get the instant read (only present on new trades, not edits).
+      const resData = !editId ? await res.json().catch(() => ({})) : {};
+      const instantRead = resData?.read ?? null;
+
       const savedMeta = {
         outcome,
         pair,
@@ -1647,6 +1651,7 @@ export async function openLogTradeModal(options) {
       if (closeAfter || partial) {
         savedSuccessfully = true;
         void closeModal();
+        showInstantReadCard(instantRead);
         if (partial) {
           showToast("Saved as incomplete — edit anytime from the journal");
         } else {
@@ -1657,6 +1662,7 @@ export async function openLogTradeModal(options) {
       }
 
       showToast("Trade logged — add another below.");
+      showInstantReadCard(instantRead);
       resetFormForAnother();
       if (onTradeSaved) await onTradeSaved(savedMeta);
     } catch (err) {
@@ -1694,5 +1700,111 @@ export async function openLogTradeModal(options) {
   } else {
     document.getElementById("ltm-f-date")?.focus();
   }
+}
+
+// ─── Instant read card ────────────────────────────────────────────────────────
+
+let _irStyleInjected = false;
+function _injectIrStyles() {
+  if (_irStyleInjected) return;
+  _irStyleInjected = true;
+  const s = document.createElement("style");
+  s.textContent = `
+    .jarvis-read-card {
+      position: fixed;
+      bottom: 1.75rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      max-width: 480px;
+      width: calc(100% - 2rem);
+      background: rgba(5, 10, 20, 0.97);
+      border-radius: 14px;
+      padding: 1rem 1rem 1rem 1.125rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 10200;
+      animation: jrCardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      font-family: "Outfit", sans-serif;
+      box-sizing: border-box;
+    }
+    .jarvis-read-card--green {
+      border: 1px solid rgba(0, 212, 255, 0.4);
+      box-shadow: 0 0 28px rgba(0, 212, 255, 0.10), 0 6px 40px rgba(0,0,0,0.7);
+    }
+    .jarvis-read-card--red {
+      border: 1px solid rgba(255, 155, 40, 0.45);
+      box-shadow: 0 0 28px rgba(255, 155, 40, 0.10), 0 6px 40px rgba(0,0,0,0.7);
+    }
+    @keyframes jrCardIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(18px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes jrCardOut {
+      to { opacity: 0; transform: translateX(-50%) translateY(14px); }
+    }
+    .jarvis-read-card--out { animation: jrCardOut 0.25s ease forwards; }
+    .jarvis-read-card__hdr {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.45rem;
+    }
+    .jarvis-read-card__dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .jarvis-read-card--green .jarvis-read-card__dot { background: #00d4ff; }
+    .jarvis-read-card--red   .jarvis-read-card__dot { background: #ff9a28; }
+    .jarvis-read-card__eyebrow {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #556677;
+      flex: 1;
+    }
+    .jarvis-read-card__close {
+      background: none; border: none;
+      color: #445566; font-size: 1rem;
+      cursor: pointer; padding: 0 2px;
+      line-height: 1; flex-shrink: 0;
+    }
+    .jarvis-read-card__close:hover { color: #aabbcc; }
+    .jarvis-read-card__msg {
+      margin: 0;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      color: #d8e8f4;
+      font-weight: 400;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
+export function showInstantReadCard(read) {
+  if (!read?.found) return;
+  _injectIrStyles();
+  document.getElementById("jarvis-read-card")?.remove();
+
+  const green = read.type === "green";
+  const card = document.createElement("div");
+  card.id = "jarvis-read-card";
+  card.className = `jarvis-read-card jarvis-read-card--${green ? "green" : "red"}`;
+  card.innerHTML = `
+    <div class="jarvis-read-card__hdr">
+      <span class="jarvis-read-card__dot" aria-hidden="true"></span>
+      <span class="jarvis-read-card__eyebrow">Jarvis read</span>
+      <button class="jarvis-read-card__close" aria-label="Dismiss">&#x2715;</button>
+    </div>
+    <p class="jarvis-read-card__msg">${escHtml(read.message)}</p>`;
+  document.body.appendChild(card);
+
+  const dismiss = () => {
+    card.classList.add("jarvis-read-card--out");
+    card.addEventListener("animationend", () => card.remove(), { once: true });
+  };
+  card.querySelector(".jarvis-read-card__close").addEventListener("click", dismiss);
+  setTimeout(dismiss, 10000);
 }
 

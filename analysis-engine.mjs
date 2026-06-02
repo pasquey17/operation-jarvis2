@@ -141,6 +141,95 @@ function groupStats(trades) {
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
+// Resolve auth UUID → email via Supabase Auth admin API.
+// journal_trades.user_id is always the email (handleLogTrade resolves it before writing).
+async function resolveUserEmail(userId, supabaseUrl, serviceRoleKey) {
+  if (userId.includes("@")) return userId; // already an email
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          Accept: "application/json",
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const email = typeof data?.email === "string" ? data.email.trim() : "";
+    return email || null;
+  } catch {
+    return null;
+  }
+}
+
+// Fetch journal_trades rows for a user and map them into the same shape the
+// engine expects from the trades table.
+async function fetchJournalTradesForAnalysis(userId, supabaseUrl, serviceRoleKey) {
+  const email = await resolveUserEmail(userId, supabaseUrl, serviceRoleKey);
+
+  const fetchByUserId = async (id) => {
+    const endpoint =
+      `${supabaseUrl}/rest/v1/journal_trades` +
+      `?user_id=eq.${encodeURIComponent(id)}&select=*&order=traded_at.asc`;
+    try {
+      const res = await fetch(endpoint, {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          Accept: "application/json",
+          "Cache-Control": "no-store",
+          Range: "0-999",
+        },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Collect rows, deduplicating by id.
+  // Primary fetch: by email (handleLogTrade always stores email as user_id).
+  // Fallback fetch: by raw UUID in case any row was stored before email resolution was fixed.
+  const seen = new Set();
+  const raw = [];
+
+  for (const row of email ? await fetchByUserId(email) : []) {
+    if (!seen.has(row.id)) { seen.add(row.id); raw.push(row); }
+  }
+  if (userId !== email) {
+    for (const row of await fetchByUserId(userId)) {
+      if (!seen.has(row.id)) { seen.add(row.id); raw.push(row); }
+    }
+  }
+
+  // Map to the shape the engine expects from the trades table.
+  // custom_data bridges to notion_extras: extractNotionValues already handles
+  // plain string values, so no structural transformation needed.
+  return raw.map((jt) => ({
+    id: jt.id,
+    user_id: jt.user_id,
+    date: jt.traded_at,          // traded_at → date (used by all downstream grouping)
+    session: jt.session ?? null,
+    outcome: jt.outcome ?? null,
+    rr: jt.rr ?? null,
+    pair: jt.pair ?? null,
+    model: null,                  // not captured by manual log form
+    notes: null,
+    direction: null,              // not captured by manual log form
+    trade_images: null,
+    archived: false,
+    notion_id: null,
+    notion_extras: (jt.custom_data && typeof jt.custom_data === "object" && !Array.isArray(jt.custom_data))
+      ? jt.custom_data
+      : null,
+  }));
+}
+
 async function fetchAllTradesForAnalysis(userId) {
   const url = (process.env.SUPABASE_URL ?? "").trim().replace(/\/$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
@@ -170,7 +259,16 @@ async function fetchAllTradesForAnalysis(userId) {
 
   const rows = await res.json();
   if (!Array.isArray(rows)) throw new Error("Supabase did not return an array");
-  return rows;
+
+  // Fetch manually-logged trades and merge in-memory.
+  // journal_trades have no notion_id and are invisible to Notion sync, so there
+  // is no path where the same trade exists in both tables.
+  const journalRows = await fetchJournalTradesForAnalysis(userId, url, key);
+  if (journalRows.length === 0) return rows;
+
+  const combined = [...rows, ...journalRows];
+  combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return combined;
 }
 
 // ─── Grouping utilities ───────────────────────────────────────────────────────

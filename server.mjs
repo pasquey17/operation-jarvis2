@@ -571,7 +571,7 @@ function buildJarvisChatSystem(
 
   const deepThinkBlock =
     deepThinkText && String(deepThinkText).trim()
-      ? `\n\n=== DEEP ANALYSIS ===\n${String(deepThinkText).trim()}\n===`
+      ? `\n\n=== DEEP ANALYSIS (this narrative was generated at a specific point in time and may pre-date the latest sync. If anything here contradicts the performance numbers in the TRADER INTELLIGENCE FILE above, always trust the numbers — they are recalculated fresh on every generation) ===\n${String(deepThinkText).trim()}\n===`
       : "";
 
   return `${dateBlock}
@@ -3321,6 +3321,158 @@ function normalizePair(raw) {
   return s;
 }
 
+// ─── Instant read helpers (log-trade response only) ──────────────────────────
+
+const _IR_WEEKDAY_FMT = new Intl.DateTimeFormat("en-AU", {
+  timeZone: "Australia/Adelaide",
+  weekday: "long",
+});
+
+function _irWeekday(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : _IR_WEEKDAY_FMT.format(d);
+  } catch { return null; }
+}
+
+async function _irFetchObservations(authUserId) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return [];
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/intelligence_files?auth_user_id=eq.${encodeURIComponent(authUserId)}&select=report&order=version.desc&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json", "Cache-Control": "no-store" } }
+    );
+    if (!res.ok) return [];
+    const rows = await res.json();
+    const obs = rows?.[0]?.report?.observations;
+    return Array.isArray(obs) ? obs : [];
+  } catch { return []; }
+}
+
+function _irMatchObs(obs, trade, weekday) {
+  const session = (trade.session || "").trim().toLowerCase();
+  const pairRaw = (trade.pair || "").replace(/\//g, "").trim().toLowerCase();
+  const cd = (trade.custom_data && typeof trade.custom_data === "object") ? trade.custom_data : {};
+  const model = (cd.model || cd.Model || cd.setup || cd.Setup || cd["Trading Model"] || cd["Model"] || "").trim().toLowerCase();
+  const direction = (cd.direction || cd.Direction || "").trim().toLowerCase();
+  const lbl = obs.label.toLowerCase();
+
+  switch (obs.category) {
+    case "session":
+      return !!session && lbl.startsWith(session);
+    case "day":
+      return !!weekday && lbl.startsWith(weekday.toLowerCase());
+    case "combo":
+      return !!session && !!weekday && lbl.includes(session) && lbl.includes(weekday.toLowerCase());
+    case "setup":
+      return !!model && lbl.includes(model);
+    case "pair": {
+      const obsLblNorm = lbl.replace(/\//g, "");
+      return !!pairRaw && obsLblNorm.includes(pairRaw);
+    }
+    case "direction":
+      return !!direction && lbl.startsWith(direction);
+    case "custom_field": {
+      const m = obs.label.match(/^"(.+?):\s*(.+?)"/);
+      if (!m) return false;
+      const obsKey = m[1].toLowerCase();
+      const obsVal = m[2].toLowerCase();
+      for (const [k, v] of Object.entries(cd)) {
+        if (k === "photos" || k === "direction") continue;
+        if (k.toLowerCase() === obsKey && String(v).toLowerCase() === obsVal) return true;
+      }
+      return false;
+    }
+    default: return false;
+  }
+}
+
+function _irSubject(obs) {
+  switch (obs.category) {
+    case "session": { const m = obs.label.match(/^(.+?)\s+session\s+is/i); return m ? m[1] : null; }
+    case "day":     { const m = obs.label.match(/^(\w+?)s?\s+(?:are|is)\s+/i); return m ? m[1] : null; }
+    case "combo":   { const m = obs.label.match(/^(.+?)\s+is\s+/i); return m ? m[1] : null; }
+    case "setup":   { const m = obs.label.match(/^(.+?)\s+setup\s+is\s+/i); return m ? m[1] : null; }
+    case "pair":    { const m = obs.label.match(/^(\S+)\s+is\s+/i); return m ? m[1] : null; }
+    case "direction": { const m = obs.label.match(/^(\w+)\s+trades\s+/i); return m ? m[1] : null; }
+    case "custom_field": { const m = obs.label.match(/^"(.+?)"/); return m ? m[1] : null; }
+    default: return null;
+  }
+}
+
+function _irMessage(obs) {
+  const ev = obs.evidence;
+  const pct = (r) => r != null ? `${Math.round(r * 100)}%` : "n/a";
+  const sub = _irSubject(obs) || "That pattern";
+  const green = obs.type === "green";
+
+  if (obs.category === "custom_field") {
+    const wr = pct(ev.winRateWith);
+    const n = ev.sampleSize;
+    return green
+      ? `Positive signal — "${sub}" correlates with ${wr} wins across ${n} trades.`
+      : `Watch this — "${sub}" is a recurring leak at ${wr} across ${n} trades.`;
+  }
+
+  const wr = pct(ev.winRate);
+  const n = ev.sampleSize;
+
+  switch (obs.category) {
+    case "session":
+      return green
+        ? `This aligns with your edge — ${sub} is your best session at ${wr} across ${n} decided trades.`
+        : `Careful — ${sub} is a weak session at ${wr} across ${n} decided trades.`;
+    case "day":
+      return green
+        ? `${sub}s are a strong day for you — ${wr} across ${n} trades.`
+        : `${sub}s are a weak spot — ${wr} across ${n} trades. Stay selective.`;
+    case "combo":
+      return green
+        ? `Edge confirmed — ${sub} is hitting ${wr} across ${n} trades. Good window.`
+        : `Heads up — ${sub} is a leak at ${wr} across ${n} trades. Protect capital.`;
+    case "pair":
+      return green
+        ? `${sub} is your edge instrument — ${wr} across ${n} decided trades.`
+        : `${sub} is underperforming in your data — ${wr} across ${n} decided. Stay disciplined.`;
+    case "direction":
+      return green
+        ? `${sub} trades are your stronger side — ${wr} across ${n} decided.`
+        : `${sub} trades are a leak for you — ${wr} across ${n} decided. Extra discipline required.`;
+    case "setup":
+      return green
+        ? `${sub} is an edge setup — ${wr} across ${n} decided. Lean in.`
+        : `${sub} needs review — ${wr} across ${n} decided trades.`;
+    default:
+      return green
+        ? `This aligns with a proven edge — ${wr} across ${n} decided trades.`
+        : `This matches a known leak — ${wr} across ${n} decided. Stay sharp.`;
+  }
+}
+
+async function buildInstantRead(authUserId, tradeRow) {
+  try {
+    const observations = await _irFetchObservations(authUserId);
+    if (!observations.length) return { found: false };
+    const weekday = _irWeekday(tradeRow.traded_at);
+    // Pick highest-strength matching observation.
+    let best = null;
+    for (const obs of observations) {
+      if (!_irMatchObs(obs, tradeRow, weekday)) continue;
+      if (!best || (obs.strength ?? 0) > (best.strength ?? 0)) best = obs;
+    }
+    if (!best) return { found: false };
+    return {
+      found: true,
+      type: best.type,
+      category: best.category,
+      message: _irMessage(best),
+      evidence: best.evidence,
+      strength: best.strength,
+    };
+  } catch { return { found: false }; }
+}
+
 /** GET /api/journal-trades — manual LOG TRADE rows (journal_trades). */
 async function handleJournalTradesGet(req, res) {
   const { url, key } = getSupabaseConfig();
@@ -3422,7 +3574,12 @@ async function handleLogTrade(req, res) {
     }
     let data;
     try { data = JSON.parse(text); } catch { data = []; }
-    json(res, 201, { trade: Array.isArray(data) ? data[0] : data });
+    const trade = Array.isArray(data) ? data[0] : data;
+    const read = await buildInstantRead(authUserId, row);
+    json(res, 201, { trade, read });
+    // Regenerate brain async — trade is saved, response is sent, don't block.
+    // authUserId is the auth_user_id (UUID) that generateIntelligenceFile expects.
+    firePostSyncBrain(authUserId);
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
   }
