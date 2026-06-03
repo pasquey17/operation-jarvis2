@@ -1832,6 +1832,10 @@ function _injectIrStyles() {
       border: 1px solid rgba(255, 155, 40, 0.45);
       box-shadow: 0 0 28px rgba(255, 155, 40, 0.10), 0 6px 40px rgba(0,0,0,0.7);
     }
+    .jarvis-read-card--neutral {
+      border: 1px solid rgba(192, 192, 192, 0.28);
+      box-shadow: 0 0 28px rgba(192, 192, 192, 0.05), 0 6px 40px rgba(0,0,0,0.7);
+    }
     @keyframes jrCardIn {
       from { opacity: 0; transform: translateX(-50%) translateY(18px); }
       to   { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -1851,8 +1855,9 @@ function _injectIrStyles() {
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .jarvis-read-card--green .jarvis-read-card__dot { background: #00d4ff; }
-    .jarvis-read-card--red   .jarvis-read-card__dot { background: #ff9a28; }
+    .jarvis-read-card--green   .jarvis-read-card__dot { background: #00d4ff; }
+    .jarvis-read-card--red     .jarvis-read-card__dot { background: #ff9a28; }
+    .jarvis-read-card--neutral .jarvis-read-card__dot { background: #8899aa; }
     .jarvis-read-card__eyebrow {
       font-family: "Share Tech Mono", "Courier New", monospace;
       font-size: 0.6rem;
@@ -1884,8 +1889,9 @@ function _injectIrStyles() {
       padding-top: 0.05em;
       letter-spacing: -0.02em;
     }
-    .jarvis-read-card--green .jarvis-read-card__grade { color: #00d4ff; }
-    .jarvis-read-card--red   .jarvis-read-card__grade { color: #ff9a28; }
+    .jarvis-read-card--green   .jarvis-read-card__grade { color: #00d4ff; }
+    .jarvis-read-card--red     .jarvis-read-card__grade { color: #ff9a28; }
+    .jarvis-read-card--neutral .jarvis-read-card__grade { color: #8899aa; }
     .jarvis-read-card__msg {
       margin: 0;
       font-size: 0.875rem;
@@ -1902,10 +1908,10 @@ export function showInstantReadCard(read) {
   _injectIrStyles();
   document.getElementById("jarvis-read-card")?.remove();
 
-  const green = read.type === "green";
+  const typeClass = read.type === "green" ? "green" : read.type === "neutral" ? "neutral" : "red";
   const card = document.createElement("div");
   card.id = "jarvis-read-card";
-  card.className = `jarvis-read-card jarvis-read-card--${green ? "green" : "red"}`;
+  card.className = `jarvis-read-card jarvis-read-card--${typeClass}`;
   const gradeHtml = read.grade
     ? `<span class="jarvis-read-card__grade" aria-label="Grade ${escHtml(read.grade)}">${escHtml(read.grade)}</span>`
     : "";

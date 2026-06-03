@@ -3355,54 +3355,92 @@ async function _irCallHaiku(tradeRow, best, report) {
 
   const pct = (r) => r != null ? `${Math.round(r * 100)}%` : "n/a";
   const cd = (tradeRow.custom_data && typeof tradeRow.custom_data === "object") ? tradeRow.custom_data : {};
+
   const direction = cd.direction || cd.Direction || "";
   const model = cd.model || cd.Model || cd.setup || cd.Setup || cd["Trading Model"] || "";
-  // Accept any key that looks like notes/summary
   const notes = cd["Trade Summary"] || cd["trade summary"] || cd["notes"] || cd["Notes"] || cd["summary"] || "";
 
-  const ev = best.evidence;
-  const evStr = best.category === "custom_field"
-    ? `WR with: ${pct(ev.winRateWith)}, WR without: ${pct(ev.winRateWithout)}, n=${ev.sampleSize}`
-    : `WR: ${pct(ev.winRate)}, n=${ev.sampleSize}, delta vs overall: ${ev.delta != null ? (ev.delta > 0 ? "+" : "") + Math.round(ev.delta * 100) + "pp" : "n/a"}`;
+  // Every logged custom field (confluences, conditions, psych, etc.) beyond the ones shown elsewhere
+  const SKIP_CD_KEYS = new Set([
+    "photos", "direction", "Direction",
+    "Trade Summary", "trade summary", "notes", "Notes", "summary",
+    "model", "Model", "setup", "Setup", "Trading Model",
+  ]);
+  const customFieldLines = Object.entries(cd)
+    .filter(([k, v]) => !SKIP_CD_KEYS.has(k) && v != null && v !== "")
+    .map(([k, v]) => {
+      const val = Array.isArray(v) ? v.join(", ") : String(v).slice(0, 80);
+      return `  ${k}: ${val}`;
+    });
 
-  const perf = report?.performance ?? {};
-  const edgeMap = report?.edgeMap ?? {};
-  const leaks = report?.leaks ?? {};
-  const overallWR = pct(perf.winRateRaw);
-  const decided = perf.decided ?? "n/a";
+  // Sparse = no model, no direction, no custom fields at all
+  const isSparse = !model && !direction && customFieldLines.length === 0;
+
+  const tradeLines = [
+    tradeRow.pair         && `  pair: ${tradeRow.pair}`,
+    tradeRow.session      && `  session: ${tradeRow.session}`,
+    direction             && `  direction: ${direction}`,
+    model                 && `  model: ${model}`,
+    tradeRow.outcome      && `  outcome: ${tradeRow.outcome}`,
+    tradeRow.rr != null   && `  rr: ${tradeRow.rr}`,
+    tradeRow.account      && `  account: ${tradeRow.account}`,
+    notes                 && `  notes: "${String(notes).slice(0, 100)}"`,
+    ...customFieldLines,
+  ].filter(Boolean).join("\n");
+
+  // User headline stats
+  const perf    = report?.performance ?? {};
+  const edgeMap = report?.edgeMap    ?? {};
+  const leaks   = report?.leaks      ?? {};
+  const overallWR    = pct(perf.winRateRaw);
+  const decided      = perf.decided ?? "n/a";
   const strongestEdge = edgeMap.strongestEdge
     ? `${edgeMap.strongestEdge.label} (${pct(edgeMap.strongestEdge.winRate)}, ${edgeMap.strongestEdge.tradeCount} trades)`
     : "n/a";
   const biggestLeak = leaks.biggestLeak
     ? `${leaks.biggestLeak.label} (${pct(leaks.biggestLeak.winRate)}, ${leaks.biggestLeak.tradeCount} trades)`
     : "n/a";
+  const statsBlock = (perf.winRateRaw != null)
+    ? `TRADER STATS (${decided} decided trades):\n- Overall WR: ${overallWR}\n- Strongest edge: ${strongestEdge}\n- Biggest leak: ${biggestLeak}`
+    : "TRADER STATS: No historical data on file yet.";
 
-  const tradeLine = [
-    tradeRow.pair && `pair=${tradeRow.pair}`,
-    tradeRow.session && `session=${tradeRow.session}`,
-    direction && `direction=${direction}`,
-    model && `model=${model}`,
-    tradeRow.outcome && `outcome=${tradeRow.outcome}`,
-    tradeRow.rr != null && `rr=${tradeRow.rr}`,
-    notes && `notes="${String(notes).slice(0, 80)}"`,
-  ].filter(Boolean).join(", ");
+  // Observation context (best can be null when no pattern matched)
+  let obsBlock;
+  if (best) {
+    const ev = best.evidence;
+    const evStr = best.category === "custom_field"
+      ? `WR with: ${pct(ev.winRateWith)}, WR without: ${pct(ev.winRateWithout)}, n=${ev.sampleSize}`
+      : `WR: ${pct(ev.winRate)}, delta vs overall: ${ev.delta != null ? (ev.delta > 0 ? "+" : "") + Math.round(ev.delta * 100) + "pp" : "n/a"}, n=${ev.sampleSize}`;
+    obsBlock = `MATCHED OBSERVATION (${best.type.toUpperCase()} — ${best.category}): ${best.label}\n  Evidence: ${evStr}`;
+  } else {
+    obsBlock = "MATCHED OBSERVATION: None — no stored pattern matches this specific trade.";
+  }
+
+  // Grade guide scales with data richness and observation presence
+  let gradeGuide;
+  if (isSparse) {
+    gradeGuide = `GRADING GUIDE: Sparse log — no entry model, no direction, no custom fields. Grade the outcome honestly (B for a clean win, C for BE, D for a loss), but explicitly tell them what to log next time (model, direction, confluences/conditions) for a real grade. Do not invent process certainty the data doesn't support.`;
+  } else if (best) {
+    gradeGuide = `GRADING GUIDE: Matched a ${best.type === "green" ? "green (edge)" : "red (leak)"} observation. Green + win = A range; green + loss = B range; red + win = C; red + loss = D/F. Weight the observation heavily. Be direct and cite real numbers only.`;
+  } else {
+    gradeGuide = `GRADING GUIDE: No matched pattern — grade on process quality from the logged fields. Win with solid logged process = B; unexplained win = C; disciplined loss = C; sloppy loss = D. Be honest about confidence — still land on one concrete useful observation for the trader.`;
+  }
 
   const prompt =
-`You are Jarvis, a sharp trading coach reviewing a just-logged trade. Grade it (A+ to F) on how well it aligns with this trader's known patterns, then write 2–3 sharp coaching sentences. Respond ONLY with valid JSON on one line: {"grade":"B-","message":"..."}
+`You are Jarvis, a sharp trading coach reviewing a just-logged trade. Grade it (A+ to F) and write 2-3 sharp coaching sentences. Respond ONLY with valid JSON on one line: {"grade":"B","message":"..."}
 
 Valid grades: A+ A A- B+ B B- C+ C C- D F
 
-TRADE: ${tradeLine}
+TRADE:
+${tradeLines}
 
-MATCHED OBSERVATION (${best.type.toUpperCase()} — ${best.category}): ${best.label}
-Evidence: ${evStr}
+${obsBlock}
 
-TRADER STATS:
-- Overall WR: ${overallWR} (${decided} decided trades)
-- Strongest edge: ${strongestEdge}
-- Biggest leak: ${biggestLeak}
+${statsBlock}
 
-Grading guide: red observation = trading a known leak (grade lower — D/F if it also lost); green = edge alignment (grade higher — A if won, B if loss). Be direct. Use real numbers from the data above. Never invent statistics. No filler closers.`;
+${gradeGuide}
+
+Never invent statistics. No filler closers. Be direct.`;
 
   try {
     const controller = new AbortController();
@@ -3540,35 +3578,55 @@ async function buildInstantRead(authUserId, tradeRow) {
   try {
     const report = await _irFetchReport(authUserId);
     const observations = Array.isArray(report?.observations) ? report.observations : [];
-    if (!observations.length) return { found: false };
     const weekday = _irWeekday(tradeRow.traded_at);
-    // Collect all matches then rank: specificity → red over green → strength.
+
+    // Find best matching observation — null when nothing matches (no longer an early exit)
     const matches = [];
     for (const obs of observations) {
       if (_irMatchObs(obs, tradeRow, weekday)) matches.push(obs);
     }
-    if (!matches.length) return { found: false };
-    matches.sort((a, b) => {
-      const sd = _irSpecificity(a) - _irSpecificity(b);
-      if (sd !== 0) return sd;
-      const rd = (a.type === "red" ? 0 : 1) - (b.type === "red" ? 0 : 1);
-      if (rd !== 0) return rd;
-      return (b.strength ?? 0) - (a.strength ?? 0);
-    });
-    const best = matches[0];
-    if (!best) return { found: false };
-    // Try Haiku for a graded response; fall back to the template if it fails or times out.
+    if (matches.length > 1) {
+      matches.sort((a, b) => {
+        const sd = _irSpecificity(a) - _irSpecificity(b);
+        if (sd !== 0) return sd;
+        const rd = (a.type === "red" ? 0 : 1) - (b.type === "red" ? 0 : 1);
+        if (rd !== 0) return rd;
+        return (b.strength ?? 0) - (a.strength ?? 0);
+      });
+    }
+    const best = matches.length > 0 ? matches[0] : null;
+
+    // Always call Haiku regardless of observation match
     const haiku = await _irCallHaiku(tradeRow, best, report);
+
+    // Fallback when Haiku fails or times out
+    const fallbackMessage = best
+      ? _irMessage(best)
+      : "Trade logged. Add entry model, direction, and confluences next time for a graded read.";
+
+    const outcome = (tradeRow.outcome || "").toLowerCase();
+    const type = best
+      ? best.type
+      : (outcome === "win" || outcome === "be" ? "green" : outcome === "loss" ? "red" : "neutral");
+
     return {
       found: true,
-      type: best.type,
-      category: best.category,
+      type,
       grade: haiku?.grade ?? null,
-      message: haiku?.message ?? _irMessage(best),
-      evidence: best.evidence,
-      strength: best.strength,
+      message: haiku?.message ?? fallbackMessage,
+      evidence: best?.evidence ?? null,
+      strength: best?.strength ?? null,
     };
-  } catch { return { found: false }; }
+  } catch {
+    // Hard error: still surface the card rather than silently swallowing it
+    const outcome = (tradeRow.outcome || "").toLowerCase();
+    return {
+      found: true,
+      type: outcome === "win" || outcome === "be" ? "green" : "red",
+      grade: null,
+      message: "Trade logged. Full read unavailable — try again shortly.",
+    };
+  }
 }
 
 /** GET /api/journal-trades — manual LOG TRADE rows (journal_trades). */
