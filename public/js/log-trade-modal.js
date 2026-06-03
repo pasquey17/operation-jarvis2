@@ -386,8 +386,13 @@ function notionFieldToDef(f) {
   const n = (f.field_name || "").toLowerCase();
   let type = "text";
   let options = [];
-  if (f.field_type === "dropdown" || f.field_type === "multiselect") {
+  if (f.field_type === "dropdown") {
     type = "select";
+    try {
+      options = JSON.parse(f.field_options || "[]");
+    } catch {}
+  } else if (f.field_type === "multiselect") {
+    type = "multiselect";
     try {
       options = JSON.parse(f.field_options || "[]");
     } catch {}
@@ -468,6 +473,65 @@ function initOutcomeChips(form, onOutcomeChange) {
   syncOutcomeChipsFromSelect(form);
 }
 
+function initMultiselectFields(container) {
+  if (!container) return;
+  container.querySelectorAll(".ltm-multiselect-wrap:not([data-ms-inited])").forEach((wrap) => {
+    wrap.dataset.msInited = "1";
+    const picker = wrap.querySelector("[data-ms-picker]");
+    const chipsEl = wrap.querySelector(".ltm-ms-chips");
+    if (!picker || !chipsEl) return;
+
+    function addChip(value) {
+      if (!value) return;
+      const alreadySelected = Array.from(
+        wrap.querySelectorAll("input[type='hidden']")
+      ).some((inp) => inp.value === value);
+      if (alreadySelected) { picker.value = ""; return; }
+
+      const optToRemove = Array.from(picker.options).find((o) => o.value === value);
+      if (optToRemove) optToRemove.remove();
+
+      const inp = document.createElement("input");
+      inp.type = "hidden";
+      inp.name = wrap.dataset.msName;
+      inp.value = value;
+      inp.dataset.msHidden = "1";
+      wrap.appendChild(inp);
+
+      const chip = document.createElement("span");
+      chip.className = "ltm-ms-chip";
+      chip.dataset.msValue = value;
+      const xBtn = document.createElement("button");
+      xBtn.type = "button";
+      xBtn.className = "ltm-ms-chip-x";
+      xBtn.setAttribute("aria-label", `Remove ${value}`);
+      xBtn.textContent = "×";
+      xBtn.addEventListener("click", () => removeChip(value));
+      chip.appendChild(document.createTextNode(value));
+      chip.appendChild(xBtn);
+      chipsEl.appendChild(chip);
+
+      picker.value = "";
+    }
+
+    function removeChip(value) {
+      chipsEl.querySelectorAll(".ltm-ms-chip").forEach((el) => {
+        if (el.dataset.msValue === value) el.remove();
+      });
+      wrap.querySelectorAll("input[type='hidden'][data-ms-hidden]").forEach((el) => {
+        if (el.value === value) el.remove();
+      });
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = value;
+      picker.appendChild(opt);
+    }
+
+    picker.addEventListener("change", () => addChip(picker.value));
+    wrap._addChip = addChip;
+  });
+}
+
 function clearFormValidation(form) {
   if (!form) return;
   form.querySelectorAll(".ltm-field-row--error").forEach((row) => {
@@ -520,6 +584,18 @@ function buildInputHtml(field, today) {
         .map((o) => `<option value="${escHtml(o)}">${escHtml(o)}</option>`)
         .join("");
       return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input" ${req}><option value="">${escHtml(ph)}</option>${opts}</select>`;
+    }
+    case "multiselect": {
+      const opts = (field.options || [])
+        .map((o) => `<option value="${escHtml(o)}">${escHtml(o)}</option>`)
+        .join("");
+      return `<div class="ltm-multiselect-wrap ltm-input" data-ms-name="${escAttr(name)}" role="group" aria-label="${escAttr(field.label || name)}">
+  <div class="ltm-ms-chips"></div>
+  <select class="ltm-ms-picker" data-ms-picker aria-label="Add ${escAttr(field.label || name)}">
+    <option value="">+ ${escHtml(ph)}</option>
+    ${opts}
+  </select>
+</div>`;
     }
     case "yesno":
       return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input"><option value="">${escHtml(ph)}</option><option value="Yes">Yes</option><option value="No">No</option></select>`;
@@ -1536,6 +1612,22 @@ export async function openLogTradeModal(options) {
   }
   initOutcomeChips(form, syncRR);
   syncRR();
+  initMultiselectFields(fieldsList);
+
+  if (editId && editTrade) {
+    const cdMs =
+      editTrade.custom_data && typeof editTrade.custom_data === "object"
+        ? editTrade.custom_data
+        : {};
+    fieldsList.querySelectorAll(".ltm-multiselect-wrap[data-ms-inited]").forEach((wrap) => {
+      const k = wrap.dataset.msName;
+      if (!k || !(k in cdMs)) return;
+      const v = cdMs[k];
+      if (!v) return;
+      const vals = Array.isArray(v) ? v : [String(v)];
+      vals.forEach((val) => { if (val && wrap._addChip) wrap._addChip(String(val)); });
+    });
+  }
 
   const submitBtn = document.getElementById("ltm-submit");
   const submitAnotherBtn = document.getElementById("ltm-submit-another");
@@ -1602,8 +1694,13 @@ export async function openLogTradeModal(options) {
 
     for (const f of [...notionFields, ...userAddedFields]) {
       if (shouldSkipJournalFieldName(f.id)) continue;
-      const v = (fd.get(f.id) || "").trim();
-      if (v) custom_data[f.id] = v;
+      if (f.type === "multiselect") {
+        const vals = fd.getAll(f.id).map((v) => v.trim()).filter(Boolean);
+        if (vals.length) custom_data[f.id] = vals;
+      } else {
+        const v = (fd.get(f.id) || "").trim();
+        if (v) custom_data[f.id] = v;
+      }
     }
     const photoPayload = photosToPayload();
     if (photoPayload.length) custom_data.photos = photoPayload;

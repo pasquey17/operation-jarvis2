@@ -1865,6 +1865,50 @@ textarea.trade-input { resize: vertical; min-height: 80px; line-height: 1.6; }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
+.ltm-multiselect-wrap {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 10px; border-radius: 6px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  background: var(--bg-input);
+  min-height: 44px; cursor: default;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.ltm-multiselect-wrap:focus-within {
+  border-color: rgba(0, 212, 255, 0.6);
+  background: rgba(0, 212, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
+}
+.ltm-ms-chips {
+  display: flex; flex-wrap: wrap; gap: 5px;
+}
+.ltm-ms-chips:empty { display: none; }
+.ltm-ms-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 6px 3px 10px; border-radius: 20px;
+  border: 1px solid rgba(0, 212, 255, 0.45);
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.ltm-ms-chip-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px;
+  border: none; background: none; padding: 0; margin: 0;
+  color: rgba(0, 212, 255, 0.55); font-size: 15px; line-height: 1; cursor: pointer;
+  transition: color 0.15s;
+}
+.ltm-ms-chip-x:hover { color: #fff; }
+.ltm-ms-picker {
+  width: 100%; background: transparent; border: none; outline: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.03em;
+  cursor: pointer; padding: 0; -webkit-appearance: none; appearance: none;
+}
+.ltm-ms-picker:focus { color: rgba(255, 255, 255, 0.7); }
+.ltm-ms-picker option { background: var(--select-bg); color: var(--text-primary); }
+.ltm-field-row--error .ltm-multiselect-wrap { border-color: rgba(255, 100, 100, 0.55) !important; }
 .ltm-field-row--error {
   background: rgba(255, 60, 60, 0.06);
   border-radius: 8px;
