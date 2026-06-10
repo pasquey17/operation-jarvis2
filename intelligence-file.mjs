@@ -141,7 +141,7 @@ const TAUTOLOGY_VALUE_SUBSTRINGS = [
   "hit tp",
 ];
 
-function isOutcomeTautology(key, value) {
+export function isOutcomeTautology(key, value) {
   const kl = String(key ?? "").toLowerCase().trim();
   const vl = String(value ?? "").toLowerCase();
   if (TAUTOLOGY_KEY_EXACT.has(kl)) return true;
@@ -174,7 +174,7 @@ const SEGMENT_VALUE_SUBSTRINGS = [
   "backtesting",
 ];
 
-function isSegmentTag(key, value) {
+export function isSegmentTag(key, value) {
   const kl = String(key ?? "").toLowerCase();
   const vl = String(value ?? "").toLowerCase();
   if (SEGMENT_KEY_SUBSTRINGS.some((s) => kl.includes(s))) return true;
@@ -208,7 +208,7 @@ function classifyBreakdown(rows, category, overallWR, labelFn, minSample, minDel
   return out;
 }
 
-function buildObservations(raw) {
+export function buildObservations(raw) {
   if (!raw || raw.empty || !raw.overview) return [];
   const overallWR = raw.overview.winRate;
   if (overallWR === null) return [];

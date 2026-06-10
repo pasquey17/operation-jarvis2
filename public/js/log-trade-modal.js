@@ -1878,15 +1878,29 @@ function _injectIrStyles() {
       align-items: flex-start;
       gap: 0.875rem;
     }
+    .jarvis-read-card__grade-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25em;
+      min-width: 2.75rem;
+      flex-shrink: 0;
+    }
+    .jarvis-read-card__grade-label {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 0.5rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #556677;
+      line-height: 1;
+      white-space: nowrap;
+    }
     .jarvis-read-card__grade {
       font-family: "Share Tech Mono", "Courier New", monospace;
       font-size: 1.6rem;
       font-weight: 700;
       line-height: 1;
-      min-width: 2.75rem;
       text-align: center;
-      flex-shrink: 0;
-      padding-top: 0.05em;
       letter-spacing: -0.02em;
     }
     .jarvis-read-card--green   .jarvis-read-card__grade { color: #00d4ff; }
@@ -1913,7 +1927,10 @@ export function showInstantReadCard(read) {
   card.id = "jarvis-read-card";
   card.className = `jarvis-read-card jarvis-read-card--${typeClass}`;
   const gradeHtml = read.grade
-    ? `<span class="jarvis-read-card__grade" aria-label="Grade ${escHtml(read.grade)}">${escHtml(read.grade)}</span>`
+    ? `<div class="jarvis-read-card__grade-wrap">
+        <span class="jarvis-read-card__grade-label">Trade Grade</span>
+        <span class="jarvis-read-card__grade" aria-label="Grade ${escHtml(read.grade)}">${escHtml(read.grade)}</span>
+      </div>`
     : "";
   card.innerHTML = `
     <div class="jarvis-read-card__hdr">
@@ -1932,6 +1949,5 @@ export function showInstantReadCard(read) {
     card.addEventListener("animationend", () => card.remove(), { once: true });
   };
   card.querySelector(".jarvis-read-card__close").addEventListener("click", dismiss);
-  setTimeout(dismiss, 10000);
 }
 

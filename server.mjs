@@ -21,6 +21,8 @@ import {
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 import { serializeNotionProperties } from "./notion-serialize-props.mjs";
 import { runAnalysisEngine } from "./analysis-engine.mjs";
+import { fetchTradesForReport, buildReportPackage } from "./report-package.mjs";
+import { generateReport } from "./report-generator.mjs";
 import {
   generateIntelligenceFile,
   getIntelligenceFile,
@@ -2402,6 +2404,64 @@ async function readBody(req, limit = MAX_BODY_BYTES) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks).toString("utf8");
+}
+
+// ─── /api/generate-report ─────────────────────────────────────────────────────
+
+const WINDOW_CONFIG = {
+  week:    { days: 7,  bucketDays: 1,  label: "7-day (week)" },
+  month:   { days: 30, bucketDays: 7,  label: "30-day (month)" },
+  quarter: { days: 90, bucketDays: 30, label: "90-day (quarter)" },
+};
+
+async function handleGenerateReport(req, res) {
+  let raw;
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
+  let body;
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
+
+  // Auth context (apiFetch sends the Bearer token) takes precedence; body.userId
+  // is still accepted as a fallback so CLI test scripts keep working.
+  const userId = authUserIdFromReq(req) || (typeof body.userId === "string" ? body.userId.trim() : "");
+  if (!userId) { json(res, 401, { error: "Unauthorized" }); return; }
+
+  const { window: win = "quarter", dateFrom: bodyFrom, dateTo: bodyTo, windowLabel: bodyLabel } = body;
+  const cfg = WINDOW_CONFIG[win] ?? WINDOW_CONFIG.quarter;
+
+  // Client may pass explicit dateFrom/dateTo for historical periods; otherwise
+  // default to the window-width rolling back from today.
+  const now = new Date();
+  const dateTo   = bodyTo   ? String(bodyTo).slice(0, 10)   : now.toISOString().slice(0, 10);
+  const dateFrom = bodyFrom ? String(bodyFrom).slice(0, 10) : new Date(now.getTime() - cfg.days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const windowLabel = bodyLabel ? String(bodyLabel).slice(0, 80) : cfg.label;
+
+  let periodTrades, allTimeTrades;
+  try {
+    ({ periodTrades, allTimeTrades } = await fetchTradesForReport(userId, dateFrom, dateTo));
+  } catch (e) {
+    json(res, 502, { error: `Failed to fetch trades: ${e instanceof Error ? e.message : String(e)}` }); return;
+  }
+
+  if (allTimeTrades.length === 0) {
+    json(res, 404, { error: "No trades found for this user" }); return;
+  }
+
+  let pkg;
+  try {
+    pkg = buildReportPackage(periodTrades, allTimeTrades, { bucketDays: cfg.bucketDays });
+  } catch (e) {
+    json(res, 500, { error: `Package build failed: ${e instanceof Error ? e.message : String(e)}` }); return;
+  }
+
+  let html;
+  try {
+    html = await generateReport(pkg, windowLabel);
+  } catch (e) {
+    json(res, 502, { error: `Report generation failed: ${e instanceof Error ? e.message : String(e)}` }); return;
+  }
+
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(html);
 }
 
 async function handleBriefing(req, res) {
@@ -5393,6 +5453,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/log-trade")) {
     await handleLogTrade(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/generate-report")) {
+    await handleGenerateReport(req, res);
     return;
   }
 

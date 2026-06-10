@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <script>try{document.documentElement.dataset.theme=localStorage.getItem('jarvis_theme')==='light'?'light':'dark';}catch(e){document.documentElement.dataset.theme='dark';}</script>
+    <title>REPORTS · JARVIS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css?v=b7d9f1a3" />
+    <link rel="stylesheet" href="/css/jarvis-settings.css?v=b7d9f1a3" />
+    <style>
+      html, body {
+        overflow: auto !important;
+        height: auto !important;
+        min-height: 100dvh !important;
+        background: var(--bg-primary, #050a14) !important;
+      }
+
+      /* ═══════════ NAV (identical to journal) ═══════════ */
+      .jv-nav {
+        position: fixed; top: 0; left: 0; right: 0; height: 52px;
+        z-index: 1000; background: var(--nav-bg, rgba(0,0,0,0.85));
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0,212,255,0.2);
+        display: flex; align-items: center; padding: 0 24px; gap: 0;
+      }
+      .jv-nav__brand {
+        color: #00d4ff !important; font-family: "Share Tech Mono","Courier New",monospace !important;
+        font-size: 15px; letter-spacing: 0.2em; text-transform: uppercase;
+        white-space: nowrap; flex-shrink: 0; text-decoration: none;
+      }
+      .jv-nav__links {
+        display: flex; align-items: center; gap: 32px; list-style: none;
+        margin: 0 auto; padding: 0;
+      }
+      .jv-nav__links a {
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 11px;
+        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
+        padding-bottom: 2px; border-bottom: 1px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__links a:hover { color: rgba(255,255,255,0.85) !important; }
+      .jv-nav__links a.jv-nav--active,
+      .jv-nav__links a[aria-current="page"] { color: #00d4ff !important; border-bottom: 1px solid #00d4ff; }
+      .jv-nav__hamburger {
+        display: none; flex-direction: column; justify-content: center; gap: 5px;
+        background: none; border: none; cursor: pointer; padding: 4px; flex-shrink: 0;
+      }
+      .jv-nav__hamburger span {
+        display: block; width: 20px; height: 1.5px;
+        background: rgba(255,255,255,0.6); border-radius: 2px; transition: background 0.2s;
+      }
+      .jv-nav__hamburger:hover span { background: #00d4ff; }
+      .jv-nav__dropdown {
+        display: none; position: fixed; top: 52px; left: 0; right: 0;
+        background: rgba(0,0,0,0.95); backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,212,255,0.15);
+        z-index: 999; flex-direction: column; padding: 8px 0;
+      }
+      .jv-nav__dropdown.jv-nav--open { display: flex; }
+      .jv-nav__dropdown a {
+        color: rgba(255,255,255,0.5) !important; text-decoration: none;
+        font-family: "Share Tech Mono","Courier New",monospace !important; font-size: 12px;
+        font-variant: small-caps; letter-spacing: 0.12em; text-transform: uppercase;
+        padding: 12px 24px; border-left: 2px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+      .jv-nav__dropdown a:hover { color: rgba(255,255,255,0.85) !important; }
+      .jv-nav__dropdown a.jv-nav--active,
+      .jv-nav__dropdown a[aria-current="page"] { color: #00d4ff !important; border-left-color: #00d4ff; }
+      @media (max-width: 768px) {
+        .jv-nav__links { display: none; }
+        .jv-nav__hamburger { display: flex; }
+        .jv-nav__brand { font-size: 13px; }
+      }
+
+      /* ═══════════ Particle canvas ═══════════ */
+      #particle-canvas {
+        position: fixed; inset: 0; z-index: 0;
+        pointer-events: none; width: 100%; height: 100%;
+      }
+
+      /* ═══════════ Page shell ═══════════ */
+      .rp-page {
+        position: relative; z-index: 1;
+        min-height: 100dvh;
+        padding: 80px 24px 100px;
+        max-width: 1040px;
+        margin: 0 auto;
+        box-sizing: border-box;
+      }
+
+      /* ═══════════ Header ═══════════ */
+      .rp-header { margin-bottom: 48px; }
+      .rp-eyebrow {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+        color: #00d4ff; margin-bottom: 10px;
+      }
+      .rp-title {
+        font-family: "Outfit", system-ui, sans-serif;
+        font-weight: 200; font-size: clamp(2rem, 5vw, 3.4rem);
+        color: #fff; letter-spacing: 0.06em; text-transform: uppercase;
+        line-height: 1.1; margin: 0 0 10px;
+        text-shadow: 0 0 60px rgba(255,255,255,0.1), 0 0 120px rgba(0,212,255,0.07);
+      }
+      .rp-subtitle {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 12px; color: rgba(216,232,244,0.45);
+        letter-spacing: 0.1em; margin: 0;
+      }
+
+      /* ═══════════ Type card grid ═══════════ */
+      .rp-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 40px;
+      }
+      @media (max-width: 900px) { .rp-cards { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 480px) { .rp-cards { grid-template-columns: 1fr; } }
+
+      .rp-card {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(0,212,255,0.12);
+        border-radius: 14px;
+        padding: 26px 22px 24px;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+        outline: none;
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+      }
+      .rp-card::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(0,212,255,0.4), transparent);
+        opacity: 0; transition: opacity 0.2s;
+      }
+      .rp-card:hover {
+        border-color: rgba(0,212,255,0.35);
+        background: rgba(0,212,255,0.05);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 32px rgba(0,212,255,0.08), 0 2px 8px rgba(0,0,0,0.4);
+      }
+      .rp-card:hover::before { opacity: 1; }
+      .rp-card:focus-visible {
+        border-color: #00d4ff;
+        box-shadow: 0 0 0 2px rgba(0,212,255,0.4);
+      }
+      .rp-card.rp-card--selected {
+        border-color: #00d4ff;
+        background: rgba(0,212,255,0.08);
+        box-shadow: 0 0 28px rgba(0,212,255,0.14), 0 6px 24px rgba(0,0,0,0.5);
+        transform: translateY(-3px);
+      }
+      .rp-card.rp-card--selected::before { opacity: 1; }
+
+      .rp-card--soon {
+        opacity: 0.32;
+        cursor: default;
+        pointer-events: none;
+      }
+      .rp-card--soon:hover { transform: none; box-shadow: none; border-color: rgba(0,212,255,0.12); background: rgba(255,255,255,0.03); }
+
+      .rp-card__icon {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+        color: rgba(0,212,255,0.6); margin-bottom: 14px;
+        display: block;
+      }
+      .rp-card--selected .rp-card__icon { color: #00d4ff; }
+
+      .rp-card__name {
+        font-family: "Outfit", system-ui, sans-serif;
+        font-size: 1.2rem; font-weight: 300; color: #fff;
+        letter-spacing: 0.04em; margin-bottom: 6px; display: block;
+      }
+      .rp-card__desc {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; color: rgba(216,232,244,0.42);
+        letter-spacing: 0.08em; line-height: 1.55; display: block;
+      }
+      .rp-card--selected .rp-card__desc { color: rgba(216,232,244,0.65); }
+
+      .rp-card__soon-tag {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase;
+        color: rgba(255,255,255,0.28); margin-top: 10px; display: block;
+      }
+
+      /* ═══════════ Controls row ═══════════ */
+      .rp-controls {
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        margin-bottom: 40px;
+        opacity: 0; transform: translateY(8px);
+        transition: opacity 0.3s cubic-bezier(0.22,1,0.36,1), transform 0.3s cubic-bezier(0.22,1,0.36,1);
+        pointer-events: none;
+      }
+      .rp-controls.rp-controls--visible {
+        opacity: 1; transform: translateY(0); pointer-events: auto;
+      }
+
+      .rp-picker {
+        display: flex; align-items: center; gap: 0;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(0,212,255,0.18);
+        border-radius: 8px; overflow: hidden; flex-shrink: 0;
+      }
+      .rp-picker__arrow {
+        background: none; border: none; cursor: pointer;
+        color: rgba(0,212,255,0.7); font-size: 18px; line-height: 1;
+        padding: 0 14px; height: 44px;
+        display: flex; align-items: center; justify-content: center;
+        transition: color 0.15s, background 0.15s;
+      }
+      .rp-picker__arrow:hover:not(:disabled) { color: #00d4ff; background: rgba(0,212,255,0.08); }
+      .rp-picker__arrow:disabled { color: rgba(0,212,255,0.2); cursor: default; }
+      .rp-picker__label {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; letter-spacing: 0.1em; color: rgba(216,232,244,0.85);
+        padding: 0 18px; white-space: nowrap; min-width: 200px; text-align: center;
+        border-left: 1px solid rgba(0,212,255,0.12);
+        border-right: 1px solid rgba(0,212,255,0.12);
+      }
+
+      .rp-generate-btn {
+        padding: 0 28px; height: 44px;
+        border: none; border-radius: 8px;
+        background: #00d4ff; color: #000;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+        cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+      }
+      .rp-generate-btn:hover { background: #fff; box-shadow: 0 0 24px rgba(0,212,255,0.5); transform: translateY(-1px); }
+      .rp-generate-btn:active { transform: translateY(0); }
+      .rp-generate-btn:disabled { background: rgba(0,212,255,0.25); color: rgba(0,0,0,0.4); cursor: not-allowed; transform: none; box-shadow: none; }
+
+      /* ═══════════ Loading state ═══════════ */
+      .rp-loading {
+        display: none; align-items: center; gap: 16px;
+        padding: 40px 0; margin-bottom: 32px;
+      }
+      .rp-loading.rp-loading--visible { display: flex; }
+      .rp-loading__spinner {
+        width: 20px; height: 20px; border-radius: 50%;
+        border: 2px solid rgba(0,212,255,0.2);
+        border-top-color: #00d4ff;
+        animation: rp-spin 0.9s linear infinite; flex-shrink: 0;
+      }
+      @keyframes rp-spin { to { transform: rotate(360deg); } }
+      .rp-loading__text {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+        color: rgba(0,212,255,0.7);
+      }
+      .rp-loading__dots::after {
+        content: '';
+        animation: rp-dots 1.4s steps(4, end) infinite;
+      }
+      @keyframes rp-dots {
+        0%   { content: ''; }
+        25%  { content: '.'; }
+        50%  { content: '..'; }
+        75%  { content: '...'; }
+        100% { content: ''; }
+      }
+
+      /* ═══════════ Error banner ═══════════ */
+      .rp-error {
+        display: none;
+        border: 1px solid rgba(255,68,102,0.35);
+        background: rgba(255,68,102,0.06);
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 24px;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; letter-spacing: 0.08em;
+        color: rgba(255,68,102,0.9);
+      }
+      .rp-error.rp-error--visible { display: block; }
+
+      /* ═══════════ Empty / invitation state ═══════════ */
+      .rp-empty {
+        padding: 56px 0 24px;
+        text-align: center;
+        transition: opacity 0.3s;
+      }
+      .rp-empty.rp-empty--hidden { opacity: 0; pointer-events: none; }
+      .rp-empty__icon {
+        width: 56px; height: 56px; border-radius: 50%;
+        border: 1px solid rgba(0,212,255,0.15);
+        background: rgba(0,212,255,0.04);
+        margin: 0 auto 20px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .rp-empty__icon svg { opacity: 0.35; }
+      .rp-empty__heading {
+        font-family: "Outfit", system-ui, sans-serif;
+        font-size: 1.05rem; font-weight: 300; color: rgba(255,255,255,0.55);
+        margin: 0 0 8px;
+      }
+      .rp-empty__sub {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+        color: rgba(216,232,244,0.28);
+      }
+
+      /* ═══════════ Report output ═══════════ */
+      .rp-output { display: none; }
+      .rp-output.rp-output--visible { display: block; }
+
+      .rp-output-meta {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 16px; flex-wrap: wrap;
+      }
+      .rp-output-meta__label {
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
+        color: rgba(216,232,244,0.35);
+      }
+      .rp-regen-btn {
+        padding: 5px 14px; border-radius: 6px;
+        border: 1px solid rgba(0,212,255,0.28);
+        background: rgba(0,212,255,0.06);
+        color: #00d4ff; cursor: pointer;
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .rp-regen-btn:hover { border-color: rgba(0,212,255,0.6); background: rgba(0,212,255,0.12); }
+
+      .rp-frame-wrap {
+        border-radius: 14px; overflow: hidden;
+        border: 1px solid rgba(0,212,255,0.1);
+        background: #050a14;
+      }
+      .rp-frame {
+        display: block; width: 100%; border: none;
+        min-height: 400px;
+        background: #050a14;
+      }
+
+      @media (max-width: 768px) {
+        .rp-page { padding: 72px 16px 80px; }
+        .rp-controls { gap: 10px; }
+        .rp-picker__label { min-width: 150px; font-size: 10px; }
+        .rp-generate-btn { padding: 0 20px; font-size: 11px; }
+        .rp-title { letter-spacing: 0.04em; }
+      }
+      @media (max-width: 400px) {
+        .rp-controls { flex-direction: column; align-items: stretch; }
+        .rp-generate-btn { height: 48px; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- ═══════════════════ NAV ═══════════════════ -->
+    <nav class="jv-nav" aria-label="Main navigation">
+      <a class="jv-nav__brand" href="/index.html">JARVIS</a>
+      <ul class="jv-nav__links" role="list">
+        <li><a href="/index.html" id="nav-home">Home</a></li>
+        <li><a href="/journal.html" id="nav-journal">Journal</a></li>
+        <li><a href="/reports.html" id="nav-reports" class="jv-nav--active" aria-current="page">Reports</a></li>
+        <li><a href="/analytics.html" id="nav-analytics">Analytics</a></li>
+        <li><a href="/calendar.html" id="nav-calendar">Calendar</a></li>
+        <li><a href="/account.html" id="nav-account">Account</a></li>
+      </ul>
+      <div class="jv-nav__actions">
+        <button type="button" class="jv-nav__settings" id="jv-settings-btn" aria-label="Open settings" aria-expanded="false" aria-controls="jv-settings-panel">
+          <svg class="jv-nav__settings-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+        <button class="jv-nav__hamburger" id="jv-nav-hamburger" aria-label="Toggle navigation" aria-expanded="false" aria-controls="jv-nav-dropdown">
+          <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
+      <a href="/index.html">Home</a>
+      <a href="/journal.html">Journal</a>
+      <a href="/reports.html" class="jv-nav--active" aria-current="page">Reports</a>
+      <a href="/analytics.html">Analytics</a>
+      <a href="/calendar.html">Calendar</a>
+      <a href="/account.html">Account</a>
+    </div>
+
+    <script>
+      (function () {
+        var btn = document.getElementById('jv-nav-hamburger');
+        var dd  = document.getElementById('jv-nav-dropdown');
+        btn.addEventListener('click', function () {
+          var open = dd.classList.toggle('jv-nav--open');
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          dd.setAttribute('aria-hidden', open ? 'false' : 'true');
+        });
+        document.addEventListener('click', function (e) {
+          if (!btn.contains(e.target) && !dd.contains(e.target)) {
+            dd.classList.remove('jv-nav--open');
+            btn.setAttribute('aria-expanded', 'false');
+            dd.setAttribute('aria-hidden', 'true');
+          }
+        });
+      })();
+    </script>
+
+    <canvas id="particle-canvas" aria-hidden="true"></canvas>
+
+    <!-- ═══════════════════ REPORTS PAGE ═══════════════════ -->
+    <main class="rp-page" id="rp-page">
+
+      <header class="rp-header">
+        <p class="rp-eyebrow">Intelligence · On Demand</p>
+        <h1 class="rp-title">Reports</h1>
+        <p class="rp-subtitle">AI-generated analysis of your trading history over any period.</p>
+      </header>
+
+      <!-- Type cards -->
+      <div class="rp-cards" role="group" aria-label="Report type">
+
+        <button class="rp-card" id="rp-card-weekly" data-type="week" aria-pressed="false">
+          <span class="rp-card__icon">7 days</span>
+          <span class="rp-card__name">Weekly</span>
+          <span class="rp-card__desc">Day-by-day patterns and session performance over the past 7 days.</span>
+        </button>
+
+        <button class="rp-card" id="rp-card-monthly" data-type="month" aria-pressed="false">
+          <span class="rp-card__icon">30 days</span>
+          <span class="rp-card__name">Monthly</span>
+          <span class="rp-card__desc">Full month review with trends, sequence analysis, and confluence breakdown.</span>
+        </button>
+
+        <button class="rp-card" id="rp-card-quarterly" data-type="quarter" aria-pressed="false">
+          <span class="rp-card__icon">90 days</span>
+          <span class="rp-card__name">Quarterly</span>
+          <span class="rp-card__desc">Deep review across a full quarter — edge mapping, leaks, and derived rules.</span>
+        </button>
+
+        <div class="rp-card rp-card--soon" aria-hidden="true">
+          <span class="rp-card__icon" style="color:rgba(216,232,244,0.2)">— —</span>
+          <span class="rp-card__name" style="color:rgba(255,255,255,0.3)">Refinements</span>
+          <span class="rp-card__desc">Custom period with drill-down into a single edge or variable.</span>
+          <span class="rp-card__soon-tag">Coming soon</span>
+        </div>
+
+      </div>
+
+      <!-- Period picker + generate -->
+      <div class="rp-controls" id="rp-controls" aria-live="polite">
+        <div class="rp-picker" role="group" aria-label="Period selection">
+          <button class="rp-picker__arrow" id="rp-prev" aria-label="Previous period" title="Previous period">&#8249;</button>
+          <span class="rp-picker__label" id="rp-period-label" aria-live="polite"></span>
+          <button class="rp-picker__arrow" id="rp-next" aria-label="Next period" title="Next period">&#8250;</button>
+        </div>
+        <button class="rp-generate-btn" id="rp-generate" aria-label="Generate report">Generate Report</button>
+      </div>
+
+      <!-- Loading -->
+      <div class="rp-loading" id="rp-loading" aria-live="assertive" aria-label="Generating report">
+        <div class="rp-loading__spinner"></div>
+        <span class="rp-loading__text">Jarvis is reading your trades<span class="rp-loading__dots"></span></span>
+      </div>
+
+      <!-- Error -->
+      <div class="rp-error" id="rp-error" role="alert"></div>
+
+      <!-- Empty invitation -->
+      <div class="rp-empty" id="rp-empty">
+        <div class="rp-empty__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5">
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <p class="rp-empty__heading">Choose a report type above to get started</p>
+        <p class="rp-empty__sub">Select a period, then hit Generate</p>
+      </div>
+
+      <!-- Report output -->
+      <div class="rp-output" id="rp-output">
+        <div class="rp-output-meta">
+          <span class="rp-output-meta__label" id="rp-output-time"></span>
+          <button class="rp-regen-btn" id="rp-regen">↺ Regenerate</button>
+        </div>
+        <div class="rp-frame-wrap">
+          <iframe
+            class="rp-frame"
+            id="rp-frame"
+            title="Performance Report"
+            sandbox="allow-scripts allow-same-origin"
+          ></iframe>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+    <script type="module">
+      import { getAuthUserId, apiFetch } from "/js/jarvis-auth.js?v=b7d9f1a3";
+
+      /* ── Particle canvas ──────────────────────────────────────────────── */
+      (function initParticles() {
+        var canvas = document.getElementById('particle-canvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var STAR_COUNT = 150, SPACE_FRAME_MS = 1000 / 30;
+        var stars = [], nebula = { x: 0.25, y: 0.45, r: 0.55, cr: 55, cg: 0, cb: 135, a: 0.055 };
+        var shooters = [], frameCount = 0, shootNextAt = 90, lastFrameTime = 0;
+        function buildStars() {
+          stars = [];
+          for (var i = 0; i < STAR_COUNT; i++) {
+            stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+              r: Math.random()*1.4+0.3, a: Math.random()*0.7+0.3,
+              tw: Math.random()*3000+1000, tp: Math.random()*Math.PI*2 });
+          }
+        }
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; buildStars(); }
+        function ShootingStar() {
+          this.x = Math.random()*window.innerWidth*0.7+window.innerWidth*0.05;
+          this.y = Math.random()*window.innerHeight*0.5;
+          var angle = 0.4+Math.random()*0.6, spd = 6+Math.random()*5;
+          this.vx = Math.cos(angle)*spd; this.vy = Math.sin(angle)*spd;
+          this.tailLen = 100; this.life = 0; this.maxLife = 27; this.alive = true;
+        }
+        ShootingStar.prototype.update = function() { this.x+=this.vx; this.y+=this.vy; this.life++; if(this.life>=this.maxLife) this.alive=false; };
+        ShootingStar.prototype.draw = function(ctx) {
+          var progress=this.life/this.maxLife, a=0.7*(1-progress);
+          var hyp=Math.hypot(this.vx,this.vy)||1;
+          var tailX=this.x-(this.vx/hyp)*this.tailLen, tailY=this.y-(this.vy/hyp)*this.tailLen;
+          var g=ctx.createLinearGradient(tailX,tailY,this.x,this.y);
+          g.addColorStop(0,'rgba(200,240,255,0)'); g.addColorStop(0.6,'rgba(220,245,255,'+(a*0.5)+')'); g.addColorStop(1,'rgba(255,255,255,'+a+')');
+          ctx.save(); ctx.strokeStyle=g; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(tailX,tailY); ctx.lineTo(this.x,this.y); ctx.stroke(); ctx.restore();
+        };
+        function drawFrame(now) {
+          if (now-lastFrameTime<SPACE_FRAME_MS) { requestAnimationFrame(drawFrame); return; }
+          lastFrameTime=now; frameCount++;
+          var light=document.documentElement.dataset.theme==='light';
+          ctx.fillStyle=light?'#d8dde3':'#050a14'; ctx.fillRect(0,0,canvas.width,canvas.height);
+          if(!light){var nx=nebula.x*canvas.width,ny=nebula.y*canvas.height,nr=nebula.r*Math.max(canvas.width,canvas.height),ng=ctx.createRadialGradient(nx,ny,0,nx,ny,nr);ng.addColorStop(0,'rgba('+nebula.cr+','+nebula.cg+','+nebula.cb+','+nebula.a+')');ng.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=ng;ctx.fillRect(0,0,canvas.width,canvas.height);}
+          var t=now/1000;
+          for(var i=0;i<stars.length;i++){var s=stars[i],tw=0.5+0.5*Math.sin(t*(1000/s.tw)*Math.PI*2+s.tp),alpha=s.a*(0.6+0.4*tw)*(light?0.35:1);ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=light?'rgba(138,150,166,'+alpha+')':'rgba(255,255,255,'+alpha+')';ctx.fill();}
+          if(!light&&frameCount>=shootNextAt){shooters.push(new ShootingStar());shootNextAt=frameCount+(15+Math.random()*10)*30;}
+          for(var j=shooters.length-1;j>=0;j--){shooters[j].update();shooters[j].draw(ctx);if(!shooters[j].alive)shooters.splice(j,1);}
+          requestAnimationFrame(drawFrame);
+        }
+        resize(); window.addEventListener('resize', resize); requestAnimationFrame(drawFrame);
+      })();
+
+      /* ── Period computation ────────────────────────────────────────────── */
+      function ds(d) { return d.toISOString().slice(0, 10); }
+
+      function fmtDate(d) {
+        return d.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
+      }
+      function fmtDateYear(d) {
+        return d.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      function getWeekPeriod(stepsBack) {
+        var today = new Date();
+        var dow = today.getDay(); // 0=Sun
+        var toMon = dow === 0 ? 6 : dow - 1;
+        var mon = new Date(today); mon.setDate(today.getDate() - toMon); mon.setHours(0,0,0,0);
+        var from = new Date(mon); from.setDate(mon.getDate() - stepsBack * 7);
+        var to = new Date(from); to.setDate(from.getDate() + 6);
+        var todayNoon = new Date(today); todayNoon.setHours(23,59,59,0);
+        var eTo = to > todayNoon ? today : to;
+        eTo.setHours(23,59,59,0);
+        var label = stepsBack === 0
+          ? 'This week · ' + fmtDate(from) + ' – ' + fmtDate(eTo)
+          : stepsBack === 1
+            ? 'Last week · ' + fmtDate(from) + ' – ' + fmtDate(eTo)
+            : fmtDate(from) + ' – ' + fmtDateYear(eTo);
+        return { dateFrom: ds(from), dateTo: ds(eTo), label, isCurrent: stepsBack === 0 };
+      }
+
+      function getMonthPeriod(stepsBack) {
+        var today = new Date();
+        var y = today.getFullYear(), m = today.getMonth() - stepsBack;
+        while (m < 0) { m += 12; y--; }
+        var from = new Date(y, m, 1);
+        var lastDay = new Date(y, m + 1, 0);
+        var eTo = lastDay > today ? today : lastDay;
+        var monthLabel = from.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+        var label = stepsBack === 0 ? 'This month · ' + monthLabel : monthLabel;
+        return { dateFrom: ds(from), dateTo: ds(eTo), label, isCurrent: stepsBack === 0 };
+      }
+
+      function getQuarterPeriod(stepsBack) {
+        var today = new Date();
+        var y = today.getFullYear(), q = Math.floor(today.getMonth() / 3) - stepsBack;
+        while (q < 0) { q += 4; y--; }
+        while (q > 3) { q -= 4; y++; }
+        var from = new Date(y, q * 3, 1);
+        var to   = new Date(y, q * 3 + 3, 0);
+        var eTo  = to > today ? today : to;
+        var qNum = q + 1;
+        var label = stepsBack === 0
+          ? 'This quarter · Q' + qNum + ' ' + y
+          : 'Q' + qNum + ' ' + y;
+        return { dateFrom: ds(from), dateTo: ds(eTo), label, isCurrent: stepsBack === 0 };
+      }
+
+      function getPeriod(type, stepsBack) {
+        if (type === 'week')    return getWeekPeriod(stepsBack);
+        if (type === 'month')   return getMonthPeriod(stepsBack);
+        if (type === 'quarter') return getQuarterPeriod(stepsBack);
+        return getQuarterPeriod(stepsBack);
+      }
+
+      /* ── State ─────────────────────────────────────────────────────────── */
+      var state = {
+        type: null,        // 'week' | 'month' | 'quarter'
+        stepsBack: 1,      // 0 = current (partial), 1 = last complete (default)
+        generating: false,
+        hasReport: false,
+      };
+
+      /* ── DOM refs ──────────────────────────────────────────────────────── */
+      var cards      = document.querySelectorAll('.rp-card[data-type]');
+      var controls   = document.getElementById('rp-controls');
+      var prevBtn    = document.getElementById('rp-prev');
+      var nextBtn    = document.getElementById('rp-next');
+      var periodLbl  = document.getElementById('rp-period-label');
+      var genBtn     = document.getElementById('rp-generate');
+      var loadingEl  = document.getElementById('rp-loading');
+      var errorEl    = document.getElementById('rp-error');
+      var emptyEl    = document.getElementById('rp-empty');
+      var outputEl   = document.getElementById('rp-output');
+      var outputTime = document.getElementById('rp-output-time');
+      var regenBtn   = document.getElementById('rp-regen');
+      var frame      = document.getElementById('rp-frame');
+
+      /* ── Render helpers ────────────────────────────────────────────────── */
+      function updatePeriodUI() {
+        if (!state.type) return;
+        var p = getPeriod(state.type, state.stepsBack);
+        periodLbl.textContent = p.label;
+        nextBtn.disabled = state.stepsBack <= 0;
+        // Prevent going back more than ~8 quarters / 24 months / 52 weeks
+        var maxSteps = state.type === 'week' ? 52 : state.type === 'month' ? 24 : 8;
+        prevBtn.disabled = state.stepsBack >= maxSteps;
+      }
+
+      function selectType(type) {
+        state.type = type;
+        state.stepsBack = 1; // default: last complete period
+        cards.forEach(function(c) {
+          var sel = c.dataset.type === type;
+          c.classList.toggle('rp-card--selected', sel);
+          c.setAttribute('aria-pressed', sel ? 'true' : 'false');
+        });
+        controls.classList.add('rp-controls--visible');
+        updatePeriodUI();
+        if (!state.hasReport) {
+          emptyEl.classList.add('rp-empty--hidden');
+          setTimeout(function() {
+            if (!state.hasReport) {
+              emptyEl.classList.remove('rp-empty--hidden');
+              emptyEl.querySelector('.rp-empty__heading').textContent = 'Ready to generate';
+              emptyEl.querySelector('.rp-empty__sub').textContent = getPeriod(state.type, state.stepsBack).label;
+            }
+          }, 10);
+        }
+      }
+
+      function setLoading(on) {
+        state.generating = on;
+        loadingEl.classList.toggle('rp-loading--visible', on);
+        genBtn.disabled = on;
+        regenBtn.disabled = on;
+      }
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.add('rp-error--visible');
+      }
+      function clearError() { errorEl.classList.remove('rp-error--visible'); }
+
+      function resizeFrame() {
+        try {
+          var doc = frame.contentDocument || frame.contentWindow.document;
+          if (doc && doc.body) {
+            frame.style.height = Math.max(400, doc.body.scrollHeight + 40) + 'px';
+          }
+        } catch (_) {}
+      }
+
+      function renderReport(html, periodLabel) {
+        clearError();
+        frame.srcdoc = html;
+        frame.style.height = '600px';
+        frame.onload = function() {
+          // Give Chart.js a moment to render before measuring height
+          setTimeout(resizeFrame, 400);
+          setTimeout(resizeFrame, 1200);
+        };
+        var now = new Date();
+        outputTime.textContent = 'Generated ' + now.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) + ' · ' + periodLabel;
+        emptyEl.style.display = 'none';
+        outputEl.classList.add('rp-output--visible');
+        state.hasReport = true;
+        // Smooth scroll to report
+        setTimeout(function() { outputEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+      }
+
+      /* ── Generate ──────────────────────────────────────────────────────── */
+      async function generate() {
+        if (!state.type || state.generating) return;
+        clearError();
+        var period = getPeriod(state.type, state.stepsBack);
+
+        setLoading(true);
+        try {
+          var res = await apiFetch('/api/generate-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              window:      state.type,
+              dateFrom:    period.dateFrom,
+              dateTo:      period.dateTo,
+              windowLabel: period.label,
+            }),
+          });
+          if (!res.ok) {
+            var errData = await res.json().catch(function() { return {}; });
+            throw new Error(errData.error || 'Server error ' + res.status);
+          }
+          var html = await res.text();
+          renderReport(html, period.label);
+        } catch (e) {
+          showError('Report generation failed: ' + (e.message || String(e)));
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      /* ── Event bindings ────────────────────────────────────────────────── */
+      cards.forEach(function(card) {
+        card.addEventListener('click', function() { selectType(card.dataset.type); });
+        card.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectType(card.dataset.type); }
+        });
+      });
+
+      prevBtn.addEventListener('click', function() {
+        state.stepsBack++;
+        updatePeriodUI();
+        if (state.hasReport) {
+          emptyEl.style.display = '';
+          outputEl.classList.remove('rp-output--visible');
+          state.hasReport = false;
+        }
+      });
+
+      nextBtn.addEventListener('click', function() {
+        if (state.stepsBack <= 0) return;
+        state.stepsBack--;
+        updatePeriodUI();
+        if (state.hasReport) {
+          emptyEl.style.display = '';
+          outputEl.classList.remove('rp-output--visible');
+          state.hasReport = false;
+        }
+      });
+
+      genBtn.addEventListener('click', generate);
+      regenBtn.addEventListener('click', generate);
+
+      /* ── Resize observer for iframe height updates ─────────────────────── */
+      if (typeof ResizeObserver !== 'undefined') {
+        var ro = new ResizeObserver(resizeFrame);
+        frame.addEventListener('load', function() {
+          try { ro.observe(frame.contentDocument.body); } catch (_) {}
+        });
+      }
+
+    </script>
+    <script type="module" src="/js/jarvis-auth-guard.js?v=b7d9f1a3"></script>
+  </body>
+</html>
