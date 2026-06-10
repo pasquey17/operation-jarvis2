@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/css/style.css?v=b7d9f1a3" />
-    <link rel="stylesheet" href="/css/jarvis-settings.css?v=b7d9f1a3" />
+    <link rel="stylesheet" href="/css/style.css?v=c8e2a4b6" />
+    <link rel="stylesheet" href="/css/jarvis-settings.css?v=c8e2a4b6" />
     <style>
       html, body {
         overflow: auto !important;
@@ -95,7 +95,7 @@
       }
 
       /* ═══════════ Header ═══════════ */
-      .rp-header { margin-bottom: 48px; }
+      .rp-header { margin-bottom: 32px; }
       .rp-eyebrow {
         font-family: "Share Tech Mono","Courier New",monospace;
         font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
@@ -114,85 +114,59 @@
         letter-spacing: 0.1em; margin: 0;
       }
 
-      /* ═══════════ Type card grid ═══════════ */
-      .rp-cards {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 14px;
-        margin-bottom: 40px;
-      }
-      @media (max-width: 900px) { .rp-cards { grid-template-columns: repeat(2, 1fr); } }
-      @media (max-width: 480px) { .rp-cards { grid-template-columns: 1fr; } }
-
-      .rp-card {
+      /* ═══════════ Type tab bar ═══════════ */
+      .rp-type-bar {
+        display: flex; align-items: stretch;
         background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(0,212,255,0.12);
-        border-radius: 14px;
-        padding: 26px 22px 24px;
-        cursor: pointer;
-        transition: border-color 0.2s, background 0.2s, transform 0.2s, box-shadow 0.2s;
+        border: 1px solid rgba(0,212,255,0.18);
+        border-radius: 8px; overflow: hidden;
+        margin-bottom: 10px;
+        /* Allow horizontal scroll on very small screens */
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+      }
+
+      .rp-tab {
+        flex: 1; min-width: 0; position: relative;
+        background: none; border: none; cursor: pointer;
+        color: rgba(216,232,244,0.45);
+        font-family: "Share Tech Mono","Courier New",monospace;
+        font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+        padding: 0 20px; height: 42px;
+        display: flex; align-items: center; justify-content: center;
+        white-space: nowrap;
+        border-right: 1px solid rgba(0,212,255,0.1);
+        transition: color 0.15s, background 0.15s;
         outline: none;
-        text-align: left;
-        position: relative;
-        overflow: hidden;
       }
-      .rp-card::before {
-        content: '';
-        position: absolute; top: 0; left: 0; right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(0,212,255,0.4), transparent);
-        opacity: 0; transition: opacity 0.2s;
-      }
-      .rp-card:hover {
-        border-color: rgba(0,212,255,0.35);
+      .rp-tab:last-child { border-right: none; }
+
+      .rp-tab:hover:not(.rp-tab--soon):not(.rp-tab--selected) {
+        color: rgba(216,232,244,0.85);
         background: rgba(0,212,255,0.05);
-        transform: translateY(-3px);
-        box-shadow: 0 8px 32px rgba(0,212,255,0.08), 0 2px 8px rgba(0,0,0,0.4);
       }
-      .rp-card:hover::before { opacity: 1; }
-      .rp-card:focus-visible {
-        border-color: #00d4ff;
-        box-shadow: 0 0 0 2px rgba(0,212,255,0.4);
-      }
-      .rp-card.rp-card--selected {
-        border-color: #00d4ff;
-        background: rgba(0,212,255,0.08);
-        box-shadow: 0 0 28px rgba(0,212,255,0.14), 0 6px 24px rgba(0,0,0,0.5);
-        transform: translateY(-3px);
-      }
-      .rp-card.rp-card--selected::before { opacity: 1; }
+      .rp-tab:focus-visible { box-shadow: inset 0 0 0 2px rgba(0,212,255,0.4); }
 
-      .rp-card--soon {
-        opacity: 0.32;
-        cursor: default;
-        pointer-events: none;
+      .rp-tab--selected {
+        color: #00d4ff;
+        background: rgba(0,212,255,0.1);
       }
-      .rp-card--soon:hover { transform: none; box-shadow: none; border-color: rgba(0,212,255,0.12); background: rgba(255,255,255,0.03); }
+      .rp-tab--selected::after {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: #00d4ff;
+      }
 
-      .rp-card__icon {
+      .rp-tab--soon {
+        opacity: 0.28; cursor: default; pointer-events: none;
+        font-size: 10px;
+      }
+
+      .rp-type-desc {
         font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
-        color: rgba(0,212,255,0.6); margin-bottom: 14px;
-        display: block;
-      }
-      .rp-card--selected .rp-card__icon { color: #00d4ff; }
-
-      .rp-card__name {
-        font-family: "Outfit", system-ui, sans-serif;
-        font-size: 1.2rem; font-weight: 300; color: #fff;
-        letter-spacing: 0.04em; margin-bottom: 6px; display: block;
-      }
-      .rp-card__desc {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 10px; color: rgba(216,232,244,0.42);
-        letter-spacing: 0.08em; line-height: 1.55; display: block;
-      }
-      .rp-card--selected .rp-card__desc { color: rgba(216,232,244,0.65); }
-
-      .rp-card__soon-tag {
-        font-family: "Share Tech Mono","Courier New",monospace;
-        font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase;
-        color: rgba(255,255,255,0.28); margin-top: 10px; display: block;
+        font-size: 10px; letter-spacing: 0.09em;
+        color: rgba(216,232,244,0.35);
+        margin: 0 0 24px; min-height: 16px;
+        transition: color 0.2s;
       }
 
       /* ═══════════ Controls row ═══════════ */
@@ -426,35 +400,14 @@
         <p class="rp-subtitle">AI-generated analysis of your trading history over any period.</p>
       </header>
 
-      <!-- Type cards -->
-      <div class="rp-cards" role="group" aria-label="Report type">
-
-        <button class="rp-card" id="rp-card-weekly" data-type="week" aria-pressed="false">
-          <span class="rp-card__icon">7 days</span>
-          <span class="rp-card__name">Weekly</span>
-          <span class="rp-card__desc">Day-by-day patterns and session performance over the past 7 days.</span>
-        </button>
-
-        <button class="rp-card" id="rp-card-monthly" data-type="month" aria-pressed="false">
-          <span class="rp-card__icon">30 days</span>
-          <span class="rp-card__name">Monthly</span>
-          <span class="rp-card__desc">Full month review with trends, sequence analysis, and confluence breakdown.</span>
-        </button>
-
-        <button class="rp-card" id="rp-card-quarterly" data-type="quarter" aria-pressed="false">
-          <span class="rp-card__icon">90 days</span>
-          <span class="rp-card__name">Quarterly</span>
-          <span class="rp-card__desc">Deep review across a full quarter — edge mapping, leaks, and derived rules.</span>
-        </button>
-
-        <div class="rp-card rp-card--soon" aria-hidden="true">
-          <span class="rp-card__icon" style="color:rgba(216,232,244,0.2)">— —</span>
-          <span class="rp-card__name" style="color:rgba(255,255,255,0.3)">Refinements</span>
-          <span class="rp-card__desc">Custom period with drill-down into a single edge or variable.</span>
-          <span class="rp-card__soon-tag">Coming soon</span>
-        </div>
-
+      <!-- Type tab bar -->
+      <div class="rp-type-bar" role="tablist" aria-label="Report type">
+        <button class="rp-tab" id="rp-tab-weekly"    data-type="week"    role="tab" aria-selected="false">Weekly</button>
+        <button class="rp-tab" id="rp-tab-monthly"   data-type="month"   role="tab" aria-selected="false">Monthly</button>
+        <button class="rp-tab" id="rp-tab-quarterly" data-type="quarter" role="tab" aria-selected="false">Quarterly</button>
+        <div class="rp-tab rp-tab--soon" aria-hidden="true">Refinements · soon</div>
       </div>
+      <p class="rp-type-desc" id="rp-type-desc">Select a report type to begin</p>
 
       <!-- Period picker + generate -->
       <div class="rp-controls" id="rp-controls" aria-live="polite">
@@ -506,7 +459,7 @@
 
     <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
     <script type="module">
-      import { getAuthUserId, apiFetch } from "/js/jarvis-auth.js?v=b7d9f1a3";
+      import { getAuthUserId, apiFetch } from "/js/jarvis-auth.js?v=c8e2a4b6";
 
       /* ── Particle canvas ──────────────────────────────────────────────── */
       (function initParticles() {
@@ -627,7 +580,8 @@
       };
 
       /* ── DOM refs ──────────────────────────────────────────────────────── */
-      var cards      = document.querySelectorAll('.rp-card[data-type]');
+      var cards      = document.querySelectorAll('.rp-tab[data-type]');
+      var typeDescEl = document.getElementById('rp-type-desc');
       var controls   = document.getElementById('rp-controls');
       var prevBtn    = document.getElementById('rp-prev');
       var nextBtn    = document.getElementById('rp-next');
@@ -652,14 +606,21 @@
         prevBtn.disabled = state.stepsBack >= maxSteps;
       }
 
+      var TYPE_DESCS = {
+        week:    'Last 7 days · day-of-week patterns and session performance',
+        month:   'Last 30 days · trends, sequences, and confluence breakdown',
+        quarter: 'Last 90 days · full edge map, leaks, and derived rules',
+      };
+
       function selectType(type) {
         state.type = type;
         state.stepsBack = 1; // default: last complete period
         cards.forEach(function(c) {
           var sel = c.dataset.type === type;
-          c.classList.toggle('rp-card--selected', sel);
-          c.setAttribute('aria-pressed', sel ? 'true' : 'false');
+          c.classList.toggle('rp-tab--selected', sel);
+          c.setAttribute('aria-selected', sel ? 'true' : 'false');
         });
+        if (typeDescEl) typeDescEl.textContent = TYPE_DESCS[type] || '';
         controls.classList.add('rp-controls--visible');
         updatePeriodUI();
         if (!state.hasReport) {
@@ -786,6 +747,6 @@
       }
 
     </script>
-    <script type="module" src="/js/jarvis-auth-guard.js?v=b7d9f1a3"></script>
+    <script type="module" src="/js/jarvis-auth-guard.js?v=c8e2a4b6"></script>
   </body>
 </html>
