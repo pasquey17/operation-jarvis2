@@ -10,8 +10,9 @@
 
 import { isOutcomeTautology, isSegmentTag } from "./intelligence-file.mjs";
 
-const REPORT_MODEL   = "claude-sonnet-4-6";
-const ANTHROPIC_VERSION = "2023-06-01";
+const REPORT_PLAN_MODEL  = "claude-haiku-4-5-20251001"; // Step 1: structured JSON extraction — Haiku is ~5× faster, quality unchanged
+const REPORT_WRITE_MODEL = "claude-sonnet-4-6";          // Step 2: creative HTML authoring — Sonnet stays
+const ANTHROPIC_VERSION  = "2023-06-01";
 
 // ─── Pre-filter: strip tautologies and segment tags BEFORE sending to model ───
 
@@ -325,24 +326,33 @@ Write the complete HTML now. Start with <!DOCTYPE html>.`;
 
 // ─── Anthropic call helper ────────────────────────────────────────────────────
 
-async function callAnthropic({ system, user, maxTokens, expectJson = false }) {
+async function callAnthropic({ model, system, user, maxTokens, expectJson = false, cacheSystem = false }) {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
 
+  // When cacheSystem is true, wrap the system prompt as a content block with
+  // cache_control so repeated calls (e.g. Regenerate) skip re-tokenising it.
+  const systemPayload = cacheSystem
+    ? [{ type: "text", text: system, cache_control: { type: "ephemeral" } }]
+    : system;
+
+  const headers = {
+    "x-api-key": apiKey,
+    "anthropic-version": ANTHROPIC_VERSION,
+    "content-type": "application/json",
+  };
+  if (cacheSystem) headers["anthropic-beta"] = "prompt-caching-2024-07-31";
+
   const body = {
-    model: REPORT_MODEL,
+    model,
     max_tokens: maxTokens,
-    system,
+    system: systemPayload,
     messages: [{ role: "user", content: user }],
   };
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": ANTHROPIC_VERSION,
-      "content-type": "application/json",
-    },
+    headers,
     body: JSON.stringify(body),
   });
 
@@ -383,6 +393,7 @@ export async function generateReport(pkg, windowLabel = "period") {
   // ── Step 1: Plan ────────────────────────────────────────────────────────────
   console.log("[report-generator] Step 1: planning…");
   const plan = await callAnthropic({
+    model:      REPORT_PLAN_MODEL,
     system:     buildPlanSystemPrompt(),
     user:       buildPlanUserPrompt(filteredPkg, windowLabel),
     maxTokens:  3000,
@@ -393,9 +404,11 @@ export async function generateReport(pkg, windowLabel = "period") {
   // ── Step 2: Write ───────────────────────────────────────────────────────────
   console.log("[report-generator] Step 2: writing…");
   const html = await callAnthropic({
-    system:    buildWriteSystemPrompt(),
-    user:      buildWriteUserPrompt(filteredPkg, plan, windowLabel),
-    maxTokens: 16000,
+    model:       REPORT_WRITE_MODEL,
+    system:      buildWriteSystemPrompt(),
+    user:        buildWriteUserPrompt(filteredPkg, plan, windowLabel),
+    maxTokens:   16000,
+    cacheSystem: true,
   });
 
   // Ensure we return clean HTML
