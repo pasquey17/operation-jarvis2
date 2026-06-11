@@ -5266,6 +5266,151 @@ async function handleAdminDevLogin(req, res) {
   json(res, 200, { action_link: actionLink });
 }
 
+// ── Admin: resolve a user (email or UUID → { uuid, email, created_at }) ──────
+async function handleAdminResolveUser(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+
+  const id = (new URL(req.url, "http://x").searchParams.get("id") || "").trim();
+  if (!id) { json(res, 400, { error: "id required (email or UUID)" }); return; }
+
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}` };
+
+  let user = null;
+  try {
+    if (UUID_RE.test(id)) {
+      const r = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(id)}`, { headers: hdrs });
+      if (r.ok) user = await r.json().catch(() => null);
+    } else {
+      const r = await fetch(`${url}/auth/v1/admin/users?per_page=1000`, { headers: hdrs });
+      if (r.ok) {
+        const d = await r.json().catch(() => ({}));
+        user = (d.users || []).find(u => u.email?.toLowerCase() === id.toLowerCase()) ?? null;
+      }
+    }
+  } catch {}
+
+  if (!user) { json(res, 404, { error: `No auth user found: ${id}` }); return; }
+  json(res, 200, { uuid: user.id, email: user.email || null, created_at: user.created_at || null });
+}
+
+// ── Admin: fully wipe a user from every table ─────────────────────────────────
+const PROTECTED_UUIDS = new Set([
+  "e7b15ce6-13d2-488c-87f6-02eccb326641", // aidenpasque11@gmail.com
+  "d850b484-0fff-4bf0-8900-44c865472390", // spasque70@gmail.com
+]);
+
+async function handleAdminDeleteUser(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+
+  let body;
+  try { body = JSON.parse(await readBody(req)); } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
+  const uuid = (body?.uuid || "").trim();
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(uuid)) { json(res, 400, { error: "uuid required" }); return; }
+  if (PROTECTED_UUIDS.has(uuid)) { json(res, 403, { error: "Cannot delete a protected admin account" }); return; }
+
+  const srHdrs = { apikey: key, Authorization: `Bearer ${key}` };
+  const sbHdrs = { ...srHdrs, Accept: "application/json" };
+
+  // Resolve email so rows stored by email (not UUID) are also caught
+  let email = null;
+  try {
+    const r = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(uuid)}`, { headers: srHdrs });
+    if (r.ok) email = (await r.json().catch(() => ({}))).email || null;
+  } catch {}
+
+  // Delete rows matching a single column=value; returns count of deleted rows.
+  // Uses return=representation on a minimal select to avoid transmitting row data.
+  // Returns 0 on any error (e.g. column doesn't exist on that table).
+  async function wipe(table, col, val) {
+    if (!val) return 0;
+    try {
+      const r = await fetch(
+        `${url}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}&select=${col}`,
+        { method: "DELETE", headers: { ...sbHdrs, Prefer: "return=representation" } }
+      );
+      if (!r.ok) return 0;
+      const rows = await r.json().catch(() => null);
+      return Array.isArray(rows) ? rows.length : 0;
+    } catch { return 0; }
+  }
+
+  // For user_id TEXT tables: delete by email then by UUID (rows may be stored as either)
+  async function byUserId(table) {
+    const ids = [...new Set([email, uuid].filter(Boolean))];
+    let n = 0;
+    for (const id of ids) n += await wipe(table, "user_id", id);
+    return n;
+  }
+
+  // For auth_user_id UUID tables
+  const byAuthId = (table) => wipe(table, "auth_user_id", uuid);
+
+  const tables = {};
+
+  // Phase 1 — all tables with no FK dependencies on each other; run in parallel.
+  // equity_log_entries / payouts / account_equity_snapshots are FK children of
+  // trading_accounts (ON DELETE CASCADE), so delete them explicitly first to
+  // capture their counts before the cascade would hide them.
+  [
+    tables.equity_log_entries,
+    tables.payouts,
+    tables.account_equity_snapshots,
+    tables.notion_connections,
+    tables.notion_mappings,
+    tables.trades,
+    tables.journal_trades,
+    tables.journal_fields,
+    tables.jarvis_memories,
+  ] = await Promise.all([
+    byUserId("equity_log_entries"),
+    byUserId("payouts"),
+    byUserId("account_equity_snapshots"),
+    byUserId("notion_connections"),
+    byUserId("notion_mappings"),
+    byUserId("trades"),
+    byUserId("journal_trades"),
+    byUserId("journal_fields"),
+    byUserId("jarvis_memories"),
+  ]);
+
+  // Tables that may carry rows under user_id OR auth_user_id depending on when
+  // the row was written (schema migration happened mid-life for these tables).
+  const [psU, psA] = await Promise.all([byUserId("journal_photo_slots"), byAuthId("journal_photo_slots")]);
+  tables.journal_photo_slots = psU + psA;
+
+  const [inU, inA] = await Promise.all([byUserId("intelligence_files"), byAuthId("intelligence_files")]);
+  tables.intelligence_files = inU + inA;
+
+  // Phase 2 — trading_accounts: delete after children so counts are accurate.
+  // The ON DELETE CASCADE cleans up any equity/payout rows that slipped through.
+  tables.trading_accounts = await byUserId("trading_accounts");
+
+  // Phase 3 — user_profiles has a FK to auth.users with NO CASCADE.
+  // MUST delete this before deleting the auth user or Postgres will reject the auth delete.
+  tables.user_profiles = await byAuthId("user_profiles");
+
+  // Phase 4 — delete the auth user (final step; triggers no cascades we haven't handled)
+  let authDeleted = false;
+  try {
+    const r = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(uuid)}`, {
+      method: "DELETE",
+      headers: srHdrs,
+    });
+    authDeleted = r.ok || r.status === 404;
+  } catch {}
+
+  const totalRows = Object.values(tables).reduce((a, b) => a + b, 0);
+  json(res, 200, { email, uuid, auth_deleted: authDeleted, tables, total_rows: totalRows });
+}
+
 async function requestListener(req, res) {
   if (req.method === "OPTIONS") {
     send(res, 204, "", {
@@ -5560,6 +5705,16 @@ async function requestListener(req, res) {
 
   if (req.method === "GET" && req.url.startsWith("/api/admin/dev-login")) {
     await handleAdminDevLogin(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/admin/resolve-user")) {
+    await handleAdminResolveUser(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/admin/delete-user")) {
+    await handleAdminDeleteUser(req, res);
     return;
   }
 
@@ -5874,18 +6029,48 @@ async function handleNotionDatabases(req, res) {
     return all;
   }
 
+  // Paginated block children — up to 500 blocks per page (5 × default 100).
+  async function fetchBlockChildren(blockId) {
+    const all = [];
+    let cursor = null;
+    for (let p = 0; p < 5; p++) {
+      const qs = cursor ? `?start_cursor=${encodeURIComponent(cursor)}` : "";
+      const r = await fetch(`https://api.notion.com/v1/blocks/${blockId}/children${qs}`, {
+        headers: notionHeaders,
+      });
+      if (!r.ok) break;
+      const data = await r.json();
+      all.push(...(data.results ?? []));
+      if (!data.has_more || !data.next_cursor) break;
+      cursor = data.next_cursor;
+    }
+    return all;
+  }
+
+  // Walk a block list; harvest databases and queue child pages for the next level.
+  // Handles child_database (inline DB), linked_database (DB view — name resolved later),
+  // and child_page (sub-page that may itself contain databases).
+  function harvestBlocks(blocks, dbMap, pageQueue) {
+    for (const block of blocks) {
+      if (block.type === "child_database" && !dbMap.has(block.id)) {
+        dbMap.set(block.id, { id: block.id, name: block.child_database?.title || "Untitled" });
+      } else if (block.type === "linked_database") {
+        const dbId = block.linked_database?.database_id;
+        if (dbId && !dbMap.has(dbId)) dbMap.set(dbId, { id: dbId, name: null });
+      } else if (block.type === "child_page" && pageQueue && !pageQueue.has(block.id)) {
+        pageQueue.add(block.id);
+      }
+    }
+  }
+
   try {
-    // Two parallel searches:
-    //   1. filter=database  — explicitly finds all databases the token can access
-    //   2. no filter        — finds pages (to inspect for nested child_database blocks)
-    // Running both ensures we catch databases whether they appear directly or are embedded in pages.
     const [dbOnlyResults, allResults] = await Promise.all([
       searchAllPages({ value: "database", property: "object" }),
       searchAllPages(null),
     ]);
 
     const dbMap = new Map();
-    const pageIds = new Set();
+    const level1Pages = new Set();
 
     for (const item of [...dbOnlyResults, ...allResults]) {
       if (item.object === "database" && !dbMap.has(item.id)) {
@@ -5893,35 +6078,54 @@ async function handleNotionDatabases(req, res) {
           id: item.id,
           name: item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "Untitled",
         });
-      } else if (item.object === "page" && !pageIds.has(item.id)) {
-        pageIds.add(item.id);
+      } else if (item.object === "page" && !level1Pages.has(item.id)) {
+        level1Pages.add(item.id);
       }
     }
 
-    console.log(`[notion/databases] direct dbs=${dbMap.size} pages_to_inspect=${pageIds.size}`);
+    console.log(`[notion/databases] direct dbs=${dbMap.size} l1_pages=${level1Pages.size}`);
 
-    // Inspect child blocks of every page to find nested child_database blocks
+    // Level 1: paginated block children for every page from search.
+    // Catches child_database, linked_database views, and queues child_page for level 2.
+    const level2Pages = new Set();
     await Promise.all(
-      [...pageIds].map(async (pageId) => {
+      [...level1Pages].map(async (pid) => {
         try {
-          const br = await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
-            headers: notionHeaders,
-          });
-          if (!br.ok) return;
-          const bdata = await br.json();
-          for (const block of bdata.results ?? []) {
-            if (block.type === "child_database" && !dbMap.has(block.id)) {
-              dbMap.set(block.id, {
-                id: block.id,
-                name: block.child_database?.title ?? "Untitled",
-              });
-            }
-          }
-        } catch {
-          // skip pages we can't read
-        }
+          harvestBlocks(await fetchBlockChildren(pid), dbMap, level2Pages);
+        } catch { /* skip unreadable pages */ }
       })
     );
+
+    // Level 2: inspect child_page blocks found inside level-1 pages.
+    const level2New = [...level2Pages].filter(pid => !level1Pages.has(pid));
+    if (level2New.length > 0) {
+      console.log(`[notion/databases] l2_pages=${level2New.length}`);
+      await Promise.all(
+        level2New.map(async (pid) => {
+          try {
+            harvestBlocks(await fetchBlockChildren(pid), dbMap, null);
+          } catch { /* skip */ }
+        })
+      );
+    }
+
+    // Resolve names for databases discovered via linked_database blocks (name is null until here).
+    const unnamed = [...dbMap.values()].filter(d => d.name === null);
+    if (unnamed.length > 0) {
+      await Promise.all(
+        unnamed.map(async (entry) => {
+          try {
+            const r = await fetch(`https://api.notion.com/v1/databases/${entry.id}`, { headers: notionHeaders });
+            if (r.ok) {
+              const d = await r.json();
+              entry.name = d.title?.[0]?.plain_text ?? d.title?.[0]?.text?.content ?? "Untitled";
+            } else {
+              entry.name = "Untitled";
+            }
+          } catch { entry.name = "Untitled"; }
+        })
+      );
+    }
 
     console.log(`[notion/databases] total=${dbMap.size}`);
     json(res, 200, { databases: Array.from(dbMap.values()) });

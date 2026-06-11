@@ -166,6 +166,175 @@
       font-size: 13px;
       letter-spacing: 0.1em;
     }
+
+    /* ── Danger Zone ── */
+    .danger-divider {
+      width: 100%;
+      max-width: 520px;
+      margin: 44px 0 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .danger-divider::before,
+    .danger-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 77, 109, 0.25);
+    }
+    .danger-divider span {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: #ff4d6d;
+      white-space: nowrap;
+    }
+
+    .danger-section {
+      width: 100%;
+      max-width: 520px;
+      background: rgba(255, 20, 60, 0.04);
+      border: 1px solid rgba(255, 77, 109, 0.22);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .field-label {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #8899aa;
+      margin-bottom: 5px;
+    }
+
+    .danger-input {
+      width: 100%;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,77,109,0.25);
+      border-radius: 8px;
+      color: #fff;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 13px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .danger-input:focus { border-color: rgba(255,77,109,0.6); }
+    .danger-input::placeholder { color: #44556a; }
+
+    .btn-lookup {
+      background: rgba(0,191,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 8px;
+      color: #00d4ff;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-lookup:hover { background: rgba(0,191,255,0.2); border-color: rgba(0,212,255,0.6); }
+    .btn-lookup:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-danger {
+      background: rgba(255,50,80,0.12);
+      border: 1px solid rgba(255,77,109,0.4);
+      border-radius: 8px;
+      color: #ff4d6d;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      width: 100%;
+    }
+    .btn-danger:hover:not(:disabled) { background: rgba(255,50,80,0.22); border-color: #ff4d6d; }
+    .btn-danger:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .resolved-card {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,77,109,0.2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .resolved-card.visible { display: flex; }
+    .resolved-card .rc-row { display: flex; gap: 10px; align-items: baseline; }
+    .resolved-card .rc-label {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #8899aa;
+      min-width: 54px;
+    }
+    .resolved-card .rc-val {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 12px;
+      color: #ff8099;
+      word-break: break-all;
+    }
+
+    .delete-results {
+      display: none;
+      flex-direction: column;
+      gap: 0;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,77,109,0.2);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .delete-results.visible { display: flex; }
+    .dr-header {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #ff4d6d;
+      padding: 10px 14px 6px;
+    }
+    .dr-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 14px;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    .dr-table { font-family: "Share Tech Mono", monospace; font-size: 11px; color: #8899aa; }
+    .dr-count { font-family: "Share Tech Mono", monospace; font-size: 11px; color: #fff; }
+    .dr-count.nonzero { color: #ff8099; }
+    .dr-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 14px 10px;
+      border-top: 1px solid rgba(255,77,109,0.2);
+      margin-top: 2px;
+    }
+    .dr-total-label { font-family: "Share Tech Mono", monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #ff4d6d; }
+    .dr-total-val { font-family: "Share Tech Mono", monospace; font-size: 12px; color: #ff8099; font-weight: 600; }
+
+    .danger-status {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 11px;
+      min-height: 16px;
+      color: #8899aa;
+      text-align: center;
+    }
+    .danger-status.err { color: #ff4d6d; }
+    .danger-status.ok  { color: #00d4ff; }
   </style>
 </head>
 <body>
@@ -185,6 +354,39 @@
 
 <div class="user-grid" id="user-grid"></div>
 <div id="denied">ACCESS DENIED — invalid or missing key</div>
+
+<div class="danger-divider" id="danger-divider" style="display:none">
+  <span>Danger Zone</span>
+</div>
+
+<div class="danger-section" id="danger-section" style="display:none">
+  <div>
+    <div class="field-label">Email or UUID to wipe</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="lookup-input" class="danger-input" type="text"
+        placeholder="user@example.com or xxxxxxxx-xxxx-…" autocomplete="off" spellcheck="false" />
+      <button id="btn-lookup" class="btn-lookup">Find</button>
+    </div>
+  </div>
+
+  <div id="resolved-card" class="resolved-card">
+    <div class="rc-row"><span class="rc-label">Email</span><span class="rc-val" id="rc-email">—</span></div>
+    <div class="rc-row"><span class="rc-label">UUID</span><span class="rc-val" id="rc-uuid">—</span></div>
+    <div class="rc-row"><span class="rc-label">Created</span><span class="rc-val" id="rc-created">—</span></div>
+  </div>
+
+  <div id="confirm-block" style="display:none">
+    <div class="field-label">Type the email to confirm deletion</div>
+    <input id="confirm-input" class="danger-input" type="text"
+      placeholder="must match exactly" autocomplete="off" spellcheck="false" />
+  </div>
+
+  <div class="danger-status" id="danger-status"></div>
+
+  <button id="btn-delete" class="btn-danger" disabled>Permanently Wipe User</button>
+
+  <div id="delete-results" class="delete-results"></div>
+</div>
 
 <script type="module">
   import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.4/+esm";
@@ -319,6 +521,169 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  // ── Danger Zone ─────────────────────────────────────────────────────────────
+
+  const dangerDivider  = document.getElementById("danger-divider");
+  const dangerSection  = document.getElementById("danger-section");
+  const lookupInput    = document.getElementById("lookup-input");
+  const btnLookup      = document.getElementById("btn-lookup");
+  const resolvedCard   = document.getElementById("resolved-card");
+  const rcEmail        = document.getElementById("rc-email");
+  const rcUuid         = document.getElementById("rc-uuid");
+  const rcCreated      = document.getElementById("rc-created");
+  const confirmBlock   = document.getElementById("confirm-block");
+  const confirmInput   = document.getElementById("confirm-input");
+  const dangerStatus   = document.getElementById("danger-status");
+  const btnDelete      = document.getElementById("btn-delete");
+  const deleteResults  = document.getElementById("delete-results");
+
+  let resolvedUser = null; // { uuid, email, created_at }
+
+  if (devKey) {
+    dangerDivider.style.display = "";
+    dangerSection.style.display = "";
+  }
+
+  btnLookup.addEventListener("click", async () => {
+    const id = lookupInput.value.trim();
+    if (!id) { setDangerStatus("Enter an email or UUID.", "err"); return; }
+
+    btnLookup.disabled = true;
+    btnLookup.textContent = "…";
+    setDangerStatus("Looking up…", "");
+    resetResolvedState();
+
+    try {
+      const r = await fetch(`/api/admin/resolve-user?id=${encodeURIComponent(id)}`, {
+        headers: { "x-dev-secret": devKey },
+        cache: "no-store",
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.status === 401) { showDenied(); return; }
+      if (!r.ok) { setDangerStatus(d.error || `Error ${r.status}`, "err"); return; }
+
+      resolvedUser = d;
+      rcEmail.textContent   = d.email   || "(no email)";
+      rcUuid.textContent    = d.uuid    || "—";
+      rcCreated.textContent = d.created_at
+        ? new Date(d.created_at).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
+        : "—";
+      resolvedCard.classList.add("visible");
+      confirmBlock.style.display = "";
+      confirmInput.value = "";
+      btnDelete.disabled = true;
+      deleteResults.classList.remove("visible");
+      deleteResults.innerHTML = "";
+      setDangerStatus("", "");
+      confirmInput.focus();
+    } catch (e) {
+      setDangerStatus("Network error: " + e.message, "err");
+    } finally {
+      btnLookup.disabled = false;
+      btnLookup.textContent = "Find";
+    }
+  });
+
+  lookupInput.addEventListener("keydown", (e) => { if (e.key === "Enter") btnLookup.click(); });
+
+  confirmInput.addEventListener("input", () => {
+    if (!resolvedUser) { btnDelete.disabled = true; return; }
+    const target = resolvedUser.email || resolvedUser.uuid;
+    btnDelete.disabled = confirmInput.value.trim() !== target;
+  });
+
+  btnDelete.addEventListener("click", async () => {
+    if (!resolvedUser) return;
+    const target = resolvedUser.email || resolvedUser.uuid;
+    if (confirmInput.value.trim() !== target) return;
+
+    btnDelete.disabled = true;
+    btnDelete.textContent = "Wiping…";
+    setDangerStatus("Deleting from all tables…", "");
+    deleteResults.classList.remove("visible");
+    deleteResults.innerHTML = "";
+
+    try {
+      const r = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "x-dev-secret": devKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ uuid: resolvedUser.uuid }),
+        cache: "no-store",
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.status === 401) { showDenied(); return; }
+      if (r.status === 403) { setDangerStatus(d.error || "Blocked — protected account.", "err"); return; }
+      if (!r.ok) { setDangerStatus(d.error || `Error ${r.status}`, "err"); return; }
+
+      renderDeleteResults(d);
+      setDangerStatus(
+        `Done — ${d.total_rows} row${d.total_rows !== 1 ? "s" : ""} deleted, auth user ${d.auth_deleted ? "removed" : "NOT removed (may not have existed)"}`,
+        "ok"
+      );
+      // Remove the wiped user from the user-grid
+      gridEl.querySelectorAll(".user-card").forEach(card => {
+        if (card.querySelector(".uc-email")?.textContent === d.email) card.remove();
+      });
+      resetResolvedState();
+      lookupInput.value = "";
+    } catch (e) {
+      setDangerStatus("Network error: " + e.message, "err");
+    } finally {
+      btnDelete.textContent = "Permanently Wipe User";
+    }
+  });
+
+  function renderDeleteResults(d) {
+    const TABLE_LABELS = {
+      equity_log_entries:    "equity_log_entries",
+      payouts:               "payouts",
+      account_equity_snapshots: "account_equity_snapshots",
+      notion_connections:    "notion_connections",
+      notion_mappings:       "notion_mappings",
+      trades:                "trades",
+      journal_trades:        "journal_trades",
+      journal_fields:        "journal_fields",
+      jarvis_memories:       "jarvis_memories",
+      journal_photo_slots:   "journal_photo_slots",
+      intelligence_files:    "intelligence_files",
+      trading_accounts:      "trading_accounts",
+      user_profiles:         "user_profiles",
+    };
+
+    let html = `<div class="dr-header">Rows deleted</div>`;
+    for (const [key, label] of Object.entries(TABLE_LABELS)) {
+      const count = (d.tables || {})[key] ?? 0;
+      html += `<div class="dr-row">
+        <span class="dr-table">${esc(label)}</span>
+        <span class="dr-count${count > 0 ? " nonzero" : ""}">${count}</span>
+      </div>`;
+    }
+    html += `<div class="dr-total">
+      <span class="dr-total-label">auth.users</span>
+      <span class="dr-total-val">${d.auth_deleted ? "deleted" : "not found"}</span>
+    </div>
+    <div class="dr-total">
+      <span class="dr-total-label">Total rows</span>
+      <span class="dr-total-val">${d.total_rows ?? 0}</span>
+    </div>`;
+    deleteResults.innerHTML = html;
+    deleteResults.classList.add("visible");
+  }
+
+  function resetResolvedState() {
+    resolvedUser = null;
+    resolvedCard.classList.remove("visible");
+    confirmBlock.style.display = "none";
+    confirmInput.value = "";
+    btnDelete.disabled = true;
+    btnDelete.textContent = "Permanently Wipe User";
+  }
+
+  function setDangerStatus(msg, cls) {
+    dangerStatus.textContent = msg;
+    dangerStatus.className = "danger-status" + (cls ? " " + cls : "");
   }
 </script>
 </body>

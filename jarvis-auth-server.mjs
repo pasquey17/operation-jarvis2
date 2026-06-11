@@ -10,6 +10,8 @@ const AUTH_PUBLIC_PATHS = [
   "/api/proxy-image",
   "/api/admin/users",
   "/api/admin/dev-login",
+  "/api/admin/resolve-user",
+  "/api/admin/delete-user",
 ];
 
 /** Legacy email → auth UUID (migration / Notion OAuth state fallback). */
