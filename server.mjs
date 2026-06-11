@@ -5997,7 +5997,7 @@ async function handleNotionDatabases(req, res) {
 
   const notionHeaders = {
     Authorization: `Bearer ${accessToken}`,
-    "Notion-Version": "2022-06-28",
+    "Notion-Version": "2025-09-03",
     "Content-Type": "application/json",
   };
 
@@ -6083,7 +6083,32 @@ async function handleNotionDatabases(req, res) {
       }
     }
 
-    console.log(`[notion/databases] direct dbs=${dbMap.size} l1_pages=${level1Pages.size}`);
+    // Probe page-like items as potential merged/data-source databases.
+    // Notion's new API returns merged databases as object:"page" in search results.
+    // Pattern mirrors handleNotionColumns: GET /v1/databases/{id} with 2025-09-03 —
+    // if the response is 200 and object:"database", it's a real DB, not a page to crawl.
+    const probeResults = await Promise.all(
+      [...level1Pages].map(async (id) => {
+        try {
+          const r = await fetch(`https://api.notion.com/v1/databases/${id}`, {
+            headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
+          });
+          if (!r.ok) return null;
+          const d = await r.json();
+          if (d.object !== "database") return null;
+          return { id, name: d.title?.[0]?.plain_text ?? d.title?.[0]?.text?.content ?? "Untitled" };
+        } catch { return null; }
+      })
+    );
+    let mergedDbCount = 0;
+    for (const entry of probeResults) {
+      if (entry && !dbMap.has(entry.id)) {
+        dbMap.set(entry.id, entry);
+        level1Pages.delete(entry.id);
+        mergedDbCount++;
+      }
+    }
+    console.log(`[notion/databases] direct dbs=${dbMap.size} merged_probed=${mergedDbCount} l1_pages=${level1Pages.size}`);
 
     // Level 1: paginated block children for every page from search.
     // Catches child_database, linked_database views, and queues child_page for level 2.
