@@ -6065,15 +6065,23 @@ async function handleNotionDatabases(req, res) {
 
   try {
     const [dbOnlyResults, allResults] = await Promise.all([
-      searchAllPages({ value: "database", property: "object" }),
+      searchAllPages({ value: "data_source", property: "object" }),
       searchAllPages(null),
     ]);
 
     const dbMap = new Map();
     const level1Pages = new Set();
 
+    // [DIAGNOSTIC] Log every item Notion returned so we can diff "returned" vs "detected"
+    const allNotionItems = [...new Map([...dbOnlyResults, ...allResults].map(i => [i.id, i])).values()];
+    console.log(`[notion/databases][DIAG] authUid=${authUid} notion_raw_count=${allNotionItems.length}`);
+    for (const item of allNotionItems) {
+      const name = item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? item.properties?.title?.title?.[0]?.plain_text ?? "(no title)";
+      console.log(`[notion/databases][DIAG] raw id=${item.id} object=${item.object} name=${JSON.stringify(name)}`);
+    }
+
     for (const item of [...dbOnlyResults, ...allResults]) {
-      if (item.object === "database" && !dbMap.has(item.id)) {
+      if ((item.object === "database" || item.object === "data_source") && !dbMap.has(item.id)) {
         dbMap.set(item.id, {
           id: item.id,
           name: item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "Untitled",
@@ -6082,6 +6090,7 @@ async function handleNotionDatabases(req, res) {
         level1Pages.add(item.id);
       }
     }
+    console.log(`[notion/databases][DIAG] after_search: direct_dbs=${dbMap.size} page_candidates=${level1Pages.size}`);
 
     // Probe page-like items as potential merged/data-source databases.
     // Notion's new API returns merged databases as object:"page" in search results.
@@ -6093,11 +6102,24 @@ async function handleNotionDatabases(req, res) {
           const r = await fetch(`https://api.notion.com/v1/databases/${id}`, {
             headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
           });
-          if (!r.ok) return null;
+          // [DIAGNOSTIC] log probe outcome for every page candidate
+          const probeStatus = r.status;
+          if (!r.ok) {
+            console.log(`[notion/databases][DIAG] probe id=${id} status=${probeStatus} → NOT a database (non-ok)`);
+            return null;
+          }
           const d = await r.json();
-          if (d.object !== "database") return null;
-          return { id, name: d.title?.[0]?.plain_text ?? d.title?.[0]?.text?.content ?? "Untitled" };
-        } catch { return null; }
+          if (d.object !== "database" && d.object !== "data_source") {
+            console.log(`[notion/databases][DIAG] probe id=${id} status=${probeStatus} object=${d.object} → NOT a database`);
+            return null;
+          }
+          const name = d.title?.[0]?.plain_text ?? d.title?.[0]?.text?.content ?? "Untitled";
+          console.log(`[notion/databases][DIAG] probe id=${id} status=${probeStatus} → IS a database name=${JSON.stringify(name)}`);
+          return { id, name };
+        } catch (e) {
+          console.log(`[notion/databases][DIAG] probe id=${id} → error ${String(e.message ?? e)}`);
+          return null;
+        }
       })
     );
     let mergedDbCount = 0;
@@ -6152,8 +6174,25 @@ async function handleNotionDatabases(req, res) {
       );
     }
 
-    console.log(`[notion/databases] total=${dbMap.size}`);
-    json(res, 200, { databases: Array.from(dbMap.values()) });
+    const finalDatabases = Array.from(dbMap.values());
+    console.log(`[notion/databases] total=${finalDatabases.length}`);
+    // [DIAGNOSTIC] Log every database we detected vs what Notion returned
+    console.log(`[notion/databases][DIAG] authUid=${authUid} final_detected_count=${finalDatabases.length}`);
+    for (const db of finalDatabases) {
+      console.log(`[notion/databases][DIAG] detected id=${db.id} name=${JSON.stringify(db.name)}`);
+    }
+    // Summary: anything in allNotionItems that is NOT in finalDatabases
+    const detectedIds = new Set(finalDatabases.map(d => d.id));
+    const dropped = allNotionItems.filter(i => !detectedIds.has(i.id));
+    if (dropped.length > 0) {
+      for (const item of dropped) {
+        const name = item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "(no title)";
+        console.log(`[notion/databases][DIAG] NOT_DETECTED id=${item.id} object=${item.object} name=${JSON.stringify(name)} — was_page_walked=${level1Pages.has(item.id) || false}`);
+      }
+    } else {
+      console.log(`[notion/databases][DIAG] all Notion items accounted for in detected set`);
+    }
+    json(res, 200, { databases: finalDatabases });
   } catch (e) {
     console.error("[notion/databases] outer error:", String(e.message ?? e));
     json(res, 502, { error: `Notion databases error: ${String(e.message ?? e)}` });
