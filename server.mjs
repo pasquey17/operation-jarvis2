@@ -6073,65 +6073,48 @@ async function handleNotionDatabases(req, res) {
     const dbMap = new Map();
     const level1Pages = new Set();
 
+    // Resolve a Notion object's title across both API versions.
+    // 2025-09-03 data_source items carry title as a plain string; classic database items
+    // use a rich-text array. item.title?.[0]?.plain_text silently returns the first *character*
+    // when title is a string, so we must check typeof first.
+    function notionDbTitle(obj, fallback = "Untitled") {
+      if (!obj) return fallback;
+      if (typeof obj.title === "string" && obj.title.trim()) return obj.title.trim();
+      if (Array.isArray(obj.title)) {
+        const t = obj.title[0]?.plain_text ?? obj.title[0]?.text?.content;
+        if (t) return t;
+      }
+      const propTitle = obj.properties?.title?.title;
+      if (Array.isArray(propTitle)) {
+        const t = propTitle[0]?.plain_text ?? propTitle[0]?.text?.content;
+        if (t) return t;
+      }
+      if (typeof obj.name === "string" && obj.name.trim()) return obj.name.trim();
+      return fallback;
+    }
+
     // [DIAGNOSTIC] Log every item Notion returned so we can diff "returned" vs "detected"
     const allNotionItems = [...new Map([...dbOnlyResults, ...allResults].map(i => [i.id, i])).values()];
     console.log(`[notion/databases][DIAG] authUid=${authUid} notion_raw_count=${allNotionItems.length}`);
     for (const item of allNotionItems) {
-      const name = item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? item.properties?.title?.title?.[0]?.plain_text ?? "(no title)";
-      console.log(`[notion/databases][DIAG] raw id=${item.id} object=${item.object} name=${JSON.stringify(name)}`);
+      console.log(`[notion/databases][DIAG] raw id=${item.id} object=${item.object} name=${JSON.stringify(notionDbTitle(item, "(no title)"))}`);
     }
 
     for (const item of [...dbOnlyResults, ...allResults]) {
       if ((item.object === "database" || item.object === "data_source") && !dbMap.has(item.id)) {
-        dbMap.set(item.id, {
-          id: item.id,
-          name: item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "Untitled",
-        });
+        dbMap.set(item.id, { id: item.id, name: notionDbTitle(item) });
       } else if (item.object === "page" && !level1Pages.has(item.id)) {
         level1Pages.add(item.id);
       }
     }
     console.log(`[notion/databases][DIAG] after_search: direct_dbs=${dbMap.size} page_candidates=${level1Pages.size}`);
 
-    // Probe page-like items as potential merged/data-source databases.
-    // Notion's new API returns merged databases as object:"page" in search results.
-    // Pattern mirrors handleNotionColumns: GET /v1/databases/{id} with 2025-09-03 —
-    // if the response is 200 and object:"database", it's a real DB, not a page to crawl.
-    const probeResults = await Promise.all(
-      [...level1Pages].map(async (id) => {
-        try {
-          const r = await fetch(`https://api.notion.com/v1/databases/${id}`, {
-            headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
-          });
-          // [DIAGNOSTIC] log probe outcome for every page candidate
-          const probeStatus = r.status;
-          if (!r.ok) {
-            console.log(`[notion/databases][DIAG] probe id=${id} status=${probeStatus} → NOT a database (non-ok)`);
-            return null;
-          }
-          const d = await r.json();
-          if (d.object !== "database" && d.object !== "data_source") {
-            console.log(`[notion/databases][DIAG] probe id=${id} status=${probeStatus} object=${d.object} → NOT a database`);
-            return null;
-          }
-          const name = d.title?.[0]?.plain_text ?? d.title?.[0]?.text?.content ?? "Untitled";
-          console.log(`[notion/databases][DIAG] probe id=${id} status=${probeStatus} → IS a database name=${JSON.stringify(name)}`);
-          return { id, name };
-        } catch (e) {
-          console.log(`[notion/databases][DIAG] probe id=${id} → error ${String(e.message ?? e)}`);
-          return null;
-        }
-      })
-    );
-    let mergedDbCount = 0;
-    for (const entry of probeResults) {
-      if (entry && !dbMap.has(entry.id)) {
-        dbMap.set(entry.id, entry);
-        level1Pages.delete(entry.id);
-        mergedDbCount++;
-      }
-    }
-    console.log(`[notion/databases] direct dbs=${dbMap.size} merged_probed=${mergedDbCount} l1_pages=${level1Pages.size}`);
+    // The 2025-09-03 data_source filter now returns all database-like objects directly,
+    // so probing object:"page" items as potential databases is no longer needed. The probe
+    // was the mechanism that caused real pages (People, Todo List, etc.) to appear in the
+    // picker as false-positive databases. Inline/nested databases are still found below
+    // via the block-children walk.
+    console.log(`[notion/databases] direct_dbs=${dbMap.size} l1_pages=${level1Pages.size}`);
 
     // Level 1: paginated block children for every page from search.
     // Catches child_database, linked_database views, and queues child_page for level 2.
@@ -6166,7 +6149,7 @@ async function handleNotionDatabases(req, res) {
             const r = await fetch(`https://api.notion.com/v1/databases/${entry.id}`, { headers: notionHeaders });
             if (r.ok) {
               const d = await r.json();
-              entry.name = d.title?.[0]?.plain_text ?? d.title?.[0]?.text?.content ?? "Untitled";
+              entry.name = notionDbTitle(d);
             } else {
               entry.name = "Untitled";
             }
@@ -6187,8 +6170,7 @@ async function handleNotionDatabases(req, res) {
     const dropped = allNotionItems.filter(i => !detectedIds.has(i.id));
     if (dropped.length > 0) {
       for (const item of dropped) {
-        const name = item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "(no title)";
-        console.log(`[notion/databases][DIAG] NOT_DETECTED id=${item.id} object=${item.object} name=${JSON.stringify(name)} — was_page_walked=${level1Pages.has(item.id) || false}`);
+        console.log(`[notion/databases][DIAG] NOT_DETECTED id=${item.id} object=${item.object} name=${JSON.stringify(notionDbTitle(item, "(no title)"))}`);
       }
     } else {
       console.log(`[notion/databases][DIAG] all Notion items accounted for in detected set`);
@@ -6711,8 +6693,13 @@ async function handleNotionColumns(req, res) {
       console.log(`[notion/columns] sample query ${endpoint} → ${r.status}:`, text.slice(0, 300));
       if (!r.ok) return null;
       const data = JSON.parse(text);
-      const pages = data.results ?? [];
-      if (!pages.length || !pages[0]?.properties) return null;
+      let pages = data.results ?? [];
+      if (!pages.length) return null;
+      // data_sources/query may return partial pages without properties — resolve them
+      if (pages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
+        pages = await resolvePagesWithProperties(accessToken, pages);
+      }
+      if (!pages[0]?.properties) return null;
 
       const sampleMap = {};
       for (const page of pages) {
