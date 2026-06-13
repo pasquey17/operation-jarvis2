@@ -6083,10 +6083,23 @@ async function handleNotionDatabases(req, res) {
   }
 
   try {
-    const [dbOnlyResults, allResults] = await Promise.all([
-      searchAllPages({ value: "data_source", property: "object" }),
-      searchAllPages(null),
-    ]);
+    // Notion search can take several seconds to index newly granted OAuth access.
+    // Retry up to 3 times server-side before responding so brief index lag is transparent.
+    let dbOnlyResults = [], allResults = [];
+    for (let searchAttempt = 1; searchAttempt <= 3; searchAttempt++) {
+      [dbOnlyResults, allResults] = await Promise.all([
+        searchAllPages({ value: "data_source", property: "object" }),
+        searchAllPages(null),
+      ]);
+      if (dbOnlyResults.length > 0 || allResults.length > 0) break;
+      if (searchAttempt < 3) {
+        console.log(`[notion/databases] search returned 0 items (attempt ${searchAttempt}/3) — waiting 2s for Notion index`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    if (dbOnlyResults.length === 0 && allResults.length === 0) {
+      console.log(`[notion/databases] search returned 0 items after 3 server-side attempts — authUid=${authUid}`);
+    }
 
     const dbMap = new Map();
     const level1Pages = new Set();
@@ -6153,15 +6166,16 @@ async function handleNotionDatabases(req, res) {
       );
     }
 
-    // Fallback probe: if search + block walk found NO databases, probe every object:"page"
-    // item from the unfiltered search by calling GET /v1/databases/{id}. Notion sometimes
-    // returns databases as object:"page" in search for OAuth tokens (especially on fresh
-    // connections or data_source-type databases). The probe is cheap — we only run it when
-    // we'd otherwise show an empty picker, so it never adds extra items for normal users.
-    if (dbMap.size === 0 && level1Pages.size > 0) {
-      console.log(`[notion/databases] dbMap empty after walk — running page probe on ${level1Pages.size} candidates`);
+    // Probe: call GET /v1/databases/{id} on every object:"page" candidate that is not already
+    // in dbMap. Notion sometimes returns databases as object:"page" in search results,
+    // especially for OAuth tokens and data_source-type databases on fresh connections.
+    // Running unconditionally on all page candidates ensures we never miss a database
+    // regardless of what the direct search already found.
+    if (level1Pages.size > 0) {
+      const probeCandidates = [...level1Pages].filter(id => !dbMap.has(id));
+      console.log(`[notion/databases] probing ${probeCandidates.length} page candidate(s) for hidden databases`);
       const probeResults = await Promise.all(
-        [...level1Pages].map(async (id) => {
+        probeCandidates.map(async (id) => {
           try {
             const r = await fetch(`https://api.notion.com/v1/databases/${id}`, { headers: notionHeaders });
             if (!r.ok) return null;
@@ -6173,10 +6187,11 @@ async function handleNotionDatabases(req, res) {
           } catch { return null; }
         })
       );
+      let probeAdded = 0;
       for (const entry of probeResults) {
-        if (entry && !dbMap.has(entry.id)) dbMap.set(entry.id, entry);
+        if (entry && !dbMap.has(entry.id)) { dbMap.set(entry.id, entry); probeAdded++; }
       }
-      console.log(`[notion/databases] probe added ${dbMap.size} database(s)`);
+      if (probeAdded > 0) console.log(`[notion/databases] probe added ${probeAdded} hidden database(s)`);
     }
 
     // Resolve names for databases discovered via linked_database blocks (name is null until here).
