@@ -661,8 +661,8 @@
           const errEl  = document.getElementById("db-error");
           errEl.textContent = "";
 
-          const MAX_ATTEMPTS = 3;
-          const RETRY_MS = 1500;
+          const MAX_ATTEMPTS = 10;
+          const RETRY_MS = 3000;
 
           function showLoading(msg) {
             listEl.innerHTML = `<div class="status-msg">${msg}</div><div class="spinner" style="margin:12px auto 0"></div>`;
@@ -714,7 +714,12 @@
           }
 
           for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            showLoading(attempt === 1 ? "Loading databases…" : `Still loading… (${attempt}/${MAX_ATTEMPTS})`);
+            const loadMsg = attempt === 1
+              ? "Connecting to Notion workspace…"
+              : attempt <= 4
+                ? `Waiting for Notion to index your workspace… (${attempt}/${MAX_ATTEMPTS})`
+                : `Still syncing — Notion can take up to 30s for new connections (${attempt}/${MAX_ATTEMPTS})`;
+            showLoading(loadMsg);
             try {
               const resp = await apiFetch(`/api/notion/databases`, { cache: "no-store" });
               const data = await resp.json();
