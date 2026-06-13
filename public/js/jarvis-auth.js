@@ -85,11 +85,19 @@ export async function apiFetch(url, options = {}) {
   if (!headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  return fetch(url, {
+  const response = await fetch(url, {
     ...options,
     headers,
     cache: "no-store",
   });
+  if (response.status === 401) {
+    try { await sb.auth.signOut(); } catch {}
+    cachedSession = null;
+    sessionReady = null;
+    window.location.replace(`${LOGIN_PATH}?reason=session_expired`);
+    throw new Error("Session expired");
+  }
+  return response;
 }
 
 export async function signOut() {
@@ -109,8 +117,11 @@ export async function initNavAuthUi() {
   await initJarvisSettings();
 }
 
-sb.auth.onAuthStateChange((_event, session) => {
+sb.auth.onAuthStateChange((event, session) => {
   cachedSession = session;
+  if (!session && event === "SIGNED_OUT" && !isLoginPage()) {
+    window.location.replace(LOGIN_PATH);
+  }
 });
 
 export { APP_HOME_PATH, LOGIN_PATH };
