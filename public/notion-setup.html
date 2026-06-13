@@ -582,7 +582,7 @@
       (async () => {
         // ── user ──
         const userId = (await getAuthUserId()) || "";
-        if (!userId) { location.href = "/index.html"; return; }
+        if (!userId) { location.href = "/login.html"; return; }
         const navUser = document.getElementById("jv-nav-user");
         if (navUser) navUser.textContent = userId;
 
