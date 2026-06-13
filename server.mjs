@@ -5992,8 +5992,26 @@ async function handleNotionDatabases(req, res) {
   }
 
   if (!accessToken) {
-    json(res, 404, { error: "No Notion connection found for this user" });
-    return;
+    // Fallback: for known users who have an env-var Notion key (aidenpasque11, mum), use
+    // that directly so they can always reach the database picker even without an OAuth row.
+    const emailUserId = legacyEmailForAuthUserId(authUid) || "";
+    if (emailUserId === "aidenpasque11@gmail.com") {
+      const envKey = process.env.NOTION_API_KEY?.trim();
+      if (envKey) {
+        console.log(`[notion/databases] using env NOTION_API_KEY fallback for ${emailUserId}`);
+        accessToken = envKey;
+      }
+    } else if (emailUserId === "spasque70@gmail.com") {
+      const envKey = process.env.NOTION_API_KEY_MUM?.trim();
+      if (envKey) {
+        console.log(`[notion/databases] using env NOTION_API_KEY_MUM fallback for ${emailUserId}`);
+        accessToken = envKey;
+      }
+    }
+    if (!accessToken) {
+      json(res, 404, { error: "No Notion connection found for this user. Please connect Notion from the onboarding screen." });
+      return;
+    }
   }
 
   const notionHeaders = {
@@ -6109,11 +6127,6 @@ async function handleNotionDatabases(req, res) {
     }
     console.log(`[notion/databases][DIAG] after_search: direct_dbs=${dbMap.size} page_candidates=${level1Pages.size}`);
 
-    // The 2025-09-03 data_source filter now returns all database-like objects directly,
-    // so probing object:"page" items as potential databases is no longer needed. The probe
-    // was the mechanism that caused real pages (People, Todo List, etc.) to appear in the
-    // picker as false-positive databases. Inline/nested databases are still found below
-    // via the block-children walk.
     console.log(`[notion/databases] direct_dbs=${dbMap.size} l1_pages=${level1Pages.size}`);
 
     // Level 1: paginated block children for every page from search.
@@ -6138,6 +6151,32 @@ async function handleNotionDatabases(req, res) {
           } catch { /* skip */ }
         })
       );
+    }
+
+    // Fallback probe: if search + block walk found NO databases, probe every object:"page"
+    // item from the unfiltered search by calling GET /v1/databases/{id}. Notion sometimes
+    // returns databases as object:"page" in search for OAuth tokens (especially on fresh
+    // connections or data_source-type databases). The probe is cheap — we only run it when
+    // we'd otherwise show an empty picker, so it never adds extra items for normal users.
+    if (dbMap.size === 0 && level1Pages.size > 0) {
+      console.log(`[notion/databases] dbMap empty after walk — running page probe on ${level1Pages.size} candidates`);
+      const probeResults = await Promise.all(
+        [...level1Pages].map(async (id) => {
+          try {
+            const r = await fetch(`https://api.notion.com/v1/databases/${id}`, { headers: notionHeaders });
+            if (!r.ok) return null;
+            const d = await r.json();
+            if (d.object !== "database" && d.object !== "data_source") return null;
+            const name = notionDbTitle(d);
+            console.log(`[notion/databases][DIAG] probe confirmed id=${id} object=${d.object} name=${JSON.stringify(name)}`);
+            return { id, name };
+          } catch { return null; }
+        })
+      );
+      for (const entry of probeResults) {
+        if (entry && !dbMap.has(entry.id)) dbMap.set(entry.id, entry);
+      }
+      console.log(`[notion/databases] probe added ${dbMap.size} database(s)`);
     }
 
     // Resolve names for databases discovered via linked_database blocks (name is null until here).
