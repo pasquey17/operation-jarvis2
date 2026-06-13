@@ -20,6 +20,7 @@ import {
 } from "./sync-journal-fields-notion.mjs";
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 import { serializeNotionProperties } from "./notion-serialize-props.mjs";
+import { resolvePagesWithProperties } from "./notion-resolve-page.mjs";
 import { runAnalysisEngine } from "./analysis-engine.mjs";
 import { fetchTradesForReport, buildReportPackage } from "./report-package.mjs";
 import { generateReport } from "./report-generator.mjs";
@@ -6820,7 +6821,13 @@ async function handleNotionAutoMap(req, res) {
       body: JSON.stringify({ page_size: 5 }),
     });
     const pagesData = pagesRes.ok ? await pagesRes.json() : { results: [] };
-    const pages = pagesData.results ?? [];
+    let pages = pagesData.results ?? [];
+
+    // data_sources/query may return partial pages (no properties). Resolve them before
+    // reading column names — same pattern used by notion-sync.mjs for trades ingestion.
+    if (dataSources.length > 0 && pages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
+      pages = await resolvePagesWithProperties(accessToken, pages);
+    }
 
     // Build relation cache + lazy-fetch uncached relation IDs from sample pages
     const amCache = await buildRelationLookupCache(accessToken, databaseId);
@@ -6846,7 +6853,10 @@ async function handleNotionAutoMap(req, res) {
         }
       }
     }
-    if (schema.properties) {
+    // For data-source databases, schema.properties reflects the underlying source DB
+    // structure rather than the merged view columns — merging it in produces a mismatched
+    // column list that breaks AI field mapping. Only use it for standard databases.
+    if (dataSources.length === 0 && schema.properties) {
       for (const [name, prop] of Object.entries(schema.properties)) {
         if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
       }
