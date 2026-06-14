@@ -6068,11 +6068,15 @@ async function handleNotionDatabases(req, res) {
 
   // Walk a block list; harvest databases and queue child pages for the next level.
   // Handles child_database (inline DB), linked_database (DB view — name resolved later),
-  // and child_page (sub-page that may itself contain databases).
+  // child_data_source (data_source-type DB in 2025-09-03 API), and child_page.
   function harvestBlocks(blocks, dbMap, pageQueue) {
     for (const block of blocks) {
       if (block.type === "child_database" && !dbMap.has(block.id)) {
         dbMap.set(block.id, { id: block.id, name: block.child_database?.title || "Untitled" });
+      } else if (block.type === "child_data_source" && !dbMap.has(block.id)) {
+        // 2025-09-03 API: data_source type databases embedded in pages
+        const dsTitle = block.child_data_source?.title ?? block.child_data_source?.name ?? null;
+        dbMap.set(block.id, { id: block.id, name: typeof dsTitle === "string" && dsTitle.trim() ? dsTitle.trim() : null });
       } else if (block.type === "linked_database") {
         const dbId = block.linked_database?.database_id;
         if (dbId && !dbMap.has(dbId)) dbMap.set(dbId, { id: dbId, name: null });
@@ -6178,12 +6182,21 @@ async function handleNotionDatabases(req, res) {
         probeCandidates.map(async (id) => {
           try {
             const r = await fetch(`https://api.notion.com/v1/databases/${id}`, { headers: notionHeaders });
-            if (!r.ok) return null;
-            const d = await r.json();
-            if (d.object !== "database" && d.object !== "data_source") return null;
-            const name = notionDbTitle(d);
-            console.log(`[notion/databases][DIAG] probe confirmed id=${id} object=${d.object} name=${JSON.stringify(name)}`);
-            return { id, name };
+            if (r.ok) {
+              const d = await r.json();
+              if (d.object !== "database" && d.object !== "data_source") return null;
+              const name = notionDbTitle(d);
+              console.log(`[notion/databases][DIAG] probe(db) confirmed id=${id} object=${d.object} name=${JSON.stringify(name)}`);
+              return { id, name };
+            }
+            // Fallback: try /v1/data_sources/{id} — pure data_source databases 404 on the databases endpoint
+            const r2 = await fetch(`https://api.notion.com/v1/data_sources/${id}`, { headers: notionHeaders });
+            if (!r2.ok) return null;
+            const d2 = await r2.json();
+            if (d2.object !== "data_source") return null;
+            const name2 = notionDbTitle(d2);
+            console.log(`[notion/databases][DIAG] probe(data_source) confirmed id=${id} name=${JSON.stringify(name2)}`);
+            return { id, name: name2 };
           } catch { return null; }
         })
       );
@@ -6194,7 +6207,7 @@ async function handleNotionDatabases(req, res) {
       if (probeAdded > 0) console.log(`[notion/databases] probe added ${probeAdded} hidden database(s)`);
     }
 
-    // Resolve names for databases discovered via linked_database blocks (name is null until here).
+    // Resolve names for databases discovered via linked_database/child_data_source blocks (name is null until here).
     const unnamed = [...dbMap.values()].filter(d => d.name === null);
     if (unnamed.length > 0) {
       await Promise.all(
@@ -6205,7 +6218,14 @@ async function handleNotionDatabases(req, res) {
               const d = await r.json();
               entry.name = notionDbTitle(d);
             } else {
-              entry.name = "Untitled";
+              // Fallback: try /v1/data_sources/{id} for pure data_source type databases
+              const r2 = await fetch(`https://api.notion.com/v1/data_sources/${entry.id}`, { headers: notionHeaders });
+              if (r2.ok) {
+                const d2 = await r2.json();
+                entry.name = notionDbTitle(d2);
+              } else {
+                entry.name = "Untitled";
+              }
             }
           } catch { entry.name = "Untitled"; }
         })
@@ -6702,16 +6722,72 @@ async function handleNotionColumns(req, res) {
   if (!accessToken) { json(res, 404, { error: "No Notion connection found for this user" }); return; }
 
   try {
-    // Step 1: fetch the database schema with 2025-09-03 (required for merged databases)
-    // This gives us data_sources for merged DBs, or properties for standard DBs
+    // Step 1: fetch the database schema. Try /v1/databases/{id} first (standard + merged DBs).
+    // For pure data_source type databases (2025-09-03 API), that endpoint 404s — fall back to
+    // /v1/data_sources/{id} which serves the same schema for data_source objects.
     console.log("[notion/columns] fetching schema for:", databaseId);
-    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
-    });
+    const notionColHeaders = { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" };
+    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, { headers: notionColHeaders });
     const schemaRaw = await schemaRes.text();
     console.log("[notion/columns] schema status:", schemaRes.status, "body:", schemaRaw.slice(0, 400));
 
+    // Pure data_source databases 404 on the databases endpoint — try data_sources endpoint
     if (!schemaRes.ok) {
+      console.log("[notion/columns] databases endpoint failed — trying data_sources fallback for:", databaseId);
+      const dsRes = await fetch(`https://api.notion.com/v1/data_sources/${databaseId}`, { headers: notionColHeaders });
+      const dsRaw = await dsRes.text();
+      console.log("[notion/columns] data_sources fallback status:", dsRes.status, "body:", dsRaw.slice(0, 300));
+      if (dsRes.ok) {
+        // Pure data_source: databaseId IS the data_source_id; query via data_sources/{id}/query
+        const dsSchema = JSON.parse(dsRaw);
+        if (dsSchema.object === "data_source") {
+          const dataSourceId = databaseId.replace(/-/g, "");
+          // fetchSamplePages is defined below — hoist it up via a forward-ref workaround
+          // by inlining the fetch here since we haven't declared it yet.
+          const dsQueryRes = await fetch(`https://api.notion.com/v1/data_sources/${dataSourceId}/query`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03", "Content-Type": "application/json" },
+            body: JSON.stringify({ page_size: 3 }),
+          });
+          const dsQueryText = await dsQueryRes.text();
+          console.log(`[notion/columns] data_source query → ${dsQueryRes.status}:`, dsQueryText.slice(0, 300));
+          if (dsQueryRes.ok) {
+            const dsData = JSON.parse(dsQueryText);
+            let dsPages = dsData.results ?? [];
+            if (dsPages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
+              dsPages = await resolvePagesWithProperties(accessToken, dsPages);
+            }
+            if (dsPages.length > 0 && dsPages[0]?.properties) {
+              const UUID_RE_DS = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+              const sampleMap = {};
+              for (const page of dsPages) {
+                for (const [name, prop] of Object.entries(page.properties ?? {})) {
+                  if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
+                  if (sampleMap[name].samples.length < 3) {
+                    const v = notionPropValue(prop);
+                    if (v != null && v !== "") {
+                      const s = Array.isArray(v) ? v.filter(x => !UUID_RE_DS.test(String(x).trim())).slice(0, 2).join(", ") : String(v).slice(0, 40);
+                      if (s && !UUID_RE_DS.test(s.trim()) && !sampleMap[name].samples.includes(s)) sampleMap[name].samples.push(s);
+                    }
+                  }
+                }
+              }
+              const cols = Object.entries(sampleMap).map(([name, { type, samples }]) => ({ name, type, samples }));
+              console.log("[notion/columns] pure data_source columns:", cols.map(c => c.name));
+              json(res, 200, { columns: cols, data_source_id: dataSourceId });
+              return;
+            }
+          }
+          // No rows — fall back to schema properties from the data_source schema
+          const schemaProps = dsSchema.properties ? Object.entries(dsSchema.properties).map(([name, prop]) => ({
+            name, type: prop.type ?? "unknown", samples: [],
+          })) : [];
+          if (schemaProps.length > 0) {
+            json(res, 200, { columns: schemaProps, data_source_id: dataSourceId });
+            return;
+          }
+        }
+      }
       json(res, 502, { error: `Notion schema fetch failed (${schemaRes.status}): ${schemaRaw}` }); return;
     }
 
@@ -6839,21 +6915,31 @@ async function handleNotionAutoMap(req, res) {
   if (!apiKey) { json(res, 500, { error: "Anthropic API not configured" }); return; }
 
   try {
-    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
-    });
-    if (!schemaRes.ok) { json(res, 502, { error: "Failed to fetch Notion schema" }); return; }
-    const schema = await schemaRes.json();
-
-    const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
+    const amNotionHeaders = { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" };
+    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, { headers: amNotionHeaders });
+    let schema;
     let dataSourceId = null;
     let queryUrl;
-    if (dataSources.length > 0) {
-      const rawId = dataSources[0].id ?? dataSources[0];
-      dataSourceId = String(rawId).replace(/-/g, "");
-      queryUrl = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
+
+    if (schemaRes.ok) {
+      schema = await schemaRes.json();
+      const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
+      if (dataSources.length > 0) {
+        const rawId = dataSources[0].id ?? dataSources[0];
+        dataSourceId = String(rawId).replace(/-/g, "");
+        queryUrl = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
+      } else {
+        queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+      }
     } else {
-      queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+      // Fallback: pure data_source databases 404 on the databases endpoint
+      console.log("[notion/auto-map] databases endpoint failed — trying data_sources fallback for:", databaseId);
+      const dsRes = await fetch(`https://api.notion.com/v1/data_sources/${databaseId}`, { headers: amNotionHeaders });
+      if (!dsRes.ok) { json(res, 502, { error: "Failed to fetch Notion schema" }); return; }
+      schema = await dsRes.json();
+      if (schema.object !== "data_source") { json(res, 502, { error: "Failed to fetch Notion schema" }); return; }
+      dataSourceId = databaseId.replace(/-/g, "");
+      queryUrl = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
     }
 
     const pagesRes = await fetch(queryUrl, {
@@ -6866,7 +6952,7 @@ async function handleNotionAutoMap(req, res) {
 
     // data_sources/query may return partial pages (no properties). Resolve them before
     // reading column names — same pattern used by notion-sync.mjs for trades ingestion.
-    if (dataSources.length > 0 && pages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
+    if (dataSourceId !== null && pages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
       pages = await resolvePagesWithProperties(accessToken, pages);
     }
 
@@ -6897,7 +6983,7 @@ async function handleNotionAutoMap(req, res) {
     // For data-source databases, schema.properties reflects the underlying source DB
     // structure rather than the merged view columns — merging it in produces a mismatched
     // column list that breaks AI field mapping. Only use it for standard databases.
-    if (dataSources.length === 0 && schema.properties) {
+    if (dataSourceId === null && schema.properties) {
       for (const [name, prop] of Object.entries(schema.properties)) {
         if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
       }
