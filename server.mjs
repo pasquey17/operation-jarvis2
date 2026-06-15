@@ -2575,8 +2575,8 @@ async function handleGenerateReport(req, res) {
     json(res, 502, { error: `Report generation failed: ${e instanceof Error ? e.message : String(e)}` }); return;
   }
 
-  // Save the generated report (fire-and-forget; don't block the response).
-  upsertSavedReport(userId, win, periodKey, dateFrom, dateTo, html, isCurrent && isRegen).catch(() => {});
+  // Await the save so Vercel doesn't terminate before the Supabase write completes.
+  await upsertSavedReport(userId, win, periodKey, dateFrom, dateTo, html, isCurrent && isRegen);
 
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Jarvis-Cached": "false" });
   res.end(html);
