@@ -84,6 +84,238 @@ function r2(n) {
   return Math.round(n * 100) / 100;
 }
 
+// ─── Observation classification layer ────────────────────────────────────────
+// Tune all thresholds here — nowhere else.
+const OBS_THRESHOLDS = {
+  minSample: 10,       // min decided trades for session/day/model/pair/direction groups
+  minDelta: 0.15,      // min win-rate gap vs overall (15 percentage points)
+  minComboSample: 8,   // min decided trades for session+day combos (rarer combos)
+  minComboDelta: 0.15, // min win-rate gap for combos
+  minCFSample: 8,      // min trades for custom field (notionExtras) patterns
+  minCFDelta: 0.15,    // min win-rate delta for custom field flags
+};
+
+// Strength 0–1: bigger sample + bigger effect = higher confidence
+function obsStrength(decidedCount, absDelta) {
+  const sampleFactor = Math.min(1, decidedCount / 30);
+  const effectFactor = Math.min(1, absDelta / 0.30);
+  return r2(sampleFactor * effectFactor);
+}
+
+// ─── Custom-field observation filters ────────────────────────────────────────
+
+// EDITABLE BLOCKLIST — exact key names (case-insensitive, trimmed) for short fields
+// that record the result numeric value. "RR: -1" means loss; "RR: 2.5" means win.
+const TAUTOLOGY_KEY_EXACT = new Set([
+  "rr", "r:r", "r/r", "r multiple", "r-multiple",
+  "pnl", "p&l", "p/l",
+]);
+
+// EDITABLE BLOCKLIST — key substrings for fields that record the result rather than
+// predict it. "Reason for Result: Stop Loss Hit" tells you what happened; it can't
+// predict what will happen. Principle: if a field IS the outcome, it can't explain it.
+const TAUTOLOGY_KEY_SUBSTRINGS = [
+  "reason for result",
+  "reason for exit",
+  "exit reason",
+  "result reason",
+  "trade result",
+  "outcome reason",
+  "profit",       // Profit %, Profit. %, Profit/Loss, etc.
+  "breakeven",
+  "break even",
+];
+
+// EDITABLE BLOCKLIST — value substrings that are themselves a win/loss/BE label,
+// regardless of the field name. Any key whose values are outcome-labels is circular.
+const TAUTOLOGY_VALUE_SUBSTRINGS = [
+  "stop loss hit",
+  "take profit hit",
+  "sl hit",
+  "tp hit",
+  "stopped out",
+  "target hit",
+  "hit stop",
+  "hit target",
+  "hit sl",
+  "hit tp",
+];
+
+export function isOutcomeTautology(key, value) {
+  const kl = String(key ?? "").toLowerCase().trim();
+  const vl = String(value ?? "").toLowerCase();
+  if (TAUTOLOGY_KEY_EXACT.has(kl)) return true;
+  if (TAUTOLOGY_KEY_SUBSTRINGS.some((s) => kl.includes(s))) return true;
+  if (TAUTOLOGY_VALUE_SUBSTRINGS.some((s) => vl.includes(s))) return true;
+  return false;
+}
+
+// EDITABLE BLOCKLIST — fields that classify a trade into a data partition (account type,
+// testing phase) rather than describing trader behaviour. They may later feed a separate
+// "performance across segments" observation type — don't build that now.
+const SEGMENT_KEY_SUBSTRINGS = [
+  "trade taken on",
+  "account type",
+  "trading phase",
+  "test phase",
+  "segment",
+];
+
+// EDITABLE BLOCKLIST — value substrings that identify a segment/phase label.
+// Catches cases like "ACCOUNT: NONE (FT)" where the key isn't segment-named
+// but the value clearly is.
+const SEGMENT_VALUE_SUBSTRINGS = [
+  "forward test",
+  "none (ft)",
+  "(ft)",
+  "paper trade",
+  "demo account",
+  "back test",
+  "backtesting",
+];
+
+export function isSegmentTag(key, value) {
+  const kl = String(key ?? "").toLowerCase();
+  const vl = String(value ?? "").toLowerCase();
+  if (SEGMENT_KEY_SUBSTRINGS.some((s) => kl.includes(s))) return true;
+  if (SEGMENT_VALUE_SUBSTRINGS.some((s) => vl.includes(s))) return true;
+  return false;
+}
+
+// Generic classifier for any flat breakdown array (bySession, byDay, byModel, byPair, byDirection)
+function classifyBreakdown(rows, category, overallWR, labelFn, minSample, minDelta) {
+  const out = [];
+  for (const row of rows) {
+    if ((row.decided ?? 0) < minSample) continue;
+    if (row.winRate === null) continue;
+    const delta = r2(row.winRate - overallWR);
+    if (Math.abs(delta) < minDelta) continue;
+    const type = delta > 0 ? "green" : "red";
+    out.push({
+      type,
+      category,
+      label: labelFn(row, type),
+      evidence: {
+        sampleSize: row.decided,
+        winRate: row.winRate,
+        overallWinRate: overallWR,
+        delta,
+        totalR: row.totalR ?? null,
+      },
+      strength: obsStrength(row.decided, Math.abs(delta)),
+    });
+  }
+  return out;
+}
+
+export function buildObservations(raw) {
+  if (!raw || raw.empty || !raw.overview) return [];
+  const overallWR = raw.overview.winRate;
+  if (overallWR === null) return [];
+
+  const obs = [];
+
+  // Sessions
+  obs.push(...classifyBreakdown(
+    raw.bySession ?? [], "session", overallWR,
+    (row, type) => type === "green"
+      ? `${row.key} session is a proven edge (${pct(row.winRate)} WR across ${row.decided} trades)`
+      : `${row.key} session is a recurring leak (${pct(row.winRate)} WR across ${row.decided} trades)`,
+    OBS_THRESHOLDS.minSample, OBS_THRESHOLDS.minDelta,
+  ));
+
+  // Days
+  obs.push(...classifyBreakdown(
+    raw.byDay ?? [], "day", overallWR,
+    (row, type) => type === "green"
+      ? `${row.key}s are a strong trading day (${pct(row.winRate)} WR across ${row.decided} trades)`
+      : `${row.key}s are underperforming — consider sitting them out (${pct(row.winRate)} WR across ${row.decided} trades)`,
+    OBS_THRESHOLDS.minSample, OBS_THRESHOLDS.minDelta,
+  ));
+
+  // Setups / models
+  obs.push(...classifyBreakdown(
+    raw.byModel ?? [], "setup", overallWR,
+    (row, type) => type === "green"
+      ? `${row.key} setup is a proven edge — lean into it (${pct(row.winRate)} WR across ${row.decided} trades)`
+      : `${row.key} setup is a leak — needs review (${pct(row.winRate)} WR across ${row.decided} trades)`,
+    OBS_THRESHOLDS.minSample, OBS_THRESHOLDS.minDelta,
+  ));
+
+  // Pairs
+  obs.push(...classifyBreakdown(
+    raw.byPair ?? [], "pair", overallWR,
+    (row, type) => type === "green"
+      ? `${row.key} is a proven edge instrument (${pct(row.winRate)} WR across ${row.decided} trades)`
+      : `${row.key} is underperforming — watch this pair (${pct(row.winRate)} WR across ${row.decided} trades)`,
+    OBS_THRESHOLDS.minSample, OBS_THRESHOLDS.minDelta,
+  ));
+
+  // Direction
+  obs.push(...classifyBreakdown(
+    raw.byDirection ?? [], "direction", overallWR,
+    (row, type) => type === "green"
+      ? `${row.key} trades are your stronger side (${pct(row.winRate)} WR across ${row.decided} trades)`
+      : `${row.key} trades are underperforming — directional bias is a leak (${pct(row.winRate)} WR across ${row.decided} trades)`,
+    OBS_THRESHOLDS.minSample, OBS_THRESHOLDS.minDelta,
+  ));
+
+  // Session + day combos
+  for (const row of raw.bySessionDay ?? []) {
+    if ((row.decided ?? 0) < OBS_THRESHOLDS.minComboSample) continue;
+    if (row.winRate === null) continue;
+    const delta = r2(row.winRate - overallWR);
+    if (Math.abs(delta) < OBS_THRESHOLDS.minComboDelta) continue;
+    const type = delta > 0 ? "green" : "red";
+    obs.push({
+      type,
+      category: "combo",
+      label: type === "green"
+        ? `${row.key} is a high-probability window (${pct(row.winRate)} WR across ${row.decided} trades)`
+        : `${row.key} is a weak window — protect capital here (${pct(row.winRate)} WR across ${row.decided} trades)`,
+      evidence: {
+        sampleSize: row.decided,
+        winRate: row.winRate,
+        overallWinRate: overallWR,
+        delta,
+        totalR: row.totalR ?? null,
+      },
+      strength: obsStrength(row.decided, Math.abs(delta)),
+    });
+  }
+
+  // Custom field patterns (notionExtrasPatterns — already top 5 by |diff|)
+  for (const pattern of raw.notionExtrasPatterns ?? []) {
+    if ((pattern.count ?? 0) < OBS_THRESHOLDS.minCFSample) continue;
+    if (Math.abs(pattern.diff ?? 0) < OBS_THRESHOLDS.minCFDelta) continue;
+    if (isOutcomeTautology(pattern.key, pattern.value)) continue;
+    if (isSegmentTag(pattern.key, pattern.value)) continue;
+    const type = pattern.diff > 0 ? "green" : "red";
+    obs.push({
+      type,
+      category: "custom_field",
+      label: type === "green"
+        ? `"${pattern.key}: ${pattern.value}" is a positive signal (WR ${pct(pattern.winRateWith)} with vs ${pct(pattern.winRateWithout)} without)`
+        : `"${pattern.key}: ${pattern.value}" is a recurring leak (WR ${pct(pattern.winRateWith)} with vs ${pct(pattern.winRateWithout)} without)`,
+      evidence: {
+        sampleSize: pattern.count,
+        winRateWith: pattern.winRateWith,
+        winRateWithout: pattern.winRateWithout,
+        delta: pattern.diff,
+      },
+      strength: obsStrength(pattern.count, Math.abs(pattern.diff)),
+    });
+  }
+
+  // Sort: greens before reds, then by strength desc within each type
+  obs.sort((a, b) => {
+    if (a.type !== b.type) return a.type === "green" ? -1 : 1;
+    return (b.strength ?? 0) - (a.strength ?? 0);
+  });
+
+  return obs;
+}
+
 function structureIntelligenceReport(raw, userId, existingVersion) {
   const ov = raw.overview ?? {};
 
@@ -300,6 +532,8 @@ function structureIntelligenceReport(raw, userId, existingVersion) {
     summary: `${f.field}: ${f.values.map((v) => `${v.val} (${v.count})`).join(", ")}`,
   }));
 
+  const observations = buildObservations(raw);
+
   return {
     userId,
     generatedAt: new Date().toISOString(),
@@ -313,6 +547,7 @@ function structureIntelligenceReport(raw, userId, existingVersion) {
     drawdown,
     behaviouralPatterns,
     customFieldSummary,
+    observations,
   };
 }
 

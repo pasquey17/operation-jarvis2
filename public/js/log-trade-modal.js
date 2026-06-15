@@ -386,8 +386,13 @@ function notionFieldToDef(f) {
   const n = (f.field_name || "").toLowerCase();
   let type = "text";
   let options = [];
-  if (f.field_type === "dropdown" || f.field_type === "multiselect") {
+  if (f.field_type === "dropdown") {
     type = "select";
+    try {
+      options = JSON.parse(f.field_options || "[]");
+    } catch {}
+  } else if (f.field_type === "multiselect") {
+    type = "multiselect";
     try {
       options = JSON.parse(f.field_options || "[]");
     } catch {}
@@ -468,6 +473,65 @@ function initOutcomeChips(form, onOutcomeChange) {
   syncOutcomeChipsFromSelect(form);
 }
 
+function initMultiselectFields(container) {
+  if (!container) return;
+  container.querySelectorAll(".ltm-multiselect-wrap:not([data-ms-inited])").forEach((wrap) => {
+    wrap.dataset.msInited = "1";
+    const picker = wrap.querySelector("[data-ms-picker]");
+    const chipsEl = wrap.querySelector(".ltm-ms-chips");
+    if (!picker || !chipsEl) return;
+
+    function addChip(value) {
+      if (!value) return;
+      const alreadySelected = Array.from(
+        wrap.querySelectorAll("input[type='hidden']")
+      ).some((inp) => inp.value === value);
+      if (alreadySelected) { picker.value = ""; return; }
+
+      const optToRemove = Array.from(picker.options).find((o) => o.value === value);
+      if (optToRemove) optToRemove.remove();
+
+      const inp = document.createElement("input");
+      inp.type = "hidden";
+      inp.name = wrap.dataset.msName;
+      inp.value = value;
+      inp.dataset.msHidden = "1";
+      wrap.appendChild(inp);
+
+      const chip = document.createElement("span");
+      chip.className = "ltm-ms-chip";
+      chip.dataset.msValue = value;
+      const xBtn = document.createElement("button");
+      xBtn.type = "button";
+      xBtn.className = "ltm-ms-chip-x";
+      xBtn.setAttribute("aria-label", `Remove ${value}`);
+      xBtn.textContent = "×";
+      xBtn.addEventListener("click", () => removeChip(value));
+      chip.appendChild(document.createTextNode(value));
+      chip.appendChild(xBtn);
+      chipsEl.appendChild(chip);
+
+      picker.value = "";
+    }
+
+    function removeChip(value) {
+      chipsEl.querySelectorAll(".ltm-ms-chip").forEach((el) => {
+        if (el.dataset.msValue === value) el.remove();
+      });
+      wrap.querySelectorAll("input[type='hidden'][data-ms-hidden]").forEach((el) => {
+        if (el.value === value) el.remove();
+      });
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = value;
+      picker.appendChild(opt);
+    }
+
+    picker.addEventListener("change", () => addChip(picker.value));
+    wrap._addChip = addChip;
+  });
+}
+
 function clearFormValidation(form) {
   if (!form) return;
   form.querySelectorAll(".ltm-field-row--error").forEach((row) => {
@@ -520,6 +584,18 @@ function buildInputHtml(field, today) {
         .map((o) => `<option value="${escHtml(o)}">${escHtml(o)}</option>`)
         .join("");
       return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input" ${req}><option value="">${escHtml(ph)}</option>${opts}</select>`;
+    }
+    case "multiselect": {
+      const opts = (field.options || [])
+        .map((o) => `<option value="${escHtml(o)}">${escHtml(o)}</option>`)
+        .join("");
+      return `<div class="ltm-multiselect-wrap ltm-input" data-ms-name="${escAttr(name)}" role="group" aria-label="${escAttr(field.label || name)}">
+  <div class="ltm-ms-chips"></div>
+  <select class="ltm-ms-picker" data-ms-picker aria-label="Add ${escAttr(field.label || name)}">
+    <option value="">+ ${escHtml(ph)}</option>
+    ${opts}
+  </select>
+</div>`;
     }
     case "yesno":
       return `<select id="${id}" name="${escAttr(name)}" class="trade-input trade-select ltm-input"><option value="">${escHtml(ph)}</option><option value="Yes">Yes</option><option value="No">No</option></select>`;
@@ -1536,6 +1612,22 @@ export async function openLogTradeModal(options) {
   }
   initOutcomeChips(form, syncRR);
   syncRR();
+  initMultiselectFields(fieldsList);
+
+  if (editId && editTrade) {
+    const cdMs =
+      editTrade.custom_data && typeof editTrade.custom_data === "object"
+        ? editTrade.custom_data
+        : {};
+    fieldsList.querySelectorAll(".ltm-multiselect-wrap[data-ms-inited]").forEach((wrap) => {
+      const k = wrap.dataset.msName;
+      if (!k || !(k in cdMs)) return;
+      const v = cdMs[k];
+      if (!v) return;
+      const vals = Array.isArray(v) ? v : [String(v)];
+      vals.forEach((val) => { if (val && wrap._addChip) wrap._addChip(String(val)); });
+    });
+  }
 
   const submitBtn = document.getElementById("ltm-submit");
   const submitAnotherBtn = document.getElementById("ltm-submit-another");
@@ -1602,8 +1694,13 @@ export async function openLogTradeModal(options) {
 
     for (const f of [...notionFields, ...userAddedFields]) {
       if (shouldSkipJournalFieldName(f.id)) continue;
-      const v = (fd.get(f.id) || "").trim();
-      if (v) custom_data[f.id] = v;
+      if (f.type === "multiselect") {
+        const vals = fd.getAll(f.id).map((v) => v.trim()).filter(Boolean);
+        if (vals.length) custom_data[f.id] = vals;
+      } else {
+        const v = (fd.get(f.id) || "").trim();
+        if (v) custom_data[f.id] = v;
+      }
     }
     const photoPayload = photosToPayload();
     if (photoPayload.length) custom_data.photos = photoPayload;
@@ -1632,6 +1729,10 @@ export async function openLogTradeModal(options) {
         throw new Error(readApiErrorMessage(d) || `Save failed (${res.status})`);
       }
 
+      // Parse response to get the instant read (only present on new trades, not edits).
+      const resData = !editId ? await res.json().catch(() => ({})) : {};
+      const instantRead = resData?.read ?? null;
+
       const savedMeta = {
         outcome,
         pair,
@@ -1647,6 +1748,7 @@ export async function openLogTradeModal(options) {
       if (closeAfter || partial) {
         savedSuccessfully = true;
         void closeModal();
+        showInstantReadCard(instantRead);
         if (partial) {
           showToast("Saved as incomplete — edit anytime from the journal");
         } else {
@@ -1657,6 +1759,7 @@ export async function openLogTradeModal(options) {
       }
 
       showToast("Trade logged — add another below.");
+      showInstantReadCard(instantRead);
       resetFormForAnother();
       if (onTradeSaved) await onTradeSaved(savedMeta);
     } catch (err) {
@@ -1694,5 +1797,157 @@ export async function openLogTradeModal(options) {
   } else {
     document.getElementById("ltm-f-date")?.focus();
   }
+}
+
+// ─── Instant read card ────────────────────────────────────────────────────────
+
+let _irStyleInjected = false;
+function _injectIrStyles() {
+  if (_irStyleInjected) return;
+  _irStyleInjected = true;
+  const s = document.createElement("style");
+  s.textContent = `
+    .jarvis-read-card {
+      position: fixed;
+      bottom: 1.75rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      max-width: 480px;
+      width: calc(100% - 2rem);
+      background: rgba(5, 10, 20, 0.97);
+      border-radius: 14px;
+      padding: 1rem 1rem 1rem 1.125rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      z-index: 10200;
+      animation: jrCardIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+      font-family: "Outfit", sans-serif;
+      box-sizing: border-box;
+    }
+    .jarvis-read-card--green {
+      border: 1px solid rgba(0, 212, 255, 0.4);
+      box-shadow: 0 0 28px rgba(0, 212, 255, 0.10), 0 6px 40px rgba(0,0,0,0.7);
+    }
+    .jarvis-read-card--red {
+      border: 1px solid rgba(255, 155, 40, 0.45);
+      box-shadow: 0 0 28px rgba(255, 155, 40, 0.10), 0 6px 40px rgba(0,0,0,0.7);
+    }
+    .jarvis-read-card--neutral {
+      border: 1px solid rgba(192, 192, 192, 0.28);
+      box-shadow: 0 0 28px rgba(192, 192, 192, 0.05), 0 6px 40px rgba(0,0,0,0.7);
+    }
+    @keyframes jrCardIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(18px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes jrCardOut {
+      to { opacity: 0; transform: translateX(-50%) translateY(14px); }
+    }
+    .jarvis-read-card--out { animation: jrCardOut 0.25s ease forwards; }
+    .jarvis-read-card__hdr {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin-bottom: 0.6rem;
+    }
+    .jarvis-read-card__dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .jarvis-read-card--green   .jarvis-read-card__dot { background: #00d4ff; }
+    .jarvis-read-card--red     .jarvis-read-card__dot { background: #ff9a28; }
+    .jarvis-read-card--neutral .jarvis-read-card__dot { background: #8899aa; }
+    .jarvis-read-card__eyebrow {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #556677;
+      flex: 1;
+    }
+    .jarvis-read-card__close {
+      background: none; border: none;
+      color: #445566; font-size: 1rem;
+      cursor: pointer; padding: 0 2px;
+      line-height: 1; flex-shrink: 0;
+    }
+    .jarvis-read-card__close:hover { color: #aabbcc; }
+    .jarvis-read-card__body {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.875rem;
+    }
+    .jarvis-read-card__grade-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25em;
+      min-width: 2.75rem;
+      flex-shrink: 0;
+    }
+    .jarvis-read-card__grade-label {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 0.5rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #556677;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .jarvis-read-card__grade {
+      font-family: "Share Tech Mono", "Courier New", monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1;
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+    .jarvis-read-card--green   .jarvis-read-card__grade { color: #00d4ff; }
+    .jarvis-read-card--red     .jarvis-read-card__grade { color: #ff9a28; }
+    .jarvis-read-card--neutral .jarvis-read-card__grade { color: #8899aa; }
+    .jarvis-read-card__msg {
+      margin: 0;
+      font-size: 0.875rem;
+      line-height: 1.55;
+      color: #d8e8f4;
+      font-weight: 400;
+    }
+  `;
+  document.head.appendChild(s);
+}
+
+export function showInstantReadCard(read) {
+  if (!read?.found) return;
+  _injectIrStyles();
+  document.getElementById("jarvis-read-card")?.remove();
+
+  const typeClass = read.type === "green" ? "green" : read.type === "neutral" ? "neutral" : "red";
+  const card = document.createElement("div");
+  card.id = "jarvis-read-card";
+  card.className = `jarvis-read-card jarvis-read-card--${typeClass}`;
+  const gradeHtml = read.grade
+    ? `<div class="jarvis-read-card__grade-wrap">
+        <span class="jarvis-read-card__grade-label">Trade Grade</span>
+        <span class="jarvis-read-card__grade" aria-label="Grade ${escHtml(read.grade)}">${escHtml(read.grade)}</span>
+      </div>`
+    : "";
+  card.innerHTML = `
+    <div class="jarvis-read-card__hdr">
+      <span class="jarvis-read-card__dot" aria-hidden="true"></span>
+      <span class="jarvis-read-card__eyebrow">Jarvis read</span>
+      <button class="jarvis-read-card__close" aria-label="Dismiss">&#x2715;</button>
+    </div>
+    <div class="jarvis-read-card__body">
+      ${gradeHtml}
+      <p class="jarvis-read-card__msg">${escHtml(read.message)}</p>
+    </div>`;
+  document.body.appendChild(card);
+
+  const dismiss = () => {
+    card.classList.add("jarvis-read-card--out");
+    card.addEventListener("animationend", () => card.remove(), { once: true });
+  };
+  card.querySelector(".jarvis-read-card__close").addEventListener("click", dismiss);
 }
 

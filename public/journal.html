@@ -839,6 +839,7 @@
       <ul class="jv-nav__links" role="list">
         <li><a href="/index.html" id="nav-home">Home</a></li>
         <li><a href="/journal.html" id="nav-journal" class="jv-nav--active" aria-current="page">Journal</a></li>
+        <li><a href="/reports.html" id="nav-reports">Reports</a></li>
         <li><a href="/analytics.html" id="nav-analytics">Analytics</a></li>
         <li><a href="/calendar.html" id="nav-calendar">Calendar</a></li>
         <li><a href="/account.html" id="nav-account">Account</a></li>
@@ -860,6 +861,7 @@
     <div class="jv-nav__dropdown" id="jv-nav-dropdown" aria-hidden="true">
       <a href="/index.html">Home</a>
       <a href="/journal.html" class="jv-nav--active" aria-current="page">Journal</a>
+      <a href="/reports.html">Reports</a>
       <a href="/analytics.html">Analytics</a>
       <a href="/calendar.html">Calendar</a>
       <a href="/account.html">Account</a>
@@ -2794,7 +2796,7 @@
         }
         if (src === 'journal_log') {
           try {
-            var mod = await import('/js/log-trade-modal.js?v=f8c3a1b2');
+            var mod = await import('/js/log-trade-modal.js?v=f1b3d5e7');
             await mod.openLogTradeModal({
               getUserId: resolveJournalUserId,
               fetchTradeRowsForPrefill: async function () {
@@ -3377,7 +3379,7 @@
       /* ── LOG TRADE modal (shared: /js/log-trade-modal.js) ── */
       async function openTradeForm() {
         try {
-          var mod = await import('/js/log-trade-modal.js?v=f8c3a1b2');
+          var mod = await import('/js/log-trade-modal.js?v=f1b3d5e7');
           await mod.openLogTradeModal({
             getUserId: resolveJournalUserId,
             fetchTradeRowsForPrefill: async function () {

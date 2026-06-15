@@ -21,14 +21,8 @@ export function buildNotionConnectUrl(userId: string): string {
   return href;
 }
 
-/** Open Notion OAuth in the default browser tab (avoids Mac Notion app URL handlers). */
+/** Navigate to Notion OAuth in the current tab so the user lands on notion-setup.html after auth. */
 export function openNotionOAuthConnect(userId: string): void {
   const href = buildNotionConnectUrl(userId);
-  const link = document.createElement("a");
-  link.href = href;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  window.location.href = href;
 }

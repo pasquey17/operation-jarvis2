@@ -141,7 +141,96 @@ function groupStats(trades) {
 
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
-async function fetchAllTradesForAnalysis(userId) {
+// Resolve auth UUID → email via Supabase Auth admin API.
+// journal_trades.user_id is always the email (handleLogTrade resolves it before writing).
+async function resolveUserEmail(userId, supabaseUrl, serviceRoleKey) {
+  if (userId.includes("@")) return userId; // already an email
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          Accept: "application/json",
+        },
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const email = typeof data?.email === "string" ? data.email.trim() : "";
+    return email || null;
+  } catch {
+    return null;
+  }
+}
+
+// Fetch journal_trades rows for a user and map them into the same shape the
+// engine expects from the trades table.
+async function fetchJournalTradesForAnalysis(userId, supabaseUrl, serviceRoleKey) {
+  const email = await resolveUserEmail(userId, supabaseUrl, serviceRoleKey);
+
+  const fetchByUserId = async (id) => {
+    const endpoint =
+      `${supabaseUrl}/rest/v1/journal_trades` +
+      `?user_id=eq.${encodeURIComponent(id)}&select=*&order=traded_at.asc`;
+    try {
+      const res = await fetch(endpoint, {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          Accept: "application/json",
+          "Cache-Control": "no-store",
+          Range: "0-999",
+        },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Collect rows, deduplicating by id.
+  // Primary fetch: by email (handleLogTrade always stores email as user_id).
+  // Fallback fetch: by raw UUID in case any row was stored before email resolution was fixed.
+  const seen = new Set();
+  const raw = [];
+
+  for (const row of email ? await fetchByUserId(email) : []) {
+    if (!seen.has(row.id)) { seen.add(row.id); raw.push(row); }
+  }
+  if (userId !== email) {
+    for (const row of await fetchByUserId(userId)) {
+      if (!seen.has(row.id)) { seen.add(row.id); raw.push(row); }
+    }
+  }
+
+  // Map to the shape the engine expects from the trades table.
+  // custom_data bridges to notion_extras: extractNotionValues already handles
+  // plain string values, so no structural transformation needed.
+  return raw.map((jt) => ({
+    id: jt.id,
+    user_id: jt.user_id,
+    date: jt.traded_at,          // traded_at → date (used by all downstream grouping)
+    session: jt.session ?? null,
+    outcome: jt.outcome ?? null,
+    rr: jt.rr ?? null,
+    pair: jt.pair ?? null,
+    model: null,                  // not captured by manual log form
+    notes: null,
+    direction: null,              // not captured by manual log form
+    trade_images: null,
+    archived: false,
+    notion_id: null,
+    notion_extras: (jt.custom_data && typeof jt.custom_data === "object" && !Array.isArray(jt.custom_data))
+      ? jt.custom_data
+      : null,
+  }));
+}
+
+export async function fetchAllTradesForAnalysis(userId) {
   const url = (process.env.SUPABASE_URL ?? "").trim().replace(/\/$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
   const table = (process.env.SUPABASE_TABLE ?? "trades").trim() || "trades";
@@ -170,7 +259,16 @@ async function fetchAllTradesForAnalysis(userId) {
 
   const rows = await res.json();
   if (!Array.isArray(rows)) throw new Error("Supabase did not return an array");
-  return rows;
+
+  // Fetch manually-logged trades and merge in-memory.
+  // journal_trades have no notion_id and are invisible to Notion sync, so there
+  // is no path where the same trade exists in both tables.
+  const journalRows = await fetchJournalTradesForAnalysis(userId, url, key);
+  if (journalRows.length === 0) return rows;
+
+  const combined = [...rows, ...journalRows];
+  combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return combined;
 }
 
 // ─── Grouping utilities ───────────────────────────────────────────────────────
@@ -197,7 +295,7 @@ function mapToStatRows(map, sortBy = "totalR") {
 
 // ─── Section builders ─────────────────────────────────────────────────────────
 
-function buildOverview(trades) {
+export function buildOverview(trades) {
   const stats = groupStats(trades);
   const dates = trades.map((t) => t.date).filter(Boolean).sort();
   return {
@@ -207,12 +305,12 @@ function buildOverview(trades) {
   };
 }
 
-function buildBySession(trades) {
+export function buildBySession(trades) {
   const map = groupBy(trades, (t) => (t.session ?? "").trim() || null);
   return mapToStatRows(map);
 }
 
-function buildByDay(trades) {
+export function buildByDay(trades) {
   const map = groupBy(trades, (t) => {
     const d = getWeekday(t);
     return d === "Unknown" ? null : d;
@@ -223,7 +321,7 @@ function buildByDay(trades) {
   return rows;
 }
 
-function buildBySessionDay(trades) {
+export function buildBySessionDay(trades) {
   const map = groupBy(trades, (t) => {
     const s = (t.session ?? "").trim();
     const d = getWeekday(t);
@@ -239,17 +337,17 @@ function buildBySessionDay(trades) {
   return rows;
 }
 
-function buildByModel(trades) {
+export function buildByModel(trades) {
   const map = groupBy(trades, (t) => (t.model ?? "").trim() || null);
   return mapToStatRows(map);
 }
 
-function buildByPair(trades) {
+export function buildByPair(trades) {
   const map = groupBy(trades, (t) => (t.pair ?? "").trim() || null);
   return mapToStatRows(map);
 }
 
-function buildByDirection(trades) {
+export function buildByDirection(trades) {
   const map = groupBy(trades, (t) => {
     const d = (t.direction ?? "").trim().toLowerCase();
     if (d.includes("long") || d === "buy") return "Long";
@@ -479,7 +577,7 @@ function extractNotionValues(prop) {
   return [];
 }
 
-function buildNotionExtrasPatterns(trades) {
+export function buildNotionExtrasPatterns(trades, limit = 5) {
   // Per-trade: collect every key::value pair present in notion_extras
   const tradeKVs = trades.map((t) => {
     const kvs = new Set();
@@ -546,7 +644,7 @@ function buildNotionExtrasPatterns(trades) {
   }
 
   patterns.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-  return patterns.slice(0, 5);
+  return patterns.slice(0, limit);
 }
 
 function buildCustomFieldSummary(trades) {
@@ -581,6 +679,121 @@ function buildCustomFieldSummary(trades) {
       a.values.reduce((s, v) => s + v.count, 0)
   );
   return result.slice(0, 12);
+}
+
+// ─── Report-package helpers ───────────────────────────────────────────────────
+// These are used by report-package.mjs (Layer 1 data package).
+// They do NOT change the behaviour of any existing function above.
+
+// Like buildBySessionDay but with no minimum-sample filter, so the report layer
+// can see every combo and judge small samples itself via the n field.
+export function buildBySessionDayAll(trades) {
+  const map = groupBy(trades, (t) => {
+    const s = (t.session ?? "").trim();
+    const d = getWeekday(t);
+    if (!s || d === "Unknown") return null;
+    return `${s} ${d}`;
+  });
+  const rows = [];
+  for (const [key, ts] of map.entries()) {
+    rows.push({ key, ...groupStats(ts) });
+  }
+  rows.sort((a, b) => (b.totalR ?? -Infinity) - (a.totalR ?? -Infinity));
+  return rows;
+}
+
+// Compute transition probabilities between consecutive trade outcomes.
+// Trades are sorted chronologically before computing, so call order doesn't matter.
+export function buildOutcomeSequences(trades) {
+  const sorted = [...trades].sort(
+    (a, b) => new Date(a.date ?? 0).getTime() - new Date(b.date ?? 0).getTime()
+  );
+  const outcomes = sorted.map((t) => {
+    const o = normOutcome(t);
+    if (isWin(o)) return "W";
+    if (isLoss(o)) return "L";
+    return "B";
+  });
+
+  const trans = {
+    W: { W: 0, L: 0, B: 0 },
+    L: { W: 0, L: 0, B: 0 },
+    B: { W: 0, L: 0, B: 0 },
+  };
+  for (let i = 0; i < outcomes.length - 1; i++) {
+    trans[outcomes[i]][outcomes[i + 1]]++;
+  }
+
+  const toProbs = (key) => {
+    const row = trans[key];
+    const n = row.W + row.L + row.B;
+    return {
+      n,
+      pWin:      n > 0 ? round2(row.W / n) : null,
+      pLoss:     n > 0 ? round2(row.L / n) : null,
+      pBE:       n > 0 ? round2(row.B / n) : null,
+      countWin:  row.W,
+      countLoss: row.L,
+      countBE:   row.B,
+    };
+  };
+
+  return {
+    afterWin:  toProbs("W"),
+    afterLoss: toProbs("L"),
+    afterBE:   toProbs("B"),
+  };
+}
+
+// Bucket trades into fixed-width date windows and compute headline stats per bucket.
+// bucketDays = 7 → weekly buckets; 30 → monthly.
+// Buckets with zero trades are omitted; all others carry full groupStats + n.
+export function buildProgression(trades, bucketDays = 7) {
+  if (!trades.length) return [];
+
+  const dated = trades
+    .map((t) => {
+      if (!t.date) return null;
+      const d = new Date(t.date);
+      if (isNaN(d.getTime())) return null;
+      return { trade: t, ds: d.toISOString().slice(0, 10) };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.ds.localeCompare(b.ds));
+
+  if (!dated.length) return [];
+
+  // Use UTC noon to avoid DST edge cases when bucketing by calendar day
+  const msPerBucket = bucketDays * 24 * 60 * 60 * 1000;
+  const anchorMs = new Date(dated[0].ds + "T12:00:00Z").getTime();
+  const lastMs   = new Date(dated[dated.length - 1].ds + "T12:00:00Z").getTime();
+
+  const buckets = [];
+  let startMs = anchorMs;
+
+  while (startMs <= lastMs) {
+    const endMs  = startMs + msPerBucket;
+    const fromDs = new Date(startMs).toISOString().slice(0, 10);
+    const toDs   = new Date(endMs - 1).toISOString().slice(0, 10);
+
+    const bucketTrades = dated
+      .filter(({ ds }) => {
+        const ms = new Date(ds + "T12:00:00Z").getTime();
+        return ms >= startMs && ms < endMs;
+      })
+      .map(({ trade }) => trade);
+
+    if (bucketTrades.length > 0) {
+      buckets.push({
+        from: fromDs,
+        to:   toDs,
+        n:    bucketTrades.length,
+        ...groupStats(bucketTrades),
+      });
+    }
+    startMs = endMs;
+  }
+  return buckets;
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────

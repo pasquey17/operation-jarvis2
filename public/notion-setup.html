@@ -104,7 +104,23 @@
         line-height: 1.6;
       }
 
-      /* ── database cards ── */
+      /* ── database search ── */
+      #db-search-wrap { margin-bottom: 14px; position: relative; }
+      #db-search {
+        width: 100%;
+        background: rgba(0,0,0,0.55);
+        border: 1px solid rgba(0,212,255,0.16);
+        border-radius: 8px;
+        color: #fff;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        padding: 9px 14px;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+      }
+      #db-search:focus { border-color: rgba(0,212,255,0.55); }
+      #db-search::placeholder { color: rgba(255,255,255,0.25); }
 
       /* ── database cards ── */
       #db-list { display: flex; flex-direction: column; gap: 10px; }
@@ -523,6 +539,9 @@
           <span class="share-callout__icon">📌</span>
           <p class="share-callout__text"><strong>Important:</strong> When Notion asks which pages to share, select your <strong>entire trading workspace</strong> — or the top-level parent page that contains all your databases. If you only share your trades table, Jarvis can't read linked data like pairs, sessions, or models.</p>
         </div>
+        <div id="db-search-wrap" style="display:none">
+          <input id="db-search" type="text" placeholder="Search databases…" autocomplete="off" spellcheck="false" />
+        </div>
         <div id="db-list"></div>
         <div class="status-msg error" id="db-error"></div>
       </div>
@@ -582,7 +601,7 @@
       (async () => {
         // ── user ──
         const userId = (await getAuthUserId()) || "";
-        if (!userId) { location.href = "/index.html"; return; }
+        if (!userId) { location.href = "/login.html"; return; }
         const navUser = document.getElementById("jv-nav-user");
         if (navUser) navUser.textContent = userId;
 
@@ -642,16 +661,30 @@
           const errEl  = document.getElementById("db-error");
           errEl.textContent = "";
 
-          const MAX_ATTEMPTS = 3;
-          const RETRY_MS = 1500;
+          const MAX_ATTEMPTS = 10;
+          const RETRY_MS = 3000;
 
           function showLoading(msg) {
             listEl.innerHTML = `<div class="status-msg">${msg}</div><div class="spinner" style="margin:12px auto 0"></div>`;
           }
 
+          let allDatabases = [];
+
           function renderDatabases(databases) {
+            allDatabases = databases;
+            const searchWrap = document.getElementById("db-search-wrap");
+            const searchEl = document.getElementById("db-search");
+            if (databases.length > 3) {
+              searchWrap.style.display = "block";
+            }
+            const q = (searchEl?.value || "").toLowerCase().trim();
+            const filtered = q ? databases.filter(db => db.name.toLowerCase().includes(q)) : databases;
             listEl.innerHTML = "";
-            databases.forEach((db) => {
+            if (filtered.length === 0) {
+              listEl.innerHTML = `<div class="status-msg">No databases match "${q}"</div>`;
+              return;
+            }
+            filtered.forEach((db) => {
               const card = document.createElement("div");
               card.className = "db-card";
               card.innerHTML = `<span class="db-card__name">${db.name}</span><span class="db-card__arrow">→</span>`;
@@ -665,6 +698,10 @@
             });
           }
 
+          document.getElementById("db-search").addEventListener("input", () => {
+            renderDatabases(allDatabases);
+          });
+
           function showFinalError(msg) {
             listEl.innerHTML = "";
             errEl.textContent = msg;
@@ -677,18 +714,43 @@
           }
 
           for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            showLoading(attempt === 1 ? "Loading databases…" : `Still loading… (${attempt}/${MAX_ATTEMPTS})`);
+            const loadMsg = attempt === 1
+              ? "Connecting to Notion workspace…"
+              : attempt <= 4
+                ? `Waiting for Notion to index your workspace… (${attempt}/${MAX_ATTEMPTS})`
+                : `Still syncing — Notion can take up to 30s for new connections (${attempt}/${MAX_ATTEMPTS})`;
+            showLoading(loadMsg);
             try {
               const resp = await apiFetch(`/api/notion/databases`, { cache: "no-store" });
               const data = await resp.json();
-              if (!resp.ok) throw new Error(data.error || "Failed to load databases");
+              if (!resp.ok) {
+                if (resp.status === 404) {
+                  // Token not in DB — show reconnect option immediately (retrying won't help)
+                  listEl.innerHTML = "";
+                  errEl.textContent = "Notion is not connected for this account.";
+                  const reconnectBtn = document.createElement("button");
+                  reconnectBtn.className = "setup-btn";
+                  reconnectBtn.textContent = "Connect Notion →";
+                  reconnectBtn.style.marginTop = "12px";
+                  reconnectBtn.addEventListener("click", async () => {
+                    const { getSupabaseClient } = await import("/js/jarvis-auth.js");
+                    const sb = getSupabaseClient();
+                    const { data: sessionData } = await sb.auth.getSession();
+                    const uid = sessionData?.session?.user?.id;
+                    if (uid) window.location.href = `/api/notion/connect?user_id=${encodeURIComponent(uid)}`;
+                  });
+                  listEl.appendChild(reconnectBtn);
+                  return;
+                }
+                throw new Error(data.error || "Failed to load databases");
+              }
               const { databases } = data;
               if (!databases || databases.length === 0) {
                 if (attempt < MAX_ATTEMPTS) {
                   await new Promise(resolve => setTimeout(resolve, RETRY_MS));
                   continue;
                 }
-                showFinalError("No databases found. Make sure you've shared your Notion database with the Jarvis integration.");
+                showFinalError("No databases found. When connecting Notion, make sure to share your entire trading workspace (select the top-level parent page, not just individual databases).");
                 return;
               }
               renderDatabases(databases);
