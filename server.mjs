@@ -20,7 +20,10 @@ import {
 } from "./sync-journal-fields-notion.mjs";
 import { syncJournalFieldsFromCsvText } from "./sync-journal-fields-csv.mjs";
 import { serializeNotionProperties } from "./notion-serialize-props.mjs";
+import { resolvePagesWithProperties } from "./notion-resolve-page.mjs";
 import { runAnalysisEngine } from "./analysis-engine.mjs";
+import { fetchTradesForReport, buildReportPackage } from "./report-package.mjs";
+import { generateReport } from "./report-generator.mjs";
 import {
   generateIntelligenceFile,
   getIntelligenceFile,
@@ -571,7 +574,7 @@ function buildJarvisChatSystem(
 
   const deepThinkBlock =
     deepThinkText && String(deepThinkText).trim()
-      ? `\n\n=== DEEP ANALYSIS ===\n${String(deepThinkText).trim()}\n===`
+      ? `\n\n=== DEEP ANALYSIS (this narrative was generated at a specific point in time and may pre-date the latest sync. If anything here contradicts the performance numbers in the TRADER INTELLIGENCE FILE above, always trust the numbers — they are recalculated fresh on every generation) ===\n${String(deepThinkText).trim()}\n===`
       : "";
 
   return `${dateBlock}
@@ -2404,6 +2407,181 @@ async function readBody(req, limit = MAX_BODY_BYTES) {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+// ─── /api/generate-report + /api/saved-reports ────────────────────────────────
+
+const WINDOW_CONFIG = {
+  week:    { days: 7,  bucketDays: 1,  label: "7-day (week)" },
+  month:   { days: 30, bucketDays: 7,  label: "30-day (month)" },
+  quarter: { days: 90, bucketDays: 30, label: "90-day (quarter)" },
+};
+
+// Cooldown before the current (in-progress) period can be regenerated: 24 hours.
+const REPORT_REGEN_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/** period_key is "{type}:{dateFrom}" — deterministic since dateFrom is always period-start. */
+function savedReportPeriodKey(type, dateFrom) {
+  return `${type}:${dateFrom}`;
+}
+
+async function getSavedReport(userId, periodKey) {
+  const { url, key } = getSupabaseUrlAndServerKey();
+  if (!url || !key) return null;
+  try {
+    const encUser = encodeURIComponent(userId);
+    const encKey  = encodeURIComponent(periodKey);
+    const r = await fetch(
+      `${url}/rest/v1/saved_reports?user_id=eq.${encUser}&period_key=eq.${encKey}&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json().catch(() => null);
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return rows[0];
+  } catch {
+    return null;
+  }
+}
+
+async function upsertSavedReport(userId, type, periodKey, dateFrom, dateTo, html, isRegen) {
+  const { url, key } = getSupabaseUrlAndServerKey();
+  if (!url || !key) return;
+  const now = new Date().toISOString();
+  const body = {
+    user_id:     userId,
+    report_type: type,
+    period_key:  periodKey,
+    date_from:   dateFrom,
+    date_to:     dateTo,
+    html,
+    generated_at: now,
+    ...(isRegen ? { last_regenerated_at: now } : {}),
+  };
+  try {
+    const r = await fetch(`${url}/rest/v1/saved_reports`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      console.warn("[saved_reports] upsert failed:", r.status, t.slice(0, 200));
+    }
+  } catch (e) {
+    console.warn("[saved_reports] upsert error:", e instanceof Error ? e.message : e);
+  }
+}
+
+async function handleGetSavedReport(req, res) {
+  const userId = authUserIdFromReq(req);
+  if (!userId) { json(res, 401, { error: "Unauthorized" }); return; }
+
+  const u = new URL(req.url, "http://localhost");
+  const type      = u.searchParams.get("type") || "";
+  const periodKey = u.searchParams.get("periodKey") || "";
+  if (!type || !periodKey) { json(res, 400, { error: "Missing type or periodKey" }); return; }
+
+  const row = await getSavedReport(userId, periodKey);
+  if (!row) {
+    json(res, 200, { found: false });
+    return;
+  }
+
+  const now = Date.now();
+  const regenAt = row.last_regenerated_at ? new Date(row.last_regenerated_at).getTime() : null;
+  const canRegenerate = regenAt === null || (now - regenAt) >= REPORT_REGEN_COOLDOWN_MS;
+  const nextRegenerateAt = canRegenerate ? null : new Date(regenAt + REPORT_REGEN_COOLDOWN_MS).toISOString();
+
+  json(res, 200, {
+    found: true,
+    html: row.html,
+    generatedAt: row.generated_at,
+    canRegenerate,
+    nextRegenerateAt,
+  });
+}
+
+async function handleGenerateReport(req, res) {
+  let raw;
+  try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
+  let body;
+  try { body = JSON.parse(raw); } catch { json(res, 400, { error: "Invalid JSON" }); return; }
+
+  // Auth context (apiFetch sends the Bearer token) takes precedence; body.userId
+  // is still accepted as a fallback so CLI test scripts keep working.
+  const userId = authUserIdFromReq(req) || (typeof body.userId === "string" ? body.userId.trim() : "");
+  if (!userId) { json(res, 401, { error: "Unauthorized" }); return; }
+
+  const { window: win = "quarter", dateFrom: bodyFrom, dateTo: bodyTo, windowLabel: bodyLabel, isCurrent, isRegen } = body;
+  const cfg = WINDOW_CONFIG[win] ?? WINDOW_CONFIG.quarter;
+
+  // Client may pass explicit dateFrom/dateTo for historical periods; otherwise
+  // default to the window-width rolling back from today.
+  const now = new Date();
+  const dateTo   = bodyTo   ? String(bodyTo).slice(0, 10)   : now.toISOString().slice(0, 10);
+  const dateFrom = bodyFrom ? String(bodyFrom).slice(0, 10) : new Date(now.getTime() - cfg.days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const windowLabel = bodyLabel ? String(bodyLabel).slice(0, 80) : cfg.label;
+  const periodKey = savedReportPeriodKey(win, dateFrom);
+
+  // Past periods: serve from cache if already saved — data is final, no need to regenerate.
+  if (!isCurrent && !isRegen) {
+    const cached = await getSavedReport(userId, periodKey);
+    if (cached) {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Jarvis-Cached": "true" });
+      res.end(cached.html);
+      return;
+    }
+  }
+
+  // Current period: enforce regeneration cooldown.
+  if (isCurrent && isRegen) {
+    const cached = await getSavedReport(userId, periodKey);
+    if (cached?.last_regenerated_at) {
+      const elapsed = Date.now() - new Date(cached.last_regenerated_at).getTime();
+      if (elapsed < REPORT_REGEN_COOLDOWN_MS) {
+        const nextAt = new Date(new Date(cached.last_regenerated_at).getTime() + REPORT_REGEN_COOLDOWN_MS).toISOString();
+        json(res, 429, { error: "Rate limited", nextRegenerateAt: nextAt });
+        return;
+      }
+    }
+  }
+
+  let periodTrades, allTimeTrades;
+  try {
+    ({ periodTrades, allTimeTrades } = await fetchTradesForReport(userId, dateFrom, dateTo));
+  } catch (e) {
+    json(res, 502, { error: `Failed to fetch trades: ${e instanceof Error ? e.message : String(e)}` }); return;
+  }
+
+  if (allTimeTrades.length === 0) {
+    json(res, 404, { error: "No trades found for this user" }); return;
+  }
+
+  let pkg;
+  try {
+    pkg = buildReportPackage(periodTrades, allTimeTrades, { bucketDays: cfg.bucketDays });
+  } catch (e) {
+    json(res, 500, { error: `Package build failed: ${e instanceof Error ? e.message : String(e)}` }); return;
+  }
+
+  let html;
+  try {
+    html = await generateReport(pkg, windowLabel);
+  } catch (e) {
+    json(res, 502, { error: `Report generation failed: ${e instanceof Error ? e.message : String(e)}` }); return;
+  }
+
+  // Save the generated report (fire-and-forget; don't block the response).
+  upsertSavedReport(userId, win, periodKey, dateFrom, dateTo, html, isCurrent && isRegen).catch(() => {});
+
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Jarvis-Cached": "false" });
+  res.end(html);
+}
+
 async function handleBriefing(req, res) {
   let raw;
   try {
@@ -3321,6 +3499,314 @@ function normalizePair(raw) {
   return s;
 }
 
+// ─── Instant read helpers (log-trade response only) ──────────────────────────
+
+const _IR_WEEKDAY_FMT = new Intl.DateTimeFormat("en-AU", {
+  timeZone: "Australia/Adelaide",
+  weekday: "long",
+});
+
+function _irWeekday(dateStr) {
+  try {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : _IR_WEEKDAY_FMT.format(d);
+  } catch { return null; }
+}
+
+async function _irFetchReport(authUserId) {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return null;
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/intelligence_files?auth_user_id=eq.${encodeURIComponent(authUserId)}&select=report&order=version.desc&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json", "Cache-Control": "no-store" } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows?.[0]?.report ?? null;
+  } catch { return null; }
+}
+
+async function _irCallHaiku(tradeRow, best, report) {
+  const apiKey = (process.env.ANTHROPIC_API_KEY ?? "").trim();
+  if (!apiKey) return null;
+
+  const pct = (r) => r != null ? `${Math.round(r * 100)}%` : "n/a";
+  const cd = (tradeRow.custom_data && typeof tradeRow.custom_data === "object") ? tradeRow.custom_data : {};
+
+  const direction = cd.direction || cd.Direction || "";
+  const model = cd.model || cd.Model || cd.setup || cd.Setup || cd["Trading Model"] || "";
+  const notes = cd["Trade Summary"] || cd["trade summary"] || cd["notes"] || cd["Notes"] || cd["summary"] || "";
+
+  // Every logged custom field (confluences, conditions, psych, etc.) beyond the ones shown elsewhere
+  const SKIP_CD_KEYS = new Set([
+    "photos", "direction", "Direction",
+    "Trade Summary", "trade summary", "notes", "Notes", "summary",
+    "model", "Model", "setup", "Setup", "Trading Model",
+  ]);
+  const customFieldLines = Object.entries(cd)
+    .filter(([k, v]) => !SKIP_CD_KEYS.has(k) && v != null && v !== "")
+    .map(([k, v]) => {
+      const val = Array.isArray(v) ? v.join(", ") : String(v).slice(0, 80);
+      return `  ${k}: ${val}`;
+    });
+
+  // Sparse = no model, no direction, no custom fields at all
+  const isSparse = !model && !direction && customFieldLines.length === 0;
+
+  const tradeLines = [
+    tradeRow.pair         && `  pair: ${tradeRow.pair}`,
+    tradeRow.session      && `  session: ${tradeRow.session}`,
+    direction             && `  direction: ${direction}`,
+    model                 && `  model: ${model}`,
+    tradeRow.outcome      && `  outcome: ${tradeRow.outcome}`,
+    tradeRow.rr != null   && `  rr: ${tradeRow.rr}`,
+    tradeRow.account      && `  account: ${tradeRow.account}`,
+    notes                 && `  notes: "${String(notes).slice(0, 100)}"`,
+    ...customFieldLines,
+  ].filter(Boolean).join("\n");
+
+  // User headline stats
+  const perf    = report?.performance ?? {};
+  const edgeMap = report?.edgeMap    ?? {};
+  const leaks   = report?.leaks      ?? {};
+  const overallWR    = pct(perf.winRateRaw);
+  const decided      = perf.decided ?? "n/a";
+  const strongestEdge = edgeMap.strongestEdge
+    ? `${edgeMap.strongestEdge.label} (${pct(edgeMap.strongestEdge.winRate)}, ${edgeMap.strongestEdge.tradeCount} trades)`
+    : "n/a";
+  const biggestLeak = leaks.biggestLeak
+    ? `${leaks.biggestLeak.label} (${pct(leaks.biggestLeak.winRate)}, ${leaks.biggestLeak.tradeCount} trades)`
+    : "n/a";
+  const statsBlock = (perf.winRateRaw != null)
+    ? `TRADER STATS (${decided} decided trades):\n- Overall WR: ${overallWR}\n- Strongest edge: ${strongestEdge}\n- Biggest leak: ${biggestLeak}`
+    : "TRADER STATS: No historical data on file yet.";
+
+  // Observation context (best can be null when no pattern matched)
+  let obsBlock;
+  if (best) {
+    const ev = best.evidence;
+    const evStr = best.category === "custom_field"
+      ? `WR with: ${pct(ev.winRateWith)}, WR without: ${pct(ev.winRateWithout)}, n=${ev.sampleSize}`
+      : `WR: ${pct(ev.winRate)}, delta vs overall: ${ev.delta != null ? (ev.delta > 0 ? "+" : "") + Math.round(ev.delta * 100) + "pp" : "n/a"}, n=${ev.sampleSize}`;
+    obsBlock = `MATCHED OBSERVATION (${best.type.toUpperCase()} — ${best.category}): ${best.label}\n  Evidence: ${evStr}`;
+  } else {
+    obsBlock = "MATCHED OBSERVATION: None — no stored pattern matches this specific trade.";
+  }
+
+  // Grade guide scales with data richness and observation presence
+  let gradeGuide;
+  if (isSparse) {
+    gradeGuide = `GRADING GUIDE: Sparse log — no entry model, no direction, no custom fields. Grade the outcome honestly (B for a clean win, C for BE, D for a loss), but explicitly tell them what to log next time (model, direction, confluences/conditions) for a real grade. Do not invent process certainty the data doesn't support.`;
+  } else if (best) {
+    gradeGuide = `GRADING GUIDE: Matched a ${best.type === "green" ? "green (edge)" : "red (leak)"} observation. Green + win = A range; green + loss = B range; red + win = C; red + loss = D/F. Weight the observation heavily. Be direct and cite real numbers only.`;
+  } else {
+    gradeGuide = `GRADING GUIDE: No matched pattern — grade on process quality from the logged fields. Win with solid logged process = B; unexplained win = C; disciplined loss = C; sloppy loss = D. Be honest about confidence — still land on one concrete useful observation for the trader.`;
+  }
+
+  const prompt =
+`You are Jarvis, a sharp trading coach reviewing a just-logged trade. Grade it (A+ to F) and write 2-3 sharp coaching sentences. Respond ONLY with valid JSON on one line: {"grade":"B","message":"..."}
+
+Valid grades: A+ A A- B+ B B- C+ C C- D F
+
+TRADE:
+${tradeLines}
+
+${obsBlock}
+
+${statsBlock}
+
+${gradeGuide}
+
+Never invent statistics. No filler closers. Be direct.`;
+
+  try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": ANTHROPIC_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 150, messages: [{ role: "user", content: prompt }] }),
+    });
+    clearTimeout(tid);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw = extractAssistantText(data).replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
+    const m = raw.match(/\{[\s\S]*?\}/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    const VALID_GRADES = new Set(["A+","A","A-","B+","B","B-","C+","C","C-","D","F"]);
+    if (!parsed.grade || !VALID_GRADES.has(String(parsed.grade).trim())) return null;
+    if (!parsed.message || typeof parsed.message !== "string" || !parsed.message.trim()) return null;
+    return { grade: String(parsed.grade).trim(), message: parsed.message.trim().slice(0, 400) };
+  } catch { return null; }
+}
+
+function _irMatchObs(obs, trade, weekday) {
+  const session = (trade.session || "").trim().toLowerCase();
+  const pairRaw = (trade.pair || "").replace(/\//g, "").trim().toLowerCase();
+  const cd = (trade.custom_data && typeof trade.custom_data === "object") ? trade.custom_data : {};
+  const model = (cd.model || cd.Model || cd.setup || cd.Setup || cd["Trading Model"] || cd["Model"] || "").trim().toLowerCase();
+  const direction = (cd.direction || cd.Direction || "").trim().toLowerCase();
+  const lbl = obs.label.toLowerCase();
+
+  switch (obs.category) {
+    case "session":
+      return !!session && lbl.startsWith(session);
+    case "day":
+      return !!weekday && lbl.startsWith(weekday.toLowerCase());
+    case "combo":
+      return !!session && !!weekday && lbl.includes(session) && lbl.includes(weekday.toLowerCase());
+    case "setup":
+      return !!model && lbl.includes(model);
+    case "pair": {
+      const obsLblNorm = lbl.replace(/\//g, "");
+      return !!pairRaw && obsLblNorm.includes(pairRaw);
+    }
+    case "direction":
+      return !!direction && lbl.startsWith(direction);
+    case "custom_field": {
+      const m = obs.label.match(/^"(.+?):\s*(.+?)"/);
+      if (!m) return false;
+      const obsKey = m[1].toLowerCase();
+      const obsVal = m[2].toLowerCase();
+      for (const [k, v] of Object.entries(cd)) {
+        if (k === "photos" || k === "direction") continue;
+        if (k.toLowerCase() === obsKey && String(v).toLowerCase() === obsVal) return true;
+      }
+      return false;
+    }
+    default: return false;
+  }
+}
+
+function _irSubject(obs) {
+  switch (obs.category) {
+    case "session": { const m = obs.label.match(/^(.+?)\s+session\s+is/i); return m ? m[1] : null; }
+    case "day":     { const m = obs.label.match(/^(\w+?)s?\s+(?:are|is)\s+/i); return m ? m[1] : null; }
+    case "combo":   { const m = obs.label.match(/^(.+?)\s+is\s+/i); return m ? m[1] : null; }
+    case "setup":   { const m = obs.label.match(/^(.+?)\s+setup\s+is\s+/i); return m ? m[1] : null; }
+    case "pair":    { const m = obs.label.match(/^(\S+)\s+is\s+/i); return m ? m[1] : null; }
+    case "direction": { const m = obs.label.match(/^(\w+)\s+trades\s+/i); return m ? m[1] : null; }
+    case "custom_field": { const m = obs.label.match(/^"(.+?)"/); return m ? m[1] : null; }
+    default: return null;
+  }
+}
+
+function _irMessage(obs) {
+  const ev = obs.evidence;
+  const pct = (r) => r != null ? `${Math.round(r * 100)}%` : "n/a";
+  const sub = _irSubject(obs) || "That pattern";
+  const green = obs.type === "green";
+
+  if (obs.category === "custom_field") {
+    const wr = pct(ev.winRateWith);
+    const n = ev.sampleSize;
+    return green
+      ? `Positive signal — "${sub}" correlates with ${wr} wins across ${n} trades.`
+      : `Watch this — "${sub}" is a recurring leak at ${wr} across ${n} trades.`;
+  }
+
+  const wr = pct(ev.winRate);
+  const n = ev.sampleSize;
+
+  switch (obs.category) {
+    case "session":
+      return green
+        ? `This aligns with your edge — ${sub} is your best session at ${wr} across ${n} decided trades.`
+        : `Careful — ${sub} is a weak session at ${wr} across ${n} decided trades.`;
+    case "day":
+      return green
+        ? `${sub}s are a strong day for you — ${wr} across ${n} trades.`
+        : `${sub}s are a weak spot — ${wr} across ${n} trades. Stay selective.`;
+    case "combo":
+      return green
+        ? `Edge confirmed — ${sub} is hitting ${wr} across ${n} trades. Good window.`
+        : `Heads up — ${sub} is a leak at ${wr} across ${n} trades. Protect capital.`;
+    case "pair":
+      return green
+        ? `${sub} is your edge instrument — ${wr} across ${n} decided trades.`
+        : `${sub} is underperforming in your data — ${wr} across ${n} decided. Stay disciplined.`;
+    case "direction":
+      return green
+        ? `${sub} trades are your stronger side — ${wr} across ${n} decided.`
+        : `${sub} trades are a leak for you — ${wr} across ${n} decided. Extra discipline required.`;
+    case "setup":
+      return green
+        ? `${sub} is an edge setup — ${wr} across ${n} decided. Lean in.`
+        : `${sub} needs review — ${wr} across ${n} decided trades.`;
+    default:
+      return green
+        ? `This aligns with a proven edge — ${wr} across ${n} decided trades.`
+        : `This matches a known leak — ${wr} across ${n} decided. Stay sharp.`;
+  }
+}
+
+// Specificity tier: 0 = specific attribute (pair/setup/custom_field), 1 = broad (session/day/combo/direction)
+function _irSpecificity(obs) {
+  return ["pair", "setup", "custom_field"].includes(obs.category) ? 0 : 1;
+}
+
+async function buildInstantRead(authUserId, tradeRow) {
+  try {
+    const report = await _irFetchReport(authUserId);
+    const observations = Array.isArray(report?.observations) ? report.observations : [];
+    const weekday = _irWeekday(tradeRow.traded_at);
+
+    // Find best matching observation — null when nothing matches (no longer an early exit)
+    const matches = [];
+    for (const obs of observations) {
+      if (_irMatchObs(obs, tradeRow, weekday)) matches.push(obs);
+    }
+    if (matches.length > 1) {
+      matches.sort((a, b) => {
+        const sd = _irSpecificity(a) - _irSpecificity(b);
+        if (sd !== 0) return sd;
+        const rd = (a.type === "red" ? 0 : 1) - (b.type === "red" ? 0 : 1);
+        if (rd !== 0) return rd;
+        return (b.strength ?? 0) - (a.strength ?? 0);
+      });
+    }
+    const best = matches.length > 0 ? matches[0] : null;
+
+    // Always call Haiku regardless of observation match
+    const haiku = await _irCallHaiku(tradeRow, best, report);
+
+    // Fallback when Haiku fails or times out
+    const fallbackMessage = best
+      ? _irMessage(best)
+      : "Trade logged. Add entry model, direction, and confluences next time for a graded read.";
+
+    const outcome = (tradeRow.outcome || "").toLowerCase();
+    const type = best
+      ? best.type
+      : (outcome === "win" || outcome === "be" ? "green" : outcome === "loss" ? "red" : "neutral");
+
+    return {
+      found: true,
+      type,
+      grade: haiku?.grade ?? null,
+      message: haiku?.message ?? fallbackMessage,
+      evidence: best?.evidence ?? null,
+      strength: best?.strength ?? null,
+    };
+  } catch {
+    // Hard error: still surface the card rather than silently swallowing it
+    const outcome = (tradeRow.outcome || "").toLowerCase();
+    return {
+      found: true,
+      type: outcome === "win" || outcome === "be" ? "green" : "red",
+      grade: null,
+      message: "Trade logged. Full read unavailable — try again shortly.",
+    };
+  }
+}
+
 /** GET /api/journal-trades — manual LOG TRADE rows (journal_trades). */
 async function handleJournalTradesGet(req, res) {
   const { url, key } = getSupabaseConfig();
@@ -3422,7 +3908,12 @@ async function handleLogTrade(req, res) {
     }
     let data;
     try { data = JSON.parse(text); } catch { data = []; }
-    json(res, 201, { trade: Array.isArray(data) ? data[0] : data });
+    const trade = Array.isArray(data) ? data[0] : data;
+    const read = await buildInstantRead(authUserId, row);
+    json(res, 201, { trade, read });
+    // Regenerate brain async — trade is saved, response is sent, don't block.
+    // authUserId is the auth_user_id (UUID) that generateIntelligenceFile expects.
+    firePostSyncBrain(authUserId);
   } catch (e) {
     json(res, 502, { error: e instanceof Error ? e.message : String(e) });
   }
@@ -4842,6 +5333,202 @@ async function handleInitProfiles(req, res) {
   json(res, 200, { results });
 }
 
+// ── Dev impersonation ────────────────────────────────────────────────────────
+
+function checkDevSecret(req, res) {
+  const secret = process.env.DEV_SECRET?.trim();
+  if (!secret) { json(res, 503, { error: "DEV_SECRET not configured" }); return false; }
+  if (req.headers["x-dev-secret"] !== secret) { json(res, 401, { error: "Unauthorized" }); return false; }
+  return true;
+}
+
+async function handleAdminUsers(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const r = await fetch(`${url}/auth/v1/admin/users?per_page=50`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!r.ok) { json(res, 500, { error: "Failed to fetch users" }); return; }
+  const data = await r.json();
+  const users = (data.users || []).map((u) => ({
+    id: u.id,
+    email: u.email,
+    last_sign_in_at: u.last_sign_in_at,
+    created_at: u.created_at,
+  }));
+  json(res, 200, { users });
+}
+
+async function handleAdminDevLogin(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const qp = new URL(req.url, "http://x").searchParams;
+  const email = qp.get("email") || "";
+  const redirectTo = qp.get("redirect_to") || "";
+  if (!email) { json(res, 400, { error: "email required" }); return; }
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+  const body = { type: "magiclink", email };
+  if (redirectTo) body.redirect_to = redirectTo;
+  const r = await fetch(`${url}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json();
+  if (!r.ok) { json(res, 500, { error: data.message || "Failed to generate link" }); return; }
+  const actionLink = data.action_link || data.properties?.action_link || "";
+  if (!actionLink) { json(res, 500, { error: "No action_link in Supabase response" }); return; }
+  json(res, 200, { action_link: actionLink });
+}
+
+// ── Admin: resolve a user (email or UUID → { uuid, email, created_at }) ──────
+async function handleAdminResolveUser(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+
+  const id = (new URL(req.url, "http://x").searchParams.get("id") || "").trim();
+  if (!id) { json(res, 400, { error: "id required (email or UUID)" }); return; }
+
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const hdrs = { apikey: key, Authorization: `Bearer ${key}` };
+
+  let user = null;
+  try {
+    if (UUID_RE.test(id)) {
+      const r = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(id)}`, { headers: hdrs });
+      if (r.ok) user = await r.json().catch(() => null);
+    } else {
+      const r = await fetch(`${url}/auth/v1/admin/users?per_page=1000`, { headers: hdrs });
+      if (r.ok) {
+        const d = await r.json().catch(() => ({}));
+        user = (d.users || []).find(u => u.email?.toLowerCase() === id.toLowerCase()) ?? null;
+      }
+    }
+  } catch {}
+
+  if (!user) { json(res, 404, { error: `No auth user found: ${id}` }); return; }
+  json(res, 200, { uuid: user.id, email: user.email || null, created_at: user.created_at || null });
+}
+
+// ── Admin: fully wipe a user from every table ─────────────────────────────────
+const PROTECTED_UUIDS = new Set([
+  "e7b15ce6-13d2-488c-87f6-02eccb326641", // aidenpasque11@gmail.com
+  "d850b484-0fff-4bf0-8900-44c865472390", // spasque70@gmail.com
+]);
+
+async function handleAdminDeleteUser(req, res) {
+  if (!checkDevSecret(req, res)) return;
+  const url = process.env.SUPABASE_URL?.trim()?.replace(/\/$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) { json(res, 503, { error: "Supabase not configured" }); return; }
+
+  let body;
+  try { body = JSON.parse(await readBody(req)); } catch { json(res, 400, { error: "Invalid JSON body" }); return; }
+  const uuid = (body?.uuid || "").trim();
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(uuid)) { json(res, 400, { error: "uuid required" }); return; }
+  if (PROTECTED_UUIDS.has(uuid)) { json(res, 403, { error: "Cannot delete a protected admin account" }); return; }
+
+  const srHdrs = { apikey: key, Authorization: `Bearer ${key}` };
+  const sbHdrs = { ...srHdrs, Accept: "application/json" };
+
+  // Resolve email so rows stored by email (not UUID) are also caught
+  let email = null;
+  try {
+    const r = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(uuid)}`, { headers: srHdrs });
+    if (r.ok) email = (await r.json().catch(() => ({}))).email || null;
+  } catch {}
+
+  // Delete rows matching a single column=value; returns count of deleted rows.
+  // Uses return=representation on a minimal select to avoid transmitting row data.
+  // Returns 0 on any error (e.g. column doesn't exist on that table).
+  async function wipe(table, col, val) {
+    if (!val) return 0;
+    try {
+      const r = await fetch(
+        `${url}/rest/v1/${table}?${col}=eq.${encodeURIComponent(val)}&select=${col}`,
+        { method: "DELETE", headers: { ...sbHdrs, Prefer: "return=representation" } }
+      );
+      if (!r.ok) return 0;
+      const rows = await r.json().catch(() => null);
+      return Array.isArray(rows) ? rows.length : 0;
+    } catch { return 0; }
+  }
+
+  // For user_id TEXT tables: delete by email then by UUID (rows may be stored as either)
+  async function byUserId(table) {
+    const ids = [...new Set([email, uuid].filter(Boolean))];
+    let n = 0;
+    for (const id of ids) n += await wipe(table, "user_id", id);
+    return n;
+  }
+
+  // For auth_user_id UUID tables
+  const byAuthId = (table) => wipe(table, "auth_user_id", uuid);
+
+  const tables = {};
+
+  // Phase 1 — all tables with no FK dependencies on each other; run in parallel.
+  // equity_log_entries / payouts / account_equity_snapshots are FK children of
+  // trading_accounts (ON DELETE CASCADE), so delete them explicitly first to
+  // capture their counts before the cascade would hide them.
+  [
+    tables.equity_log_entries,
+    tables.payouts,
+    tables.account_equity_snapshots,
+    tables.notion_connections,
+    tables.notion_mappings,
+    tables.trades,
+    tables.journal_trades,
+    tables.journal_fields,
+    tables.jarvis_memories,
+  ] = await Promise.all([
+    byUserId("equity_log_entries"),
+    byUserId("payouts"),
+    byUserId("account_equity_snapshots"),
+    byUserId("notion_connections"),
+    byUserId("notion_mappings"),
+    byUserId("trades"),
+    byUserId("journal_trades"),
+    byUserId("journal_fields"),
+    byUserId("jarvis_memories"),
+  ]);
+
+  // Tables that may carry rows under user_id OR auth_user_id depending on when
+  // the row was written (schema migration happened mid-life for these tables).
+  const [psU, psA] = await Promise.all([byUserId("journal_photo_slots"), byAuthId("journal_photo_slots")]);
+  tables.journal_photo_slots = psU + psA;
+
+  const [inU, inA] = await Promise.all([byUserId("intelligence_files"), byAuthId("intelligence_files")]);
+  tables.intelligence_files = inU + inA;
+
+  // Phase 2 — trading_accounts: delete after children so counts are accurate.
+  // The ON DELETE CASCADE cleans up any equity/payout rows that slipped through.
+  tables.trading_accounts = await byUserId("trading_accounts");
+
+  // Phase 3 — user_profiles has a FK to auth.users with NO CASCADE.
+  // MUST delete this before deleting the auth user or Postgres will reject the auth delete.
+  tables.user_profiles = await byAuthId("user_profiles");
+
+  // Phase 4 — delete the auth user (final step; triggers no cascades we haven't handled)
+  let authDeleted = false;
+  try {
+    const r = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(uuid)}`, {
+      method: "DELETE",
+      headers: srHdrs,
+    });
+    authDeleted = r.ok || r.status === 404;
+  } catch {}
+
+  const totalRows = Object.values(tables).reduce((a, b) => a + b, 0);
+  json(res, 200, { email, uuid, auth_deleted: authDeleted, tables, total_rows: totalRows });
+}
+
 async function requestListener(req, res) {
   if (req.method === "OPTIONS") {
     send(res, 204, "", {
@@ -5032,6 +5719,16 @@ async function requestListener(req, res) {
     return;
   }
 
+  if (req.method === "GET" && req.url.startsWith("/api/saved-reports")) {
+    await handleGetSavedReport(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/generate-report")) {
+    await handleGenerateReport(req, res);
+    return;
+  }
+
   if (req.method === "POST" && req.url.startsWith("/api/csv-import")) {
     await handleCsvImport(req, res);
     return;
@@ -5121,6 +5818,26 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/admin/sync-journal-fields")) {
     await handleAdminSyncJournalFields(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/admin/users")) {
+    await handleAdminUsers(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/admin/dev-login")) {
+    await handleAdminDevLogin(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/admin/resolve-user")) {
+    await handleAdminResolveUser(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url.startsWith("/api/admin/delete-user")) {
+    await handleAdminDeleteUser(req, res);
     return;
   }
 
@@ -5397,13 +6114,31 @@ async function handleNotionDatabases(req, res) {
   }
 
   if (!accessToken) {
-    json(res, 404, { error: "No Notion connection found for this user" });
-    return;
+    // Fallback: for known users who have an env-var Notion key (aidenpasque11, mum), use
+    // that directly so they can always reach the database picker even without an OAuth row.
+    const emailUserId = legacyEmailForAuthUserId(authUid) || "";
+    if (emailUserId === "aidenpasque11@gmail.com") {
+      const envKey = process.env.NOTION_API_KEY?.trim();
+      if (envKey) {
+        console.log(`[notion/databases] using env NOTION_API_KEY fallback for ${emailUserId}`);
+        accessToken = envKey;
+      }
+    } else if (emailUserId === "spasque70@gmail.com") {
+      const envKey = process.env.NOTION_API_KEY_MUM?.trim();
+      if (envKey) {
+        console.log(`[notion/databases] using env NOTION_API_KEY_MUM fallback for ${emailUserId}`);
+        accessToken = envKey;
+      }
+    }
+    if (!accessToken) {
+      json(res, 404, { error: "No Notion connection found for this user. Please connect Notion from the onboarding screen." });
+      return;
+    }
   }
 
   const notionHeaders = {
     Authorization: `Bearer ${accessToken}`,
-    "Notion-Version": "2022-06-28",
+    "Notion-Version": "2025-09-03",
     "Content-Type": "application/json",
   };
 
@@ -5435,57 +6170,208 @@ async function handleNotionDatabases(req, res) {
     return all;
   }
 
-  try {
-    // Two parallel searches:
-    //   1. filter=database  — explicitly finds all databases the token can access
-    //   2. no filter        — finds pages (to inspect for nested child_database blocks)
-    // Running both ensures we catch databases whether they appear directly or are embedded in pages.
-    const [dbOnlyResults, allResults] = await Promise.all([
-      searchAllPages({ value: "database", property: "object" }),
-      searchAllPages(null),
-    ]);
+  // Paginated block children — up to 500 blocks per page (5 × default 100).
+  async function fetchBlockChildren(blockId) {
+    const all = [];
+    let cursor = null;
+    for (let p = 0; p < 5; p++) {
+      const qs = cursor ? `?start_cursor=${encodeURIComponent(cursor)}` : "";
+      const r = await fetch(`https://api.notion.com/v1/blocks/${blockId}/children${qs}`, {
+        headers: notionHeaders,
+      });
+      if (!r.ok) break;
+      const data = await r.json();
+      all.push(...(data.results ?? []));
+      if (!data.has_more || !data.next_cursor) break;
+      cursor = data.next_cursor;
+    }
+    return all;
+  }
 
-    const dbMap = new Map();
-    const pageIds = new Set();
-
-    for (const item of [...dbOnlyResults, ...allResults]) {
-      if (item.object === "database" && !dbMap.has(item.id)) {
-        dbMap.set(item.id, {
-          id: item.id,
-          name: item.title?.[0]?.plain_text ?? item.title?.[0]?.text?.content ?? "Untitled",
-        });
-      } else if (item.object === "page" && !pageIds.has(item.id)) {
-        pageIds.add(item.id);
+  // Walk a block list; harvest databases and queue child pages for the next level.
+  // Handles child_database (inline DB), linked_database (DB view — name resolved later),
+  // child_data_source (data_source-type DB in 2025-09-03 API), and child_page.
+  function harvestBlocks(blocks, dbMap, pageQueue) {
+    for (const block of blocks) {
+      if (block.type === "child_database" && !dbMap.has(block.id)) {
+        dbMap.set(block.id, { id: block.id, name: block.child_database?.title || "Untitled" });
+      } else if (block.type === "child_data_source" && !dbMap.has(block.id)) {
+        // 2025-09-03 API: data_source type databases embedded in pages
+        const dsTitle = block.child_data_source?.title ?? block.child_data_source?.name ?? null;
+        dbMap.set(block.id, { id: block.id, name: typeof dsTitle === "string" && dsTitle.trim() ? dsTitle.trim() : null });
+      } else if (block.type === "linked_database") {
+        const dbId = block.linked_database?.database_id;
+        if (dbId && !dbMap.has(dbId)) dbMap.set(dbId, { id: dbId, name: null });
+      } else if (block.type === "child_page" && pageQueue && !pageQueue.has(block.id)) {
+        pageQueue.add(block.id);
       }
     }
+  }
 
-    console.log(`[notion/databases] direct dbs=${dbMap.size} pages_to_inspect=${pageIds.size}`);
+  try {
+    // Notion search can take several seconds to index newly granted OAuth access.
+    // Retry up to 3 times server-side before responding so brief index lag is transparent.
+    let dbOnlyResults = [], allResults = [];
+    for (let searchAttempt = 1; searchAttempt <= 3; searchAttempt++) {
+      [dbOnlyResults, allResults] = await Promise.all([
+        searchAllPages({ value: "data_source", property: "object" }),
+        searchAllPages(null),
+      ]);
+      if (dbOnlyResults.length > 0 || allResults.length > 0) break;
+      if (searchAttempt < 3) {
+        console.log(`[notion/databases] search returned 0 items (attempt ${searchAttempt}/3) — waiting 2s for Notion index`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    if (dbOnlyResults.length === 0 && allResults.length === 0) {
+      console.log(`[notion/databases] search returned 0 items after 3 server-side attempts — authUid=${authUid}`);
+    }
 
-    // Inspect child blocks of every page to find nested child_database blocks
+    const dbMap = new Map();
+    const level1Pages = new Set();
+
+    // Resolve a Notion object's title across both API versions.
+    // 2025-09-03 data_source items carry title as a plain string; classic database items
+    // use a rich-text array. item.title?.[0]?.plain_text silently returns the first *character*
+    // when title is a string, so we must check typeof first.
+    function notionDbTitle(obj, fallback = "Untitled") {
+      if (!obj) return fallback;
+      if (typeof obj.title === "string" && obj.title.trim()) return obj.title.trim();
+      if (Array.isArray(obj.title)) {
+        const t = obj.title[0]?.plain_text ?? obj.title[0]?.text?.content;
+        if (t) return t;
+      }
+      const propTitle = obj.properties?.title?.title;
+      if (Array.isArray(propTitle)) {
+        const t = propTitle[0]?.plain_text ?? propTitle[0]?.text?.content;
+        if (t) return t;
+      }
+      if (typeof obj.name === "string" && obj.name.trim()) return obj.name.trim();
+      return fallback;
+    }
+
+    // [DIAGNOSTIC] Log every item Notion returned so we can diff "returned" vs "detected"
+    const allNotionItems = [...new Map([...dbOnlyResults, ...allResults].map(i => [i.id, i])).values()];
+    console.log(`[notion/databases][DIAG] authUid=${authUid} notion_raw_count=${allNotionItems.length}`);
+    for (const item of allNotionItems) {
+      console.log(`[notion/databases][DIAG] raw id=${item.id} object=${item.object} name=${JSON.stringify(notionDbTitle(item, "(no title)"))}`);
+    }
+
+    for (const item of [...dbOnlyResults, ...allResults]) {
+      if ((item.object === "database" || item.object === "data_source") && !dbMap.has(item.id)) {
+        dbMap.set(item.id, { id: item.id, name: notionDbTitle(item) });
+      } else if (item.object === "page" && !level1Pages.has(item.id)) {
+        level1Pages.add(item.id);
+      }
+    }
+    console.log(`[notion/databases][DIAG] after_search: direct_dbs=${dbMap.size} page_candidates=${level1Pages.size}`);
+
+    console.log(`[notion/databases] direct_dbs=${dbMap.size} l1_pages=${level1Pages.size}`);
+
+    // Level 1: paginated block children for every page from search.
+    // Catches child_database, linked_database views, and queues child_page for level 2.
+    const level2Pages = new Set();
     await Promise.all(
-      [...pageIds].map(async (pageId) => {
+      [...level1Pages].map(async (pid) => {
         try {
-          const br = await fetch(`https://api.notion.com/v1/blocks/${pageId}/children`, {
-            headers: notionHeaders,
-          });
-          if (!br.ok) return;
-          const bdata = await br.json();
-          for (const block of bdata.results ?? []) {
-            if (block.type === "child_database" && !dbMap.has(block.id)) {
-              dbMap.set(block.id, {
-                id: block.id,
-                name: block.child_database?.title ?? "Untitled",
-              });
-            }
-          }
-        } catch {
-          // skip pages we can't read
-        }
+          harvestBlocks(await fetchBlockChildren(pid), dbMap, level2Pages);
+        } catch { /* skip unreadable pages */ }
       })
     );
 
-    console.log(`[notion/databases] total=${dbMap.size}`);
-    json(res, 200, { databases: Array.from(dbMap.values()) });
+    // Level 2: inspect child_page blocks found inside level-1 pages.
+    const level2New = [...level2Pages].filter(pid => !level1Pages.has(pid));
+    if (level2New.length > 0) {
+      console.log(`[notion/databases] l2_pages=${level2New.length}`);
+      await Promise.all(
+        level2New.map(async (pid) => {
+          try {
+            harvestBlocks(await fetchBlockChildren(pid), dbMap, null);
+          } catch { /* skip */ }
+        })
+      );
+    }
+
+    // Probe: call GET /v1/databases/{id} on every object:"page" candidate that is not already
+    // in dbMap. Notion sometimes returns databases as object:"page" in search results,
+    // especially for OAuth tokens and data_source-type databases on fresh connections.
+    // Running unconditionally on all page candidates ensures we never miss a database
+    // regardless of what the direct search already found.
+    if (level1Pages.size > 0) {
+      const probeCandidates = [...level1Pages].filter(id => !dbMap.has(id));
+      console.log(`[notion/databases] probing ${probeCandidates.length} page candidate(s) for hidden databases`);
+      const probeResults = await Promise.all(
+        probeCandidates.map(async (id) => {
+          try {
+            const r = await fetch(`https://api.notion.com/v1/databases/${id}`, { headers: notionHeaders });
+            if (r.ok) {
+              const d = await r.json();
+              if (d.object !== "database" && d.object !== "data_source") return null;
+              const name = notionDbTitle(d);
+              console.log(`[notion/databases][DIAG] probe(db) confirmed id=${id} object=${d.object} name=${JSON.stringify(name)}`);
+              return { id, name };
+            }
+            // Fallback: try /v1/data_sources/{id} — pure data_source databases 404 on the databases endpoint
+            const r2 = await fetch(`https://api.notion.com/v1/data_sources/${id}`, { headers: notionHeaders });
+            if (!r2.ok) return null;
+            const d2 = await r2.json();
+            if (d2.object !== "data_source") return null;
+            const name2 = notionDbTitle(d2);
+            console.log(`[notion/databases][DIAG] probe(data_source) confirmed id=${id} name=${JSON.stringify(name2)}`);
+            return { id, name: name2 };
+          } catch { return null; }
+        })
+      );
+      let probeAdded = 0;
+      for (const entry of probeResults) {
+        if (entry && !dbMap.has(entry.id)) { dbMap.set(entry.id, entry); probeAdded++; }
+      }
+      if (probeAdded > 0) console.log(`[notion/databases] probe added ${probeAdded} hidden database(s)`);
+    }
+
+    // Resolve names for databases discovered via linked_database/child_data_source blocks (name is null until here).
+    const unnamed = [...dbMap.values()].filter(d => d.name === null);
+    if (unnamed.length > 0) {
+      await Promise.all(
+        unnamed.map(async (entry) => {
+          try {
+            const r = await fetch(`https://api.notion.com/v1/databases/${entry.id}`, { headers: notionHeaders });
+            if (r.ok) {
+              const d = await r.json();
+              entry.name = notionDbTitle(d);
+            } else {
+              // Fallback: try /v1/data_sources/{id} for pure data_source type databases
+              const r2 = await fetch(`https://api.notion.com/v1/data_sources/${entry.id}`, { headers: notionHeaders });
+              if (r2.ok) {
+                const d2 = await r2.json();
+                entry.name = notionDbTitle(d2);
+              } else {
+                entry.name = "Untitled";
+              }
+            }
+          } catch { entry.name = "Untitled"; }
+        })
+      );
+    }
+
+    const finalDatabases = Array.from(dbMap.values());
+    console.log(`[notion/databases] total=${finalDatabases.length}`);
+    // [DIAGNOSTIC] Log every database we detected vs what Notion returned
+    console.log(`[notion/databases][DIAG] authUid=${authUid} final_detected_count=${finalDatabases.length}`);
+    for (const db of finalDatabases) {
+      console.log(`[notion/databases][DIAG] detected id=${db.id} name=${JSON.stringify(db.name)}`);
+    }
+    // Summary: anything in allNotionItems that is NOT in finalDatabases
+    const detectedIds = new Set(finalDatabases.map(d => d.id));
+    const dropped = allNotionItems.filter(i => !detectedIds.has(i.id));
+    if (dropped.length > 0) {
+      for (const item of dropped) {
+        console.log(`[notion/databases][DIAG] NOT_DETECTED id=${item.id} object=${item.object} name=${JSON.stringify(notionDbTitle(item, "(no title)"))}`);
+      }
+    } else {
+      console.log(`[notion/databases][DIAG] all Notion items accounted for in detected set`);
+    }
+    json(res, 200, { databases: finalDatabases });
   } catch (e) {
     console.error("[notion/databases] outer error:", String(e.message ?? e));
     json(res, 502, { error: `Notion databases error: ${String(e.message ?? e)}` });
@@ -5958,16 +6844,72 @@ async function handleNotionColumns(req, res) {
   if (!accessToken) { json(res, 404, { error: "No Notion connection found for this user" }); return; }
 
   try {
-    // Step 1: fetch the database schema with 2025-09-03 (required for merged databases)
-    // This gives us data_sources for merged DBs, or properties for standard DBs
+    // Step 1: fetch the database schema. Try /v1/databases/{id} first (standard + merged DBs).
+    // For pure data_source type databases (2025-09-03 API), that endpoint 404s — fall back to
+    // /v1/data_sources/{id} which serves the same schema for data_source objects.
     console.log("[notion/columns] fetching schema for:", databaseId);
-    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
-    });
+    const notionColHeaders = { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" };
+    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, { headers: notionColHeaders });
     const schemaRaw = await schemaRes.text();
     console.log("[notion/columns] schema status:", schemaRes.status, "body:", schemaRaw.slice(0, 400));
 
+    // Pure data_source databases 404 on the databases endpoint — try data_sources endpoint
     if (!schemaRes.ok) {
+      console.log("[notion/columns] databases endpoint failed — trying data_sources fallback for:", databaseId);
+      const dsRes = await fetch(`https://api.notion.com/v1/data_sources/${databaseId}`, { headers: notionColHeaders });
+      const dsRaw = await dsRes.text();
+      console.log("[notion/columns] data_sources fallback status:", dsRes.status, "body:", dsRaw.slice(0, 300));
+      if (dsRes.ok) {
+        // Pure data_source: databaseId IS the data_source_id; query via data_sources/{id}/query
+        const dsSchema = JSON.parse(dsRaw);
+        if (dsSchema.object === "data_source") {
+          const dataSourceId = databaseId.replace(/-/g, "");
+          // fetchSamplePages is defined below — hoist it up via a forward-ref workaround
+          // by inlining the fetch here since we haven't declared it yet.
+          const dsQueryRes = await fetch(`https://api.notion.com/v1/data_sources/${dataSourceId}/query`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03", "Content-Type": "application/json" },
+            body: JSON.stringify({ page_size: 3 }),
+          });
+          const dsQueryText = await dsQueryRes.text();
+          console.log(`[notion/columns] data_source query → ${dsQueryRes.status}:`, dsQueryText.slice(0, 300));
+          if (dsQueryRes.ok) {
+            const dsData = JSON.parse(dsQueryText);
+            let dsPages = dsData.results ?? [];
+            if (dsPages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
+              dsPages = await resolvePagesWithProperties(accessToken, dsPages);
+            }
+            if (dsPages.length > 0 && dsPages[0]?.properties) {
+              const UUID_RE_DS = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+              const sampleMap = {};
+              for (const page of dsPages) {
+                for (const [name, prop] of Object.entries(page.properties ?? {})) {
+                  if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
+                  if (sampleMap[name].samples.length < 3) {
+                    const v = notionPropValue(prop);
+                    if (v != null && v !== "") {
+                      const s = Array.isArray(v) ? v.filter(x => !UUID_RE_DS.test(String(x).trim())).slice(0, 2).join(", ") : String(v).slice(0, 40);
+                      if (s && !UUID_RE_DS.test(s.trim()) && !sampleMap[name].samples.includes(s)) sampleMap[name].samples.push(s);
+                    }
+                  }
+                }
+              }
+              const cols = Object.entries(sampleMap).map(([name, { type, samples }]) => ({ name, type, samples }));
+              console.log("[notion/columns] pure data_source columns:", cols.map(c => c.name));
+              json(res, 200, { columns: cols, data_source_id: dataSourceId });
+              return;
+            }
+          }
+          // No rows — fall back to schema properties from the data_source schema
+          const schemaProps = dsSchema.properties ? Object.entries(dsSchema.properties).map(([name, prop]) => ({
+            name, type: prop.type ?? "unknown", samples: [],
+          })) : [];
+          if (schemaProps.length > 0) {
+            json(res, 200, { columns: schemaProps, data_source_id: dataSourceId });
+            return;
+          }
+        }
+      }
       json(res, 502, { error: `Notion schema fetch failed (${schemaRes.status}): ${schemaRaw}` }); return;
     }
 
@@ -6003,8 +6945,13 @@ async function handleNotionColumns(req, res) {
       console.log(`[notion/columns] sample query ${endpoint} → ${r.status}:`, text.slice(0, 300));
       if (!r.ok) return null;
       const data = JSON.parse(text);
-      const pages = data.results ?? [];
-      if (!pages.length || !pages[0]?.properties) return null;
+      let pages = data.results ?? [];
+      if (!pages.length) return null;
+      // data_sources/query may return partial pages without properties — resolve them
+      if (pages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
+        pages = await resolvePagesWithProperties(accessToken, pages);
+      }
+      if (!pages[0]?.properties) return null;
 
       const sampleMap = {};
       for (const page of pages) {
@@ -6090,21 +7037,31 @@ async function handleNotionAutoMap(req, res) {
   if (!apiKey) { json(res, 500, { error: "Anthropic API not configured" }); return; }
 
   try {
-    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, {
-      headers: { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" },
-    });
-    if (!schemaRes.ok) { json(res, 502, { error: "Failed to fetch Notion schema" }); return; }
-    const schema = await schemaRes.json();
-
-    const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
+    const amNotionHeaders = { Authorization: `Bearer ${accessToken}`, "Notion-Version": "2025-09-03" };
+    const schemaRes = await fetch(`https://api.notion.com/v1/databases/${databaseId}`, { headers: amNotionHeaders });
+    let schema;
     let dataSourceId = null;
     let queryUrl;
-    if (dataSources.length > 0) {
-      const rawId = dataSources[0].id ?? dataSources[0];
-      dataSourceId = String(rawId).replace(/-/g, "");
-      queryUrl = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
+
+    if (schemaRes.ok) {
+      schema = await schemaRes.json();
+      const dataSources = Array.isArray(schema.data_sources) ? schema.data_sources : [];
+      if (dataSources.length > 0) {
+        const rawId = dataSources[0].id ?? dataSources[0];
+        dataSourceId = String(rawId).replace(/-/g, "");
+        queryUrl = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
+      } else {
+        queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+      }
     } else {
-      queryUrl = `https://api.notion.com/v1/databases/${databaseId}/query`;
+      // Fallback: pure data_source databases 404 on the databases endpoint
+      console.log("[notion/auto-map] databases endpoint failed — trying data_sources fallback for:", databaseId);
+      const dsRes = await fetch(`https://api.notion.com/v1/data_sources/${databaseId}`, { headers: amNotionHeaders });
+      if (!dsRes.ok) { json(res, 502, { error: "Failed to fetch Notion schema" }); return; }
+      schema = await dsRes.json();
+      if (schema.object !== "data_source") { json(res, 502, { error: "Failed to fetch Notion schema" }); return; }
+      dataSourceId = databaseId.replace(/-/g, "");
+      queryUrl = `https://api.notion.com/v1/data_sources/${dataSourceId}/query`;
     }
 
     const pagesRes = await fetch(queryUrl, {
@@ -6113,7 +7070,13 @@ async function handleNotionAutoMap(req, res) {
       body: JSON.stringify({ page_size: 5 }),
     });
     const pagesData = pagesRes.ok ? await pagesRes.json() : { results: [] };
-    const pages = pagesData.results ?? [];
+    let pages = pagesData.results ?? [];
+
+    // data_sources/query may return partial pages (no properties). Resolve them before
+    // reading column names — same pattern used by notion-sync.mjs for trades ingestion.
+    if (dataSourceId !== null && pages.some(p => !p.properties || Object.keys(p.properties).length === 0)) {
+      pages = await resolvePagesWithProperties(accessToken, pages);
+    }
 
     // Build relation cache + lazy-fetch uncached relation IDs from sample pages
     const amCache = await buildRelationLookupCache(accessToken, databaseId);
@@ -6139,7 +7102,10 @@ async function handleNotionAutoMap(req, res) {
         }
       }
     }
-    if (schema.properties) {
+    // For data-source databases, schema.properties reflects the underlying source DB
+    // structure rather than the merged view columns — merging it in produces a mismatched
+    // column list that breaks AI field mapping. Only use it for standard databases.
+    if (dataSourceId === null && schema.properties) {
       for (const [name, prop] of Object.entries(schema.properties)) {
         if (!sampleMap[name]) sampleMap[name] = { type: prop.type ?? "unknown", samples: [] };
       }
