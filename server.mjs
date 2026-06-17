@@ -23,7 +23,7 @@ import { serializeNotionProperties } from "./notion-serialize-props.mjs";
 import { resolvePagesWithProperties } from "./notion-resolve-page.mjs";
 import { runAnalysisEngine } from "./analysis-engine.mjs";
 import { fetchTradesForReport, buildReportPackage } from "./report-package.mjs";
-import { generateReport } from "./report-generator.mjs";
+import { generateReport, planReportStep, writeReportStream } from "./report-generator.mjs";
 import {
   generateIntelligenceFile,
   getIntelligenceFile,
@@ -2568,18 +2568,38 @@ async function handleGenerateReport(req, res) {
     json(res, 500, { error: `Package build failed: ${e instanceof Error ? e.message : String(e)}` }); return;
   }
 
-  let html;
+  // ── Step 1: Plan (Haiku) — runs before we commit to streaming so errors can
+  //   still return a proper JSON response.
+  let filteredPkg, plan;
   try {
-    html = await generateReport(pkg, windowLabel);
+    ({ filteredPkg, plan } = await planReportStep(pkg, windowLabel));
   } catch (e) {
-    json(res, 502, { error: `Report generation failed: ${e instanceof Error ? e.message : String(e)}` }); return;
+    json(res, 502, { error: `Plan step failed: ${e instanceof Error ? e.message : String(e)}` }); return;
   }
 
-  // Await the save so Vercel doesn't terminate before the Supabase write completes.
-  await upsertSavedReport(userId, win, periodKey, dateFrom, dateTo, html, isCurrent && isRegen);
-
+  // ── Step 2: Write (Sonnet) — stream chunks to the client in real-time and
+  //   accumulate them so we can save the complete HTML to the cache afterward.
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Jarvis-Cached": "false" });
-  res.end(html);
+
+  const chunks = [];
+  try {
+    for await (const chunk of writeReportStream(filteredPkg, plan, windowLabel)) {
+      res.write(chunk);
+      chunks.push(chunk);
+    }
+  } catch (e) {
+    // Stream failed after headers were sent — log it, end the response cleanly.
+    console.error("[generate-report] Stream write error:", e instanceof Error ? e.message : e);
+    res.end();
+    return;
+  }
+
+  const fullHtml = chunks.join("");
+  // End the HTTP response first so the client's stream resolves immediately.
+  res.end();
+
+  // Persist the assembled HTML — Vercel keeps the function alive until this resolves.
+  await upsertSavedReport(userId, win, periodKey, dateFrom, dateTo, fullHtml, isCurrent && isRegen);
 }
 
 async function handleBriefing(req, res) {

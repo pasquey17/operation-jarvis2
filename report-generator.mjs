@@ -324,7 +324,72 @@ ${JSON.stringify(filteredPkg, null, 1)}
 Write the complete HTML now. Start with <!DOCTYPE html>.`;
 }
 
-// ─── Anthropic call helper ────────────────────────────────────────────────────
+// ─── Anthropic call helpers ───────────────────────────────────────────────────
+
+/**
+ * Streaming variant — async generator that yields raw text chunks from the
+ * Anthropic SSE stream. Used by the write step so the server can forward
+ * chunks to the client in real-time.
+ */
+async function* callAnthropicStream({ model, system, user, maxTokens, cacheSystem = false }) {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+
+  const systemPayload = cacheSystem
+    ? [{ type: "text", text: system, cache_control: { type: "ephemeral" } }]
+    : system;
+
+  const headers = {
+    "x-api-key": apiKey,
+    "anthropic-version": ANTHROPIC_VERSION,
+    "content-type": "application/json",
+  };
+  if (cacheSystem) headers["anthropic-beta"] = "prompt-caching-2024-07-31";
+
+  const body = {
+    model,
+    stream: true,
+    max_tokens: maxTokens,
+    system: systemPayload,
+    messages: [{ role: "user", content: user }],
+  };
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Anthropic ${res.status}: ${t.slice(0, 300)}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") return;
+      try {
+        const event = JSON.parse(data);
+        if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+          yield event.delta.text;
+        }
+      } catch {
+        // ignore malformed SSE lines
+      }
+    }
+  }
+}
 
 async function callAnthropic({ model, system, user, maxTokens, expectJson = false, cacheSystem = false }) {
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
@@ -380,17 +445,17 @@ async function callAnthropic({ model, system, user, maxTokens, expectJson = fals
   return text;
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
+// ─── Exported step functions (used by streaming path in server.mjs) ──────────
 
 /**
- * @param {object} pkg          Output of buildReportPackage
- * @param {string} windowLabel  Human label, e.g. "90-day (quarter)"
- * @returns {Promise<string>}   Complete standalone HTML report
+ * Step 1 — run the Haiku plan and return the filtered package + plan JSON.
+ * This completes before any streaming begins, so the caller can still send
+ * a proper error response if the plan step fails.
+ *
+ * @returns {{ filteredPkg: object, plan: object }}
  */
-export async function generateReport(pkg, windowLabel = "period") {
+export async function planReportStep(pkg, windowLabel = "period") {
   const filteredPkg = filterPackage(pkg);
-
-  // ── Step 1: Plan ────────────────────────────────────────────────────────────
   console.log("[report-generator] Step 1: planning…");
   const plan = await callAnthropic({
     model:      REPORT_PLAN_MODEL,
@@ -400,6 +465,38 @@ export async function generateReport(pkg, windowLabel = "period") {
     expectJson: true,
   });
   console.log("[report-generator] Plan sections:", plan.sections?.map((s) => s.id).join(", "));
+  return { filteredPkg, plan };
+}
+
+/**
+ * Step 2 — async generator that streams Sonnet write-step output as raw text
+ * chunks. The caller accumulates chunks to build the full HTML for caching.
+ *
+ * @param {object} filteredPkg  From planReportStep
+ * @param {object} plan         From planReportStep
+ * @param {string} windowLabel
+ * @yields {string} raw HTML text chunks
+ */
+export async function* writeReportStream(filteredPkg, plan, windowLabel = "period") {
+  console.log("[report-generator] Step 2: writing (streaming)…");
+  yield* callAnthropicStream({
+    model:       REPORT_WRITE_MODEL,
+    system:      buildWriteSystemPrompt(),
+    user:        buildWriteUserPrompt(filteredPkg, plan, windowLabel),
+    maxTokens:   16000,
+    cacheSystem: true,
+  });
+}
+
+// ─── Original non-streaming export (kept for CLI test scripts) ────────────────
+
+/**
+ * @param {object} pkg          Output of buildReportPackage
+ * @param {string} windowLabel  Human label, e.g. "90-day (quarter)"
+ * @returns {Promise<string>}   Complete standalone HTML report
+ */
+export async function generateReport(pkg, windowLabel = "period") {
+  const { filteredPkg, plan } = await planReportStep(pkg, windowLabel);
 
   // ── Step 2: Write ───────────────────────────────────────────────────────────
   console.log("[report-generator] Step 2: writing…");

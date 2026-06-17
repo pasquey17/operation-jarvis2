@@ -787,6 +787,47 @@
         checkAndLoadPeriod();
       }
 
+      /* ── Stream fresh report into the iframe progressively ──────────── */
+      async function streamIntoFrame(res, period) {
+        // Prepare output area before the first byte arrives
+        genBtn.style.display = 'none';
+        emptyEl.style.display = 'none';
+        frame.style.height = '600px';
+        outputTime.textContent = 'Writing report…';
+        updateRegenButton(period);
+        outputEl.classList.add('rp-output--visible');
+
+        var frameDoc = frame.contentDocument || frame.contentWindow.document;
+        frameDoc.open();
+
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var receivedFirst = false;
+
+        try {
+          while (true) {
+            var result = await reader.read();
+            if (result.done) break;
+            var text = decoder.decode(result.value, { stream: true });
+            if (!receivedFirst) {
+              receivedFirst = true;
+              // Plan step is done, content is arriving — hide the spinner
+              setLoading(false);
+              outputEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            frameDoc.write(text);
+          }
+        } finally {
+          frameDoc.close();
+        }
+
+        var timeLabel = 'Generated ' + new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+        outputTime.textContent = timeLabel + ' \xb7 ' + period.label;
+        state.hasReport = true;
+        setTimeout(resizeFrame, 400);
+        setTimeout(resizeFrame, 1200);
+      }
+
       /* ── Generate (first-time or regen) ───────────────────────────────── */
       async function generate(isRegen) {
         if (!state.type || state.generating) return;
@@ -824,8 +865,14 @@
             state.canRegenerate = false;
             state.nextRegenerateAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
           }
-          var html = await res.text();
-          renderReport(html, period, new Date().toISOString(), false);
+          // Cached past-period reports come back as a single blob
+          if (res.headers.get('X-Jarvis-Cached') === 'true') {
+            var html = await res.text();
+            renderReport(html, period, new Date().toISOString(), true);
+            return;
+          }
+          // Fresh generation — stream progressively into the iframe
+          await streamIntoFrame(res, period);
         } catch (e) {
           showError('Report generation failed: ' + (e.message || String(e)));
         } finally {
