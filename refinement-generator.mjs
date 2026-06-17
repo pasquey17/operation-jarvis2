@@ -231,6 +231,7 @@ strong{color:#fff;font-weight:500}
 .coaching-card__proof{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:rgba(216,232,244,.55)}
 .early-signal{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);background:rgba(255,155,40,.1);border:1px solid rgba(255,155,40,.25);border-radius:3px;padding:2px 8px;display:inline-block;margin-left:8px;vertical-align:middle}
 .closing-line{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:rgba(216,232,244,.4);text-align:center;padding:32px 0;border-top:1px solid rgba(0,212,255,.08)}
+.coaching-card__reconcile{font-size:.8rem;color:rgba(255,155,40,.7);margin-top:8px;line-height:1.5;font-style:italic}
 /* Responsive */
 @media(max-width:600px){.finding-card{padding:20px 18px}.report-title{font-size:1.8rem}.coaching-card{padding:16px 18px}}
 `.trim();
@@ -266,6 +267,12 @@ RULES:
 - If fewer than 2 cut_out qualify, return what qualifies
 - If nothing qualifies for a section, return empty array []
 
+CONTRADICTION CHECK (run this before finalising — mandatory):
+- Scan every pair of (lean_in item, cut_out item) for label/finding overlap: same field name, same session, or one being a subset of the other (e.g. "HTF weak structure" lean-in vs "weak structure" cut-out).
+- If they point OPPOSITE ways for the SAME underlying condition: drop the less specific or weaker one. Only the sharper, better-evidenced finding survives.
+- If they are GENUINELY DIFFERENT conditions that share similar words (e.g. "HTF weak structure WITH specific confluence" lean-in vs "generic weak structure entry" cut-out): BOTH may appear, but add a "reconcile_note" string field to EACH explaining the distinction in one plain-language sentence (e.g. "This refers to HTF weak structure with the structure confluence filter applied — different from a generic weak structure entry").
+- Never output a plan where the same concept appears on opposite sides without a reconcile_note. If you cannot write a clear one-sentence reconciliation, drop the weaker finding instead.
+
 Return this exact JSON shape:
 {
   "one_thing": {
@@ -285,7 +292,8 @@ Return this exact JSON shape:
       "instruction": "...",
       "proof": "...",
       "n": 0,
-      "confidence": "high"
+      "confidence": "high",
+      "reconcile_note": "optional — only present when this finding shares similar words with a cut_out item but is genuinely distinct"
     }
   ],
   "cut_out": [
@@ -296,7 +304,8 @@ Return this exact JSON shape:
       "instruction": "...",
       "proof": "...",
       "n": 0,
-      "confidence": "high"
+      "confidence": "high",
+      "reconcile_note": "optional — only present when this finding shares similar words with a lean_in item but is genuinely distinct"
     }
   ]
 }`;
@@ -370,11 +379,12 @@ STRUCTURE (write in this exact order):
      - .coaching-card__instruction: the instruction (bold, imperative)
      - .coaching-card__proof: the proof (mono font)
      - If early_signal: add <span class="early-signal">Early signal</span> after the label
+     - If reconcile_note is present: add <p class="coaching-card__reconcile">Note: [reconcile_note]</p> after the proof
 
 4. CUT OUT section (if cut_out has items):
    - .section with .section-eyebrow "cut out" and .section-title "What's Bleeding You"
    - For each item: use a .coaching-card.coaching-card--cut
-     - Same structure as lean in cards
+     - Same structure as lean in cards (including reconcile_note if present)
 
 5. Closing line — one sentence only:
    - .closing-line: "Focus: [one-line summary of the priority for next 90 days based on THE ONE THING]"
@@ -399,6 +409,14 @@ Coaching card (lean in / cut out):
   <div class="coaching-card__label">London Open · Asia-London Combo</div>
   <div class="coaching-card__instruction">Only trade the London Open session — this is where your edge concentrates.</div>
   <div class="coaching-card__proof">58% WR · n=24 · +8.4R · baseline +17pp</div>
+</div>
+
+Coaching card with reconcile note (when reconcile_note is present in plan):
+<div class="coaching-card coaching-card--lean">
+  <div class="coaching-card__label">HTF Weak Structure + Confluence</div>
+  <div class="coaching-card__instruction">Only take HTF weak structure setups when the structure confluence filter is active.</div>
+  <div class="coaching-card__proof">81% WR · n=17 · +12.1R · baseline +31pp</div>
+  <p class="coaching-card__reconcile">Note: This refers specifically to HTF weak structure entries with the confluence filter confirmed — distinct from generic weak structure entries which drag your win rate down.</p>
 </div>
 
 The report must be a complete working HTML page. Close with </body></html>.`;
