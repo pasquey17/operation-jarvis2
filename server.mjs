@@ -24,6 +24,7 @@ import { resolvePagesWithProperties } from "./notion-resolve-page.mjs";
 import { runAnalysisEngine } from "./analysis-engine.mjs";
 import { fetchTradesForReport, buildReportPackage } from "./report-package.mjs";
 import { generateReport, planReportStep, writeReportStream } from "./report-generator.mjs";
+import { planRefinementStep, writeRefinementStream } from "./refinement-generator.mjs";
 import {
   generateIntelligenceFile,
   getIntelligenceFile,
@@ -2410,13 +2411,16 @@ async function readBody(req, limit = MAX_BODY_BYTES) {
 // ─── /api/generate-report + /api/saved-reports ────────────────────────────────
 
 const WINDOW_CONFIG = {
-  week:    { days: 7,  bucketDays: 1,  label: "7-day (week)" },
-  month:   { days: 30, bucketDays: 7,  label: "30-day (month)" },
-  quarter: { days: 90, bucketDays: 30, label: "90-day (quarter)" },
+  week:       { days: 7,  bucketDays: 1,  label: "7-day (week)" },
+  month:      { days: 30, bucketDays: 7,  label: "30-day (month)" },
+  quarter:    { days: 90, bucketDays: 30, label: "90-day (quarter)" },
+  refinement: { days: 90, bucketDays: 30, label: "90-day (refinements)" },
 };
 
 // Cooldown before the current (in-progress) period can be regenerated: 24 hours.
 const REPORT_REGEN_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+// Cooldown between Refinements reports: 7 days (90-day picture doesn't shift faster).
+const REPORT_REFINEMENT_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** period_key is "{type}:{dateFrom}" — deterministic since dateFrom is always period-start. */
 function savedReportPeriodKey(type, dateFrom) {
@@ -2439,6 +2443,43 @@ async function getSavedReport(userId, periodKey) {
     return rows[0];
   } catch {
     return null;
+  }
+}
+
+/** Returns the most recent refinement row for a user (any refinement:* key), or null. */
+async function getMostRecentRefinement(userId) {
+  const { url, key } = getSupabaseUrlAndServerKey();
+  if (!url || !key) return null;
+  try {
+    const encUser = encodeURIComponent(userId);
+    const r = await fetch(
+      `${url}/rest/v1/saved_reports?user_id=eq.${encUser}&period_key=like.refinement:*&order=generated_at.desc&limit=1`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    if (!r.ok) return null;
+    const rows = await r.json().catch(() => null);
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return rows[0];
+  } catch {
+    return null;
+  }
+}
+
+/** Returns all refinement snapshot metadata (no html) for a user, newest first. */
+async function listSavedRefinements(userId) {
+  const { url, key } = getSupabaseUrlAndServerKey();
+  if (!url || !key) return [];
+  try {
+    const encUser = encodeURIComponent(userId);
+    const r = await fetch(
+      `${url}/rest/v1/saved_reports?user_id=eq.${encUser}&period_key=like.refinement:*&select=period_key,generated_at,last_regenerated_at&order=generated_at.desc`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" } }
+    );
+    if (!r.ok) return [];
+    const rows = await r.json().catch(() => []);
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
   }
 }
 
@@ -2505,6 +2546,19 @@ async function handleGetSavedReport(req, res) {
   });
 }
 
+async function handleListRefinements(req, res) {
+  const userId = authUserIdFromReq(req);
+  if (!userId) { json(res, 401, { error: "Unauthorized" }); return; }
+
+  const snapshots = await listSavedRefinements(userId);
+  const now = Date.now();
+  const most = snapshots[0] ?? null;
+  const lastAt = most?.generated_at ? new Date(most.generated_at).getTime() : null;
+  const cooldownUntil = lastAt ? new Date(lastAt + REPORT_REFINEMENT_COOLDOWN_MS).toISOString() : null;
+  const canGenerate = lastAt === null || (now - lastAt) >= REPORT_REFINEMENT_COOLDOWN_MS;
+  json(res, 200, { snapshots, cooldownUntil, canGenerate });
+}
+
 async function handleGenerateReport(req, res) {
   let raw;
   try { raw = await readBody(req); } catch { json(res, 413, { error: "Payload too large" }); return; }
@@ -2516,19 +2570,32 @@ async function handleGenerateReport(req, res) {
   const userId = authUserIdFromReq(req) || (typeof body.userId === "string" ? body.userId.trim() : "");
   if (!userId) { json(res, 401, { error: "Unauthorized" }); return; }
 
-  const { window: win = "quarter", dateFrom: bodyFrom, dateTo: bodyTo, windowLabel: bodyLabel, isCurrent, isRegen } = body;
-  const cfg = WINDOW_CONFIG[win] ?? WINDOW_CONFIG.quarter;
+  const { window: win = "quarter", isCurrent, isRegen } = body;
+  const isRefinement = win === "refinement";
 
-  // Client may pass explicit dateFrom/dateTo for historical periods; otherwise
-  // default to the window-width rolling back from today.
   const now = new Date();
-  const dateTo   = bodyTo   ? String(bodyTo).slice(0, 10)   : now.toISOString().slice(0, 10);
-  const dateFrom = bodyFrom ? String(bodyFrom).slice(0, 10) : new Date(now.getTime() - cfg.days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const windowLabel = bodyLabel ? String(bodyLabel).slice(0, 80) : cfg.label;
-  const periodKey = savedReportPeriodKey(win, dateFrom);
+  const todayStr = now.toISOString().slice(0, 10);
 
-  // Past periods: serve from cache if already saved — data is final, no need to regenerate.
-  if (!isCurrent && !isRegen) {
+  let dateFrom, dateTo, windowLabel, periodKey, bucketDays;
+
+  if (isRefinement) {
+    dateTo      = todayStr;
+    dateFrom    = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    windowLabel = "90-day (refinements)";
+    periodKey   = `refinement:${todayStr}`;
+    bucketDays  = 30;
+  } else {
+    const cfg = WINDOW_CONFIG[win] ?? WINDOW_CONFIG.quarter;
+    const { dateFrom: bodyFrom, dateTo: bodyTo, windowLabel: bodyLabel } = body;
+    dateTo      = bodyTo   ? String(bodyTo).slice(0, 10)   : todayStr;
+    dateFrom    = bodyFrom ? String(bodyFrom).slice(0, 10) : new Date(now.getTime() - cfg.days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    windowLabel = bodyLabel ? String(bodyLabel).slice(0, 80) : cfg.label;
+    periodKey   = savedReportPeriodKey(win, dateFrom);
+    bucketDays  = cfg.bucketDays;
+  }
+
+  // ── Cache check: serve saved HTML instantly for already-generated reports. ────
+  if (!isRegen) {
     const cached = await getSavedReport(userId, periodKey);
     if (cached) {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Jarvis-Cached": "true" });
@@ -2537,8 +2604,19 @@ async function handleGenerateReport(req, res) {
     }
   }
 
-  // Current period: enforce regeneration cooldown.
-  if (isCurrent && isRegen) {
+  // ── Cooldown check ────────────────────────────────────────────────────────────
+  if (isRefinement) {
+    // Refinements: global 7-day cooldown across all refinement:* keys for this user.
+    const mostRecent = await getMostRecentRefinement(userId);
+    if (mostRecent?.generated_at) {
+      const elapsed = Date.now() - new Date(mostRecent.generated_at).getTime();
+      if (elapsed < REPORT_REFINEMENT_COOLDOWN_MS) {
+        const nextAt = new Date(new Date(mostRecent.generated_at).getTime() + REPORT_REFINEMENT_COOLDOWN_MS).toISOString();
+        json(res, 429, { error: "Rate limited", nextRegenerateAt: nextAt });
+        return;
+      }
+    }
+  } else if (isCurrent && isRegen) {
     const cached = await getSavedReport(userId, periodKey);
     if (cached?.last_regenerated_at) {
       const elapsed = Date.now() - new Date(cached.last_regenerated_at).getTime();
@@ -2550,6 +2628,7 @@ async function handleGenerateReport(req, res) {
     }
   }
 
+  // ── Fetch trades ──────────────────────────────────────────────────────────────
   let periodTrades, allTimeTrades;
   try {
     ({ periodTrades, allTimeTrades } = await fetchTradesForReport(userId, dateFrom, dateTo));
@@ -2561,45 +2640,48 @@ async function handleGenerateReport(req, res) {
     json(res, 404, { error: "No trades found for this user" }); return;
   }
 
+  // ── Build package ─────────────────────────────────────────────────────────────
   let pkg;
   try {
-    pkg = buildReportPackage(periodTrades, allTimeTrades, { bucketDays: cfg.bucketDays });
+    pkg = buildReportPackage(periodTrades, allTimeTrades, { bucketDays });
   } catch (e) {
     json(res, 500, { error: `Package build failed: ${e instanceof Error ? e.message : String(e)}` }); return;
   }
 
-  // ── Step 1: Plan (Haiku) — runs before we commit to streaming so errors can
-  //   still return a proper JSON response.
+  // ── Step 1: Plan (Haiku) — before res.writeHead so errors still return JSON. ──
   let filteredPkg, plan;
   try {
-    ({ filteredPkg, plan } = await planReportStep(pkg, windowLabel));
+    if (isRefinement) {
+      ({ filteredPkg, plan } = await planRefinementStep(pkg));
+    } else {
+      ({ filteredPkg, plan } = await planReportStep(pkg, windowLabel));
+    }
   } catch (e) {
     json(res, 502, { error: `Plan step failed: ${e instanceof Error ? e.message : String(e)}` }); return;
   }
 
-  // ── Step 2: Write (Sonnet) — stream chunks to the client in real-time and
-  //   accumulate them so we can save the complete HTML to the cache afterward.
+  // ── Step 2: Write (Sonnet) — stream to client, accumulate for cache. ──────────
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Jarvis-Cached": "false" });
 
   const chunks = [];
   try {
-    for await (const chunk of writeReportStream(filteredPkg, plan, windowLabel)) {
+    const stream = isRefinement
+      ? writeRefinementStream(filteredPkg, plan)
+      : writeReportStream(filteredPkg, plan, windowLabel);
+    for await (const chunk of stream) {
       res.write(chunk);
       chunks.push(chunk);
     }
   } catch (e) {
-    // Stream failed after headers were sent — log it, end the response cleanly.
     console.error("[generate-report] Stream write error:", e instanceof Error ? e.message : e);
     res.end();
     return;
   }
 
   const fullHtml = chunks.join("");
-  // End the HTTP response first so the client's stream resolves immediately.
   res.end();
 
-  // Persist the assembled HTML — Vercel keeps the function alive until this resolves.
-  await upsertSavedReport(userId, win, periodKey, dateFrom, dateTo, fullHtml, isCurrent && isRegen);
+  await upsertSavedReport(userId, win, periodKey, dateFrom, dateTo, fullHtml, !isRefinement && isCurrent && isRegen);
 }
 
 async function handleBriefing(req, res) {
@@ -5736,6 +5818,11 @@ async function requestListener(req, res) {
 
   if (req.method === "POST" && req.url.startsWith("/api/log-trade")) {
     await handleLogTrade(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/refinement-snapshots")) {
+    await handleListRefinements(req, res);
     return;
   }
 

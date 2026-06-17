@@ -405,7 +405,7 @@
         <button class="rp-tab" id="rp-tab-weekly"    data-type="week"    role="tab" aria-selected="false">Weekly</button>
         <button class="rp-tab" id="rp-tab-monthly"   data-type="month"   role="tab" aria-selected="false">Monthly</button>
         <button class="rp-tab" id="rp-tab-quarterly" data-type="quarter" role="tab" aria-selected="false">Quarterly</button>
-        <div class="rp-tab rp-tab--soon" aria-hidden="true">Refinements · soon</div>
+        <button class="rp-tab" id="rp-tab-refinement" data-type="refinement" role="tab" aria-selected="false">Refinements</button>
       </div>
       <p class="rp-type-desc" id="rp-type-desc">Select a report type to begin</p>
 
@@ -577,13 +577,18 @@
 
       /* ── State ─────────────────────────────────────────────────────────── */
       var state = {
-        type: null,          // 'week' | 'month' | 'quarter'
+        type: null,          // 'week' | 'month' | 'quarter' | 'refinement'
         stepsBack: 1,        // 0 = current (partial), 1 = last complete (default)
         generating: false,
         hasReport: false,
-        // current period rate-limit state (populated after cache check)
+        // calendar period rate-limit state (populated after cache check)
         canRegenerate: true,
         nextRegenerateAt: null,
+        // refinement snapshot state
+        refinementSnapshots: [],
+        refinementIdx: 0,
+        refinementCooldownUntil: null,
+        refinementCanGenerate: true,
       };
 
       /* ── DOM refs ──────────────────────────────────────────────────────── */
@@ -634,8 +639,24 @@
       }
 
       /* ── Render helpers ────────────────────────────────────────────────── */
+      function updateRefinementPeriodUI() {
+        var snaps = state.refinementSnapshots;
+        if (snaps.length === 0) {
+          periodLbl.textContent = 'No snapshots yet';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+        } else {
+          var snap = snaps[state.refinementIdx];
+          var d = snap.period_key.replace('refinement:', '');
+          periodLbl.textContent = 'Snapshot · ' + d;
+          prevBtn.disabled = state.refinementIdx >= snaps.length - 1;
+          nextBtn.disabled = state.refinementIdx <= 0;
+        }
+      }
+
       function updatePeriodUI() {
         if (!state.type) return;
+        if (state.type === 'refinement') { updateRefinementPeriodUI(); return; }
         var p = getPeriod(state.type, state.stepsBack);
         periodLbl.textContent = p.label;
         nextBtn.disabled = state.stepsBack <= 0;
@@ -645,9 +666,10 @@
       }
 
       var TYPE_DESCS = {
-        week:    'Last 7 days · day-of-week patterns and session performance',
-        month:   'Last 30 days · trends, sequences, and confluence breakdown',
-        quarter: 'Last 90 days · full edge map, leaks, and derived rules',
+        week:       'Last 7 days · day-of-week patterns and session performance',
+        month:      'Last 30 days · trends, sequences, and confluence breakdown',
+        quarter:    'Last 90 days · full edge map, leaks, and derived rules',
+        refinement: '90-day coaching snapshot · the few things that actually matter',
       };
 
       function setLoading(on) {
@@ -773,9 +795,81 @@
         }
       }
 
+      function showRefinementsEmpty() {
+        outputEl.classList.remove('rp-output--visible');
+        state.hasReport = false;
+        emptyEl.style.display = '';
+        emptyEl.classList.remove('rp-empty--hidden');
+        emptyEl.querySelector('.rp-empty__heading').textContent = state.refinementSnapshots.length === 0
+          ? 'No refinements report yet'
+          : 'Generate a new snapshot';
+        emptyEl.querySelector('.rp-empty__sub').textContent = '90-day coaching snapshot · once per 7 days';
+        regenBtn.style.display = 'none';
+        if (state.refinementCanGenerate) {
+          genBtn.style.display = '';
+          genBtn.textContent = 'Generate Refinements Report';
+          clearError();
+        } else {
+          genBtn.style.display = 'none';
+          showError('Next refinements report available ' + fmtTime(state.refinementCooldownUntil) + '.');
+        }
+      }
+
+      async function loadRefinementSnapshot() {
+        var snap = state.refinementSnapshots[state.refinementIdx];
+        if (!snap) return;
+        clearError();
+        outputEl.classList.remove('rp-output--visible');
+        state.hasReport = false;
+        try {
+          var r = await apiFetch('/api/saved-reports?type=refinement&periodKey=' + encodeURIComponent(snap.period_key), {
+            method: 'GET', cache: 'no-store',
+          });
+          if (!r.ok) throw new Error('Status ' + r.status);
+          var data = await r.json();
+          if (data.found) {
+            var d = snap.period_key.replace('refinement:', '');
+            renderReport(data.html, { label: 'Refinements · ' + d, isCurrent: false, dateFrom: '', dateTo: '' }, data.generatedAt, true);
+            // If viewing the newest snapshot and cooldown has expired, offer "Generate New"
+            if (state.refinementIdx === 0 && state.refinementCanGenerate) {
+              genBtn.style.display = '';
+              genBtn.textContent = 'Generate New Refinement';
+            }
+          }
+        } catch (_) {
+          showError('Could not load snapshot.');
+        }
+      }
+
+      async function checkAndLoadRefinements() {
+        clearError();
+        outputEl.classList.remove('rp-output--visible');
+        state.hasReport = false;
+        try {
+          var r = await apiFetch('/api/refinement-snapshots', { method: 'GET', cache: 'no-store' });
+          if (!r.ok) throw new Error('Status ' + r.status);
+          var data = await r.json();
+          state.refinementSnapshots = data.snapshots || [];
+          state.refinementCooldownUntil = data.cooldownUntil || null;
+          state.refinementCanGenerate = data.canGenerate !== false;
+          state.refinementIdx = 0;
+          updateRefinementPeriodUI();
+
+          if (state.refinementSnapshots.length > 0) {
+            await loadRefinementSnapshot();
+          } else {
+            showRefinementsEmpty();
+          }
+        } catch (_) {
+          showRefinementsEmpty();
+        }
+      }
+
       function selectType(type) {
         state.type = type;
-        state.stepsBack = 1; // default: last complete period
+        state.stepsBack = 1;
+        state.refinementSnapshots = [];
+        state.refinementIdx = 0;
         cards.forEach(function(c) {
           var sel = c.dataset.type === type;
           c.classList.toggle('rp-tab--selected', sel);
@@ -784,7 +878,11 @@
         if (typeDescEl) typeDescEl.textContent = TYPE_DESCS[type] || '';
         controls.classList.add('rp-controls--visible');
         updatePeriodUI();
-        checkAndLoadPeriod();
+        if (type === 'refinement') {
+          checkAndLoadRefinements();
+        } else {
+          checkAndLoadPeriod();
+        }
       }
 
       /* ── Stream fresh report into the iframe progressively ──────────── */
@@ -832,47 +930,76 @@
       async function generate(isRegen) {
         if (!state.type || state.generating) return;
         clearError();
-        var period = getPeriod(state.type, state.stepsBack);
+
+        var isRefinement = state.type === 'refinement';
+        var today = new Date().toISOString().slice(0, 10);
+        var period = isRefinement
+          ? { label: 'Refinements · ' + today, isCurrent: false, dateFrom: '', dateTo: '' }
+          : getPeriod(state.type, state.stepsBack);
 
         setLoading(true);
         try {
+          var reqBody = isRefinement
+            ? { window: 'refinement', isCurrent: false, isRegen: false }
+            : {
+                window:      state.type,
+                dateFrom:    period.dateFrom,
+                dateTo:      period.dateTo,
+                windowLabel: period.label,
+                isCurrent:   period.isCurrent,
+                isRegen:     !!isRegen,
+              };
+
           var res = await apiFetch('/api/generate-report', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              window:      state.type,
-              dateFrom:    period.dateFrom,
-              dateTo:      period.dateTo,
-              windowLabel: period.label,
-              isCurrent:   period.isCurrent,
-              isRegen:     !!isRegen,
-            }),
+            body: JSON.stringify(reqBody),
           });
+
           if (res.status === 429) {
             var errData = await res.json().catch(function() { return {}; });
-            state.canRegenerate = false;
-            state.nextRegenerateAt = errData.nextRegenerateAt || null;
-            updateRegenButton(period);
-            showError('Report regenerated recently. ' + (state.nextRegenerateAt ? 'Next refresh available at ' + fmtTime(state.nextRegenerateAt) + '.' : 'Try again tomorrow.'));
+            if (isRefinement) {
+              state.refinementCanGenerate = false;
+              state.refinementCooldownUntil = errData.nextRegenerateAt || null;
+              genBtn.style.display = 'none';
+              showError('Refinements report generated recently. ' + (state.refinementCooldownUntil ? 'Next available ' + fmtTime(state.refinementCooldownUntil) + '.' : 'Try again in 7 days.'));
+            } else {
+              state.canRegenerate = false;
+              state.nextRegenerateAt = errData.nextRegenerateAt || null;
+              updateRegenButton(period);
+              showError('Report regenerated recently. ' + (state.nextRegenerateAt ? 'Next refresh available at ' + fmtTime(state.nextRegenerateAt) + '.' : 'Try again tomorrow.'));
+            }
             return;
           }
           if (!res.ok) {
             var errData2 = await res.json().catch(function() { return {}; });
             throw new Error(errData2.error || 'Server error ' + res.status);
           }
-          // After a regen, reset canRegenerate — server enforces 24h from now
-          if (isRegen) {
+
+          if (!isRefinement && isRegen) {
             state.canRegenerate = false;
             state.nextRegenerateAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
           }
-          // Cached past-period reports come back as a single blob
+
+          // Cached reports come back as a single blob (e.g. today's refinement already exists)
           if (res.headers.get('X-Jarvis-Cached') === 'true') {
             var html = await res.text();
             renderReport(html, period, new Date().toISOString(), true);
             return;
           }
+
           // Fresh generation — stream progressively into the iframe
           await streamIntoFrame(res, period);
+
+          // After refinement generation completes, mark cooldown and update snapshot list
+          if (isRefinement) {
+            state.refinementCanGenerate = false;
+            state.refinementCooldownUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+            genBtn.style.display = 'none';
+            state.refinementSnapshots.unshift({ period_key: 'refinement:' + today, generated_at: new Date().toISOString() });
+            state.refinementIdx = 0;
+            updateRefinementPeriodUI();
+          }
         } catch (e) {
           showError('Report generation failed: ' + (e.message || String(e)));
         } finally {
@@ -890,13 +1017,28 @@
 
       prevBtn.addEventListener('click', function() {
         if (state.generating) return;
+        if (state.type === 'refinement') {
+          if (state.refinementIdx >= state.refinementSnapshots.length - 1) return;
+          state.refinementIdx++;
+          updateRefinementPeriodUI();
+          loadRefinementSnapshot();
+          return;
+        }
         state.stepsBack++;
         updatePeriodUI();
         checkAndLoadPeriod();
       });
 
       nextBtn.addEventListener('click', function() {
-        if (state.stepsBack <= 0 || state.generating) return;
+        if (state.generating) return;
+        if (state.type === 'refinement') {
+          if (state.refinementIdx <= 0) return;
+          state.refinementIdx--;
+          updateRefinementPeriodUI();
+          loadRefinementSnapshot();
+          return;
+        }
+        if (state.stepsBack <= 0) return;
         state.stepsBack--;
         updatePeriodUI();
         checkAndLoadPeriod();
