@@ -20,6 +20,7 @@ import {
   buildByPair,
   buildByDirection,
   buildByModel,
+  buildBySessionModel,
   buildNotionExtrasPatterns,
   buildOutcomeSequences,
   buildProgression,
@@ -89,6 +90,7 @@ export function buildReportPackage(periodTrades, allTimeTrades, options = {}) {
     bySession:            buildBySession(periodTrades),
     byDay:                buildByDay(periodTrades),
     bySessionDay:         buildBySessionDayAll(periodTrades),
+    bySessionModel:       buildBySessionModel(periodTrades),
     byModel:              buildByModel(periodTrades),
     byPair:               buildByPair(periodTrades),
     byDirection:          buildByDirection(periodTrades),
@@ -111,12 +113,13 @@ export function buildReportPackage(periodTrades, allTimeTrades, options = {}) {
     // Every row carries: key, total, wins, losses, bes, decided (n),
     // winRate, avgRRWin, avgRRLoss, expectancy, totalR, bestRR, worstRR.
     breakdowns: {
-      bySession:    periodRaw.bySession,
-      byDay:        periodRaw.byDay,
-      bySessionDay: periodRaw.bySessionDay,  // all combos, no min-sample filter
-      byPair:       periodRaw.byPair,
-      byDirection:  periodRaw.byDirection,
-      byModel:      periodRaw.byModel,
+      bySession:      periodRaw.bySession,
+      byDay:          periodRaw.byDay,
+      bySessionDay:   periodRaw.bySessionDay,   // all combos, no min-sample filter
+      bySessionModel: periodRaw.bySessionModel, // session × model cross-tab
+      byPair:         periodRaw.byPair,
+      byDirection:    periodRaw.byDirection,
+      byModel:        periodRaw.byModel,
     },
 
     // ── 3. Custom field correlations: all qualifying patterns (no top-5 cap)

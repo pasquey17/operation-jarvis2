@@ -702,6 +702,26 @@ export function buildBySessionDayAll(trades) {
   return rows;
 }
 
+// Build session × model cross-tab for the refinement planner.
+// No minimum-sample filter — caller judges cell size via n / decided.
+export function buildBySessionModel(trades) {
+  const map = groupBy(trades, (t) => {
+    const s = (t.session ?? "").trim();
+    const m = (t.model  ?? "").trim();
+    if (!s || !m) return null;
+    return `${s}\x00${m}`;
+  });
+  const rows = [];
+  for (const [key, ts] of map.entries()) {
+    const nul = key.indexOf("\x00");
+    const session = key.slice(0, nul);
+    const model   = key.slice(nul + 1);
+    rows.push({ session, model, ...groupStats(ts) });
+  }
+  rows.sort((a, b) => (b.totalR ?? -Infinity) - (a.totalR ?? -Infinity));
+  return rows;
+}
+
 // Compute transition probabilities between consecutive trade outcomes.
 // Trades are sorted chronologically before computing, so call order doesn't matter.
 export function buildOutcomeSequences(trades) {

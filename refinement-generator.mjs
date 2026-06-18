@@ -243,46 +243,84 @@ function buildPlanSystemPrompt() {
 
 CRITICAL: Return ONLY valid JSON. No markdown fences, no explanation, no text before or after. Start with { end with }.
 
-SELECTION CRITERIA:
-- A finding qualifies if: n ≥ 8 AND |delta (win rate difference)| ≥ 15 percentage points
-- Prefer n ≥ 15 — set confidence "high". Set confidence "early_signal" for n 8-14.
-- Ignore marginal findings (|delta| < 15pp after filtering). Better 2 sharp findings than 5 mediocre ones.
-- NEVER pick circular/outcome-tautology findings.
+═══ FT CONFOUND GUARD (read this first) ═══
+This dataset mixes FORWARD TEST (paper/practice) trades with FUNDED/LIVE trades. The data layer has already stripped direct "Forward Test" segment observations. But indirect effects remain.
+
+HARD EXCLUSIONS — never pick these as findings:
+1. Any finding about a specific ACCOUNT or PROP FIRM account (e.g. "100k p2", "200k", "funded account", "p1 account", "p2 account", "challenge", any text ending in "k" account). When you see one account has lower WR than "without" — the "without" group is inflated by forward test trades. These findings are NEVER actionable edge. SKIP THEM.
+2. Any finding where the key contains "account", "prop", "challenge", "phase" in any form.
+
+RULE — session, model, and combo findings MUST include this reconcile_note verbatim:
+"Verify this edge holds on your funded/live trades specifically — forward test trades are more selective and can inflate session and model signals."
+
+custom_field findings (confluence tags, conditions, entry rules, risk rules, hold time) are NOT contaminated by this effect and do NOT need the FT reconcile_note.
+
+═══ SESSION×MODEL PRIORITISATION ═══
+The SESSION×MODEL CROSS-TAB is the highest-value data source. Check it first.
+The key question: does the same model run 15+pp higher WR in one session vs another?
+If yes, AND there are ≥8 decided trades on each side: THIS is THE ONE THING — a reallocation finding.
+Instruction format: "Only take [Model] in [Better Session] — you're taking it [N]× more in [Worse Session] where it runs [X]% vs [Y]% in [Better Session]."
+
+═══ SELECTION CRITERIA ═══
+- Qualifies: n ≥ 8 AND |delta| ≥ 15 percentage points
+- Prefer n ≥ 15 — set confidence "high". Set confidence "early_signal" for n 8–14.
+- Ignore |delta| < 15pp. Better 2 sharp findings than 5 mediocre ones.
+- NEVER pick circular/outcome-tautology findings (RR field, explicit win/loss labels).
+- NON-OBVIOUS BAR: prefer combination/reallocation findings over flat session or model findings when the cross-tab shows the combination is the real source.
 
 IMPACT SCORE = Math.abs(delta_pp) × Math.min(n, 30) / 30
-(Where delta_pp is the win rate difference in percentage points, e.g. 22 for a 22pp gap)
+(delta_pp = win rate gap in percentage points)
 
-THE ONE THING:
-Pick the single finding with the highest impact score. This is what the trader should change FIRST.
-- If it's a leak (negative delta): "STOP / NEVER / CUT" — direct, hard verb
-- If it's an edge (positive delta): "ONLY / DO MORE / ALWAYS" — direct, hard verb
-One sentence. Backed by the number. No softening language.
+═══ THE ONE THING ═══
+Single highest-impact finding. What to change FIRST.
+- Leak (negative delta): STOP / NEVER / CUT — direct, hard verb
+- Edge (positive delta): ONLY / DOUBLE DOWN ON / CONCENTRATE — direct, hard verb
+- Reallocation: "Only take [X] in [Y] — you're taking it [N]× more in [Z] where it underperforms."
+One sentence. Backed by the number. No softening.
 
-LEAN IN (2-4 items): genuine edges. delta > +15pp AND n ≥ 8. Specific and actionable.
-CUT OUT (2-4 items): genuine leaks. delta < -15pp AND n ≥ 8. Something the trader can actually stop doing.
+═══ LEAN IN (2–4 items, max 4) ═══
+Genuine edges: conditions where doing MORE of X increases WR. delta > +15pp AND n ≥ 8.
+LEAN IN = "This positive condition is present — do it more." Instruction uses: ONLY / DOUBLE DOWN / CONCENTRATE.
+Lead with the session×model combination if one qualifies.
 
-RULES:
-- The one_thing MUST NOT appear in lean_in or cut_out arrays (no duplication)
-- If fewer than 2 lean_in qualify, return what qualifies (even 0 or 1)
-- If fewer than 2 cut_out qualify, return what qualifies
-- If nothing qualifies for a section, return empty array []
+MIXED-SIGNAL RULE: If a single data observation spans two groups with opposite directions (e.g. Tuesday 90% WR vs Monday 33% WR), CREATE TWO SEPARATE ITEMS:
+- The positive group goes in lean_in: "Trade Tuesdays — 90% WR (early signal, n=10)"
+- The negative group goes in cut_out: "Stop trading Mondays — 33% WR · n=12"
 
-CONTRADICTION CHECK (run this before finalising — mandatory):
-- Scan every pair of (lean_in item, cut_out item) for label/finding overlap: same field name, same session, or one being a subset of the other (e.g. "HTF weak structure" lean-in vs "weak structure" cut-out).
-- If they point OPPOSITE ways for the SAME underlying condition: drop the less specific or weaker one. Only the sharper, better-evidenced finding survives.
-- If they are GENUINELY DIFFERENT conditions that share similar words (e.g. "HTF weak structure WITH specific confluence" lean-in vs "generic weak structure entry" cut-out): BOTH may appear, but add a "reconcile_note" string field to EACH explaining the distinction in one plain-language sentence (e.g. "This refers to HTF weak structure with the structure confluence filter applied — different from a generic weak structure entry").
-- Never output a plan where the same concept appears on opposite sides without a reconcile_note. If you cannot write a clear one-sentence reconciliation, drop the weaker finding instead.
+═══ CUT OUT (2–4 items, max 4) ═══
+Genuine leaks: conditions where doing LESS of X increases WR. delta < −15pp AND n ≥ 8.
+CUT OUT = "This negative condition is present — stop doing it." Instruction uses: STOP / NEVER / CUT.
+Negative delta findings go here. NEVER put a negative-delta finding in lean_in.
+Proof strings: WR%, n, delta only. Never add "(inverted instruction)" or similar meta-commentary.
+
+═══ CONFIDENCE RULE ═══
+- n ≥ 15 → confidence: "high"
+- n < 15 → confidence: "early_signal"
+Apply this strictly. Tuesday n=10 → early_signal. RR 4-5RR n=11 → early_signal.
+
+═══ RULES ═══
+- one_thing MUST NOT appear in lean_in or cut_out (no duplication)
+- Max 4 items per section. If you have 5+, drop the weakest (lowest impact score).
+- Return [] for empty sections
+- All session/model/combo items MUST have reconcile_note (per FT CONFOUND GUARD)
+
+═══ CONTRADICTION CHECK (mandatory before finalising) ═══
+Scan every (lean_in, cut_out) pair for label/concept overlap.
+- Same underlying condition in opposite directions → drop the weaker one.
+- Similar words but genuinely DIFFERENT conditions (e.g. "HTF WEAK STRUCTURE" lean_in vs "WEAK STRUCTURE" cut_out) → BOTH survive, but each MUST have a reconcile_note: "HTF WEAK STRUCTURE is a specific higher-timeframe read (81% WR) — distinct from the generic WEAK STRUCTURE tag which at 56% WR is not discriminating."
+- Never output a plan where the same concept appears on both sides without a reconcile_note.
 
 Return this exact JSON shape:
 {
   "one_thing": {
     "direction": "lean_in",
     "label": "Prescriptive title, max 10 words",
-    "finding": "The specific pattern/condition (e.g. 'Asia session', 'HTF Bias: Bearish')",
-    "instruction": "Single hard instruction. Strong verb first: Stop/Only/Never/Add/Cut/Double down on.",
-    "proof": "The key number(s) that prove it (e.g. '22% WR vs 41% baseline · n=18 · -6.2R')",
-    "n": 18,
-    "confidence": "high"
+    "finding": "The specific pattern/condition",
+    "instruction": "Single hard instruction. Strong verb first.",
+    "proof": "Key numbers (e.g. '61% WR London · n=28 · +1.87R vs 37% Asia · n=94 · +0.81R')",
+    "n": 28,
+    "confidence": "high",
+    "reconcile_note": "required for session/model/combo — see FT CONFOUND GUARD; omit only for custom_field findings"
   },
   "lean_in": [
     {
@@ -293,7 +331,7 @@ Return this exact JSON shape:
       "proof": "...",
       "n": 0,
       "confidence": "high",
-      "reconcile_note": "optional — only present when this finding shares similar words with a cut_out item but is genuinely distinct"
+      "reconcile_note": "required for session/model/combo; optional for custom_field; required when finding overlaps with a cut_out item"
     }
   ],
   "cut_out": [
@@ -305,7 +343,7 @@ Return this exact JSON shape:
       "proof": "...",
       "n": 0,
       "confidence": "high",
-      "reconcile_note": "optional — only present when this finding shares similar words with a lean_in item but is genuinely distinct"
+      "reconcile_note": "optional — required when finding overlaps with a lean_in item"
     }
   ]
 }`;
@@ -325,101 +363,164 @@ function buildPlanInput(pkg) {
     delta_pp: o.evidence?.delta != null ? Math.round(o.evidence.delta * 100) : null,
     wr_pct:   o.evidence?.winRate != null ? Math.round(o.evidence.winRate * 100) : null,
     totalR:   o.evidence?.totalR ?? null,
-    // For custom_field observations: include with/without rates
-    wr_with:    o.evidence?.winRateWith  != null ? Math.round(o.evidence.winRateWith  * 100) : undefined,
+    wr_with:    o.evidence?.winRateWith    != null ? Math.round(o.evidence.winRateWith    * 100) : undefined,
     wr_without: o.evidence?.winRateWithout != null ? Math.round(o.evidence.winRateWithout * 100) : undefined,
   }));
 
-  // Top 30 custom field patterns by |diff| — supplementary data beyond what's already in observations
+  // Top 30 custom field patterns by |diff|
   const customPatterns = (pkg.customFieldPatterns ?? []).slice(0, 30).map((p) => ({
-    key:          p.key,
-    value:        p.value,
-    n:            p.count,
-    wr_with_pct:  p.winRateWith    != null ? Math.round(p.winRateWith    * 100) : null,
+    key:            p.key,
+    value:          p.value,
+    n:              p.count,
+    wr_with_pct:    p.winRateWith    != null ? Math.round(p.winRateWith    * 100) : null,
     wr_without_pct: p.winRateWithout != null ? Math.round(p.winRateWithout * 100) : null,
-    diff_pp:      p.diff != null ? Math.round(p.diff * 100) : null,
+    diff_pp:        p.diff != null ? Math.round(p.diff * 100) : null,
   }));
 
-  return { overallWR, periodTrades: pkg.periodTradeCount, observations, customPatterns };
+  // Compact session breakdown
+  const bySession = (pkg.breakdowns?.bySession ?? []).map((r) => ({
+    session: r.key,
+    n:       r.decided ?? 0,
+    wr_pct:  r.winRate != null ? Math.round(r.winRate * 100) : null,
+    totalR:  r.totalR ?? null,
+    exp:     r.expectancy ?? null,
+  }));
+
+  // Compact model breakdown
+  const byModel = (pkg.breakdowns?.byModel ?? []).map((r) => ({
+    model:  r.key,
+    n:      r.decided ?? 0,
+    wr_pct: r.winRate != null ? Math.round(r.winRate * 100) : null,
+    totalR: r.totalR ?? null,
+    exp:    r.expectancy ?? null,
+  }));
+
+  // Session × model cross-tab — the key non-obvious data source (min 6 decided)
+  const bySessionModel = (pkg.breakdowns?.bySessionModel ?? [])
+    .filter((r) => (r.decided ?? 0) >= 6)
+    .map((r) => ({
+      session: r.session,
+      model:   r.model,
+      n:       r.decided ?? 0,
+      wr_pct:  r.winRate != null ? Math.round(r.winRate * 100) : null,
+      totalR:  r.totalR ?? null,
+      exp:     r.expectancy ?? null,
+    }));
+
+  return { overallWR, periodTrades: pkg.periodTradeCount, bySession, byModel, bySessionModel, observations, customPatterns };
 }
 
 function buildPlanUserContent(input) {
-  return `Baseline: ${input.overallWR ?? "n/a"}% win rate across ${input.periodTrades ?? 0} trades (last 90 days).
+  return `Baseline: ${input.overallWR ?? "n/a"}% WR across ${input.periodTrades ?? 0} trades (last 90 days).
 
-CLASSIFIED OBSERVATIONS (pre-ranked strongest first — use these as primary candidates):
+SESSION × MODEL CROSS-TAB (check this first — n ≥ 6 per cell):
+${JSON.stringify(input.bySessionModel, null, 1)}
+
+SESSION BREAKDOWN:
+${JSON.stringify(input.bySession, null, 1)}
+
+MODEL BREAKDOWN:
+${JSON.stringify(input.byModel, null, 1)}
+
+CLASSIFIED OBSERVATIONS (pre-ranked strongest first):
 ${JSON.stringify(input.observations, null, 1)}
 
-ADDITIONAL CUSTOM FIELD PATTERNS (win rate with vs without each condition):
+CUSTOM FIELD PATTERNS (win rate with vs without — confluence tags, conditions, rules, etc.):
 ${JSON.stringify(input.customPatterns, null, 1)}
 
-Pick THE ONE THING and lean_in / cut_out. Return JSON only.`;
+Return JSON only.`;
 }
 
 function buildWriteSystemPrompt() {
-  return `You are writing a Refinements coaching report — a focused, prescriptive coaching document. Return ONLY valid HTML from <!DOCTYPE html> to </html>. No markdown, no fences, nothing before or after.
+  return `You are writing a Refinements coaching report. Return ONLY valid HTML from <!DOCTYPE html> to </html>. No markdown, no fences, nothing before or after.
 
-VOICE: Direct coach. Every claim backed by a number. No filler, no hedging except for genuine early_signal findings (flag those honestly). Never say "you may want to consider" — say "Stop" or "Only" or "Double down".
+VOICE: Sharp prescriptive coach. "Read everything, say little." Every claim is backed by exactly one proof line. No preamble. No "here's what we found." No filler between sections. The numbers speak — your job is to make them land.
 
-STRUCTURE (write in this exact order):
-1. Compact page header: Google Fonts + Chart.js CDN in <head> (even though no charts needed, include for consistency). Title "REFINEMENTS" using .report-title. Below it: date using .report-period. Below that a small subtitle: "90-day coaching snapshot · the few things that actually matter" using .report-meta.
+Strong verbs only: Stop. Only. Never. Double down on. Cut. Concentrate.
+Hedge only for genuine early_signal findings — flag them once, move on.
 
-2. THE ONE THING section — the hero. Use a full-width .finding-card:
-   - Use finding-card--crisis for cut_out direction, finding-card--breakthrough for lean_in direction
-   - .finding-tag with label "THE ONE THING"
-   - .finding-title: the one_thing.label in large text
-   - .one-thing-instruction: the one_thing.instruction in bold, imperative voice (this is the dominant element)
-   - .finding-stat: the proof number
-   - If confidence is early_signal, add a small inline note: "(Early signal — n=[n] trades, pattern is real but watch as data builds)"
-   - Do NOT add explanation padding. The number says it. Move on.
+STRUCTURE (write in this exact order, nothing else):
 
-3. LEAN IN section (if lean_in has items):
-   - .section with .section-eyebrow "lean in" and .section-title "Your Proven Edge"
-   - For each item: use a .coaching-card.coaching-card--lean
-     - .coaching-card__label: the item label
-     - .coaching-card__instruction: the instruction (bold, imperative)
-     - .coaching-card__proof: the proof (mono font)
-     - If early_signal: add <span class="early-signal">Early signal</span> after the label
-     - If reconcile_note is present: add <p class="coaching-card__reconcile">Note: [reconcile_note]</p> after the proof
+1. PAGE HEADER
+   - <head>: only Google Fonts link (Outfit 200,300,400,500,600 + Share Tech Mono). No Chart.js.
+   - <h1 class="report-title">REFINEMENTS</h1>
+   - <div class="report-period">[date]</div>
+   - <div class="report-meta">90-day coaching snapshot · the few things that actually matter</div>
 
-4. CUT OUT section (if cut_out has items):
-   - .section with .section-eyebrow "cut out" and .section-title "What's Bleeding You"
-   - For each item: use a .coaching-card.coaching-card--cut
-     - Same structure as lean in cards (including reconcile_note if present)
+2. THE ONE THING (hero — dominant first element)
+   Direction cut_out → .finding-card--crisis + .finding-tag--crisis
+   Direction lean_in → .finding-card--breakthrough + .finding-tag--breakthrough
+   - .finding-tag: "THE ONE THING"
+   - .finding-title: the label (large, white, font-weight 300)
+   - .one-thing-instruction: the instruction wrapped in <strong>. This is THE dominant element — no sentence before it, no sentence after it.
+   - .finding-stat: the proof string exactly as written in the plan
+   - If early_signal: add one parenthetical after stat: (Early signal — n=[n] · pattern is real, watch as data builds)
+   - If reconcile_note in plan: <p class="coaching-card__reconcile">Note: [reconcile_note]</p> after the stat. NEVER omit it if present.
+   - NOTHING ELSE. No extra paragraphs.
 
-5. Closing line — one sentence only:
-   - .closing-line: "Focus: [one-line summary of the priority for next 90 days based on THE ONE THING]"
+3. LEAN IN (only if lean_in array non-empty)
+   <div class="section">
+   <div class="section-eyebrow">lean in</div>
+   <h2 class="section-title">Your Proven Edge</h2>
+   Each item → <div class="coaching-card coaching-card--lean">
+     <div class="coaching-card__label">[label][ <span class="early-signal">Early signal</span> if early_signal]</div>
+     <div class="coaching-card__instruction">[instruction]</div>
+     <div class="coaching-card__proof">[proof]</div>
+     [<p class="coaching-card__reconcile">Note: [reconcile_note]</p> if reconcile_note present]
 
-DO NOT include: metric grids (.g4/.g3/.g2), Chart.js charts, progression timelines, full breakdown tables. No commentary sections. No "here's what we found" paragraphs. The plan speaks for itself.
+4. CUT OUT (only if cut_out array non-empty)
+   <div class="section">
+   <div class="section-eyebrow">cut out</div>
+   <h2 class="section-title">What's Bleeding You</h2>
+   Each item → <div class="coaching-card coaching-card--cut"> (identical structure)
 
-CSS FRAMEWORK — embed exactly in <style>:
+5. CLOSING LINE (always present)
+   <div class="closing-line">Focus: [one punchy sentence about the next 90 days, starts with a verb, based on THE ONE THING]</div>
+
+ABSOLUTE DON'TS:
+- No metric grids, no Chart.js, no progression tables, no commentary paragraphs
+- No section introductions ("Here are the things...")
+- No softening language ("you may want to consider")
+- Do NOT invent numbers — use the proof string from the plan exactly
+- Do NOT repeat THE ONE THING inside LEAN IN or CUT OUT
+
+CSS FRAMEWORK — embed exactly in <style>, no modifications:
 ${REPORT_CSS}
 
-COMPONENT REFERENCE:
+COMPONENT REFERENCE (copy structure, replace content):
 
-Finding card (THE ONE THING hero):
+THE ONE THING — lean_in:
+<div class="finding-card finding-card--breakthrough">
+  <span class="finding-tag finding-tag--breakthrough">THE ONE THING</span>
+  <h2 class="finding-title">Concentrate NC+Sweep in London, Not Asia</h2>
+  <p class="one-thing-instruction"><strong>Only take your NC+Sweep model in the London session — you run it 3× more in Asia where it hits 37% WR vs 61% in London.</strong></p>
+  <div class="finding-stat">London: 61% WR · n=28 · +1.87R · Asia: 37% WR · n=94 · +0.81R</div>
+  <p class="coaching-card__reconcile">Note: Verify this edge holds on your funded/live trades specifically — forward test selectivity can inflate session signals.</p>
+</div>
+
+THE ONE THING — cut_out:
 <div class="finding-card finding-card--crisis">
   <span class="finding-tag finding-tag--crisis">THE ONE THING</span>
-  <h2 class="finding-title">Stop trading the Asia session</h2>
-  <p class="one-thing-instruction"><strong>Stop taking trades in the Asia session entirely until your win rate recovers.</strong></p>
-  <div class="finding-stat">22% WR · n=18 · -6.2R · baseline 41%</div>
+  <h2 class="finding-title">Stop Every Re-entry</h2>
+  <p class="one-thing-instruction"><strong>Never re-enter a trade — your re-entries run 19% WR and are the single biggest drain in your system.</strong></p>
+  <div class="finding-stat">Re-entry: 19% WR · n=21 · −0.20R · vs original entry 45% WR · +1.12R</div>
 </div>
 
-Coaching card (lean in / cut out):
+LEAN IN card:
 <div class="coaching-card coaching-card--lean">
-  <div class="coaching-card__label">London Open · Asia-London Combo</div>
-  <div class="coaching-card__instruction">Only trade the London Open session — this is where your edge concentrates.</div>
-  <div class="coaching-card__proof">58% WR · n=24 · +8.4R · baseline +17pp</div>
+  <div class="coaching-card__label">MTF Weak Structure — The Turbocharger</div>
+  <div class="coaching-card__instruction">Only take trades where MTF Weak Structure is confirmed — your WR doubles when it's present.</div>
+  <div class="coaching-card__proof">66% WR with · n=35 · +2.26R · vs 44% without · Δ+1.43R expectancy</div>
 </div>
 
-Coaching card with reconcile note (when reconcile_note is present in plan):
-<div class="coaching-card coaching-card--lean">
-  <div class="coaching-card__label">HTF Weak Structure + Confluence</div>
-  <div class="coaching-card__instruction">Only take HTF weak structure setups when the structure confluence filter is active.</div>
-  <div class="coaching-card__proof">81% WR · n=17 · +12.1R · baseline +31pp</div>
-  <p class="coaching-card__reconcile">Note: This refers specifically to HTF weak structure entries with the confluence filter confirmed — distinct from generic weak structure entries which drag your win rate down.</p>
+CUT OUT card:
+<div class="coaching-card coaching-card--cut">
+  <div class="coaching-card__label">SWEEP Tag — Decorative, Not Edge</div>
+  <div class="coaching-card__instruction">Stop counting SWEEP as a confluence — it appears in 81% of trades and adds zero expectancy.</div>
+  <div class="coaching-card__proof">Δ+0.03R · n=213 appearances · non-discriminating across any split</div>
 </div>
 
-The report must be a complete working HTML page. Close with </body></html>.`;
+Close with </body></html>.`;
 }
 
 function buildWriteUserContent(filteredPkg, plan) {
@@ -428,9 +529,9 @@ function buildWriteUserContent(filteredPkg, plan) {
   const periodTrades = filteredPkg.periodTradeCount ?? 0;
   const today = new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
 
-  return `Overall: ${overallWR}% win rate across ${periodTrades} trades (last 90 days). Generated: ${today}.
+  return `${overallWR}% WR · ${periodTrades} trades · last 90 days · ${today}
 
-COACHING PLAN (use these numbers directly — do not invent or recalculate):
+COACHING PLAN (use these numbers exactly — do not invent or recalculate):
 ${JSON.stringify(plan, null, 2)}
 
 Write the complete refinements coaching report HTML now. Start with <!DOCTYPE html>.`;
@@ -454,7 +555,7 @@ export async function planRefinementStep(pkg) {
     model:      PLAN_MODEL,
     system:     buildPlanSystemPrompt(),
     user:       buildPlanUserContent(input),
-    maxTokens:  2000,
+    maxTokens:  3500,
     expectJson: true,
   });
   console.log(
